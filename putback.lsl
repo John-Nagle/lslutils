@@ -27,32 +27,52 @@ rotation base_rot;                  // initial rotation
 init()                              // called at startup
 {   llSetTimerEvent(0.0);           // clear any timer
     llSetStatus(STATUS_PHYSICS, FALSE); //physics off
+    llSetStatus(STATUS_BLOCK_GRAB_OBJECT, FALSE); // but grabbable 
+    llSetStatus(STATUS_BLOCK_GRAB, FALSE); // but grabbable
+
 }
 
 move_back()                         // go back to base pos
-{
+{   integer trouble = FALSE;        // no trouble yet
     if (llGetRegionCorner() != base_region_corner) // if in wrong region
     {   //  Need to move object across a region boundary. This is hard.
         //  We do it using the physics engine with gravity and collisions off.
-        llSay(0,"Outside home region at " + 
+        llOwnerSay("Outside home region at " + 
             llGetRegionName() + " " + 
             (string)llGetPos());
         //  Set object so it responds to physics, can pass through anything,
         //  and cannot fall. Now it can be moved.
+        llSetStatus(STATUS_PHANTOM, TRUE);  // can move through everything
+        llSetStatus(STATUS_PHYSICS, TRUE);  // but responds to forces
+        llSetVelocity(<0.0,0.0,0.0>, FALSE);// bring it to a stop
+        llSleep(0.5);                       // allow stopping time
         float gravitymult = llList2Float(llGetPhysicsMaterial(),0); // save gravity mult
-        llSetPhysicsMaterial(GRAVITY_MULTIPLIER, 0.0, 0.0, 0.0, 0.0);
-        llSetStatus(STATUS_PHANTOM, TRUE);
-        llSetStatus(STATUS_PHYSICS, TRUE);
+        float disttohome = 999999999.0;         // for stuck detector only
         while (llGetRegionCorner() != base_region_corner) // while in wrong region
         {   vector tohome = (base_region_corner + base_pos)
                     - (llGetRegionCorner() +  llGetPos());    // dir to get home
+            // Reset status every time. Sometimes Physics gets turned off somehow.
+            llSetPhysicsMaterial(GRAVITY_MULTIPLIER, 0.0, 0.0, 0.0, 0.0);
+            llSetStatus(STATUS_PHANTOM, TRUE);  // can move through everything
+            llSetStatus(STATUS_PHYSICS, TRUE);  // but responds to forces                
             llSetVelocity(llVecNorm(tohome) * REGION_CROSS_VEL, FALSE); // push
-            llSay(0,"In wrong region, " 
-                + (string) llVecMag(tohome) + "m from home"); 
-            llSleep(0.2);
+            float newdisttohome = llVecMag(tohome); 
+            string s = llGetObjectName() + " trying to return, "
+                + (string) llVecMag(tohome) + "m from home and at " 
+                + llGetRegionName() + ", " + (string)llGetPos();
+                
+           if (newdisttohome >= disttohome)// not getting closer - trouble
+            {   s = s + " and stuck! Please retrieve object.";
+                llInstantMessage(llGetOwner(), s); // tell owner
+                trouble = TRUE;             // stuck, must report
+                llSleep(30.0);              // avoid spam
+            }
+            llOwnerSay(s);                  // debug info
+            disttohome = newdisttohome;     // update dist to home
+            llSleep(0.5);
         }            
         llSetVelocity( <0.0,0.0,0.0>, FALSE ); // turn off push
-        llSay(0,"Back in home region.");
+        llOwnerSay("Back in home region.");
         //  Restore gravity multiplier
         llSetPhysicsMaterial(GRAVITY_MULTIPLIER, gravitymult, 0.0, 0.0, 0.0);
     }
@@ -66,6 +86,7 @@ move_back()                         // go back to base pos
     llSetPos(base_pos);             // final move to goal
     llSetRot(base_rot);
     llSetStatus(STATUS_PHANTOM, FALSE);
+    if (trouble) { llInstantMessage(llGetOwner(), "Safely back home."); }
 }
 
 default
