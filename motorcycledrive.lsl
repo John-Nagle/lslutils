@@ -1,13 +1,22 @@
+//  Motorcycle driving script
+//  Automatic region crossing handling
+//  EXPERIMENTAL
+//
+//  Animats
+//  December, 2017
+//  Derived from a motorcycle script of unknown origin.
+
 //  Constants
 float TINY = 0.0001;                // small value to prevent divide by zero
 float HUGE = 100000000000.0;        // huge number bigger than any distance
 float REGION_SIZE = 256.0;          // SL region size
 
-///float NEAR_REGION_BOUNDARY = 9.0;   // brake close to region boundary
-float BRAKING_TIME = 1.5;           // allow 2 secs braking time at boundary
-float REGION_BRAKE = 1.8;           // max power near boundary 
 
-//Basic settings
+//    Basic settings
+                                    // region cross speed control
+float BRAKING_TIME = 1.5;           // allow this braking time at boundary
+float REGION_BRAKE = 2.0;           // how hard to brake
+float REGION_CROSS_SPEED = 5.0;     // max speed at region cross
 
 float BankPower=6000;
 float       ForwardPower; //Forward power
@@ -77,17 +86,8 @@ list turn_speeds=[.15,.12,.10,.01];
 float TurnSpeed;
 
 //  Utility functions
-float abs(float v)
-{   if (v < 0) { v = -v; } return(v); }
 float min(float a, float b)
 {   if (a < b) { return(a); } else { return(b); }}
-
-float dist_to_region_edge(vector pos)
-{   return(min(abs(pos.x),
-        min(abs(REGION_SIZE - pos.x),
-        min(abs(pos.y),
-        abs(REGION_SIZE - pos.y)))));
-}
 
 //
 //  Where will a 2D XY vector from p in direction v hit a box of [0..boxsize, 0..boxsize]?
@@ -128,6 +128,32 @@ float time_to_sim_cross()
     return(dist / speed);           // time to sim cross   
 }
 
+set_vehicle_params()                // set up SL vehicle system
+{
+    llSetVehicleType(VEHICLE_TYPE_CAR);
+    llSetVehicleFlags(VEHICLE_FLAG_NO_DEFLECTION_UP | VEHICLE_FLAG_LIMIT_ROLL_ONLY | VEHICLE_FLAG_LIMIT_MOTOR_UP);
+    llSetVehicleFloatParam(VEHICLE_ANGULAR_DEFLECTION_EFFICIENCY, 0.4);
+    llSetVehicleFloatParam(VEHICLE_LINEAR_DEFLECTION_EFFICIENCY, 0.80);
+    llSetVehicleFloatParam(VEHICLE_ANGULAR_DEFLECTION_TIMESCALE, 0.10);
+    llSetVehicleFloatParam(VEHICLE_LINEAR_DEFLECTION_TIMESCALE, 0.10);
+    llSetVehicleFloatParam(VEHICLE_LINEAR_MOTOR_TIMESCALE, 5);
+    llSetVehicleFloatParam(VEHICLE_LINEAR_MOTOR_DECAY_TIMESCALE, 0.2);
+    llSetVehicleFloatParam(VEHICLE_ANGULAR_MOTOR_TIMESCALE, TurnSpeed);
+    llSetVehicleFloatParam(VEHICLE_ANGULAR_MOTOR_DECAY_TIMESCALE, 0.2);
+    llSetVehicleVectorParam(VEHICLE_LINEAR_FRICTION_TIMESCALE, <6, 0.5, 1000.0> );
+    llSetVehicleVectorParam(VEHICLE_ANGULAR_FRICTION_TIMESCALE, <10.0, 10.0, 0.5> );
+    llSetVehicleFloatParam(VEHICLE_VERTICAL_ATTRACTION_EFFICIENCY, 0.50);
+    llSetVehicleFloatParam(VEHICLE_VERTICAL_ATTRACTION_TIMESCALE, 0.40);
+    llSetVehicleFloatParam(VEHICLE_BANKING_EFFICIENCY, 1.0);
+    llSetVehicleFloatParam(VEHICLE_BANKING_TIMESCALE, 0.01);
+    llSetVehicleFloatParam(VEHICLE_BANKING_MIX, 1.0);
+    llCollisionSound("", 0.0);
+        
+    llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_WATER_ONLY | VEHICLE_FLAG_HOVER_TERRAIN_ONLY | VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT);
+        
+    llSetVehicleFlags(VEHICLE_FLAG_NO_DEFLECTION_UP | VEHICLE_FLAG_LIMIT_ROLL_ONLY | VEHICLE_FLAG_HOVER_UP_ONLY | VEHICLE_FLAG_LIMIT_MOTOR_UP);
+
+}
 
 
 default
@@ -169,29 +195,7 @@ state Ground
             Linear = <0,0,-2>;
     
         }
-        
-llSetVehicleType(VEHICLE_TYPE_CAR);
-        llSetVehicleFlags(VEHICLE_FLAG_NO_DEFLECTION_UP | VEHICLE_FLAG_LIMIT_ROLL_ONLY | VEHICLE_FLAG_LIMIT_MOTOR_UP);
-        llSetVehicleFloatParam(VEHICLE_ANGULAR_DEFLECTION_EFFICIENCY, 0.4);
-        llSetVehicleFloatParam(VEHICLE_LINEAR_DEFLECTION_EFFICIENCY, 0.80);
-        llSetVehicleFloatParam(VEHICLE_ANGULAR_DEFLECTION_TIMESCALE, 0.10);
-        llSetVehicleFloatParam(VEHICLE_LINEAR_DEFLECTION_TIMESCALE, 0.10);
-        llSetVehicleFloatParam(VEHICLE_LINEAR_MOTOR_TIMESCALE, 5);
-        llSetVehicleFloatParam(VEHICLE_LINEAR_MOTOR_DECAY_TIMESCALE, 0.2);
-        llSetVehicleFloatParam(VEHICLE_ANGULAR_MOTOR_TIMESCALE, TurnSpeed);
-        llSetVehicleFloatParam(VEHICLE_ANGULAR_MOTOR_DECAY_TIMESCALE, 0.2);
-        llSetVehicleVectorParam(VEHICLE_LINEAR_FRICTION_TIMESCALE, <6, 0.5, 1000.0> );
-        llSetVehicleVectorParam(VEHICLE_ANGULAR_FRICTION_TIMESCALE, <10.0, 10.0, 0.5> );
-        llSetVehicleFloatParam(VEHICLE_VERTICAL_ATTRACTION_EFFICIENCY, 0.50);
-        llSetVehicleFloatParam(VEHICLE_VERTICAL_ATTRACTION_TIMESCALE, 0.40);
-        llSetVehicleFloatParam(VEHICLE_BANKING_EFFICIENCY, 1.0);
-        llSetVehicleFloatParam(VEHICLE_BANKING_TIMESCALE, 0.01);
-        llSetVehicleFloatParam(VEHICLE_BANKING_MIX, 1.0);
-        llCollisionSound("", 0.0);
-        
-        llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_WATER_ONLY | VEHICLE_FLAG_HOVER_TERRAIN_ONLY | VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT);
-        
-        llSetVehicleFlags(VEHICLE_FLAG_NO_DEFLECTION_UP | VEHICLE_FLAG_LIMIT_ROLL_ONLY | VEHICLE_FLAG_HOVER_UP_ONLY | VEHICLE_FLAG_LIMIT_MOTOR_UP);
+        set_vehicle_params();
     }
     
     on_rez(integer param)
