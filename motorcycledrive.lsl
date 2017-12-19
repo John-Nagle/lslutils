@@ -17,8 +17,10 @@ float REGION_SIZE = 256.0;          // SL region size
 float BRAKING_TIME = 1.5;           // allow this braking time at boundary
 float REGION_BRAKE = 2.0;           // how hard to brake
 float REGION_CROSS_SPEED = 5.0;     // max speed at region cross
+float AVATAR_MAX_DIST_TO_BIKE = 1.0;// avatar in trouble if sit pos wrong
 
-float BankPower=6000;
+integer     TimerTick = 0;          // count of timer events
+float       BankPower=6000;
 float       ForwardPower; //Forward power
 list        ForwardPowerGears = [10,20,26,30,38,150];
 float       ReversePower = -14; //Reverse power
@@ -32,11 +34,11 @@ float       FlightDownPower = 14;
 float       FlightStrafePower = 12;
 float       FlightTurnPower = 4;
 
-integer Back=FALSE;
+integer     Back=FALSE;
 
 
 string      SitText = "Drive"; //Text to show on pie menu
-string      NonOwnerMessage = "GET YOUR OWN BIKE, SORRY !."; //Message when someone other than owner tries to sit
+string      NonOwnerMessage = "Not your bike, sorry."; //Message when someone other than owner tries to sit
 
 string      OwnerName;
 integer     ListenCh = 4;
@@ -106,14 +108,13 @@ float line_box_intersection(vector pos, vector dir, float boxsize)
     else if (dir.x > TINY)                // will hit on boxsize edge, p1.x = boxsize
     {   dist1 = (-(pos.x - boxsize))/dir.x; }   // boxsize = pos.x + dir.x * dist1
     //  Check X axis edges
-    if (dir.y < TINY)
+    if (dir.y < -TINY)
     {   dist2 = -pos.y/dir.y; }
     else if (dir.y > TINY)
     {   dist2 = (-(pos.y - boxsize))/dir.y; }
     if (dist1 < dist2) { return(dist1);}
     return(dist2);                  // return minimum distance       
 }
-integer nth = 0;    // ***TEMP***
 //  Compute time to next sim crossing on current heading
 float time_to_sim_cross()          
 {   vector vel = llGetVel();        // get velocity
@@ -122,8 +123,7 @@ float time_to_sim_cross()
     if (speed < TINY) { return(HUGE); } // not moving, no problem
     vector pos = llGetPos();        // get position within region
     float dist = line_box_intersection(llGetPos(), vel, REGION_SIZE); // dist to edge
-    nth++;  // ***TEMP DEBUG***
-    if (nth % 10 == 0) // ***TEMP DEBUG***
+    if (TimerTick % 10 == 0) // ***TEMP DEBUG***
     {   llOwnerSay((string)dist + "m to boundary, " + (string)speed + "m/sec."); } // ***TEMP***
     return(dist / speed);           // time to sim cross   
 }
@@ -235,7 +235,8 @@ state Ground
     changed(integer change)
     {   if (change & CHANGED_REGION)            // if in new region
         {   float speed = llVecMag(llGetVel()); // get velocity
-            llOwnerSay("Speed at region cross: " + (string)speed); // ***TEMP***
+            llOwnerSay("Speed at region cross: " 
+                + (string)speed);           // ***TEMP***
         }
         if((change & CHANGED_LINK) == CHANGED_LINK) 
         {
@@ -260,7 +261,7 @@ state Ground
                     CurDir = DIR_NORM;
                     LastDir = DIR_NORM;
                 }
-            }else if((sitting == NULL_KEY) && Active)
+            } else if((sitting == NULL_KEY) && Active)
             {
                 llSetTimerEvent(0.0);
                 llStopAnimation(DrivingAnim);
@@ -269,6 +270,7 @@ state Ground
                 llSetStatus(STATUS_PHYSICS, FALSE);
                 llMessageLinked(LINK_ALL_CHILDREN , DIR_STOP, "", NULL_KEY);
                 llReleaseControls();
+                llOwnerSay("Driver dismounted.");   // ***TEMP***
             }
         }
     }
@@ -440,7 +442,20 @@ state Ground
     }
     
     timer()
-    {  
+    {   TimerTick++;                    // count timer ticks for debug
+        //  Check for avatar out of position
+        key avatar = llAvatarOnSitTarget();
+        if (avatar != NULL_KEY) 
+        {   vector vehpos = llGetPos();
+            list avatarinfo = llGetObjectDetails(avatar, [OBJECT_POS]);
+            vector avatarpos = llList2Vector(avatarinfo,0);
+            float avatardist = llVecMag(avatarpos - vehpos);
+            if ((avatardist > AVATAR_MAX_DIST_TO_BIKE) 
+                && (TimerTick % 10 == 0)) 
+                { llOwnerSay("Avatar out of position: " + 
+                (string)avatardist + "m from bike.");}
+        }
+        //  Speed control
         if(Linear != <0.0,  0.0, -2.0>)
         {   vector wlinear = Linear;        // working linear power
             float timetocross = time_to_sim_cross(); // time to sim crossing
