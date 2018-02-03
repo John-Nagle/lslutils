@@ -110,7 +110,7 @@ Vehicles with more passengers increase the odds of a failure.
 
 ### Test motorcycle
 
-[testbike.jpg]
+[https://github.com/John-Nagle/lslutils/blob/master/testbike.jpg]
 
 **Test motorcycle**
 
@@ -127,7 +127,9 @@ It's been driven all over Heterocera and Kama City, usually around
 Use of this bike requires wearing an RLV relay which will allow a forced sit
 to get fully automatic recovery from a half-unsit.
 We use "DM2-Meter V3.027", which is intended for combat games. There's
-a crate next to the parked bike which can be copied to get one. 
+a crate next to the parked bike which can be copied to get one. Once worn,
+it brings up a HUD display at top center, allowing the RLV features to be
+turned on and off. When that display is red, the RLV features are available.
 
 When you get on the bike, it will ask for teleport permission. It uses that to
 teleport you back to the bike if you come off at a region crossing.
@@ -138,10 +140,10 @@ problems to "animats" in Second Life. Video of problems would be appreciated.
 
 This a test vehicle. That's why the yellow and black stripes. It tends to
 go airborne at high speeds, and isn't useful for racing. But it will get
-you around Second Life. 
+you around Second Life.  Try it and go drive some place.
 
 ### Half-unsit recovery as a fix to the sim system
-Script-based recovery is a workaround for a bug in the underlying sim system.
+Script-based recovery with a custom bike is a workaround for a bug in the underlying sim system.
 The teleport retry and re-sit should be performed in the sim system. The main
 fix required may simply be to detect teleport failures at region crossings and
 retry them. This is a job for Linden Labs. 
@@ -157,12 +159,12 @@ to cross a second sim boundary. This will result in an additional stall at
 rare double sim crossings, but fewer half-unsits. 
 
 It would also be helpful, during a sim crossing, to keep the camera aimed at the
-avatar's sit position, rather than at the avatar itself. This
+avatar's sit position, rather than at the avatar itself. Then it doesn't matter
+as much that the avatars are still teleporting.  This
 will reduce user disorientation, help prevent accidents due to bad
 steering decisions, and improve the user experience.
 
 ## Other region crossing problems
-
 There are at least five separate problems in region crossing. They all look
 similar to the end user, and thus bug reports on them have been difficult to address.
 Here we sort them out, discuss each separately, and provide solutions or workarounds
@@ -211,7 +213,6 @@ This fix is on track for inclusion in a Firestorm beta version. Linden Labs is w
 to copy the code.
 
 ## Animation shutdown
-
 It is quite common for a vehicle rider animation to stop at a region crossing.
 The default "sit" animation is then run. 
 This can be fixed in vehicle scripts by detecting the region crossing, using
@@ -229,7 +230,6 @@ Both this, and the camera fix below, are implemented in our test
 motorcycles.
 
 ## Bogus camera movement
-
 Big jumps in camera position are common at region crossing. 
 So, at the same time we restart the animation, we reset the
 camera parameters. This usually eliminates bogus camera motion
@@ -238,7 +238,6 @@ camera position over time due to some cumulative error problem.
 
 
 ## Road problems, or "potholes".
-
 As pointed out above, regions are really islands, and a region crossing
 means going off the edge and being teleported to the next region. 
 When an avatar or vehicle goes off the edge of a region, and there's
@@ -264,7 +263,8 @@ this problem results in a collision between the slightly sunken
 avatar and a prim, resulting in unwanted motion in some direction.
 
 This problem can be fixed by extending road prims a few meters off
-the edge of the sim. This provides support during the transition.
+the edge of the sim. This has been known since at least 2012.
+Such a prim provides support during the transition.
 The extension can be transparent, and it can be an additional 
 prim tacked onto an existing road prim. Some roads in Second Life
 already have such support. Some don't. (Circuit de Corse is quite good;
