@@ -148,7 +148,7 @@ The teleport retry and re-sit should be performed in the sim system. The main
 fix required may simply be to detect teleport failures at region crossings and
 retry them. This is a job for Linden Labs. 
 
-The question has been raised in the Viewer User Group of whether a fix of this
+The question has been raised in the Server User Group meeting of whether a fix of this
 type should involve holding the vehicle stalled at the sim crossing until all
 the avatars arrive. The system does not currently do this. At some crossings,
 the vehicle keeps going and the avatar zips after it to catch up and re-seat.
