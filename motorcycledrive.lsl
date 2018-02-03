@@ -1,6 +1,6 @@
 //  Motorcycle driving script
-//  Automatic region crossing handling
-//  EXPERIMENTAL
+//  Automatic region crossing error recovery using RLV.
+//  EXPERIMENTAL.
 //
 //  Animats
 //  January, 2018
@@ -10,6 +10,7 @@
 float TINY = 0.0001;                // small value to prevent divide by zero
 float HUGE = 100000000000.0;        // huge number bigger than any distance
 float REGION_SIZE = 256.0;          // SL region size
+integer RLVRC =-1812221819;         // RLV channel
 
 
 //    Basic settings
@@ -19,6 +20,8 @@ float REGION_BRAKE = 0.0;           // how hard to brake
 float REGION_CROSS_SPEED = 500.0;     // max speed at region cross
 float AVATAR_MAX_DIST_TO_BIKE = 1.0;// avatar in trouble if sit pos wrong
 integer SIT_TROUBLE_MAX = 50;         // in trouble if out of position this many
+float SPEED_STATIONARY = 0.05;      // 5cm/sec is "stopped"
+float MAX_DISTANCE_FOR_SIT = 8.0;       // must be this close for sit success
 
 integer     TimerTick = 0;          // count of timer events
 integer     SitTroubleCount = 0;      // timer ticks out of position
@@ -122,20 +125,20 @@ float time_to_sim_cross()
     return(timetoedge);           // time to sim cross   
 }
 //  posasstring -- get current position as string
-string posasstring()
-{   vector pos = llGetPos();
-    return(llGetRegionName() 
+string posasstring(string region, vector pos)
+{   
+    return(region
         + " (" + (string)((integer)pos.x)
         + "," + (string)((integer)pos.y)
         + "," + (string)((integer)pos.z) + ")");
 }
 //
-//  ifsittrouble  - true if avatar position is valid
+//  ifnotseated  - true if avatar position is valid
 //
 //  Check for everything which can go wrong with the vehicle/avatar
 //  relationship.
 //
-integer ifsittrouble(key avatar)
+integer ifnotseated(key avatar)
 {   integer trouble = FALSE;
     //  Check for avatar out of position
     if (avatar != NULL_KEY) 
@@ -176,6 +179,11 @@ integer ifsittrouble(key avatar)
         trouble = TRUE;
         llOwnerSay("Avatar not on sit target");
     }
+    return trouble;
+} 
+  
+integer ifnotperms() 
+{   integer trouble = FALSE;
     //  Check for proper permissions
     integer perms = llGetPermissions(); // what perms do we have?
     if (Permission_Set & perms != Permission_Set)
@@ -184,6 +192,20 @@ integer ifsittrouble(key avatar)
         trouble = TRUE;
     }
     return trouble;
+}
+
+integer ifsittrouble(key avatar)
+{   return(ifnotseated(avatar) || ifnotperms()); }
+
+//  Reseat avatar at given sit point in current sim using an RLV command
+//  ***NEED TO CHECK MORE ABOUT THIS***
+reseat_avatar(key avatar, key sittarget)
+{
+    string cmd0 = "RESIT," + (string) avatar + ",";     // prefix for RLV relay
+    string cmd1 = "@sit:" + (string)sittarget + "=force";   // forced sit command
+    string cmd = cmd0 + cmd1;                           // entire command
+    llOwnerSay("RLV command: " + cmd);                  // ***TEMP DEBUG***
+    llSay(RLVRC, cmd);                                  // issue command to force sit
 }
 
 set_vehicle_params()                // set up SL vehicle system
@@ -232,6 +254,22 @@ set_camera_params()
     ]);
     Need_Camera_Reset = FALSE;          // camera reset done
 }
+//  startup -- driver has just sat on bike.
+startup()
+{
+    llSay(9890,"s " +(string)TurnSpeedNum);
+    llWhisper(11,"started");
+    llRequestPermissions(sitting, Permission_Set);
+    llTriggerSound(StartupSound, 1.0);
+    llMessageLinked(LINK_ALL_CHILDREN, DIR_START, "", NULL_KEY);
+    llSetPos(llGetPos() + <0,0,0.15>);
+    llSetStatus(STATUS_PHYSICS, TRUE);
+    SimName = llGetRegionName();
+    llLoopSound(IdleSound,1);
+    llSetTimerEvent(0.1);
+    CurDir = DIR_NORM;
+    LastDir = DIR_NORM;
+}
 //  shutdown -- shut down bike
 shutdown()
 {
@@ -243,7 +281,7 @@ shutdown()
     llReleaseControls();
     llOwnerSay("Bike shut down after "
         + (string)Region_Cross_Count + " region crossings.");
-    llOwnerSay("Final bike location: " + posasstring());
+    llOwnerSay("Final bike location: " + posasstring(llGetRegionName(), llGetPos()));
 }
 
 
@@ -251,11 +289,13 @@ default
 {
     state_entry()
     {
-        Permission_Set = PERMISSION_TRIGGER_ANIMATION | PERMISSION_TAKE_CONTROLS | PERMISSION_CONTROL_CAMERA;
+        Permission_Set = PERMISSION_TRIGGER_ANIMATION | PERMISSION_TAKE_CONTROLS | PERMISSION_CONTROL_CAMERA
+            | PERMISSION_TELEPORT;
         Owner = llGetOwner();
         TurnSpeedAdjust *= 0.01;
         ForwardPower = llList2Integer(ForwardPowerGears, 0);
         NumGears = llGetListLength(ForwardPowerGears);
+        Active = 0;
         llSetSitText(SitText);
         llCollisionSound("", 0.0);
         llSitTarget(<.30,0.0,0.32>, llEuler2Rot(<0,-.15,0> ));
@@ -333,18 +373,7 @@ state Ground
             sitting = llAvatarOnSitTarget();
             if((sitting != NULL_KEY) && !Active)
             {
-                llSay(9890,"s " +(string)TurnSpeedNum);
-                llWhisper(11,"started");
-                llRequestPermissions(sitting, Permission_Set);
-                llTriggerSound(StartupSound, 1.0);
-                llMessageLinked(LINK_ALL_CHILDREN, DIR_START, "", NULL_KEY);
-                llSetPos(llGetPos() + <0,0,0.15>);
-                llSetStatus(STATUS_PHYSICS, TRUE);
-                SimName = llGetRegionName();
-                llLoopSound(IdleSound,1);
-                llSetTimerEvent(0.1);
-                CurDir = DIR_NORM;
-                LastDir = DIR_NORM;
+                startup();              // start up bike
             } else if((sitting == NULL_KEY) && Active)
             {
                 shutdown();         // shut down bike and release
@@ -364,11 +393,17 @@ state Ground
             llStartAnimation(DrivingAnim);
             llTakeControls(CONTROL_FWD | CONTROL_BACK | CONTROL_DOWN | CONTROL_UP | CONTROL_RIGHT | CONTROL_LEFT | CONTROL_ROT_RIGHT | CONTROL_ROT_LEFT, TRUE, FALSE);
             set_camera_params();    // set up camera
+            llOwnerSay("Now steering from arrow keys."); // ***TEMP***
         }
     }
     
     control(key id, integer levels, integer edges)
-    { Back=FALSE;
+    {   
+        //  ***TEMP TEST**** press up and down arrows to trigger recovery
+        integer abortbuttons = CONTROL_DOWN;
+        if (((levels & abortbuttons) == abortbuttons) && ((edges & abortbuttons) != 0))
+        {   llOwnerSay("Recovery test."); state Recover; return; }
+        Back=FALSE;
         if (levels & CONTROL_BACK)Back=TRUE;
         Angular.x=0;
         Angular.z=0;
@@ -507,15 +542,9 @@ state Ground
         {   SitTroubleCount++;       // tally sit troubles
             if (SitTroubleCount > SIT_TROUBLE_MAX)
             {   llOwnerSay("TROUBLE - partial unsit detected.");
-                //  ***MORE*** Need to recover.
-                //  First approach - unsit avatar and shut down.
-                if (avatar != NULL_KEY)
-                {   llOwnerSay("Trying to unsit avatar."); 
-                    llUnSit(avatar);
-                    shutdown(); // shut down bike
-                    llUnSit(avatar);
-                    state Ground;   // back to ground state
-                }
+                //  Try to recover
+                state Recover;
+                return;
             }
         }
         else 
@@ -553,5 +582,89 @@ state Ground
         }
     }
 }
+//  Recover from half-unsit sitation
+state Recover {
+    state_entry() {
+        llOwnerSay("Attempting to recover un-seated rider.");
+        key avatar = llAvatarOnSitTarget(); // get avatar
+        if (avatar == NULL_KEY)
+        {   llOwnerSay("Connection to avatar lost - cannot recover.");
+            llResetScript();
+            state Ground;
+            return;
+        }
+        //  Try to stop bike.
+        integer tries = 10;
+        while (tries > 0 && llVecMag(llGetVel()) > SPEED_STATIONARY)
+        {   llSetVelocity(<0,0,0>,TRUE);                    // force velocity to zero
+            llSleep(0.5);                                   // wait for stop
+            tries--;
+        }
+        if (llVecMag(llGetVel()) > SPEED_STATIONARY)        // stopping didn't work
+        {   llOwnerSay("Unable to stop bike.");
+            state RecoverFail;
+            return;
+        }
+        llOwnerSay("Bike stopped at " + posasstring(llGetRegionName(), llGetPos()));
+        vector destpos = llGetPos();    // position of bike
+        //  ***NEED TO TRY DIFFERENT POSITIONS AROUND BIKE
+        integer retries = 5;
+        destpos.z = destpos.z + 3.0;    // try for 3 meters above bike
+        integer success = FALSE;
+        do 
+        {   llOwnerSay("Trying to teleport to bike location at " + posasstring(llGetRegionName(), destpos));
+            float tstart = llGetTime();
+            llTeleportAgent(avatar, "", destpos , <0,0,0>);  // try to teleport to above vehicle - works
+            float elapsed = llGetTime() - tstart;   // how long did teleport take?
+            llOwnerSay("Teleport took " + (string)elapsed + " seconds."); 
+            llSleep(5.0);   // ***TEMP*** allow time for teleport  
+            vector vehpos = llGetPos();
+            list avatarinfo = llGetObjectDetails(avatar, 
+                [OBJECT_POS, OBJECT_ROOT]);
+            vector avatarpos = llList2Vector(avatarinfo,0);
+            key avatarroot = llList2Key(avatarinfo,1);
+            float avatardist = llVecMag(avatarpos - vehpos);
+            if (avatardist < MAX_DISTANCE_FOR_SIT)
+            {   success = TRUE;
+                llOwnerSay("Avatar now close to bike.");
+            }
+            else
+            {  llOwnerSay("Avatar too far from bike after teleport: " + 
+                    (string)avatardist + "m from bike.");
+                if (retries < 0)
+                {   state RecoverFail; return; } // fails
+                else 
+                {   llOwnerSay("Retrying teleport.");
+                    llSleep(3.0);                   // allow more time for teleport
+                }
+            } 
+            retries--;
+        } while (success == FALSE);
+        //  Teleport completed, presumably. Try reseat
+        llOwnerSay("Trying to re-seat avatar on vehicle using RLV.");
+        reseat_avatar(avatar, llGetKey());                  // try to sit avatar on vehicle using RLV
+        integer sittries = 5;
+        while (ifnotseated(avatar))
+        {   if (sittries < 0)
+            {   llOwnerSay("Re-seating failed.");
+                state RecoverFail;
+                return;
+            }
+            llSleep(1.0);                           // try 5 times, 1 sec apart
+            sittries--;
+        }
+        llOwnerSay("Restarting bike.");
+        startup();
+        llOwnerSay("Recovery successful. Drive!");
+        state Ground;                          // ***TEMP***
+    }
+}
 
+state RecoverFail {
+    state_entry() {
+        llOwnerSay("Recovery not fully successful. Sorry.");
+        shutdown();
+        llResetScript();            // TEMP
+    }
+}
 
