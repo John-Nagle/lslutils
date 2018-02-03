@@ -110,7 +110,7 @@ Vehicles with more passengers increase the odds of a failure.
 
 ### Test motorcycle
 
-[https://github.com/John-Nagle/lslutils/blob/master/testbike.jpg]
+![Test motorcycle](https://github.com/John-Nagle/lslutils/blob/master/testbike.jpg)
 
 **Test motorcycle**
 
