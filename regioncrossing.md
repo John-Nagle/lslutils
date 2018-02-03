@@ -13,8 +13,8 @@ much less usable.  All of those problems can be fixed. Here's how.
 # Background
 The Second Life virtual world is divided into regions 256 meters
 on a side. Large areas are built up from many such regions, yielding 
-a virtual world with hundreds of square kilometers in area. This division
-into regions is both the great strength of Second Life. It allows building a
+a virtual world with hundreds of square kilometers of area. This division
+into regions is the great strength of Second Life. It allows building a
 world of great size which appears almost seamless to the user. Most competing
 virtual worlds are divided into limited areas. Second Life, unlike such systems,
 can and has scaled geographically.
@@ -82,7 +82,7 @@ Once the avatar has arrived, the RLV system is used to perform a "force sit"
 operation to put the avatar back in the vehicle. The vehicle's state is then
 set to a driveable state and control is returned to the user.
 
-This works, but the user experience is not great. The half-unsit usually results in a bad
+This works, but the user experience needs improvement. The half-unsit usually results in a bad
 camera position. Teleport permission is required, which requires user interaction
 every time they get on the vehicle. The teleport has all the usual sound and animation effects.
 The use of RLV requires that the avatar wear an active RLV relay.  If the vehicle is in
@@ -90,11 +90,16 @@ an area which disallows object entry, the vehicle may disappear before the avata
 re-seated. Despite all this, it's far better than the alternative, which is usually
 logging out and losing the vehicle. 
 
+The current version of the script for this is on Github, at 
+https://github.com/John-Nagle/lslutils/blob/master/motorcycledrive.lsl
+
 ### Testing
 This problem has been seen for years, but until we got some of the other problems
 out of the way, was hard to recognize and debug.
 
-It's hard to reproduce this problem quickly. The most successful way we've found to 
+It's hard to reproduce this problem quickly. Experience is that it comes up
+about once or twice an hour with our test motorcycle. 
+The most successful way we've found to 
 reproduce it is with a rail car run past two closly spaced sim crossings.
 Because the car is on rails, it's in the same place every time.
 Even then, it appears that the sims must not have seen avatar or rail car
@@ -102,6 +107,38 @@ recently, within the last 10 minutes or so. Otherwise, the sim crossing
 goes smoothly, presumably because some information is cached.
 
 Vehicles with more passengers increase the odds of a failure. 
+
+### Test motorcycle
+
+[testbike.jpg]
+
+**Test motorcycle**
+
+*This is an experimental bike and may have problems.* 
+
+We usually leave a free motorcycle with these fixes parked at
+Vallone/209/23/36. Look for a bike with yellow and black angled stripes.
+This identifies our current test bike. Feel free to take a copy.
+This bike also deals with the animation and camera problems mentioned below. 
+
+It's been driven all over Heterocera and Kama City, usually around
+20m/s, or 45mph. Don't bother slowing down for region crossings.
+
+Use of this bike requires wearing an RLV relay which will allow a forced sit
+to get fully automatic recovery from a half-unsit.
+We use "DM2-Meter V3.027", which is intended for combat games. There's
+a crate next to the parked bike which can be copied to get one. 
+
+When you get on the bike, it will ask for teleport permission. It uses that to
+teleport you back to the bike if you come off at a region crossing.
+Pressing PAGE DOWN will trigger a test of the teleport/resit sequence. It will be
+triggered automatically should a half-unsit occur. Re-sitting is not yet reliable,
+but if it doesn't work, get off the bike and get back on to reset. Report
+problems to "animats" in Second Life. Video of problems would be appreciated.
+
+This a test vehicle. That's why the yellow and black stripes. It tends to
+go airborne at high speeds, and isn't useful for racing. But it will get
+you around Second Life. 
 
 ### Half-unsit recovery as a fix to the sim system
 Script-based recovery is a workaround for a bug in the underlying sim system.
@@ -190,15 +227,6 @@ the avatar/vehicle relationship is back to normal before proceeding.
 
 Both this, and the camera fix below, are implemented in our test
 motorcycles.
-
-The script is available at 
-
-https://github.com/John-Nagle/lslutils/blob/master/motorcycledrive.lsl
-
-and we usually leave a free motorcycle with these fixes parked at
-Vallone/227/19/36. Look for a bike with yellow and black angled stripes.
-This identifies our current test bike. Feel free to take a copy.  This bike
-also deals with the "unsit" problem mentioned below. 
 
 ## Bogus camera movement
 
