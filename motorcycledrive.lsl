@@ -10,7 +10,11 @@
 float TINY = 0.0001;                // small value to prevent divide by zero
 float HUGE = 100000000000.0;        // huge number bigger than any distance
 float REGION_SIZE = 256.0;          // SL region size
-integer RLVRC =-1812221819;         // RLV channel
+integer RLVRC =-1812221819;         // RLV channel, standard
+integer RLV_REPLY_CH = 1101;        // arbitrary number for our RLV replies
+integer LIGHT_CONTROL_CH = 1102;    // light on/off
+integer LISTEN_CH = 4;              // inter-script communication
+
 
 
 //    Basic settings
@@ -22,6 +26,10 @@ float AVATAR_MAX_DIST_TO_BIKE = 1.0;// avatar in trouble if sit pos wrong
 integer SIT_TROUBLE_MAX = 50;         // in trouble if out of position this many
 float SPEED_STATIONARY = 0.05;      // 5cm/sec is "stopped"
 float MAX_DISTANCE_FOR_SIT = 8.0;       // must be this close for sit success
+vector SIT_TARGET_POS = <.30,0.0,0.32>; // Sit target pos
+vector SIT_TARGET_ROT = <0,-.15,0>;     // Sit target rotation (radians)
+float MIN_DIST_FROM_EDGE = 1.6;     // to avoid roundoff error, stay this far from region edge in teleports
+
 
 integer     TimerTick = 0;          // count of timer events
 integer     SitTroubleCount = 0;      // timer ticks out of position
@@ -35,13 +43,13 @@ integer     Permission_Set = 0; // must initialize at startup
 integer     Region_Cross_Count = 0; // number of region crosses
 integer     Start_Test_Time = 0;    // time test started
 integer     Need_Camera_Reset = FALSE;  // camera reset needed?
-
-integer     Back=FALSE;
+integer     RLV_Available = FALSE;      // RLV functions are available if true
+integer     RLV_Listener_Handle = 0;    // RLV listener handle
+integer     Back=FALSE;                 // going backwards
 
 
 string      SitText = "Drive"; //Text to show on pie menu
 
-integer     ListenCh = 4;
 string      HornCommand = "h";
 string      RevCommand = "r";
 string      IdleCommand = "i";
@@ -82,10 +90,12 @@ integer burnout=FALSE;
 integer TurnSpeedNum=1;
 list turn_speeds=[.15,.12,.10,.01];
 float TurnSpeed;
-
+integer     NeedStartup = FALSE;
 //  Utility functions
 float min(float a, float b)
 {   if (a < b) { return(a); } else { return(b); }}
+float max(float a, float b)
+{   if (a > b) { return(a); } else { return(b); }}
 
 //
 //  Where will a 2D XY vector from p in direction v hit a box of [0..boxsize, 0..boxsize]?
@@ -198,11 +208,33 @@ integer ifsittrouble(key avatar)
 {   return(ifnotseated(avatar) || ifnotperms()); }
 
 //  Reseat avatar at given sit point in current sim using an RLV command
-//  ***NEED TO CHECK MORE ABOUT THIS***
 reseat_avatar(key avatar, key sittarget)
 {
     string cmd0 = "RESIT," + (string) avatar + ",";     // prefix for RLV relay
     string cmd1 = "@sit:" + (string)sittarget + "=force";   // forced sit command
+    string cmd = cmd0 + cmd1;                           // entire command
+    llOwnerSay("RLV command: " + cmd);                  // ***TEMP DEBUG***
+    llSay(RLVRC, cmd);                                  // issue command to force sit
+}
+
+//  Teleport avatar to target using an RLV command
+teleport_avatar(key avatar, vector localpos)
+{
+    vector globalpos = llGetRegionCorner() + localpos;
+    string sglobalpos = 
+        (string)((integer)globalpos.x) + "/" + (string)((integer)globalpos.y) + "/" + (string)((integer)globalpos.z);
+    string cmd0 = "TP," + (string) avatar + ",";     // prefix for RLV relay
+    string cmd1 = "@tpto:" + sglobalpos + "=force";   // forced sit command
+    string cmd = cmd0 + cmd1;                           // entire command
+    llOwnerSay("RLV command: " + cmd);                  // ***TEMP DEBUG***
+    llSay(RLVRC, cmd);                                  // issue command to force sit
+}
+
+//  Get RLV status using an RLV command
+query_rlv(key avatar, integer channel)
+{
+    string cmd0 = "STATUS," + (string) avatar + ",";     // prefix for RLV relay
+    string cmd1 = "@versionnew=" + (string)channel;      //
     string cmd = cmd0 + cmd1;                           // entire command
     llOwnerSay("RLV command: " + cmd);                  // ***TEMP DEBUG***
     llSay(RLVRC, cmd);                                  // issue command to force sit
@@ -254,7 +286,7 @@ set_camera_params()
     ]);
     Need_Camera_Reset = FALSE;          // camera reset done
 }
-//  startup -- driver has just sat on bike.
+//  startup -- driver has just sat on bike. Call only in Ground state.
 startup()
 {
     llSay(9890,"s " +(string)TurnSpeedNum);
@@ -282,6 +314,7 @@ shutdown()
     llOwnerSay("Bike shut down after "
         + (string)Region_Cross_Count + " region crossings.");
     llOwnerSay("Final bike location: " + posasstring(llGetRegionName(), llGetPos()));
+    RLV_Available = FALSE;                      // don't know RLV status
 }
 
 
@@ -289,8 +322,8 @@ default
 {
     state_entry()
     {
-        Permission_Set = PERMISSION_TRIGGER_ANIMATION | PERMISSION_TAKE_CONTROLS | PERMISSION_CONTROL_CAMERA
-            | PERMISSION_TELEPORT;
+        Permission_Set = PERMISSION_TRIGGER_ANIMATION | PERMISSION_TAKE_CONTROLS | PERMISSION_CONTROL_CAMERA;
+        ////    | PERMISSION_TELEPORT;
         Owner = llGetOwner();
         TurnSpeedAdjust *= 0.01;
         ForwardPower = llList2Integer(ForwardPowerGears, 0);
@@ -298,7 +331,7 @@ default
         Active = 0;
         llSetSitText(SitText);
         llCollisionSound("", 0.0);
-        llSitTarget(<.30,0.0,0.32>, llEuler2Rot(<0,-.15,0> ));
+        llSitTarget(SIT_TARGET_POS, llEuler2Rot(SIT_TARGET_ROT));
         TurnSpeed=llList2Float(turn_speeds, TurnSpeedNum-1);
         state Ground;
     }
@@ -307,8 +340,13 @@ default
 state Ground
 {
     state_entry()
-    {
-        llListen(ListenCh, "", NULL_KEY, "");
+    {   if (NeedStartup)                                       // if need startup after recovery
+        {   startup();
+            NeedStartup = FALSE;
+            llOwnerSay("Starting up after recovery. Drive!");
+        }
+        llListen(LISTEN_CH, "", NULL_KEY, "");      // listen for other bike scripts
+
         llStopSound();
         llSay (11,"landed");
         if(!Active)
@@ -335,10 +373,19 @@ state Ground
     
     listen(integer channel, string name, key id, string message)
     {
+        message = llToLower(message);                           // work in lower case
+        if (channel == RLV_REPLY_CH)                            // if from RLV system
+        {   llOwnerSay("RLV reply: " + message);                // ***TEMP DEBUG***
+            if (llSubStringIndex(message, "restrained") >= 0)   // check for RestrainedLove / Life
+            {   llSay(0,"RLV working. If you come off at a region crossing, you should be re-seated..");
+                RLV_Available = TRUE;                               // RLV available
+            }
+            return;
+        }
+        if (channel != LISTEN_CH) return;                      // channel is bogus
         if(llGetOwnerKey(id) != Owner && locked) return;
-        message = llToLower(message);
-         if(message == StopCommand) llStopSound();
-         else if (message=="start") llLoopSound("idle",1);
+        if(message == StopCommand) llStopSound();
+        else if (message=="start") llLoopSound("idle",1);
         else if (message=="gear up") 
         {          
                 if (Gear>=NumGears-1) return;      
@@ -373,11 +420,17 @@ state Ground
             sitting = llAvatarOnSitTarget();
             if((sitting != NULL_KEY) && !Active)
             {
-                startup();              // start up bike
+                startup();              // start up bike                // new avatar sitting
+                RLV_Available = FALSE;                       // if RLV not known to be available
+                RLV_Listener_Handle = llListen(RLV_REPLY_CH, "", sitting, "");   // listen for RLV status
+                query_rlv(sitting, RLV_REPLY_CH);           // check RLV status, which comes back via Listen
             } else if((sitting == NULL_KEY) && Active)
             {
                 shutdown();         // shut down bike and release
                 Active = 0;
+                llListenRemove(RLV_Listener_Handle);                // stop listening for RLV
+                RLV_Listener_Handle = 0;                            // no listener
+                
             }
         }
     }
@@ -393,7 +446,7 @@ state Ground
             llStartAnimation(DrivingAnim);
             llTakeControls(CONTROL_FWD | CONTROL_BACK | CONTROL_DOWN | CONTROL_UP | CONTROL_RIGHT | CONTROL_LEFT | CONTROL_ROT_RIGHT | CONTROL_ROT_LEFT, TRUE, FALSE);
             set_camera_params();    // set up camera
-            llOwnerSay("Now steering from arrow keys."); // ***TEMP***
+            llOwnerSay("Got permissions. Now steering from arrow keys."); // ***TEMP***
         }
     }
     
@@ -585,7 +638,14 @@ state Ground
 //  Recover from half-unsit sitation
 state Recover {
     state_entry() {
-        llOwnerSay("Attempting to recover un-seated rider.");
+        llOwnerSay("Attempting to recover un-seated rider.");        
+        llReleaseControls();    // So if anything goes wrong, user can just stand and walk.
+        if (!RLV_Available)
+        {   llSay(0,"RLV is not enabled. Bike cannot re-seat the rider. You need an RLV relay for that.");
+            llResetScript();
+            state Ground;
+            return;
+        }
         key avatar = llAvatarOnSitTarget(); // get avatar
         if (avatar == NULL_KEY)
         {   llOwnerSay("Connection to avatar lost - cannot recover.");
@@ -597,6 +657,7 @@ state Recover {
         integer tries = 10;
         while (tries > 0 && llVecMag(llGetVel()) > SPEED_STATIONARY)
         {   llSetVelocity(<0,0,0>,TRUE);                    // force velocity to zero
+            llOwnerSay("Stopping. Speed " + (string)llVecMag(llGetVel()) + " m/sec");
             llSleep(0.5);                                   // wait for stop
             tries--;
         }
@@ -609,12 +670,16 @@ state Recover {
         vector destpos = llGetPos();    // position of bike
         //  ***NEED TO TRY DIFFERENT POSITIONS AROUND BIKE
         integer retries = 5;
+        //  Rounding problem. Position must be inside region after conversion to global coords as a float.
+        destpos.x = min(max(destpos.x, MIN_DIST_FROM_EDGE), REGION_SIZE - MIN_DIST_FROM_EDGE);
+        destpos.y = min(max(destpos.y, MIN_DIST_FROM_EDGE), REGION_SIZE - MIN_DIST_FROM_EDGE);
         destpos.z = destpos.z + 3.0;    // try for 3 meters above bike
         integer success = FALSE;
         do 
-        {   llOwnerSay("Trying to teleport to bike location at " + posasstring(llGetRegionName(), destpos));
+        {   llSay(0,"Trying to teleport to bike location at " + posasstring(llGetRegionName(), destpos));
             float tstart = llGetTime();
-            llTeleportAgent(avatar, "", destpos , <0,0,0>);  // try to teleport to above vehicle - works
+            ////llTeleportAgent(avatar, "", destpos , <0,0,0>);  // try to teleport to above vehicle - works
+            teleport_avatar(avatar, destpos);       // teleport using RLV
             float elapsed = llGetTime() - tstart;   // how long did teleport take?
             llOwnerSay("Teleport took " + (string)elapsed + " seconds."); 
             llSleep(5.0);   // ***TEMP*** allow time for teleport  
@@ -642,11 +707,12 @@ state Recover {
         } while (success == FALSE);
         //  Teleport completed, presumably. Try reseat
         llOwnerSay("Trying to re-seat avatar on vehicle using RLV.");
+        llSitTarget(SIT_TARGET_POS, llEuler2Rot(SIT_TARGET_ROT)); // sometimes it seems to lose the sit target. Trying this.
         reseat_avatar(avatar, llGetKey());                  // try to sit avatar on vehicle using RLV
         integer sittries = 5;
         while (ifnotseated(avatar))
         {   if (sittries < 0)
-            {   llOwnerSay("Re-seating failed.");
+            {   llSay(0,"Re-seating failed.");
                 state RecoverFail;
                 return;
             }
@@ -654,15 +720,19 @@ state Recover {
             sittries--;
         }
         llOwnerSay("Restarting bike.");
-        startup();
-        llOwnerSay("Recovery successful. Drive!");
+        NeedStartup = TRUE;                         // will restart in state Ground
         state Ground;                          // ***TEMP***
     }
+    
+    control(key id, integer levels, integer edges)  // seem to need this event even if info usused
+    {   llOwnerSay("Key press during recovery ignored. levels: " + (string)levels + "  edges: " + (string)edges);
+    } 
+ 
 }
 
 state RecoverFail {
     state_entry() {
-        llOwnerSay("Recovery not fully successful. Sorry.");
+        llSay(0,"Un-sit recovery not fully successful. Sorry.");
         shutdown();
         llResetScript();            // TEMP
     }
