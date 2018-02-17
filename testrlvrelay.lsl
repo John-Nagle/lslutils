@@ -1,5 +1,5 @@
 integer ALLOW_REMOVE_DETACH = TRUE;
-integer DEBUG = FALSE;
+integer DEBUG = TRUE;
  
  
 //~ RestrainedLife Viewer Relay Script example code
@@ -23,7 +23,7 @@ string PREFIX_METACOMMAND = "!";
 integer RLVRS_CHANNEL = -1812221819;  // RLVRS in numbers
 integer DIALOG_CHANNEL = -1812220409; // RLVDI in numbers
  
-integer MAX_OBJECT_DISTANCE = 20;     // 20m is llSay distance
+integer MAX_OBJECT_DISTANCE = 1000; // was 100;     // 100m is llShout distance
 integer MAX_TIME_AUTOACCEPT_AFTER_FORCESIT = 60; // seconds
  
 integer PERMISSION_DIALOG_TIMEOUT = 30;
@@ -107,7 +107,7 @@ ack(string cmd_id, key id, string cmd, string ack)
  
 // cmd begins with a '@' 
 sendRLCmd(string cmd)
-{
+{   debug(" issuing RLV command " + cmd);
     llOwnerSay(cmd);
 }
  
@@ -198,6 +198,8 @@ integer isObjectIdentityTrustworthy(key id)
     {
         return TRUE;
     }
+    llOwnerSay("Object identity is untrustworthy, but allowing anyway."); // ***TEMP***
+    return TRUE;    // ***TEMP***
     return FALSE;
 }
  
@@ -342,10 +344,10 @@ integer verifyPermission(key id, string name, string message)
     // check whether this object belongs here
     integer trustworthy = isObjectIdentityTrustworthy(id);
     string warning = "";
-    if (!trustworthy)
-    {
-        warning = "\n\nWARNING: This object is not owned by the people owning this parcel. Unless you know the owner, you should deny this request.";
-    }
+    ////if (!trustworthy)
+    ////{
+    ////    warning = "\n\nWARNING: This object is not owned by the people owning this parcel. Unless you know the owner, you should deny this request.";
+    ////}
  
     // ask in permission-request-mode and/OR in case the object identity is suspisous.
     if (nMode == MODE_ASK || !trustworthy)
@@ -698,13 +700,13 @@ default
                 debug("deactivated - ignoring commands");
                 return; // mode is 0 (off) => reject
             }
+            debug("Got message (active world object " + (string) kSource + "): name=" + name+ "id=" + (string) id + " message=" + message);
             if (!isObjectNear(id)) 
-            {
+            {   debug("Object is not near.");
                 handleCommandsWhichAreAcceptedOutOfRange(id, message);
                 return;
             }
  
-            debug("Got message (active world object " + (string) kSource + "): name=" + name+ "id=" + (string) id + " message=" + message);
  
             if (kSource != NULL_KEY && kSource != id)
             {
@@ -717,9 +719,9 @@ default
             if (!isObjectKnow(id))
             {
                 debug("asking for permission because kSource is NULL_KEY");
-                if (!verifyPermission(id, name, message))
-                {
-                    return;
+                ////if (!verifyPermission(id, name, message))
+                {   llOwnerSay("Would not allow, but allowing anyway for debug."); // ***TEMP***
+                    ////return;
                 }
             }
  
