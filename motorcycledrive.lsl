@@ -10,8 +10,6 @@
 float TINY = 0.0001;                // small value to prevent divide by zero
 float HUGE = 100000000000.0;        // huge number bigger than any distance
 float REGION_SIZE = 256.0;          // SL region size
-integer RLVRC =-1812221819;         // RLV channel, standard
-integer RLV_REPLY_CH = 1101;        // arbitrary number for our RLV replies
 integer LIGHT_CONTROL_CH = 1102;    // light on/off
 integer LISTEN_CH = 4;              // inter-script communication
 
@@ -29,10 +27,13 @@ float MAX_DISTANCE_FOR_SIT = 8.0;       // must be this close for sit success
 vector SIT_TARGET_POS = <.30,0.0,0.32>; // Sit target pos
 vector SIT_TARGET_ROT = <0,-.15,0>;     // Sit target rotation (radians)
 float MIN_DIST_FROM_EDGE = 1.6;     // to avoid roundoff error, stay this far from region edge in teleports
+float TIMER_INTERVAL = 0.1;           // drive timer rate
+integer TIMER_SIT_CHECK_EVERY = 5;  // check sit situation every N ticks
+float SIT_FAIL_SECS = 5.0;         // in trouble if out of position this many
 
 
 integer     TimerTick = 0;          // count of timer events
-integer     SitTroubleCount = 0;      // timer ticks out of position
+float       SitTroubleSecs = 0.0;   // timer ticks out of position
 float       BankPower=6000;
 float       ForwardPower; //Forward power
 list        ForwardPowerGears = [10,20,26,30,38,150];
@@ -43,10 +44,14 @@ integer     Permission_Set = 0; // must initialize at startup
 integer     Region_Cross_Count = 0; // number of region crosses
 integer     Start_Test_Time = 0;    // time test started
 integer     Need_Camera_Reset = FALSE;  // camera reset needed?
-integer     RLV_Available = FALSE;      // RLV functions are available if true
-integer     RLV_Listener_Handle = 0;    // RLV listener handle
 integer     Back=FALSE;                 // going backwards
-
+integer     SitTrouble = FALSE;      // in sit trouble state
+float       RegionCrossStartTime = 0.0;   // timestamp of region crossing
+//  Status during region crossing
+integer     crossStopped = FALSE;
+vector      crossVel;
+vector      crossAngularVelocity = <0,0,0>; // always zero for now
+float       crossStartTime;             // starts at changed event, ends when avatar in place
 
 string      SitText = "Drive"; //Text to show on pie menu
 
@@ -90,14 +95,13 @@ integer burnout=FALSE;
 integer TurnSpeedNum=1;
 list turn_speeds=[.15,.12,.10,.01];
 float TurnSpeed;
-integer     NeedStartup = FALSE;
 //  Utility functions
 float min(float a, float b)
 {   if (a < b) { return(a); } else { return(b); }}
 float max(float a, float b)
 {   if (a > b) { return(a); } else { return(b); }}
 
-//
+//  ***UNUSED*** at present
 //  Where will a 2D XY vector from p in direction v hit a box of [0..boxsize, 0..boxsize]?
 //  Returns distance. Hit point is pos + distance*norm(dir)
 float line_box_intersection(vector pos, vector dir, float boxsize)
@@ -187,7 +191,7 @@ integer ifnotseated(key avatar)
         }
     } else {                    // unseated
         trouble = TRUE;
-        llOwnerSay("Avatar not on sit target");
+        llOwnerSay("Avatar not on sit target.");
     }
     return trouble;
 } 
@@ -206,39 +210,6 @@ integer ifnotperms()
 
 integer ifsittrouble(key avatar)
 {   return(ifnotseated(avatar) || ifnotperms()); }
-
-//  Reseat avatar at given sit point in current sim using an RLV command
-reseat_avatar(key avatar, key sittarget)
-{
-    string cmd0 = "RESIT," + (string) avatar + ",";     // prefix for RLV relay
-    string cmd1 = "@sit:" + (string)sittarget + "=force";   // forced sit command
-    string cmd = cmd0 + cmd1;                           // entire command
-    llOwnerSay("RLV command: " + cmd);                  // ***TEMP DEBUG***
-    llSay(RLVRC, cmd);                                  // issue command to force sit
-}
-
-//  Teleport avatar to target using an RLV command
-teleport_avatar(key avatar, vector localpos)
-{
-    vector globalpos = llGetRegionCorner() + localpos;
-    string sglobalpos = 
-        (string)((integer)globalpos.x) + "/" + (string)((integer)globalpos.y) + "/" + (string)((integer)globalpos.z);
-    string cmd0 = "TP," + (string) avatar + ",";     // prefix for RLV relay
-    string cmd1 = "@tpto:" + sglobalpos + "=force";   // forced sit command
-    string cmd = cmd0 + cmd1;                           // entire command
-    llOwnerSay("RLV command: " + cmd);                  // ***TEMP DEBUG***
-    llSay(RLVRC, cmd);                                  // issue command to force sit
-}
-
-//  Get RLV status using an RLV command
-query_rlv(key avatar, integer channel)
-{
-    string cmd0 = "STATUS," + (string) avatar + ",";     // prefix for RLV relay
-    string cmd1 = "@versionnew=" + (string)channel;      //
-    string cmd = cmd0 + cmd1;                           // entire command
-    llOwnerSay("RLV command: " + cmd);                  // ***TEMP DEBUG***
-    llSay(RLVRC, cmd);                                  // issue command to force sit
-}
 
 set_vehicle_params()                // set up SL vehicle system
 {
@@ -298,9 +269,10 @@ startup()
     llSetStatus(STATUS_PHYSICS, TRUE);
     SimName = llGetRegionName();
     llLoopSound(IdleSound,1);
-    llSetTimerEvent(0.1);
+    llSetTimerEvent(TIMER_INTERVAL);
     CurDir = DIR_NORM;
     LastDir = DIR_NORM;
+    crossStopped = FALSE;                       // not stopped during region cross
 }
 //  shutdown -- shut down bike
 shutdown()
@@ -309,12 +281,12 @@ shutdown()
     llStopAnimation(DrivingAnim);
     llStopSound();
     llSetStatus(STATUS_PHYSICS, FALSE);
+    crossStopped = FALSE;                       // not holding at region crossing
     llMessageLinked(LINK_ALL_CHILDREN , DIR_STOP, "", NULL_KEY);
     llReleaseControls();
     llOwnerSay("Bike shut down after "
         + (string)Region_Cross_Count + " region crossings.");
     llOwnerSay("Final bike location: " + posasstring(llGetRegionName(), llGetPos()));
-    RLV_Available = FALSE;                      // don't know RLV status
 }
 
 
@@ -340,12 +312,7 @@ default
 state Ground
 {
     state_entry()
-    {   if (NeedStartup)                                       // if need startup after recovery
-        {   startup();
-            NeedStartup = FALSE;
-            llOwnerSay("Starting up after recovery. Drive!");
-        }
-        llListen(LISTEN_CH, "", NULL_KEY, "");      // listen for other bike scripts
+    {   llListen(LISTEN_CH, "", NULL_KEY, "");      // listen for other bike scripts
 
         llStopSound();
         llSay (11,"landed");
@@ -374,14 +341,6 @@ state Ground
     listen(integer channel, string name, key id, string message)
     {
         message = llToLower(message);                           // work in lower case
-        if (channel == RLV_REPLY_CH)                            // if from RLV system
-        {   llOwnerSay("RLV reply: " + message);                // ***TEMP DEBUG***
-            if (llSubStringIndex(message, "restrained") >= 0)   // check for RestrainedLove / Life
-            {   llSay(0,"RLV working. If you come off at a region crossing, you should be re-seated..");
-                RLV_Available = TRUE;                               // RLV available
-            }
-            return;
-        }
         if (channel != LISTEN_CH) return;                      // channel is bogus
         if(llGetOwnerKey(id) != Owner && locked) return;
         if(message == StopCommand) llStopSound();
@@ -409,28 +368,33 @@ state Ground
     changed(integer change)
     {   if (change & CHANGED_REGION)            // if in new region
         {   float speed = llVecMag(llGetVel()); // get velocity
+            RegionCrossStartTime = 0.0;
             Region_Cross_Count++;               // tally
-            llOwnerSay("Speed at region cross " 
+            llOwnerSay("Speed at region cross #" 
                 + (string)Region_Cross_Count + ": "  
-                + (string)speed);           // ***TEMP***
+                + (string)speed + " m/s");
             Need_Camera_Reset = TRUE;           // schedule a camera reset
+            if (llGetStatus(STATUS_PHYSICS))    // if physics on
+            {   crossVel = llGetVel();              // save velocity
+                crossAngularVelocity = <0,0,0>;     // there is no llGetAngularVelocity();
+                llSetStatus(STATUS_PHYSICS, FALSE); // forcibly stop object
+                crossStopped = TRUE;                // stopped during region crossing
+                crossStartTime = llGetTime();       // timestamp
+            } else {                                // this is bad. A partial unsit usuallly follows
+                llOwnerSay("TROUBLE - second region cross started before first one completed, at " 
+                    + posasstring(llGetRegionName(), llGetPos()));
+            }
         }
-        if((change & CHANGED_LINK) == CHANGED_LINK) 
+        if((change & CHANGED_LINK) == CHANGED_LINK) // rider got on or off
         {
             sitting = llAvatarOnSitTarget();
             if((sitting != NULL_KEY) && !Active)
             {
                 startup();              // start up bike                // new avatar sitting
-                RLV_Available = FALSE;                       // if RLV not known to be available
-                RLV_Listener_Handle = llListen(RLV_REPLY_CH, "", sitting, "");   // listen for RLV status
-                query_rlv(sitting, RLV_REPLY_CH);           // check RLV status, which comes back via Listen
             } else if((sitting == NULL_KEY) && Active)
             {
                 shutdown();         // shut down bike and release
                 Active = 0;
-                llListenRemove(RLV_Listener_Handle);                // stop listening for RLV
-                RLV_Listener_Handle = 0;                            // no listener
-                
             }
         }
     }
@@ -452,10 +416,6 @@ state Ground
     
     control(key id, integer levels, integer edges)
     {   
-        //  ***TEMP TEST**** press up and down arrows to trigger recovery
-        integer abortbuttons = CONTROL_DOWN;
-        if (((levels & abortbuttons) == abortbuttons) && ((edges & abortbuttons) != 0))
-        {   llOwnerSay("Recovery test."); state Recover; return; }
         Back=FALSE;
         if (levels & CONTROL_BACK)Back=TRUE;
         Angular.x=0;
@@ -574,7 +534,7 @@ state Ground
         else llMessageLinked(LINK_ALL_OTHERS,10,"regular",NULL_KEY);
     }
     
-    moving_end()
+    moving_end()                                    // legacy code. Necessary?
     {
         if(llGetRegionName() == SimName)
         {
@@ -586,35 +546,52 @@ state Ground
         }
     }
     
-    timer()
-    {   TimerTick++;                    // count timer ticks for debug
-        //  Check for avatar out of position
+    timer()                                         // every 100ms when running
+    {   TimerTick++;                                // count timer ticks for debug
+        //  Check for avatar out of position and shut down if total fail.
+        //  Prevents runaway bike
         key avatar = llAvatarOnSitTarget();
-        integer sittrouble = ifsittrouble(avatar);
-        if (sittrouble)                 // possible malfunction
-        {   SitTroubleCount++;       // tally sit troubles
-            if (SitTroubleCount > SIT_TROUBLE_MAX)
-            {   llOwnerSay("TROUBLE - partial unsit detected.");
-                //  Try to recover
-                state Recover;
-                return;
+        if (TimerTick % TIMER_SIT_CHECK_EVERY == 0) // check is expensive, only do once a second or so
+        {
+            integer sittrouble = ifsittrouble(avatar);
+            if (sittrouble)                 // possible malfunction
+            {   SitTroubleSecs = SitTroubleSecs + TIMER_INTERVAL * TIMER_SIT_CHECK_EVERY; // time trouble persisted
+                if (SitTroubleSecs > SIT_FAIL_SECS) // persistent malfunction
+                {   if (!SitTrouble) { llOwnerSay("TROUBLE - partial unsit detected."); }
+                    //  Try to recover. Just shuts down
+                    SitTrouble = TRUE;
+                    llSetVelocity(<0,0,0>,TRUE); // force stop
+                    shutdown();                 // force shutdown
+                    return;
+                }
             }
+            else 
+            {   
+                SitTrouble  = FALSE;
+                SitTroubleSecs = 0.0;   
+            }     // reset count
         }
-        else 
-        {   SitTroubleCount = 0;        // reset count
-            if (Need_Camera_Reset)      // reset on first good tick after sim crossing
-            {   set_camera_params();    // reset camera to avoid jerks at sim crossings
-                ////string currentanim = llGetAnimation(avatar); // get current anim
-                ////llOwnerSay("Current animation: " + currentanim); // ***TEMP***
-                ////list anims = llGetAnimationList(avatar); // get current anim list
-                ////llOwnerSay("Anims: " + llDumpList2String(anims, "," )); // ***TEMP***
-                //  We restart the driving animation after every sim crossing, in case
-                //  it was lost, which happens. This does notresult
-                //  in the animation running more than once.
-                llStartAnimation(DrivingAnim); // reset driving anim
+        if (Need_Camera_Reset && (!ifnotperms()))      // reset on first good tick after sim crossing
+        {   set_camera_params();    // reset camera to avoid jerks at sim crossings
+            //  We restart the driving animation after every sim crossing, in case
+            //  it was lost, which happens. This does notresult
+            //  in the animation running more than once.
+            llStartAnimation(DrivingAnim); // reset driving anim
+        }
+        //  Stop temporarily during region crossing until rider catches up.
+        if (crossStopped)                               // if stopped at region crossing
+        {   if (!ifnotseated(avatar))                   // if avatar is back in place
+            {   llSetStatus(STATUS_PHYSICS, TRUE);      // physics back on
+                llSetVelocity(crossVel, FALSE);         // use velocity from before
+                llSetAngularVelocity(crossAngularVelocity, FALSE);  // and angular velocity
+                crossStopped = FALSE;                   // no longer stopped
+                float crosstime = llGetTime() - crossStartTime;
+                llOwnerSay("Avatar back in place. Region crossing complete in " + (string)crosstime + "secs.");
+                ////llOwnerSay("Velocity in: " + (string)llVecMag(crossVel) + "  out: " + (string)llVecMag(llGetVel()));
+            } else {
+                return;                                 // still crossing, just wait
             }
-        }      
-
+        }     
         //  Speed control
         if(Linear != <0.0,  0.0, -2.0>)
         {   vector wlinear = Linear;        // working linear power
@@ -633,108 +610,6 @@ state Ground
             NewSound = 0;
             llLoopSound(Sound, 1.0);
         }
-    }
-}
-//  Recover from half-unsit sitation
-state Recover {
-    state_entry() {
-        llOwnerSay("Attempting to recover un-seated rider.");        
-        llReleaseControls();    // So if anything goes wrong, user can just stand and walk.
-        if (!RLV_Available)
-        {   llSay(0,"RLV is not enabled. Bike cannot re-seat the rider. You need an RLV relay for that.");
-            llResetScript();
-            state Ground;
-            return;
-        }
-        key avatar = llAvatarOnSitTarget(); // get avatar
-        if (avatar == NULL_KEY)
-        {   llOwnerSay("Connection to avatar lost - cannot recover.");
-            llResetScript();
-            state Ground;
-            return;
-        }
-        //  Try to stop bike.
-        integer tries = 10;
-        while (tries > 0 && llVecMag(llGetVel()) > SPEED_STATIONARY)
-        {   llSetVelocity(<0,0,0>,TRUE);                    // force velocity to zero
-            llOwnerSay("Stopping. Speed " + (string)llVecMag(llGetVel()) + " m/sec");
-            llSleep(0.5);                                   // wait for stop
-            tries--;
-        }
-        if (llVecMag(llGetVel()) > SPEED_STATIONARY)        // stopping didn't work
-        {   llOwnerSay("Unable to stop bike.");
-            state RecoverFail;
-            return;
-        }
-        llOwnerSay("Bike stopped at " + posasstring(llGetRegionName(), llGetPos()));
-        vector destpos = llGetPos();    // position of bike
-        //  ***NEED TO TRY DIFFERENT POSITIONS AROUND BIKE
-        integer retries = 5;
-        //  Rounding problem. Position must be inside region after conversion to global coords as a float.
-        destpos.x = min(max(destpos.x, MIN_DIST_FROM_EDGE), REGION_SIZE - MIN_DIST_FROM_EDGE);
-        destpos.y = min(max(destpos.y, MIN_DIST_FROM_EDGE), REGION_SIZE - MIN_DIST_FROM_EDGE);
-        destpos.z = destpos.z + 3.0;    // try for 3 meters above bike
-        integer success = FALSE;
-        do 
-        {   llSay(0,"Trying to teleport to bike location at " + posasstring(llGetRegionName(), destpos));
-            float tstart = llGetTime();
-            ////llTeleportAgent(avatar, "", destpos , <0,0,0>);  // try to teleport to above vehicle - works
-            teleport_avatar(avatar, destpos);       // teleport using RLV
-            float elapsed = llGetTime() - tstart;   // how long did teleport take?
-            llOwnerSay("Teleport took " + (string)elapsed + " seconds."); 
-            llSleep(5.0);   // ***TEMP*** allow time for teleport  
-            vector vehpos = llGetPos();
-            list avatarinfo = llGetObjectDetails(avatar, 
-                [OBJECT_POS, OBJECT_ROOT]);
-            vector avatarpos = llList2Vector(avatarinfo,0);
-            key avatarroot = llList2Key(avatarinfo,1);
-            float avatardist = llVecMag(avatarpos - vehpos);
-            if (avatardist < MAX_DISTANCE_FOR_SIT)
-            {   success = TRUE;
-                llOwnerSay("Avatar now close to bike.");
-            }
-            else
-            {  llOwnerSay("Avatar too far from bike after teleport: " + 
-                    (string)avatardist + "m from bike.");
-                if (retries < 0)
-                {   state RecoverFail; return; } // fails
-                else 
-                {   llOwnerSay("Retrying teleport.");
-                    llSleep(3.0);                   // allow more time for teleport
-                }
-            } 
-            retries--;
-        } while (success == FALSE);
-        //  Teleport completed, presumably. Try reseat
-        llOwnerSay("Trying to re-seat avatar on vehicle using RLV.");
-        llSitTarget(SIT_TARGET_POS, llEuler2Rot(SIT_TARGET_ROT)); // sometimes it seems to lose the sit target. Trying this.
-        reseat_avatar(avatar, llGetKey());                  // try to sit avatar on vehicle using RLV
-        integer sittries = 5;
-        while (ifnotseated(avatar))
-        {   if (sittries < 0)
-            {   llSay(0,"Re-seating failed.");
-                state RecoverFail;
-                return;
-            }
-            llSleep(1.0);                           // try 5 times, 1 sec apart
-            sittries--;
-        }
-        llOwnerSay("Restarting bike.");
-        NeedStartup = TRUE;                         // will restart in state Ground
-        state Ground;                          // ***TEMP***
-    }
-    
-    control(key id, integer levels, integer edges)  // seem to need this event even if info usused
-    {   llOwnerSay("Key press during recovery ignored. levels: " + (string)levels + "  edges: " + (string)edges);
-    } 
- 
-}
-
-state RecoverFail {
-    state_entry() {
-        llSay(0,"Un-sit recovery not fully successful. Sorry.");
-        shutdown();
-        llResetScript();            // TEMP
     }
 }
 
