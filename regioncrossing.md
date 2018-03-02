@@ -5,6 +5,8 @@ John Nagle
 Animats
 February, 2018
 
+Revised March, 2018
+
 # Executive summary
 There are at least five separate problems in Second Life region crossing. 
 These problems damage the user experience and make Second Life's huge seamless world
@@ -93,6 +95,77 @@ logging out and losing the vehicle.
 The current version of the script for this is on Github, at 
 https://github.com/John-Nagle/lslutils/blob/master/motorcycledrive.lsl
 
+### Half-unsit prevention
+
+Preventing half-unsit failures would be better than recovering from them. We've
+made some progress towards doing that. The LSL script "changed" event reports
+region changes, and for a vehicle, this reflects that the vehicle has crossed into
+a new region. The passenger avatars may not have arrived yet. We can detect passenger
+avatar arrival by checking for the avatar reporting the vehicle as its root prim.
+So, as a preventive measure, we stop vehicle motion by the drastic measure of 
+turning off "physics" mode on a region change. This freezes the vehicle in place.
+The vehicle is held until the avatars arrive, then released. The typical delay
+is 40-150ms. This usually prevents the vehicle from crossing a second region boundary
+before the first region crossing has been entirely completed.
+
+This is not perfect.  There are still get errors with a high-speed cross within about 3-4m of the
+junction of four sims.
+Further out than that,  Close to the junction, the change event and pause don't happen soon enough.
+The next step is to try forcing a brief slowdown when a vehicle is headed very close to a region
+corner. That's a rare event. 
+
+#### When to slow down for e double region crossing
+
+[nearcornercheck.svg]
+
+The goal is to prevent the time between two region crossings from being too short.
+That time is roughly proportional to the length of the red line segments in the drawing above.
+We need to compute those lengths for each of the three possible trajectories, and use
+the shortest one. 
+
+Derivation (NEEDS CHECKING)
+
+    Vehicle root at p, coords (p.x, p.y)
+    Nearest region corner at q.
+    Vehicle direction vector v.
+    
+    dp = p - q
+    
+    Need X and Y axis intercepts of dv in direction v.
+    
+    
+    pos = dp + v * k                    Point plus unit vector*k
+    pos.x = dp.x + v.x * k              Expand
+    pos.y = dp.y + v.y * k
+    let pos.x = 0                       Looking for Y intercept
+    dp.x + v.x * k1 = 0
+    v.x * k1 = -dp.x
+    k1 = - dp.x / v.x
+    pos1.y = dp.y + v.y * (-dp.x/v.x)
+    
+    let pos2.y = 0
+    dp.y + v.y * k2 = 0
+    v.y * k2 = -dp.y
+    k2 = - dp.y / v.y
+    pos2.x = dp.x + v.x * (-dp.y/v.y)
+    
+    distsq = pos1.x * pos1.x + pos2.y * pos2.y  Segment length squared
+    
+    Need to do this for the two vectors which represent reasonable turn bounds.
+    So generate v from the vehicle velocity using two precomputed rotation
+    matrices. This is all ordinary floating point arithmetic; no trig functions.
+    
+The vehicle speed at the first region cross has to be brought down to below about 2-3m/sec
+before the first crossing if the minimum segment length above is below about 4 meters.
+Those values will have to be set experimentally.
+ 
+The effect is to cause heavy braking if the vehicle is headed almost straight for the junction
+of four regions, and not otherwise. 
+ 
+If the segment length is very large (more than 3 seconds at the current speed), it may
+be possible to skip the freezing in place of the vehicle at the the region crossing at all.
+This will require testing.
+
 ### Testing
 This problem has been seen for years, but until we got some of the other problems
 out of the way, was hard to recognize and debug.
@@ -107,6 +180,18 @@ recently, within the last 10 minutes or so. Otherwise, the sim crossing
 goes smoothly, presumably because some information is cached.
 
 Vehicles with more passengers increase the odds of a failure. 
+
+We've been able to force failures under Linux by adding 1000ms of packet delay
+to all network packets. The Linux command
+
+    sudo tc qdisc add dev eth0 root netem delay 1000ms
+    
+will delay all packets by 1000ms.
+
+    sudo tc qdisc del dev eth0 root
+    
+turns off the delay. With 1000ms delay, almost every double region crossing
+will cause a half-unsit failure. At last, a repeatable test tool.
 
 ### Test motorcycle
 
