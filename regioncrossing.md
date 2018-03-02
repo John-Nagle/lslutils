@@ -114,9 +114,9 @@ Further out than that,  Close to the junction, the change event and pause don't 
 The next step is to try forcing a brief slowdown when a vehicle is headed very close to a region
 corner. That's a rare event. 
 
-#### When to slow down for e double region crossing
+#### When to slow down for a double region crossing
 
-[nearcornercheck.svg]
+[Double region crossing closeness check](https://github.com/John-Nagle/lslutils/blob/master/nearcornercheck.svg)
 
 The goal is to prevent the time between two region crossings from being too short.
 That time is roughly proportional to the length of the red line segments in the drawing above.
