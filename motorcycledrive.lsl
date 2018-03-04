@@ -1,9 +1,9 @@
 //  Motorcycle driving script
-//  Automatic region crossing error recovery using RLV.
+//  Automatic region crossing trouble prevention
 //  EXPERIMENTAL.
 //
 //  Animats
-//  January, 2018
+//  March, 2018
 //  Derived from a motorcycle script of unknown origin.
 
 //  Constants
@@ -18,19 +18,18 @@ integer LISTEN_CH = 4;              // inter-script communication
 //    Basic settings
                                     // region cross speed control
 float BRAKING_TIME = 0;           // allow this braking time at boundary
-float REGION_BRAKE = 0.0;           // how hard to brake
-float REGION_CROSS_SPEED = 500.0;     // max speed at region cross
 float AVATAR_MAX_DIST_TO_BIKE = 1.0;// avatar in trouble if sit pos wrong
 integer SIT_TROUBLE_MAX = 50;         // in trouble if out of position this many
 float SPEED_STATIONARY = 0.05;      // 5cm/sec is "stopped"
-float MAX_DISTANCE_FOR_SIT = 8.0;       // must be this close for sit success
 vector SIT_TARGET_POS = <.30,0.0,0.32>; // Sit target pos
 vector SIT_TARGET_ROT = <0,-.15,0>;     // Sit target rotation (radians)
-float MIN_DIST_FROM_EDGE = 1.6;     // to avoid roundoff error, stay this far from region edge in teleports
 float TIMER_INTERVAL = 0.1;           // drive timer rate
 integer TIMER_SIT_CHECK_EVERY = 5;  // check sit situation every N ticks
-float SIT_FAIL_SECS = 5.0;         // in trouble if out of position this many
+float SIT_FAIL_SECS = 10.0;         // in trouble if out of position this many
 
+float SAFE_CROSS_SPEED = 3.0;       // 3m/sec max speed at double region cross
+float MIN_SAFE_DOUBLE_REGION_CROSS_DIST = 5.0;      // slow if we can hit a double region crossing twice within this dist
+float MIN_SAFE_DOUBLE_REGION_CROSS_TIME = 0.5;      // min time between double region crosses at speed
 
 integer     TimerTick = 0;          // count of timer events
 float       SitTroubleSecs = 0.0;   // timer ticks out of position
@@ -100,8 +99,57 @@ float min(float a, float b)
 {   if (a < b) { return(a); } else { return(b); }}
 float max(float a, float b)
 {   if (a > b) { return(a); } else { return(b); }}
+float abs(float a)
+{   if (a > 0) { return(a); } else { return(-a); }}
+//
+//  nearestcorner -- nearest region corner to position
+//
+//  Will need revision for systems with multiple region sizes
+//
+vector nearestcorner(vector pos)
+{   vector corner = <0,0,0>;
+    if (pos.x*2.0 > REGION_SIZE) corner.x = REGION_SIZE;
+    if (pos.y*2.0 > REGION_SIZE) corner.y = REGION_SIZE;
+    return(corner);
+}
 
+integer outsideregion(vector pos)                       // TRUE if outside region
+{   return(pos.x < 0.0 || pos.x > REGION_SIZE || pos.y < 0.0 || pos.y > REGION_SIZE); }
+
+//
+//  regioncrossingseglength -- length of segment between next two region crossings in dir
+//
+//  Ignores Z direction.  
+//  There is a diagram of this in regioncrossing.md.
+//
+float regioncrossingseglength(vector pos, vector dir)
+{
+    vector corner = nearestcorner(pos);             // nearest region corner
+    vector dp = pos - corner;                       // work in coord system where corner is <0,0>
+    float xcept = HUGE;                             // X intercept
+    float ycept = HUGE;                             // Y intercept
+    if (abs(dir.x) > TINY)                          // avoid divide by zero
+    {   ycept = dp.y + dir.y * (-dp.x / dir.x); }   // Y intercept
+    if (abs(dir.y) > TINY)
+    {   xcept = dp.x + dir.x * (-dp.y / dir.y); }   // X intercept
+    return(llSqrt(xcept*xcept + ycept*ycept));      // return segment distance   
+}
+
+//
+//  regioncrossingprobe  --  returns length of segment between closest two next region crossings
+//
+//  The test is made along two test vectors some angle apart
+//  Returns HUGE if not meaningful.
 //  ***UNUSED*** at present
+//
+float regioncrossingprobe(vector pos, vector dir, rotation testangle1, rotation testangle2)
+{
+    vector v1 = dir * testangle1;                   // need two test vectors
+    vector v2 = dir * testangle2;                   // 
+    return(min(regioncrossingseglength(pos, v1), regioncrossingseglength(pos, v2))); // closest hit
+}
+
+
 //  Where will a 2D XY vector from p in direction v hit a box of [0..boxsize, 0..boxsize]?
 //  Returns distance. Hit point is pos + distance*norm(dir)
 float line_box_intersection(vector pos, vector dir, float boxsize)
@@ -125,18 +173,29 @@ float line_box_intersection(vector pos, vector dir, float boxsize)
     if (dist1 < dist2) { return(dist1);}
     return(dist2);                  // return minimum distance       
 }
-//  Compute time to next sim crossing on current heading
-float time_to_sim_cross()          
-{   vector vel = llGetVel();        // get velocity
-    vel.z = 0.0;                    // we only care about XY
-    float speed = llVecMag(vel);    // calc speed
-    if (speed < TINY) { return(HUGE); } // not moving, no problem
-    vector pos = llGetPos();        // get position within region
-    float dist = line_box_intersection(llGetPos(), vel, REGION_SIZE); // dist to edge
-    float timetoedge = dist / speed;// time to next boundary
+//
+//  slowforregioncross -- do we need to slow down for a region crossing?
+//
+integer slowforregioncross(vector pos, vector vel)
+{   //  Dumb version
+    vel.z = 0;                                          // XY plane only
+    float speed = llVecMag(vel);                        // how fast are we going
+    if (speed < SAFE_CROSS_SPEED) { return(FALSE); }    // slow enough that not a problem
+    float disttosimcross = line_box_intersection(pos, vel, REGION_SIZE);    // dist to sim crossing
+    float timetoedge = disttosimcross / speed;                    // speed to edge
     if (((TimerTick % 10) == 0) && (timetoedge < 1.5)) // ***TEMP DEBUG***
-    {   llOwnerSay((string)dist + "m to boundary, " + (string)speed + "m/sec."); } // ***TEMP***
-    return(timetoedge);           // time to sim cross   
+    {   llOwnerSay((string)disttosimcross + "m to region boundary at " + (string)pos + "  " + (string)speed + "m/sec."); } // ***TEMP***
+    if (timetoedge < TIMER_INTERVAL*3.0)                // if very close to sim crossing
+    {   float rcseglength = regioncrossingseglength(pos, vel); // distance between next two sim crosses
+        float timebetweencrosses = rcseglength / speed; // time for double region cross
+        ////llOwnerSay("Region crossing segment length: " + (string)rcseglength + 
+        ////    "  time: " + (string)timebetweencrosses); // ***TEMP***
+        if (rcseglength < MIN_SAFE_DOUBLE_REGION_CROSS_DIST) // too close together in space
+        {   return(TRUE); }
+        if (timebetweencrosses < MIN_SAFE_DOUBLE_REGION_CROSS_TIME) // too close together in time
+        {   return(TRUE); }
+    }
+    return(FALSE);
 }
 //  posasstring -- get current position as string
 string posasstring(string region, vector pos)
@@ -571,10 +630,10 @@ state Ground
                 SitTroubleSecs = 0.0;   
             }     // reset count
         }
-        if (Need_Camera_Reset && (!ifnotperms()))      // reset on first good tick after sim crossing
+        if (Need_Camera_Reset && (!crossStopped) && (!ifnotperms()))      // reset on first good tick after sim crossing
         {   set_camera_params();    // reset camera to avoid jerks at sim crossings
             //  We restart the driving animation after every sim crossing, in case
-            //  it was lost, which happens. This does notresult
+            //  it was lost, which happens. This does not result
             //  in the animation running more than once.
             llStartAnimation(DrivingAnim); // reset driving anim
         }
@@ -587,16 +646,24 @@ state Ground
                 crossStopped = FALSE;                   // no longer stopped
                 float crosstime = llGetTime() - crossStartTime;
                 llOwnerSay("Avatar back in place. Region crossing complete in " + (string)crosstime + "secs.");
-                ////llOwnerSay("Velocity in: " + (string)llVecMag(crossVel) + "  out: " + (string)llVecMag(llGetVel()));
             } else {
                 return;                                 // still crossing, just wait
             }
         }     
         //  Speed control
-        if(Linear != <0.0,  0.0, -2.0>)
-        {   vector wlinear = Linear;        // working linear power
-            llSetVehicleVectorParam(VEHICLE_LINEAR_MOTOR_DIRECTION, <wlinear.x,wlinear.y,0.0>);
-            llApplyImpulse(<wlinear.x,wlinear.y,-1.0>, TRUE);
+        vector pos = llGetPos();
+        vector vel = llGetVel();
+        vel.z = 0.0;
+        if (slowforregioncross(pos, vel))
+        {   llOwnerSay("Slowing for double region cross at " + (string)pos + "  vel " + (string)llVecMag(vel));
+            vector dir = llVecNorm(vel);                    // direction of movement
+            llSetVelocity(dir * SAFE_CROSS_SPEED, FALSE); // forcibly slow. Non-realistic             
+        } else {
+            if (Linear != <0.0,  0.0, -2.0>)
+            {   vector wlinear = Linear;        // working linear power
+                llSetVehicleVectorParam(VEHICLE_LINEAR_MOTOR_DIRECTION, <wlinear.x,wlinear.y,0.0>);
+                llApplyImpulse(<wlinear.x,wlinear.y,-1.0>, TRUE);
+            }
         }
         if(Angular != <0.0, 0.0, 0.0>) { llSetVehicleVectorParam(VEHICLE_ANGULAR_MOTOR_DIRECTION, Angular); }
         if(CurDir != LastDir)
