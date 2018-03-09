@@ -27,9 +27,11 @@ float TIMER_INTERVAL = 0.1;           // drive timer rate
 integer TIMER_SIT_CHECK_EVERY = 5;  // check sit situation every N ticks
 float SIT_FAIL_SECS = 10.0;         // in trouble if out of position this many
 
-float SAFE_CROSS_SPEED = 3.0;       // 3m/sec max speed at double region cross
-float MIN_SAFE_DOUBLE_REGION_CROSS_DIST = 5.0;      // slow if we can hit a double region crossing twice within this dist
 float MIN_SAFE_DOUBLE_REGION_CROSS_TIME = 0.5;      // min time between double region crosses at speed
+float MIN_BRAKE_SPEED = 0.2;                        // minimum speed we will ever brake to
+float COAST_POWER = 5.0;                            // power to use when coasting across a region crossing
+
+float DOWNFORCE = -10.0;                             // was 2.0
 
 integer     TimerTick = 0;          // count of timer events
 float       SitTroubleSecs = 0.0;   // timer ticks out of position
@@ -176,26 +178,25 @@ float line_box_intersection(vector pos, vector dir, float boxsize)
 //
 //  slowforregioncross -- do we need to slow down for a region crossing?
 //
-integer slowforregioncross(vector pos, vector vel)
-{   //  Dumb version
+float maxspeedforregioncross(vector pos, vector vel)
+{  
+    float maxspeed = HUGE;                              // assume no speed limit
     vel.z = 0;                                          // XY plane only
     float speed = llVecMag(vel);                        // how fast are we going
-    if (speed < SAFE_CROSS_SPEED) { return(FALSE); }    // slow enough that not a problem
+    if (speed < TINY) { return(HUGE); }                 // slow enough that not a problem
     float disttosimcross = line_box_intersection(pos, vel, REGION_SIZE);    // dist to sim crossing
     float timetoedge = disttosimcross / speed;                    // speed to edge
     if (((TimerTick % 10) == 0) && (timetoedge < 1.5)) // ***TEMP DEBUG***
     {   llOwnerSay((string)disttosimcross + "m to region boundary at " + (string)pos + "  " + (string)speed + "m/sec."); } // ***TEMP***
-    if (timetoedge < TIMER_INTERVAL*3.0)                // if very close to sim crossing
+    if (timetoedge < TIMER_INTERVAL*3.0)                // if very close to sim crossing and time to brake
     {   float rcseglength = regioncrossingseglength(pos, vel); // distance between next two sim crosses
-        float timebetweencrosses = rcseglength / speed; // time for double region cross
-        ////llOwnerSay("Region crossing segment length: " + (string)rcseglength + 
-        ////    "  time: " + (string)timebetweencrosses); // ***TEMP***
-        if (rcseglength < MIN_SAFE_DOUBLE_REGION_CROSS_DIST) // too close together in space
-        {   return(TRUE); }
-        if (timebetweencrosses < MIN_SAFE_DOUBLE_REGION_CROSS_TIME) // too close together in time
-        {   return(TRUE); }
+        //  slow to prevent too-fast double region cross
+        maxspeed = max(rcseglength / MIN_SAFE_DOUBLE_REGION_CROSS_TIME, MIN_BRAKE_SPEED); 
+        ////if (maxspeed < speed)
+        ////{   llOwnerSay("Region crossing braking: segment length: " + (string)rcseglength + 
+        ////   "  speed limit: " + (string)maxspeed);  }// ***TEMP***
     }
-    return(FALSE);
+    return(maxspeed);
 }
 //  posasstring -- get current position as string
 string posasstring(string region, vector pos)
@@ -386,7 +387,7 @@ state Ground
             llMessageLinked(LINK_ALL_CHILDREN, DIR_NORM, "", NULL_KEY);
             NewSound = 1;
             Sound = IdleSound;
-            Linear = <0,0,-2>;
+            Linear = <0,0,DOWNFORCE>;
     
         }
         set_vehicle_params();
@@ -463,7 +464,7 @@ state Ground
         if(perms == (Permission_Set))
         {
             Active = 1;
-            Linear = <0,0,-2>;
+            Linear = <0,0,DOWNFORCE>;
             Angular = <0,0,0>;
             llStopAnimation("sit");
             llStartAnimation(DrivingAnim);
@@ -645,7 +646,8 @@ state Ground
                 llSetAngularVelocity(crossAngularVelocity, FALSE);  // and angular velocity
                 crossStopped = FALSE;                   // no longer stopped
                 float crosstime = llGetTime() - crossStartTime;
-                llOwnerSay("Avatar back in place. Region crossing complete in " + (string)crosstime + "secs.");
+                llOwnerSay("Avatar back in place. Region crossing to " + llGetRegionName() + 
+                    " complete in " + (string)crosstime + " secs.");
             } else {
                 return;                                 // still crossing, just wait
             }
@@ -654,15 +656,21 @@ state Ground
         vector pos = llGetPos();
         vector vel = llGetVel();
         vel.z = 0.0;
-        if (slowforregioncross(pos, vel))
-        {   llOwnerSay("Slowing for double region cross at " + (string)pos + "  vel " + (string)llVecMag(vel));
+        float speed = llVecMag(vel);                        // speed
+        float maxspeed = maxspeedforregioncross(pos, vel);
+        if (speed > maxspeed)
+        {   llOwnerSay("Slowing for double region cross at " + (string)pos + "  from " 
+                + (string)speed + " to " + (string)maxspeed  + " m/s");
             vector dir = llVecNorm(vel);                    // direction of movement
-            llSetVelocity(dir * SAFE_CROSS_SPEED, FALSE); // forcibly slow. Non-realistic             
+            llSetVelocity(dir * maxspeed, FALSE);           // forcibly slow. Non-realistic             
         } else {
-            if (Linear != <0.0,  0.0, -2.0>)
+            if (Linear != <0.0,  0.0, DOWNFORCE>)
             {   vector wlinear = Linear;        // working linear power
+                //  Don't apply full acceleration if we're braking for a region crossing, but 
+                //  use normal steering control. We force very low power in that situation.
+                if (maxspeed < HUGE && wlinear.x > 0.0) { wlinear.x = COAST_POWER; } 
                 llSetVehicleVectorParam(VEHICLE_LINEAR_MOTOR_DIRECTION, <wlinear.x,wlinear.y,0.0>);
-                llApplyImpulse(<wlinear.x,wlinear.y,-1.0>, TRUE);
+                llApplyImpulse(<wlinear.x,wlinear.y,DOWNFORCE>, TRUE);
             }
         }
         if(Angular != <0.0, 0.0, 0.0>) { llSetVehicleVectorParam(VEHICLE_ANGULAR_MOTOR_DIRECTION, Angular); }
