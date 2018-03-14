@@ -35,6 +35,7 @@ integer     crossFault = FALSE;             // no fault yet
 integer     gLogMsgLevel = LOG_DEBUG;       // display messages locally above this level
 integer     gTimerTick = 0;                 // number of timer ticks
 integer     gRegionCrossCount = 0;          // number of regions crossed
+string      gTripId = "???";                // random trip ID, for matching log messages
 list        gSitters = [];                  // current sitters (keys)
 list        gSitterDistances = [];          // distance to seat of sitter when seated (float)
 
@@ -45,6 +46,11 @@ logrx(integer severity, string msgtype, string msg, float val)
 {
     if (severity >= gLogMsgLevel)           // in-world logging
     {   llOwnerSay(llList2String(LOG_SEVERITY_NAMES,severity) + " " + posasstring(llGetRegionName(), llGetPos()) + " " + msgtype + ": " + msg + " " + (string)val);   }
+    //  Remote logging. Only works if there's another script listening for LOG messages
+    list logdata = [];
+    logdata = logdata + ["tripid"] + gTripId + ["severity"] + severity + ["type"] + msgtype + ["msg"] + msg + ["auxval"] + val;
+    string s = llList2Json(JSON_OBJECT, logdata);   // encode as JSON
+    llMessageLinked(LINK_THIS, 0, s, "LOG"); // put message on logger script queue.
 }
 
 initregionrx(integer loglevel)                              // initialization - call at vehicle start
@@ -52,6 +58,8 @@ initregionrx(integer loglevel)                              // initialization - 
     gTimerTick = 0;
     crossFault = FALSE;                     // no crossing fault
     crossStopped = FALSE;                   // not crossing
+                                            // trip ID is a random ID to connect messages
+    gTripId = llSHA1String((string)llFrand(1.0) + (string)llGetOwner() + (string)llGetPos());
     gLogMsgLevel = loglevel;                // set logging level
 }
 

@@ -267,7 +267,7 @@ state Ground
             llStartAnimation(DrivingAnim);
             llTakeControls(CONTROL_FWD | CONTROL_BACK | CONTROL_DOWN | CONTROL_UP | CONTROL_RIGHT | CONTROL_LEFT | CONTROL_ROT_RIGHT | CONTROL_ROT_LEFT, TRUE, FALSE);
             set_camera_params();    // set up camera
-            llOwnerSay("Got permissions. Now steering from arrow keys."); // ***TEMP***
+            logrx(LOG_DEBUG, "PERMS", "Got permissions", 0.0);
         }
     }
     
