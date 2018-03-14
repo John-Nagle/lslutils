@@ -12,9 +12,6 @@ float HUGE = 100000000000.0;        // huge number bigger than any distance
 float REGION_SIZE = 256.0;          // SL region size
 integer LIGHT_CONTROL_CH = 1102;    // light on/off
 integer LISTEN_CH = 4;              // inter-script communication
-integer VERBOSE = TRUE;             // debug messages
-
-
 
 //    Basic settings
                                     // region cross speed control
@@ -33,8 +30,6 @@ float COAST_POWER = 5.0;                            // power to use when coastin
 
 float DOWNFORCE = -10.0;                             // was 2.0
 
-integer     TimerTick = 0;          // count of timer events
-float       SitTroubleSecs = 0.0;   // timer ticks out of position
 float       BankPower=6000;
 float       ForwardPower; //Forward power
 list        ForwardPowerGears = [10,20,26,30,38,150];
@@ -42,12 +37,8 @@ float       ReversePower = -14; //Reverse power
 float       TurnPower =1000; //Turning power
 float       TurnSpeedAdjust = 0.7; //how much effect speed has on turning, higher numbers effect more. 0.0 to disable
 integer     Permission_Set = 0; // must initialize at startup
-integer     Region_Cross_Count = 0; // number of region crosses
-integer     Start_Test_Time = 0;    // time test started
 integer     Need_Camera_Reset = FALSE;  // camera reset needed?
 integer     Back=FALSE;                 // going backwards
-integer     SitTrouble = FALSE;      // in sit trouble state
-float       RegionCrossStartTime = 0.0;   // timestamp of region crossing
 float       DistanceTraveled = 0.0;     // total distance traveled
 vector      PrevPos = <0,0,0>;          // previous pos for distance calc
 
@@ -144,7 +135,7 @@ set_camera_params()
 }
 //  startup -- driver has just sat on bike. Call only in Ground state.
 startup()
-{
+{   initregionrx(LOG_NOTE);                     // init region crossing system
     llSay(9890,"s " +(string)TurnSpeedNum);
     llWhisper(11,"started");
     llRequestPermissions(sitting, Permission_Set);
@@ -157,11 +148,10 @@ startup()
     llSetTimerEvent(TIMER_INTERVAL);
     CurDir = DIR_NORM;
     LastDir = DIR_NORM;
-    crossStopped = FALSE;                       // not stopped during region cross
-    Region_Cross_Count = 0;                     // distance traveled calc
     DistanceTraveled = 0.0;
     PrevPos = llGetPos() + llGetRegionCorner(); // global pos
     PrevPos.z = 0.0;                            // no height, only for distance comp.
+    logrx(LOG_NOTE,"STARTUP", "",0.0);
 }
 //  shutdown -- shut down bike
 shutdown()
@@ -170,12 +160,9 @@ shutdown()
     llStopAnimation(DrivingAnim);
     llStopSound();
     llSetStatus(STATUS_PHYSICS, FALSE);
-    crossStopped = FALSE;                       // not holding at region crossing
     llMessageLinked(LINK_ALL_CHILDREN , DIR_STOP, "", NULL_KEY);
     llReleaseControls();
-    llOwnerSay("Bike shut down after " + (string)(DistanceTraveled/1000.0) + " km and "
-        + (string)Region_Cross_Count + " region crossings.");
-    llOwnerSay("Final bike location: " + posasstring(llGetRegionName(), llGetPos()));
+    logrx(LOG_NOTE,"SHUTDOWN", "Distance traveled (km)",DistanceTraveled/1000.0);
 }
 
 
@@ -254,7 +241,7 @@ state Ground
     }
     
     changed(integer change)
-    {   handlechanged(change, VERBOSE);                     // handle
+    {   
         if((change & CHANGED_LINK) == CHANGED_LINK)         // rider got on or off
         {   sitting = llAvatarOnSitTarget();                // this is the driver, not any passengers
             if((sitting != NULL_KEY) && !Active)
@@ -266,6 +253,7 @@ state Ground
                 Active = 0;
             }
         }
+        handlechanged(change);                                          // handle
     }
     
     run_time_permissions(integer perms)
@@ -416,7 +404,7 @@ state Ground
     }
     
     timer()                                         // every 100ms when running
-    {   integer stat = handletimer(VERBOSE);          // handle timer event
+    {   integer stat = handletimer();               // handle timer event
         vector pos = llGetPos();
         pos.z = 0.0;                                // only care about XY
         vector gpos = pos + llGetRegionCorner();    // global pos
@@ -444,8 +432,7 @@ state Ground
         float speed = llVecMag(vel);                        // speed
         float maxspeed = maxspeedforregioncross(pos, vel);
         if (speed > maxspeed)
-        {   llOwnerSay("Slowing for double region cross at " + posasstring(llGetRegionName(), pos) + "  from " 
-                + (string)speed + " to " + (string)maxspeed  + " m/s");
+        {   logrx(LOG_NOTE, "SLOW", "Slowing for double region cross to ", maxspeed);
             vector dir = llVecNorm(vel);                    // direction of movement
             llSetVelocity(dir * maxspeed, FALSE);           // forcibly slow. Non-realistic             
         } else {

@@ -47,11 +47,12 @@ logrx(integer severity, string msgtype, string msg, float val)
     {   llOwnerSay(llList2String(LOG_SEVERITY_NAMES,severity) + " " + posasstring(llGetRegionName(), llGetPos()) + " " + msgtype + ": " + msg + " " + (string)val);   }
 }
 
-initregionrx()                              // initialization - call at vehicle start
+initregionrx(integer loglevel)                              // initialization - call at vehicle start
 {   gRegionCrossCount = 0;
     gTimerTick = 0;
     crossFault = FALSE;                     // no crossing fault
     crossStopped = FALSE;                   // not crossing
+    gLogMsgLevel = loglevel;                // set logging level
 }
 
 integer updatesitters()                     // update list of sitters - internal
@@ -115,7 +116,7 @@ integer handletimer()                               // returns 0 if normal, 1 if
         integer i;
         integer sittercount = llGetListLength(gSitters); // number of sitters
         for (i = 0; i < sittercount; i++)
-        {   if (ifnotseated(llList2Key(gSitters,i), llList2Float(gSitterDistances,i), TRUE))
+        {   if (ifnotseated(llList2Key(gSitters,i), llList2Float(gSitterDistances,i), gLogMsgLevel >= LOG_DEBUG))
             {   allseated = FALSE; }
         }
         if (allseated)                              // if all avatars are back in place
