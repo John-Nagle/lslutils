@@ -5,6 +5,7 @@
 //  March 2019
 //
 //  Utility functions
+
 float min(float a, float b)
 {   if (a < b) { return(a); } else { return(b); }}
 float max(float a, float b)
@@ -115,52 +116,81 @@ string posasstring(string region, vector pos)
         + "," + (string)((integer)pos.y)
         + "," + (string)((integer)pos.z) + ")");
 }
+
+//
+//  avatardisttoseat -- distance from avatar to seat position
+//
+//  Used to test for sit validity.
+//  Returns < 0 if not meaningful
+//
+float avatardisttoseat(key avatar)
+{   if (avatar == NULL_KEY) { return(-1.0); }
+    vector vehpos = llGetPos();
+    list avatarinfo = llGetObjectDetails(avatar, 
+                [OBJECT_POS, OBJECT_ROOT]);
+    if (llGetListLength(avatarinfo) < 1) { return(-1.0); }
+    vector avatarpos = llList2Vector(avatarinfo,0);
+    key avatarroot = llList2Key(avatarinfo,1);    
+    return(llVecMag(avatarpos - vehpos));
+}
 //
 //  ifnotseated  - true if avatar position is valid
 //
 //  Check for everything which can go wrong with the vehicle/avatar
 //  relationship.
 //
-integer ifnotseated(key avatar)
+integer ifnotseated(key avatar, float normaldisttoseat, integer verbose)
 {   integer trouble = FALSE;
     //  Check for avatar out of position
     if (avatar != NULL_KEY) 
-    {   vector vehpos = llGetPos();
-        list avatarinfo = llGetObjectDetails(avatar, 
-                [OBJECT_POS, OBJECT_ROOT]);
-        vector avatarpos = llList2Vector(avatarinfo,0);
-        key avatarroot = llList2Key(avatarinfo,1);
-        float avatardist = llVecMag(avatarpos - vehpos);
-        if (avatardist > AVATAR_MAX_DIST_TO_BIKE)
+    {   float avatardist = avatardisttoseat(avatar);    // check for too far from seat
+        if (avatardist > (normaldisttoseat*1.5 + 1.0) || avatardist < 0.0)
             {   trouble = TRUE;
-                llOwnerSay("Avatar out of position: " + 
+                if (verbose) llOwnerSay("Avatar out of position: " + 
                     (string)avatardist + "m from bike.");
             }
         integer agentinfo = llGetAgentInfo(avatar);
         if (agentinfo & (AGENT_SITTING | AGENT_ON_OBJECT) !=
             (AGENT_SITTING | AGENT_ON_OBJECT))
         {   trouble = TRUE;
-            llOwnerSay("Avatar not fully seated.");
+            if (verbose) llOwnerSay("Avatar not fully seated.");
         }
         //  Check back link from avatar to root prim.
+        list avatarinfo = llGetObjectDetails(avatar, 
+                [OBJECT_POS, OBJECT_ROOT]);
+        key avatarroot = llList2Key(avatarinfo,1);
         if (avatarroot == NULL_KEY)
         {   trouble = TRUE;
-            llOwnerSay("Avatar link to root is null.");
+            if(verbose) llOwnerSay("Avatar link to root is null.");
         }
         else if (avatarroot == avatar)
         {   trouble = TRUE;
-            llOwnerSay("Avatar link to root is to avatar itself.");
+            if (verbose) llOwnerSay("Avatar link to root is to avatar itself.");
         }
         else if (avatarroot != llGetKey())
         {   trouble = TRUE;
-            llOwnerSay("Avatar link to root is wrong."); 
-            llOwnerSay("Avatar link to root: " + 
-                (string) avatarroot + "  Veh. root: " +
-                (string) llGetKey());
+            if (verbose)
+            {   llOwnerSay("Avatar link to root is wrong."); 
+                llOwnerSay("Avatar link to root: " + 
+                    (string) avatarroot + "  Veh. root: " +
+                    (string) llGetKey());
+            }
         }
     } else {                    // unseated
         trouble = TRUE;
-        llOwnerSay("Avatar not on sit target.");
+        if (verbose) { llOwnerSay("Avatar not on sit target."); }
     }
     return trouble;
 } 
+
+integer ifnotperms(integer permissions) 
+{   integer trouble = FALSE;
+    //  Check for proper permissions
+    integer perms = llGetPermissions(); // what perms do we have?
+    if (permissions & perms != permissions)
+    {   llOwnerSay("Vehicle lost permissions. Have " + (string) perms + 
+            " Should have " + (string) permissions);
+        trouble = TRUE;
+    }
+    return trouble;
+}

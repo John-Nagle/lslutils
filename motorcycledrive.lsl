@@ -5,13 +5,14 @@
 //  Animats
 //  March, 2018
 //  Derived from a motorcycle script of unknown origin.
-
+#include "regionrx.lsl"            // region crossing system
 //  Constants
 float TINY = 0.0001;                // small value to prevent divide by zero
 float HUGE = 100000000000.0;        // huge number bigger than any distance
 float REGION_SIZE = 256.0;          // SL region size
 integer LIGHT_CONTROL_CH = 1102;    // light on/off
 integer LISTEN_CH = 4;              // inter-script communication
+integer VERBOSE = TRUE;             // debug messages
 
 
 
@@ -23,7 +24,6 @@ integer SIT_TROUBLE_MAX = 50;         // in trouble if out of position this many
 float SPEED_STATIONARY = 0.05;      // 5cm/sec is "stopped"
 vector SIT_TARGET_POS = <.30,0.0,0.32>; // Sit target pos
 vector SIT_TARGET_ROT = <0,-.15,0>;     // Sit target rotation (radians)
-float TIMER_INTERVAL = 0.1;           // drive timer rate
 integer TIMER_SIT_CHECK_EVERY = 5;  // check sit situation every N ticks
 float SIT_FAIL_SECS = 10.0;         // in trouble if out of position this many
 
@@ -48,11 +48,8 @@ integer     Need_Camera_Reset = FALSE;  // camera reset needed?
 integer     Back=FALSE;                 // going backwards
 integer     SitTrouble = FALSE;      // in sit trouble state
 float       RegionCrossStartTime = 0.0;   // timestamp of region crossing
-//  Status during region crossing
-integer     crossStopped = FALSE;
-vector      crossVel;
-vector      crossAngularVelocity = <0,0,0>; // always zero for now
-float       crossStartTime;             // starts at changed event, ends when avatar in place
+float       DistanceTraveled = 0.0;     // total distance traveled
+vector      PrevPos = <0,0,0>;          // previous pos for distance calc
 
 string      SitText = "Drive"; //Text to show on pie menu
 
@@ -96,180 +93,8 @@ integer burnout=FALSE;
 integer TurnSpeedNum=1;
 list turn_speeds=[.15,.12,.10,.01];
 float TurnSpeed;
-//  Utility functions
-float min(float a, float b)
-{   if (a < b) { return(a); } else { return(b); }}
-float max(float a, float b)
-{   if (a > b) { return(a); } else { return(b); }}
-float abs(float a)
-{   if (a > 0) { return(a); } else { return(-a); }}
-//
-//  nearestcorner -- nearest region corner to position
-//
-//  Will need revision for systems with multiple region sizes
-//
-vector nearestcorner(vector pos)
-{   vector corner = <0,0,0>;
-    if (pos.x*2.0 > REGION_SIZE) corner.x = REGION_SIZE;
-    if (pos.y*2.0 > REGION_SIZE) corner.y = REGION_SIZE;
-    return(corner);
-}
 
-integer outsideregion(vector pos)                       // TRUE if outside region
-{   return(pos.x < 0.0 || pos.x > REGION_SIZE || pos.y < 0.0 || pos.y > REGION_SIZE); }
-
-//
-//  regioncrossingseglength -- length of segment between next two region crossings in dir
-//
-//  Ignores Z direction.  
-//  There is a diagram of this in regioncrossing.md.
-//
-float regioncrossingseglength(vector pos, vector dir)
-{
-    vector corner = nearestcorner(pos);             // nearest region corner
-    vector dp = pos - corner;                       // work in coord system where corner is <0,0>
-    float xcept = HUGE;                             // X intercept
-    float ycept = HUGE;                             // Y intercept
-    if (abs(dir.x) > TINY)                          // avoid divide by zero
-    {   ycept = dp.y + dir.y * (-dp.x / dir.x); }   // Y intercept
-    if (abs(dir.y) > TINY)
-    {   xcept = dp.x + dir.x * (-dp.y / dir.y); }   // X intercept
-    return(llSqrt(xcept*xcept + ycept*ycept));      // return segment distance   
-}
-
-//
-//  regioncrossingprobe  --  returns length of segment between closest two next region crossings
-//
-//  The test is made along two test vectors some angle apart
-//  Returns HUGE if not meaningful.
-//  ***UNUSED*** at present
-//
-float regioncrossingprobe(vector pos, vector dir, rotation testangle1, rotation testangle2)
-{
-    vector v1 = dir * testangle1;                   // need two test vectors
-    vector v2 = dir * testangle2;                   // 
-    return(min(regioncrossingseglength(pos, v1), regioncrossingseglength(pos, v2))); // closest hit
-}
-
-
-//  Where will a 2D XY vector from p in direction v hit a box of [0..boxsize, 0..boxsize]?
-//  Returns distance. Hit point is pos + distance*norm(dir)
-float line_box_intersection(vector pos, vector dir, float boxsize)
-{   dir.z = 0;
-    pos.z = 0;
-    dir = llVecNorm(dir);
-    //  p = pos + dir * dist;               p is a point on the edge
-    float dist1 = HUGE;                     // distance to X bound
-    float dist2 = HUGE;                     // distance to Y bound
-    //  Check Y axis edges 
-    //  p1.x = pos.x + dir.x * dist
-    if (dir.x < -TINY)                      // will hit on 0 edge, p1.x = 0
-    {   dist1 = -pos.x/dir.x; }             // distance to x=0 edge        
-    else if (dir.x > TINY)                // will hit on boxsize edge, p1.x = boxsize
-    {   dist1 = (-(pos.x - boxsize))/dir.x; }   // boxsize = pos.x + dir.x * dist1
-    //  Check X axis edges
-    if (dir.y < -TINY)
-    {   dist2 = -pos.y/dir.y; }
-    else if (dir.y > TINY)
-    {   dist2 = (-(pos.y - boxsize))/dir.y; }
-    if (dist1 < dist2) { return(dist1);}
-    return(dist2);                  // return minimum distance       
-}
-//
-//  slowforregioncross -- do we need to slow down for a region crossing?
-//
-float maxspeedforregioncross(vector pos, vector vel)
-{  
-    float maxspeed = HUGE;                              // assume no speed limit
-    vel.z = 0;                                          // XY plane only
-    float speed = llVecMag(vel);                        // how fast are we going
-    if (speed < TINY) { return(HUGE); }                 // slow enough that not a problem
-    float disttosimcross = line_box_intersection(pos, vel, REGION_SIZE);    // dist to sim crossing
-    float timetoedge = disttosimcross / speed;                    // speed to edge
-    if (((TimerTick % 10) == 0) && (timetoedge < 1.5)) // ***TEMP DEBUG***
-    {   llOwnerSay((string)disttosimcross + "m to region boundary at " + (string)pos + "  " + (string)speed + "m/sec."); } // ***TEMP***
-    if (timetoedge < TIMER_INTERVAL*3.0)                // if very close to sim crossing and time to brake
-    {   float rcseglength = regioncrossingseglength(pos, vel); // distance between next two sim crosses
-        //  slow to prevent too-fast double region cross
-        maxspeed = max(rcseglength / MIN_SAFE_DOUBLE_REGION_CROSS_TIME, MIN_BRAKE_SPEED); 
-        ////if (maxspeed < speed)
-        ////{   llOwnerSay("Region crossing braking: segment length: " + (string)rcseglength + 
-        ////   "  speed limit: " + (string)maxspeed);  }// ***TEMP***
-    }
-    return(maxspeed);
-}
-//  posasstring -- get current position as string
-string posasstring(string region, vector pos)
-{   
-    return(region
-        + " (" + (string)((integer)pos.x)
-        + "," + (string)((integer)pos.y)
-        + "," + (string)((integer)pos.z) + ")");
-}
-//
-//  ifnotseated  - true if avatar position is valid
-//
-//  Check for everything which can go wrong with the vehicle/avatar
-//  relationship.
-//
-integer ifnotseated(key avatar)
-{   integer trouble = FALSE;
-    //  Check for avatar out of position
-    if (avatar != NULL_KEY) 
-    {   vector vehpos = llGetPos();
-        list avatarinfo = llGetObjectDetails(avatar, 
-                [OBJECT_POS, OBJECT_ROOT]);
-        vector avatarpos = llList2Vector(avatarinfo,0);
-        key avatarroot = llList2Key(avatarinfo,1);
-        float avatardist = llVecMag(avatarpos - vehpos);
-        if (avatardist > AVATAR_MAX_DIST_TO_BIKE)
-            {   trouble = TRUE;
-                llOwnerSay("Avatar out of position: " + 
-                    (string)avatardist + "m from bike.");
-            }
-        integer agentinfo = llGetAgentInfo(avatar);
-        if (agentinfo & (AGENT_SITTING | AGENT_ON_OBJECT) !=
-            (AGENT_SITTING | AGENT_ON_OBJECT))
-        {   trouble = TRUE;
-            llOwnerSay("Avatar not fully seated.");
-        }
-        //  Check back link from avatar to root prim.
-        if (avatarroot == NULL_KEY)
-        {   trouble = TRUE;
-            llOwnerSay("Avatar link to root is null.");
-        }
-        else if (avatarroot == avatar)
-        {   trouble = TRUE;
-            llOwnerSay("Avatar link to root is to avatar itself.");
-        }
-        else if (avatarroot != llGetKey())
-        {   trouble = TRUE;
-            llOwnerSay("Avatar link to root is wrong."); 
-            llOwnerSay("Avatar link to root: " + 
-                (string) avatarroot + "  Veh. root: " +
-                (string) llGetKey());
-        }
-    } else {                    // unseated
-        trouble = TRUE;
-        llOwnerSay("Avatar not on sit target.");
-    }
-    return trouble;
-} 
-  
-integer ifnotperms() 
-{   integer trouble = FALSE;
-    //  Check for proper permissions
-    integer perms = llGetPermissions(); // what perms do we have?
-    if (Permission_Set & perms != Permission_Set)
-    {   llOwnerSay("Vehicle lost permissions. Have " + (string) perms + 
-            " Should have " + (string) Permission_Set);
-        trouble = TRUE;
-    }
-    return trouble;
-}
-
-integer ifsittrouble(key avatar)
-{   return(ifnotseated(avatar) || ifnotperms()); }
+#include "vehicleutils.lsl"
 
 set_vehicle_params()                // set up SL vehicle system
 {
@@ -333,6 +158,10 @@ startup()
     CurDir = DIR_NORM;
     LastDir = DIR_NORM;
     crossStopped = FALSE;                       // not stopped during region cross
+    Region_Cross_Count = 0;                     // distance traveled calc
+    DistanceTraveled = 0.0;
+    PrevPos = llGetPos() + llGetRegionCorner(); // global pos
+    PrevPos.z = 0.0;                            // no height, only for distance comp.
 }
 //  shutdown -- shut down bike
 shutdown()
@@ -344,7 +173,7 @@ shutdown()
     crossStopped = FALSE;                       // not holding at region crossing
     llMessageLinked(LINK_ALL_CHILDREN , DIR_STOP, "", NULL_KEY);
     llReleaseControls();
-    llOwnerSay("Bike shut down after "
+    llOwnerSay("Bike shut down after " + (string)(DistanceTraveled/1000.0) + " km and "
         + (string)Region_Cross_Count + " region crossings.");
     llOwnerSay("Final bike location: " + posasstring(llGetRegionName(), llGetPos()));
 }
@@ -355,7 +184,6 @@ default
     state_entry()
     {
         Permission_Set = PERMISSION_TRIGGER_ANIMATION | PERMISSION_TAKE_CONTROLS | PERMISSION_CONTROL_CAMERA;
-        ////    | PERMISSION_TELEPORT;
         Owner = llGetOwner();
         TurnSpeedAdjust *= 0.01;
         ForwardPower = llList2Integer(ForwardPowerGears, 0);
@@ -426,28 +254,9 @@ state Ground
     }
     
     changed(integer change)
-    {   if (change & CHANGED_REGION)            // if in new region
-        {   float speed = llVecMag(llGetVel()); // get velocity
-            RegionCrossStartTime = 0.0;
-            Region_Cross_Count++;               // tally
-            llOwnerSay("Speed at region cross #" 
-                + (string)Region_Cross_Count + ": "  
-                + (string)speed + " m/s");
-            Need_Camera_Reset = TRUE;           // schedule a camera reset
-            if (llGetStatus(STATUS_PHYSICS))    // if physics on
-            {   crossVel = llGetVel();              // save velocity
-                crossAngularVelocity = <0,0,0>;     // there is no llGetAngularVelocity();
-                llSetStatus(STATUS_PHYSICS, FALSE); // forcibly stop object
-                crossStopped = TRUE;                // stopped during region crossing
-                crossStartTime = llGetTime();       // timestamp
-            } else {                                // this is bad. A partial unsit usuallly follows
-                llOwnerSay("TROUBLE - second region cross started before first one completed, at " 
-                    + posasstring(llGetRegionName(), llGetPos()));
-            }
-        }
-        if((change & CHANGED_LINK) == CHANGED_LINK) // rider got on or off
-        {
-            sitting = llAvatarOnSitTarget();
+    {   handlechanged(change, VERBOSE);                     // handle
+        if((change & CHANGED_LINK) == CHANGED_LINK)         // rider got on or off
+        {   sitting = llAvatarOnSitTarget();                // this is the driver, not any passengers
             if((sitting != NULL_KEY) && !Active)
             {
                 startup();              // start up bike                // new avatar sitting
@@ -607,59 +416,35 @@ state Ground
     }
     
     timer()                                         // every 100ms when running
-    {   TimerTick++;                                // count timer ticks for debug
+    {   integer stat = handletimer(VERBOSE);          // handle timer event
+        vector pos = llGetPos();
+        pos.z = 0.0;                                // only care about XY
+        vector gpos = pos + llGetRegionCorner();    // global pos
+        DistanceTraveled += llVecMag(PrevPos - gpos);// distance traveled add
+        PrevPos = gpos;                              // save position
         //  Check for avatar out of position and shut down if total fail.
         //  Prevents runaway bike
-        key avatar = llAvatarOnSitTarget();
-        if (TimerTick % TIMER_SIT_CHECK_EVERY == 0) // check is expensive, only do once a second or so
-        {
-            integer sittrouble = ifsittrouble(avatar);
-            if (sittrouble)                 // possible malfunction
-            {   SitTroubleSecs = SitTroubleSecs + TIMER_INTERVAL * TIMER_SIT_CHECK_EVERY; // time trouble persisted
-                if (SitTroubleSecs > SIT_FAIL_SECS) // persistent malfunction
-                {   if (!SitTrouble) { llOwnerSay("TROUBLE - partial unsit detected."); }
-                    //  Try to recover. Just shuts down
-                    SitTrouble = TRUE;
-                    llSetVelocity(<0,0,0>,TRUE); // force stop
-                    shutdown();                 // force shutdown
-                    return;
-                }
-            }
-            else 
-            {   
-                SitTrouble  = FALSE;
-                SitTroubleSecs = 0.0;   
-            }     // reset count
+        if (stat == TICK_FAULT)                     // region crossing failure
+        {   llSetVelocity(<0,0,0>,TRUE);            // force stop
+            shutdown();                             // force shutdown
+            return;
         }
-        if (Need_Camera_Reset && (!crossStopped) && (!ifnotperms()))      // reset on first good tick after sim crossing
+        if (stat == TICK_CROSSSTOPPED)              // if stopped at region crossing
+        {   return;  }                              // still crossing, just wait
+        if (Need_Camera_Reset && (!ifnotperms(Permission_Set)))      // reset on first good tick after sim crossing
         {   set_camera_params();    // reset camera to avoid jerks at sim crossings
             //  We restart the driving animation after every sim crossing, in case
             //  it was lost, which happens. This does not result
             //  in the animation running more than once.
             llStartAnimation(DrivingAnim); // reset driving anim
         }
-        //  Stop temporarily during region crossing until rider catches up.
-        if (crossStopped)                               // if stopped at region crossing
-        {   if (!ifnotseated(avatar))                   // if avatar is back in place
-            {   llSetStatus(STATUS_PHYSICS, TRUE);      // physics back on
-                llSetVelocity(crossVel, FALSE);         // use velocity from before
-                llSetAngularVelocity(crossAngularVelocity, FALSE);  // and angular velocity
-                crossStopped = FALSE;                   // no longer stopped
-                float crosstime = llGetTime() - crossStartTime;
-                llOwnerSay("Avatar back in place. Region crossing to " + llGetRegionName() + 
-                    " complete in " + (string)crosstime + " secs.");
-            } else {
-                return;                                 // still crossing, just wait
-            }
-        }     
-        //  Speed control
-        vector pos = llGetPos();
+        //  Speed control - slows down for double region crossings, but only if really close
         vector vel = llGetVel();
         vel.z = 0.0;
         float speed = llVecMag(vel);                        // speed
         float maxspeed = maxspeedforregioncross(pos, vel);
         if (speed > maxspeed)
-        {   llOwnerSay("Slowing for double region cross at " + (string)pos + "  from " 
+        {   llOwnerSay("Slowing for double region cross at " + posasstring(llGetRegionName(), pos) + "  from " 
                 + (string)speed + " to " + (string)maxspeed  + " m/s");
             vector dir = llVecNorm(vel);                    // direction of movement
             llSetVelocity(dir * maxspeed, FALSE);           // forcibly slow. Non-realistic             
