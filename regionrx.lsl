@@ -28,6 +28,15 @@ integer     gRegionCrossCount = 0;          // number of regions crossed
 list        gSitters = [];                  // current sitters (keys)
 list        gSitterDistances = [];          // distance to seat of sitter when seated (float)
 
+initregionrx()                                  // initialization - call at vehicle start
+{   gSitters = [];
+    gSitterDistances = [];
+    gRegionCrossCount = 0;
+    gTimerTick = 0;
+    crossFault = FALSE;                     // no crossing fault
+    crossStopped = FALSE;                   // not crossing
+}
+
 integer updatesitters(integer verbose)          // update list of sitters - internal
 {                              
     gSitters = [];                              // rebuild list of sitters
@@ -106,6 +115,7 @@ integer handletimer(integer verbose)                // returns 0 if normal, 1 if
             if ((llGetTime() - crossStartTime) > MAX_CROSSING_TIME)  // taking too long?
             {   if (!crossFault)                    // once only
                 {   llOwnerSay("TROUBLE - crossing is taking too long. Probably stuck. Try teleporting out.");
+                    crossFault = TRUE;
                     return(2);
                 } 
             }
