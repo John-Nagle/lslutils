@@ -44,13 +44,11 @@ list        gSitterDistances = [];          // distance to seat of sitter when s
 logrx(integer severity, string msgtype, string msg, float val)
 {
     if (severity >= gLogMsgLevel)           // in-world logging
-    {   llOwnerSay(llList2String(LOG_SEVERITY_NAMES,severity) + " " + posasstring(llGetRegionName(), llGetPos()) + " " + msgtype + ": " + msg + (string)val);   }
+    {   llOwnerSay(llList2String(LOG_SEVERITY_NAMES,severity) + " " + posasstring(llGetRegionName(), llGetPos()) + " " + msgtype + ": " + msg + " " + (string)val);   }
 }
 
 initregionrx()                              // initialization - call at vehicle start
-{   gSitters = [];
-    gSitterDistances = [];
-    gRegionCrossCount = 0;
+{   gRegionCrossCount = 0;
     gTimerTick = 0;
     crossFault = FALSE;                     // no crossing fault
     crossStopped = FALSE;                   // not crossing
@@ -115,8 +113,9 @@ integer handletimer()                               // returns 0 if normal, 1 if
     if (crossStopped)                               // if stopped at region crossing
     {   integer allseated = TRUE;
         integer i;
-        for (i = 0; i < llGetListLength(gSitters); i++)
-        {   if (ifnotseated(llList2Key(gSitters,i), llList2Float(gSitterDistances,i), FALSE))
+        integer sittercount = llGetListLength(gSitters); // number of sitters
+        for (i = 0; i < sittercount; i++)
+        {   if (ifnotseated(llList2Key(gSitters,i), llList2Float(gSitterDistances,i), TRUE))
             {   allseated = FALSE; }
         }
         if (allseated)                              // if all avatars are back in place
