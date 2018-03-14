@@ -13,6 +13,15 @@ integer TICK_NORMAL = 0;                    // normal tick event
 integer TICK_CROSSSTOPPED = 1;              // stopped for region crossing
 integer TICK_FAULT = 2;                     // fault on timer event
 
+integer LOG_DEBUG = 0;                      // logging severity levels
+integer LOG_NOTE = 1;
+integer LOG_WARN = 2;
+integer LOG_ERR = 3;
+integer LOG_FAULT = 4;
+integer LOG_FATAL = 5;
+list LOG_SEVERITY_NAMES = ["DEBUG", "NOTE", "WARNING", "ERROR", "FAULT", "FATAL"];  // names for printing
+
+
 //
 //  Globals
 //
@@ -23,12 +32,22 @@ vector      crossAngularVelocity = <0,0,0>; // always zero for now
 float       crossStartTime;                 // starts at changed event, ends when avatar in place
 integer     crossFault = FALSE;             // no fault yet
 //  Global status
+integer     gLogMsgLevel = LOG_DEBUG;       // display messages locally above this level
 integer     gTimerTick = 0;                 // number of timer ticks
 integer     gRegionCrossCount = 0;          // number of regions crossed
 list        gSitters = [];                  // current sitters (keys)
 list        gSitterDistances = [];          // distance to seat of sitter when seated (float)
 
-initregionrx()                                  // initialization - call at vehicle start
+//
+//  logrx - logs to server or locally
+//
+logrx(integer severity, string msgtype, string msg, float val)
+{
+    if (severity >= gLogMsgLevel)           // in-world logging
+    {   llOwnerSay(llList2String(LOG_SEVERITY_NAMES,severity) + " " + posasstring(llGetRegionName(), llGetPos()) + " " + msgtype + ": " + msg + (string)val);   }
+}
+
+initregionrx()                              // initialization - call at vehicle start
 {   gSitters = [];
     gSitterDistances = [];
     gRegionCrossCount = 0;
@@ -37,7 +56,7 @@ initregionrx()                                  // initialization - call at vehi
     crossStopped = FALSE;                   // not crossing
 }
 
-integer updatesitters(integer verbose)          // update list of sitters - internal
+integer updatesitters()                     // update list of sitters - internal
 {                              
     gSitters = [];                              // rebuild list of sitters
     gSitterDistances = [];                      // and sitter distances
@@ -49,23 +68,21 @@ integer updatesitters(integer verbose)          // update list of sitters - inte
             float disttoseat = avatardisttoseat(avatar); // add initial sit distance
             gSitterDistances += disttoseat; // add initial sit distance
             string avatarname = llList2String(llGetObjectDetails(avatar, [OBJECT_NAME]),0);
-            if (verbose) { llOwnerSay("Now on prim #" + (string)linknum + " :" + avatarname + " distance to seat " + (string)disttoseat); }
+            logrx(LOG_NOTE, "SITTER", "on prim #" + (string)linknum + " :" + avatarname + " distance to seat ", disttoseat);
         }
     }
     integer sittercount = llGetListLength(gSitters);
-    if (verbose) { llOwnerSay((string)sittercount + " riders."); }
+    logrx(LOG_NOTE, "RIDERCOUNT ","", (float)sittercount);
     return(sittercount);
 }
 //  
 //  handlechanged --  call this on every "changed" event
 //
-integer handlechanged(integer change, integer verbose)  // returns TRUE if any riders
+integer handlechanged(integer change)           // returns TRUE if any riders
 {   if (change & CHANGED_REGION)                // if in new region
     {   float speed = llVecMag(llGetVel());     // get velocity
         gRegionCrossCount++;                    // tally
-        if (verbose) llOwnerSay("Speed at region cross #" 
-            + (string)gRegionCrossCount + ": "  
-            + (string)speed + " m/s");
+        logrx(LOG_NOTE, "CROSSSPEED", "", speed);
         if (llGetStatus(STATUS_PHYSICS))        // if physics on
         {   crossVel = llGetVel();              // save velocity
             crossAngularVelocity = <0,0,0>;     // there is no llGetAngularVelocity();
@@ -74,13 +91,12 @@ integer handlechanged(integer change, integer verbose)  // returns TRUE if any r
             crossStopped = TRUE;                // stopped during region crossing
             crossStartTime = llGetTime();       // timestamp
         } else {                                // this is bad. A partial unsit usuallly follows
-            if (verbose) llOwnerSay("TROUBLE - second region cross started before first one completed, at " 
-                + posasstring(llGetRegionName(), llGetPos()));
+            logrx(LOG_ERR, "SECONDCROSS", "second region cross started before first one completed. Cross time: ", llGetTime()-crossStartTime);
         }
     }
     if((change & CHANGED_LINK) == CHANGED_LINK)     // rider got on or off
     {
-        integer sittercount = updatesitters(verbose);
+        integer sittercount = updatesitters();
         if (sittercount == 0)
         {   llSetTimerEvent(0.0);   }               // no sitters, no timer
         else
@@ -92,7 +108,7 @@ integer handlechanged(integer change, integer verbose)  // returns TRUE if any r
 //
 //  handletimer  --  call this on every timer tick
 //
-integer handletimer(integer verbose)                // returns 0 if normal, 1 if cross-stopped, 2 if fault
+integer handletimer()                               // returns 0 if normal, 1 if cross-stopped, 2 if fault
 {
     gTimerTick++;                                    // count timer ticks for debug
     //  Stop temporarily during region crossing until rider catches up.
@@ -109,12 +125,12 @@ integer handletimer(integer verbose)                // returns 0 if normal, 1 if
             llSetAngularVelocity(crossAngularVelocity, FALSE);  // and angular velocity
             crossStopped = FALSE;                   // no longer stopped
             float crosstime = llGetTime() - crossStartTime;
-            if (verbose) llOwnerSay("Avatar(s) back in place. Region crossing complete in " + (string)crosstime + "secs.");
+            logrx(LOG_NOTE, "CROSSEND", "Region crossing complete in ",crosstime);
             ////llOwnerSay("Velocity in: " + (string)llVecMag(crossVel) + "  out: " + (string)llVecMag(llGetVel()));
         } else {
             if ((llGetTime() - crossStartTime) > MAX_CROSSING_TIME)  // taking too long?
             {   if (!crossFault)                    // once only
-                {   llOwnerSay("TROUBLE - crossing is taking too long. Probably stuck. Try teleporting out.");
+                {   logrx(LOG_FAULT, "CROSSFAIL", "Crossing is taking too long. Probably stuck. Try teleporting out.", llGetTime()-crossStartTime);
                     crossFault = TRUE;
                     return(2);
                 } 
