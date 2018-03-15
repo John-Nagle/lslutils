@@ -8,6 +8,7 @@
 //    Basic settings
 float TIMER_INTERVAL = 0.1;                 // check timer rate
 float MAX_CROSSING_TIME = 10.0;             // stuck if crossing takes more than this long
+integer MAX_SECS_BETWEEN_MSGS = 60;         // message at least once this often
 //  Constants
 integer TICK_NORMAL = 0;                    // normal tick event
 integer TICK_CROSSSTOPPED = 1;              // stopped for region crossing
@@ -34,8 +35,11 @@ integer     crossFault = FALSE;             // no fault yet
 //  Global status
 integer     gLogMsgLevel = LOG_DEBUG;       // display messages locally above this level
 integer     gTimerTick = 0;                 // number of timer ticks
+float       gDistanceTraveled = 0.0;        // distance traveled
+vector      gPrevPos = <0,0,0>;             // previous position
 integer     gRegionCrossCount = 0;          // number of regions crossed
 string      gTripId = "???";                // random trip ID, for matching log messages
+integer     gLastMsgTime = 0;               // time last message was sent
 list        gSitters = [];                  // current sitters (keys)
 list        gSitterDistances = [];          // distance to seat of sitter when seated (float)
 
@@ -51,11 +55,16 @@ logrx(integer severity, string msgtype, string msg, float val)
     logdata = logdata + ["tripid"] + gTripId + ["severity"] + severity + ["type"] + msgtype + ["msg"] + msg + ["auxval"] + val;
     string s = llList2Json(JSON_OBJECT, logdata);   // encode as JSON
     llMessageLinked(LINK_THIS, 0, s, "LOG"); // put message on logger script queue.
+    gLastMsgTime = llGetUnixTime();         // time we last sent a message
 }
 
 initregionrx(integer loglevel)                              // initialization - call at vehicle start
 {   gRegionCrossCount = 0;
     gTimerTick = 0;
+    vector pos = llGetPos();                // get starting position
+    pos.z = 0.0;                            // only care about XY
+    gPrevPos = pos + llGetRegionCorner();   // global pos
+    gDistanceTraveled = 0.0;
     crossFault = FALSE;                     // no crossing fault
     crossStopped = FALSE;                   // not crossing
                                             // trip ID is a random ID to connect messages
@@ -118,6 +127,12 @@ integer handlechanged(integer change)           // returns TRUE if any riders
 integer handletimer()                               // returns 0 if normal, 1 if cross-stopped, 2 if fault
 {
     gTimerTick++;                                    // count timer ticks for debug
+    vector pos = llGetPos();
+    pos.z = 0.0;                                    // only care about XY
+    vector gpos = pos + llGetRegionCorner();        // global pos
+    gDistanceTraveled += llVecMag(gPrevPos - gpos); // distance traveled add
+    gPrevPos = gpos;                                // save position
+ 
     //  Stop temporarily during region crossing until rider catches up.
     if (crossStopped)                               // if stopped at region crossing
     {   integer allseated = TRUE;
@@ -143,10 +158,14 @@ integer handletimer()                               // returns 0 if normal, 1 if
                     return(2);
                 } 
             }
+            if (llGetUnixTime() - gLastMsgTime > 2.0)
+            {   logrx(LOG_NOTE, "CROSSSLOW","Slow region crossing",0.0); }          // send at least one message every 60 seconds
             return(1);                              // still cross-stopped
         }
     }
-    return(0);                                      // not in trouble
+    if (llGetUnixTime() - gLastMsgTime > MAX_SECS_BETWEEN_MSGS)
+    {   logrx(LOG_NOTE, "TICK","", gDistanceTraveled/1000.0); }          // send at least one message every 60 seconds
+    return(0);                              // not in trouble
 }
 
 
