@@ -70,6 +70,8 @@ initregionrx(integer loglevel)                              // initialization - 
                                             // trip ID is a random ID to connect messages
     gTripId = llSHA1String((string)llFrand(1.0) + (string)llGetOwner() + (string)llGetPos());
     gLogMsgLevel = loglevel;                // set logging level
+    string drivername = llGetDisplayName(llAvatarOnSitTarget());    // log driver name
+    logrx(LOG_NOTE,"STARTUP", drivername,0.0);      // log startup
 }
 
 integer updatesitters()                     // update list of sitters - internal

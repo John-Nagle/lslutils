@@ -39,8 +39,6 @@ float       TurnSpeedAdjust = 0.7; //how much effect speed has on turning, highe
 integer     Permission_Set = 0; // must initialize at startup
 integer     Need_Camera_Reset = FALSE;  // camera reset needed?
 integer     Back=FALSE;                 // going backwards
-float       DistanceTraveled = 0.0;     // total distance traveled
-vector      PrevPos = <0,0,0>;          // previous pos for distance calc
 
 string      SitText = "Drive"; //Text to show on pie menu
 
@@ -148,10 +146,6 @@ startup()
     llSetTimerEvent(TIMER_INTERVAL);
     CurDir = DIR_NORM;
     LastDir = DIR_NORM;
-    DistanceTraveled = 0.0;
-    PrevPos = llGetPos() + llGetRegionCorner(); // global pos
-    PrevPos.z = 0.0;                            // no height, only for distance comp.
-    logrx(LOG_NOTE,"STARTUP", "",0.0);
 }
 //  shutdown -- shut down bike
 shutdown()
@@ -162,7 +156,7 @@ shutdown()
     llSetStatus(STATUS_PHYSICS, FALSE);
     llMessageLinked(LINK_ALL_CHILDREN , DIR_STOP, "", NULL_KEY);
     llReleaseControls();
-    logrx(LOG_NOTE,"SHUTDOWN", "Distance traveled (km)",DistanceTraveled/1000.0);
+    logrx(LOG_NOTE,"SHUTDOWN", "Distance traveled (km)",gDistanceTraveled/1000.0); // last log message
 }
 
 
@@ -249,8 +243,10 @@ state Ground
                 startup();              // start up bike                // new avatar sitting
             } else if((sitting == NULL_KEY) && Active)
             {
-                shutdown();         // shut down bike and release
+                handlechanged(change);
+                shutdown();                 // shut down bike and release
                 Active = 0;
+                return;                     // we want Shutdown to be the last logged event
             }
         }
         handlechanged(change);                                          // handle
@@ -405,11 +401,6 @@ state Ground
     
     timer()                                         // every 100ms when running
     {   integer stat = handletimer();               // handle timer event
-        vector pos = llGetPos();
-        pos.z = 0.0;                                // only care about XY
-        vector gpos = pos + llGetRegionCorner();    // global pos
-        DistanceTraveled += llVecMag(PrevPos - gpos);// distance traveled add
-        PrevPos = gpos;                              // save position
         //  Check for avatar out of position and shut down if total fail.
         //  Prevents runaway bike
         if (stat == TICK_FAULT)                     // region crossing failure
@@ -427,6 +418,8 @@ state Ground
             llStartAnimation(DrivingAnim); // reset driving anim
         }
         //  Speed control - slows down for double region crossings, but only if really close
+        vector pos = llGetPos();
+        pos.z = 0.0;                                // only care about XY
         vector vel = llGetVel();
         vel.z = 0.0;
         float speed = llVecMag(vel);                        // speed
