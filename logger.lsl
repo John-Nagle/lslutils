@@ -46,7 +46,7 @@ integer logresponse(key request_id, integer status, list metadata, string body)
     {   gLogFailCount = 0;                  // reset fail count
         return(TRUE);
     }
-    if (gFailCount % 10 == 0)
+    if (gLogFailCount % 10 == 0)
     {   llOwnerSay("Logging request to " + gLogURL + " failed. Status " + (string) status);} // mention every 10th fail
     gLogFailCount++;
     return(FALSE);
