@@ -14,6 +14,8 @@
 //  The log message is sent as a string to the server.
 //  It can be whatever format the server expects.
 //
+//  OBSOLETE - use separate script for logging
+//
 //  Constants
 //
 //  Globals
@@ -35,8 +37,8 @@ key logstring(string s)                     // sends a POST to an API endpoint f
 {   if (gLogURL == "") { return(NULL_KEY); }// logging not enabled
     s = llStringTrim(s,STRING_TRIM);        // trim string for consistency
     list params = [HTTP_METHOD, "POST"];    // send with auth token
-    params = params + [HTTP_CUSTOM_HEADER, "AUTHTOKEN_NAME"] + gLogAuthTokenName;
-    params = params + [HTTP_CUSTOM_HEADER, "AUTHTOKEN_HASH"] + llSHA1String(gLogAuthTokenValue + s); // key is SHA1 of of authtoken followed by message
+    params = params + [HTTP_CUSTOM_HEADER, "X-AUTHTOKEN-NAME"] + gLogAuthTokenName;
+    params = params + [HTTP_CUSTOM_HEADER, "X-AUTHTOKEN-HASH"] + llSHA1String(gLogAuthTokenValue + s); // key is SHA1 of of authtoken followed by message
     return(llHTTPRequest(gLogURL, params, s)); // make HTTP request
 }
 

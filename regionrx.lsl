@@ -55,7 +55,7 @@ logrx(integer severity, string msgtype, string msg, float val)
     //  Remote logging. Only works if there's another script listening for LOG messages
     list logdata = [];
     gLastMsgTime = llGetUnixTime();         // time we last sent a message
-    logdata = logdata + ["tripid"] + gTripId + ["severity"] + severity + ["type"] + msgtype + ["msg"] + msg + ["auxval"] + val
+    logdata = logdata + ["tripid"] + gTripId + ["severity"] + severity + ["eventtype"] + msgtype + ["msg"] + msg + ["auxval"] + val
         + ["timestamp"] + gLastMsgTime + ["serial"] + gLogSerial;
     string s = llList2Json(JSON_OBJECT, logdata);   // encode as JSON
     llMessageLinked(LINK_THIS, 0, s, "LOG"); // put message on logger script queue.
