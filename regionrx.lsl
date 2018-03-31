@@ -7,7 +7,7 @@
 ////#include "vehicleutils.lsl"                 // pure functions, no state
 //    Basic settings
 float TIMER_INTERVAL = 0.1;                 // check timer rate
-float MAX_CROSSING_TIME = 10.0;             // stuck if crossing takes more than this long
+float MAX_CROSSING_TIME = 30.0;             // stuck if crossing takes more than this long
 integer MAX_SECS_BETWEEN_MSGS = 60;         // message at least once this often
 //  Constants
 integer TICK_NORMAL = 0;                    // normal tick event
@@ -148,7 +148,7 @@ integer handletimer()                               // returns 0 if normal, 1 if
         integer i;
         integer sittercount = llGetListLength(gSitters); // number of sitters
         for (i = 0; i < sittercount; i++)
-        {   if (ifnotseated(llList2Key(gSitters,i), llList2Float(gSitterDistances,i), gLogMsgLevel >= LOG_DEBUG))
+        {   if (ifnotseated(llList2Key(gSitters,i), llList2Float(gSitterDistances,i), gLogMsgLevel <= LOG_DEBUG))
             {   allseated = FALSE; }
         }
         if (allseated)                              // if all avatars are back in place
@@ -168,7 +168,8 @@ integer handletimer()                               // returns 0 if normal, 1 if
                 } 
             }
             if (llGetUnixTime() - gLastMsgTime > 2.0)
-            {   logrx(LOG_NOTE, "CROSSSLOW","Slow region crossing",0.0); }          // send at least one message every 60 seconds
+            {   logrx(LOG_WARN, "CROSSSLOW","Waiting for avatar(s) to cross regions.",0.0);            // send at least one message every 60 seconds
+            }
             return(1);                              // still cross-stopped
         }
     }
