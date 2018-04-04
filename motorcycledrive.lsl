@@ -5,36 +5,38 @@
 //  Animats
 //  March, 2018
 //  Derived from a motorcycle script of unknown origin.
+//
+//  Bike control is basic. Arrow keys to steer, shift-rightarrow for gear up, shift leftarrow for gear down.
+//  Rider and passenger.
+//
 #include "regionrx.lsl"            // region crossing system
 //  Constants
 float TINY = 0.0001;                // small value to prevent divide by zero
 float HUGE = 100000000000.0;        // huge number bigger than any distance
 float REGION_SIZE = 256.0;          // SL region size
 integer LIGHT_CONTROL_CH = 1102;    // light on/off
-integer LISTEN_CH = 4;              // inter-script communication
 
 //    Basic settings
                                     // region cross speed control
-float BRAKING_TIME = 0;           // allow this braking time at boundary
-float AVATAR_MAX_DIST_TO_BIKE = 1.0;// avatar in trouble if sit pos wrong
 integer SIT_TROUBLE_MAX = 50;         // in trouble if out of position this many
 float SPEED_STATIONARY = 0.05;      // 5cm/sec is "stopped"
-vector SIT_TARGET_POS = <.30,0.0,0.32>; // Sit target pos
-vector SIT_TARGET_ROT = <0,-.15,0>;     // Sit target rotation (radians)
-integer TIMER_SIT_CHECK_EVERY = 5;  // check sit situation every N ticks
-float SIT_FAIL_SECS = 10.0;         // in trouble if out of position this many
+vector SIT_TARGET_POS = <-0.25,0.0,1.00>; // Sit target pos
+////vector SIT_TARGET_POS = <-0.05,0,0.05>; // Sit target pos
+////vector SIT_TARGET_POS = <0.25,0,0.42>; // Sit target pos
+vector SIT_TARGET_ROT = <0.0,0,0.0>;     // Sit target rotation (degrees)
 
-float MIN_SAFE_DOUBLE_REGION_CROSS_TIME = 0.5;      // min time between double region crosses at speed
+float MIN_SAFE_DOUBLE_REGION_CROSS_TIME = 2.0;      // min time between double region crosses at speed
 float MIN_BRAKE_SPEED = 0.2;                        // minimum speed we will ever brake to
-float COAST_POWER = 5.0;                            // power to use when coasting across a region crossing
+float COAST_POWER = 2.0;                            // power to use when coasting across a region crossing
 
 float DOWNFORCE = -10.0;                             // was 2.0
 
 float       BankPower=6000;
 float       ForwardPower; //Forward power
-list        ForwardPowerGears = [10,20,26,30,38,150];
+////list        ForwardPowerGears = [10,20,26,30,38,150];
+list        ForwardPowerGears = [5,10,20,40,60,80];
 float       ReversePower = -14; //Reverse power
-float       TurnPower =1000; //Turning power
+float       TurnPower = 1500;  //  was 1000; //Turning power
 float       TurnSpeedAdjust = 0.7; //how much effect speed has on turning, higher numbers effect more. 0.0 to disable
 integer     Permission_Set = 0; // must initialize at startup
 integer     Need_Camera_Reset = FALSE;  // camera reset needed?
@@ -42,20 +44,13 @@ integer     Back=FALSE;                 // going backwards
 
 string      SitText = "Drive"; //Text to show on pie menu
 
-string      HornCommand = "h";
-string      RevCommand = "r";
-string      IdleCommand = "i";
-string      StopCommand = "stop";
-
-string      HornSound = "dukes";
-string      IdleSound = "idle"; //Sound to play when idling
-string      RunSound = "run"; //Sound to play when the gas in pressed
-string      RevSound = "rev";
-string      StartupSound = "starter"; //Sound to play when owner sits
-string      DrivingAnim = "driving generic"; //Animation to play when owner sits
+string      IdleSound = "idle";                 // Sound to play when idling
+string      RunSound = "run";                   // Sound to play when the gas in pressed
+string      StartupSound = "starter";           // Sound to play when owner sits
+//      Animation control
+string      DrivingAnim = "driving generic";    // Animation to play when owner sits
 
 //Other variables
-key         Owner;
 integer     NumGears;
 integer     Gear = 0;
 integer     NewSound;
@@ -66,10 +61,9 @@ integer     Forward;
 vector      SpeedVec;
 vector      Linear;
 vector      Angular;
-integer     Active;
-key         sitting;
-integer     Moving;
-string      SimName;
+integer     Active = FALSE;
+float       lowestslowmsg = HUGE;               // for minimizing SLOW log messages
+key         sitting;                            // the driver's UUID
 
 integer     DIR_STOP = 100;
 integer     DIR_START = 101;
@@ -77,8 +71,6 @@ integer     DIR_NORM = 102;
 integer     DIR_LEFT = 103;
 integer     DIR_RIGHT = 104;
 
-integer locked=TRUE;
-integer burnout=FALSE;
 integer TurnSpeedNum=1;
 list turn_speeds=[.15,.12,.10,.01];
 float TurnSpeed;
@@ -87,6 +79,7 @@ float TurnSpeed;
 
 set_vehicle_params()                // set up SL vehicle system
 {
+    /*
     llSetVehicleType(VEHICLE_TYPE_CAR);
     llSetVehicleFlags(VEHICLE_FLAG_NO_DEFLECTION_UP | VEHICLE_FLAG_LIMIT_ROLL_ONLY | VEHICLE_FLAG_LIMIT_MOTOR_UP);
     llSetVehicleFloatParam(VEHICLE_ANGULAR_DEFLECTION_EFFICIENCY, 0.4);
@@ -109,6 +102,39 @@ set_vehicle_params()                // set up SL vehicle system
     llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_WATER_ONLY | VEHICLE_FLAG_HOVER_TERRAIN_ONLY | VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT);
         
     llSetVehicleFlags(VEHICLE_FLAG_NO_DEFLECTION_UP | VEHICLE_FLAG_LIMIT_ROLL_ONLY | VEHICLE_FLAG_HOVER_UP_ONLY | VEHICLE_FLAG_LIMIT_MOTOR_UP);
+*/
+//  Values from rachel1206
+    llSetVehicleType(VEHICLE_TYPE_CAR);
+
+    llSetVehicleFloatParam(VEHICLE_ANGULAR_DEFLECTION_EFFICIENCY, 0.2);
+    llSetVehicleFloatParam(VEHICLE_LINEAR_DEFLECTION_EFFICIENCY, 1.0);
+    llSetVehicleFloatParam(VEHICLE_ANGULAR_DEFLECTION_TIMESCALE, 0.01);
+    llSetVehicleFloatParam(VEHICLE_LINEAR_DEFLECTION_TIMESCALE, 0.10);
+    llSetVehicleFloatParam(VEHICLE_LINEAR_MOTOR_TIMESCALE, 2);
+    llSetVehicleFloatParam(VEHICLE_LINEAR_MOTOR_DECAY_TIMESCALE, 0.2);
+    llSetVehicleFloatParam(VEHICLE_ANGULAR_MOTOR_TIMESCALE, 0.28);
+    llSetVehicleFloatParam(VEHICLE_ANGULAR_MOTOR_DECAY_TIMESCALE, 0.2);
+    llSetVehicleVectorParam(VEHICLE_LINEAR_FRICTION_TIMESCALE, <1.5, 0.5, 2.0> );
+    llSetVehicleVectorParam(VEHICLE_ANGULAR_FRICTION_TIMESCALE, <0.01,  2.1, 2.5> );
+    llSetVehicleFloatParam(VEHICLE_VERTICAL_ATTRACTION_EFFICIENCY, 0.7);
+    llSetVehicleFloatParam(VEHICLE_VERTICAL_ATTRACTION_TIMESCALE, 0.4);
+    llSetVehicleFloatParam(VEHICLE_BANKING_EFFICIENCY, 0.99);
+    llSetVehicleFloatParam(VEHICLE_BANKING_TIMESCALE, 0.01);
+    llSetVehicleFloatParam(VEHICLE_BANKING_MIX, 0.5);
+
+
+    llSetVehicleFloatParam(VEHICLE_BUOYANCY, -0.1);
+    ////llSetVehicleFloatParam(VEHICLE_HOVER_HEIGHT, 0);
+    ////llSetVehicleFloatParam(VEHICLE_HOVER_EFFICIENCY, 0);
+    ////llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 180);
+
+    llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_WATER_ONLY | VEHICLE_FLAG_HOVER_UP_ONLY | VEHICLE_FLAG_LIMIT_ROLL_ONLY
+       | VEHICLE_FLAG_HOVER_TERRAIN_ONLY);
+    llSetVehicleFlags(VEHICLE_FLAG_NO_DEFLECTION_UP | VEHICLE_FLAG_LIMIT_ROLL_ONLY| VEHICLE_FLAG_LIMIT_MOTOR_UP);
+    
+    llSetForce(<0,0,-5>,FALSE);   // forced downforce
+    llCollisionSound("", 0.0);
+
 }
 //  set_camera_params
 set_camera_params()
@@ -133,7 +159,7 @@ set_camera_params()
 }
 //  startup -- driver has just sat on bike. Call only in Ground state.
 startup()
-{   initregionrx(LOG_NOTE);                     // init region crossing system
+{   initregionrx(LOG_WARN);                     // init region crossing system
     llSay(9890,"s " +(string)TurnSpeedNum);
     llWhisper(11,"started");
     llRequestPermissions(sitting, Permission_Set);
@@ -141,7 +167,6 @@ startup()
     llMessageLinked(LINK_ALL_CHILDREN, DIR_START, "", NULL_KEY);
     llSetPos(llGetPos() + <0,0,0.15>);
     llSetStatus(STATUS_PHYSICS, TRUE);
-    SimName = llGetRegionName();
     llLoopSound(IdleSound,1);
     llSetTimerEvent(TIMER_INTERVAL);
     CurDir = DIR_NORM;
@@ -154,6 +179,7 @@ shutdown()
     llStopAnimation(DrivingAnim);
     llStopSound();
     llSetStatus(STATUS_PHYSICS, FALSE);
+
     llMessageLinked(LINK_ALL_CHILDREN , DIR_STOP, "", NULL_KEY);
     llReleaseControls();
     logrx(LOG_NOTE,"SHUTDOWN", "Distance traveled (km)",gDistanceTraveled/1000.0); // last log message
@@ -165,14 +191,13 @@ default
     state_entry()
     {
         Permission_Set = PERMISSION_TRIGGER_ANIMATION | PERMISSION_TAKE_CONTROLS | PERMISSION_CONTROL_CAMERA;
-        Owner = llGetOwner();
         TurnSpeedAdjust *= 0.01;
         ForwardPower = llList2Integer(ForwardPowerGears, 0);
         NumGears = llGetListLength(ForwardPowerGears);
         Active = 0;
         llSetSitText(SitText);
         llCollisionSound("", 0.0);
-        llSitTarget(SIT_TARGET_POS, llEuler2Rot(SIT_TARGET_ROT));
+        llSitTarget(SIT_TARGET_POS, llEuler2Rot(SIT_TARGET_ROT*DEG_TO_RAD));    // driver, not passenger
         TurnSpeed=llList2Float(turn_speeds, TurnSpeedNum-1);
         state Ground;
     }
@@ -181,9 +206,7 @@ default
 state Ground
 {
     state_entry()
-    {   llListen(LISTEN_CH, "", NULL_KEY, "");      // listen for other bike scripts
-
-        llStopSound();
+    {   llStopSound();
         llSay (11,"landed");
         if(!Active)
         {
@@ -191,7 +214,6 @@ state Ground
             llMessageLinked(LINK_ALL_CHILDREN , DIR_STOP, "", NULL_KEY);
             llUnSit(llAvatarOnSitTarget());
         }else{
-            SimName = llGetRegionName();
             llMessageLinked(LINK_ALL_CHILDREN, DIR_START, "", NULL_KEY);
             llMessageLinked(LINK_ALL_CHILDREN, DIR_NORM, "", NULL_KEY);
             NewSound = 1;
@@ -207,45 +229,22 @@ state Ground
         llResetScript();
     }
     
-    listen(integer channel, string name, key id, string message)
-    {
-        message = llToLower(message);                           // work in lower case
-        if (channel != LISTEN_CH) return;                      // channel is bogus
-        if(llGetOwnerKey(id) != Owner && locked) return;
-        if(message == StopCommand) llStopSound();
-        else if (message=="start") llLoopSound("idle",1);
-        else if (message=="gear up") 
-        {          
-                if (Gear>=NumGears-1) return;      
-                 ++Gear;
-                llWhisper(0, "Gear " + (string)(Gear + 1));
-                ForwardPower = llList2Float(ForwardPowerGears, Gear);
-                if(Linear.x > 0) Linear.x = ForwardPower;}
-        else if (message=="gear down"){
-                if (Gear<=0) return;
-                --Gear;
-                llWhisper(0, "Gear " + (string)(Gear + 1));
-                ForwardPower = llList2Float(ForwardPowerGears, Gear);
-                if(Linear.x > 0) Linear.x = ForwardPower;
-        }
-        if (message=="turn speed 1")      { TurnSpeedNum=1;TurnSpeed=llList2Float(turn_speeds,0);llSetVehicleFloatParam(VEHICLE_ANGULAR_MOTOR_TIMESCALE, TurnSpeed);}
-        else if (message=="turn speed 2") { TurnSpeedNum=2;TurnSpeed=llList2Float(turn_speeds,1);llSetVehicleFloatParam(VEHICLE_ANGULAR_MOTOR_TIMESCALE, TurnSpeed);}
-        else if (message=="turn speed 3") { TurnSpeedNum=3;TurnSpeed=llList2Float(turn_speeds,2);llSetVehicleFloatParam(VEHICLE_ANGULAR_MOTOR_TIMESCALE, TurnSpeed);}
-        else if (message=="turn speed 4") {TurnSpeedNum=4; TurnSpeed=llList2Float(turn_speeds,3);llSetVehicleFloatParam(VEHICLE_ANGULAR_MOTOR_TIMESCALE, TurnSpeed);}
-    }
     
     changed(integer change)
     {   
         if((change & CHANGED_LINK) == CHANGED_LINK)         // rider got on or off
         {   sitting = llAvatarOnSitTarget();                // this is the driver, not any passengers
-            if((sitting != NULL_KEY) && !Active)
+            if((sitting != NULL_KEY) && !Active)            // driver got on
             {
-                startup();              // start up bike                // new avatar sitting
+                startup();                                  // start up bike               
+            } else if ((sitting == NULL_KEY) && !Active) {  // passenger got on first
+                llWhisper(0,"You're on the passenger seat!");
+                return;                                     // wait until driver gets on                                    
             } else if((sitting == NULL_KEY) && Active)
             {
                 handlechanged(change);
                 shutdown();                 // shut down bike and release
-                Active = 0;
+                Active = FALSE;
                 return;                     // we want Shutdown to be the last logged event
             }
         }
@@ -256,7 +255,7 @@ state Ground
     {
         if(perms == (Permission_Set))
         {
-            Active = 1;
+            Active = TRUE;
             Linear = <0,0,DOWNFORCE>;
             Angular = <0,0,0>;
             llStopAnimation("sit");
@@ -273,12 +272,6 @@ state Ground
         if (levels & CONTROL_BACK)Back=TRUE;
         Angular.x=0;
         Angular.z=0;
-        if(!Moving)
-        {
-            Moving = 1;
-            llSetStatus(STATUS_PHYSICS, TRUE);
-            llStartAnimation(DrivingAnim);
-        }
         SpeedVec = llGetVel() / llGetRot();
         if((edges & levels & CONTROL_RIGHT)) // shift-right => upshift
         {
@@ -361,13 +354,11 @@ state Ground
             }
         }
          
-                 //if(levels & (CONTROL_RIGHT|CONTROL_ROT_RIGHT))
                  if(levels & (CONTROL_ROT_RIGHT))
         {
             Angular.z -= TurnPower;
             Angular.x=BankPower;
         }
-        //if(levels & (CONTROL_LEFT|CONTROL_ROT_LEFT))
         if(levels & (CONTROL_ROT_LEFT))
         {
             Angular.z +=TurnPower;
@@ -386,19 +377,7 @@ state Ground
         if (Back) llMessageLinked(LINK_ALL_OTHERS,10,"back",NULL_KEY);
         else llMessageLinked(LINK_ALL_OTHERS,10,"regular",NULL_KEY);
     }
-    
-    moving_end()                                    // legacy code. Necessary?
-    {
-        if(llGetRegionName() == SimName)
-        {
-            Moving = 0;
-            llSetStatus(STATUS_PHYSICS, FALSE);
-            if (Active){llStopAnimation(DrivingAnim);}
-        }else{
-            SimName = llGetRegionName();
-        }
-    }
-    
+        
     timer()                                         // every 100ms when running
     {   integer stat = handletimer();               // handle timer event
         //  Check for avatar out of position and shut down if total fail.
@@ -425,10 +404,15 @@ state Ground
         float speed = llVecMag(vel);                        // speed
         float maxspeed = maxspeedforregioncross(pos, vel);
         if (speed > maxspeed)
-        {   logrx(LOG_NOTE, "SLOW", "Slowing for double region cross to ", maxspeed);
+        {   if (maxspeed < lowestslowmsg * 0.8)             // prevent excessive msg rate to server
+            {   logrx(LOG_NOTE, "SLOW", "Slowing for double region cross to ", maxspeed);
+                lowestslowmsg = maxspeed;                   // slowest limit speed we loggged
+            }
             vector dir = llVecNorm(vel);                    // direction of movement
             llSetVelocity(dir * maxspeed, FALSE);           // forcibly slow. Non-realistic             
-        } else {
+        } else {                                            // not slowing
+            if (maxspeed >= HUGE)                           // if no longer slowing
+            {   lowestslowmsg = HUGE;  }                    // reset message spam prevention
             if (Linear != <0.0,  0.0, DOWNFORCE>)
             {   vector wlinear = Linear;        // working linear power
                 //  Don't apply full acceleration if we're braking for a region crossing, but 
