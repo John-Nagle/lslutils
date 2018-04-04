@@ -4,7 +4,6 @@
 //  Animats
 //  March, 2018
 //
-////#include "vehicleutils.lsl"                 // pure functions, no state
 //    Basic settings
 float TIMER_INTERVAL = 0.1;                 // check timer rate
 float MAX_CROSSING_TIME = 30.0;             // stuck if crossing takes more than this long
@@ -90,7 +89,8 @@ integer updatesitters()                     // update list of sitters - internal
     gSitters = [];                              // rebuild list of sitters
     gSitterDistances = [];                      // and sitter distances
     integer linknum;
-    for (linknum = 1; linknum < llGetNumberOfPrims(); linknum++)    // check all links for sitters
+    integer primcount = llGetNumberOfPrims();   // do once before loop
+    for (linknum = 1; linknum < primcount; linknum++)    // check all links for sitters
     {   key avatar = llAvatarOnLinkSitTarget(linknum);
         if (avatar != NULL_KEY)                 // found a seated avatar
         {   gSitters += avatar;                 // add to avatar list
