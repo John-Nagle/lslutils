@@ -74,6 +74,7 @@ initregionrx(integer loglevel)              // initialization - call at vehicle 
     gDistanceTraveled = 0.0;
     crossFault = FALSE;                     // no crossing fault
     crossStopped = FALSE;                   // not crossing
+    crossHover = TRUE;                      // assuming hovering so we will turn hover off
                                             // trip ID is a random ID to connect messages
     gTripId = llSHA1String((string)llFrand(1.0) + (string)llGetOwner() + (string)llGetPos());
     gLogMsgLevel = loglevel;                // set logging level
