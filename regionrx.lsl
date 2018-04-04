@@ -82,6 +82,7 @@ initregionrx(integer loglevel)              // initialization - call at vehicle 
     string driverdisplayname = llGetDisplayName(driver);    // log driver name
     string drivername = llKey2Name(driver); // "login name / display name"
     logrx(LOG_NOTE,"STARTUP", drivername + "/" + driverdisplayname,0.0);      // log startup
+    logrx(LOG_NOTE,"DRIVERKEY", (string)driver, 0.0); // Driver's key, for when names become changeable
 }
 
 integer updatesitters()                     // update list of sitters - internal
@@ -115,7 +116,6 @@ integer handlechanged(integer change)           // returns TRUE if any riders
         {   crossVel = llGetVel();              // save velocity
             crossAngularVelocity = <0,0,0>;     // there is no llGetAngularVelocity();
             llSetStatus(STATUS_PHYSICS, FALSE); // forcibly stop object
-            llSetStatus(STATUS_PHANTOM, TRUE);  // ***TEMP*** try this to see if it will prevent avatar sticking
             crossFault = FALSE;                 // no fault yet
             crossStopped = TRUE;                // stopped during region crossing
             crossStartTime = llGetTime();       // timestamp
@@ -152,7 +152,6 @@ integer handletimer()                               // returns 0 if normal, 1 if
     {   if (!crossHover)                            // if not hovering
         {   llSetVehicleFloatParam(VEHICLE_HOVER_HEIGHT, crossHoverHeight);     // anti-sink
             llSetVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT);  
-            llOwnerSay("Hovering at " + (string)crossHoverHeight + "m");                // ***TEMP***
             crossHover = TRUE;                      // 
         }
     } else {
@@ -160,7 +159,6 @@ integer handletimer()                               // returns 0 if normal, 1 if
         if (crossHover)
         {   llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT);
             crossHover = FALSE;
-            llOwnerSay("Not hovering.");            // ***TEMP***
         }
     }
  
@@ -175,7 +173,6 @@ integer handletimer()                               // returns 0 if normal, 1 if
         }
         if (allseated)                              // if all avatars are back in place
         {   llSetStatus(STATUS_PHYSICS, TRUE);      // physics back on
-            llSetStatus(STATUS_PHANTOM, FALSE);     // ***TEMP*** try this to see if it will prevent avatar sticking
             llSetVelocity(crossVel, FALSE);         // use velocity from before
             llSetAngularVelocity(crossAngularVelocity, FALSE);  // and angular velocity
             crossStopped = FALSE;                   // no longer stopped
