@@ -32,6 +32,8 @@ vector      crossVel;
 vector      crossAngularVelocity = <0,0,0>; // always zero for now
 float       crossStartTime;                 // starts at changed event, ends when avatar in place
 integer     crossFault = FALSE;             // no fault yet
+integer     crossHover = FALSE;             // not hovering across a region crossing
+float       crossHoverHeight;               // height during region crossing
 //  Global status
 integer     gLogMsgLevel = LOG_DEBUG;       // display messages locally above this level
 integer     gLogSerial = 0;                 // log serial number
@@ -67,8 +69,8 @@ initregionrx(integer loglevel)              // initialization - call at vehicle 
     gTimerTick = 0;
     gLogSerial = 0;                         // reset log serial number
     vector pos = llGetPos();                // get starting position
-    pos.z = 0.0;                            // only care about XY
     gPrevPos = pos + llGetRegionCorner();   // global pos
+    gPrevPos.z = 0.0;                       // only care about XY
     gDistanceTraveled = 0.0;
     crossFault = FALSE;                     // no crossing fault
     crossStopped = FALSE;                   // not crossing
@@ -112,6 +114,7 @@ integer handlechanged(integer change)           // returns TRUE if any riders
         {   crossVel = llGetVel();              // save velocity
             crossAngularVelocity = <0,0,0>;     // there is no llGetAngularVelocity();
             llSetStatus(STATUS_PHYSICS, FALSE); // forcibly stop object
+            llSetStatus(STATUS_PHANTOM, TRUE);  // ***TEMP*** try this to see if it will prevent avatar sticking
             crossFault = FALSE;                 // no fault yet
             crossStopped = TRUE;                // stopped during region crossing
             crossStartTime = llGetTime();       // timestamp
@@ -137,10 +140,28 @@ integer handletimer()                               // returns 0 if normal, 1 if
 {
     gTimerTick++;                                    // count timer ticks for debug
     vector pos = llGetPos();
-    pos.z = 0.0;                                    // only care about XY
     vector gpos = pos + llGetRegionCorner();        // global pos
+    gpos.z = 0.0;                                   // only care about XY
     gDistanceTraveled += llVecMag(gPrevPos - gpos); // distance traveled add
     gPrevPos = gpos;                                // save position
+    
+    //  Hover control -- hover when outside region and unsupported.
+    //  Should help on flat terrain. Too dumb for region crossings on hills.
+    if (outsideregion(pos))                         // if outside region
+    {   if (!crossHover)                            // if not hovering
+        {   llSetVehicleFloatParam(VEHICLE_HOVER_HEIGHT, crossHoverHeight);     // anti-sink
+            llSetVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT);  
+            llOwnerSay("Hovering at " + (string)crossHoverHeight + "m");                // ***TEMP***
+            crossHover = TRUE;                      // 
+        }
+    } else {
+        crossHoverHeight = pos.z;
+        if (crossHover)
+        {   llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT);
+            crossHover = FALSE;
+            llOwnerSay("Not hovering.");            // ***TEMP***
+        }
+    }
  
     //  Stop temporarily during region crossing until rider catches up.
     if (crossStopped)                               // if stopped at region crossing
@@ -153,6 +174,7 @@ integer handletimer()                               // returns 0 if normal, 1 if
         }
         if (allseated)                              // if all avatars are back in place
         {   llSetStatus(STATUS_PHYSICS, TRUE);      // physics back on
+            llSetStatus(STATUS_PHANTOM, FALSE);     // ***TEMP*** try this to see if it will prevent avatar sticking
             llSetVelocity(crossVel, FALSE);         // use velocity from before
             llSetAngularVelocity(crossAngularVelocity, FALSE);  // and angular velocity
             crossStopped = FALSE;                   // no longer stopped
