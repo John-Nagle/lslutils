@@ -90,7 +90,7 @@ integer updatesitters()                     // update list of sitters - internal
     gSitterDistances = [];                      // and sitter distances
     integer linknum;
     integer primcount = llGetNumberOfPrims();   // do once before loop
-    for (linknum = 1; linknum < primcount; linknum++)    // check all links for sitters
+    for (linknum = 1; linknum <= primcount; linknum++)    // check all links for sitters
     {   key avatar = llAvatarOnLinkSitTarget(linknum);
         if (avatar != NULL_KEY)                 // found a seated avatar
         {   gSitters += avatar;                 // add to avatar list
