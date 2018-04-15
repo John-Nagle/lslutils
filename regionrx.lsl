@@ -184,18 +184,18 @@ integer handletimer()                               // returns 0 if normal, 1 if
             {   if (!crossFault)                    // once only
                 {   logrx(LOG_FAULT, "CROSSFAIL", "Crossing is taking too long. Probably stuck. Try teleporting out.", llGetTime()-crossStartTime);
                     crossFault = TRUE;
-                    return(2);
+                    return(TICK_FAULT);
                 } 
             }
             if (llGetUnixTime() - gLastMsgTime > 2.0)
             {   logrx(LOG_WARN, "CROSSSLOW","Waiting for avatar(s) to cross regions.",0.0);            // send at least one message every 60 seconds
             }
-            return(1);                              // still cross-stopped
+            return(TICK_CROSSSTOPPED);              // still cross-stopped
         }
     }
     if (llGetUnixTime() - gLastMsgTime > MAX_SECS_BETWEEN_MSGS)
     {   logrx(LOG_NOTE, "TICK","", gDistanceTraveled/1000.0); }          // send at least one message every 60 seconds
-    return(0);                              // not in trouble
+    return(TICK_NORMAL);                            // not in trouble
 }
 
 
