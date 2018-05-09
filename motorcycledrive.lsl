@@ -21,8 +21,6 @@ integer LIGHT_CONTROL_CH = 1102;    // light on/off
 integer SIT_TROUBLE_MAX = 50;         // in trouble if out of position this many
 float SPEED_STATIONARY = 0.05;      // 5cm/sec is "stopped"
 vector SIT_TARGET_POS = <-0.25,0.0,1.00>; // Sit target pos
-////vector SIT_TARGET_POS = <-0.05,0,0.05>; // Sit target pos
-////vector SIT_TARGET_POS = <0.25,0,0.42>; // Sit target pos
 vector SIT_TARGET_ROT = <0.0,0,0.0>;     // Sit target rotation (degrees)
 
 float MIN_SAFE_DOUBLE_REGION_CROSS_TIME = 2.0;      // min time between double region crosses at speed
@@ -31,45 +29,54 @@ float COAST_POWER = 2.0;                            // power to use when coastin
 
 float DOWNFORCE = -10.0;                             // was 2.0
 
+//  Inter-link messages within bike
+integer     DIR_STOP = 100;
+integer     DIR_START = 101;
+integer     DIR_NORM = 102;
+integer     DIR_LEFT = 103;
+integer     DIR_RIGHT = 104;
+
+integer     MSG_DEMO = 200;                         // will die when rider gets off
+integer     MSG_LOCKED = 201;                       // will only accept owner
+integer     MSG_UNLOCKED = 202;                     // will accept anyone
+
 float       BankPower=6000;
 float       ForwardPower; //Forward power
 ////list        ForwardPowerGears = [10,20,26,30,38,150];
-list        ForwardPowerGears = [5,10,20,40,60,80];
+list        ForwardPowerGears = [5,10,15,25,40,60,80];
 float       ReversePower = -14; //Reverse power
 float       TurnPower = 1500;  //  was 1000; //Turning power
 float       TurnSpeedAdjust = 0.7; //how much effect speed has on turning, higher numbers effect more. 0.0 to disable
 integer     Permission_Set = 0; // must initialize at startup
 integer     Need_Camera_Reset = FALSE;  // camera reset needed?
-integer     Back=FALSE;                 // going backwards
 
 string      SitText = "Drive"; //Text to show on pie menu
 
 string      IdleSound = "idle";                 // Sound to play when idling
 string      RunSound = "run";                   // Sound to play when the gas in pressed
 string      StartupSound = "starter";           // Sound to play when owner sits
+string      CurrentSound = "";                  // sound currently running, if any
+string      NextSound = "";                     // sound to run next
 //      Animation control
-string      DrivingAnim = "driving generic";    // Animation to play when owner sits
-
+string      DrivingAnim = "Bike_Ride01";        // Driver when riding
+string      IdleAnim = "Biker_Idle01";          // Driver when idle or off
+string      CurrentAnim = "";                   // animation currently running, if any
+string      NextAnim = "";                      // animation we want running
 //Other variables
 integer     NumGears;
 integer     Gear = 0;
 integer     NewSound;
 string      Sound;
-integer     CurDir;
-integer     LastDir;
-integer     Forward;
+integer     CurDir;                             // left, right, or norm
+integer     Forward;                            // +1 or -1
 vector      SpeedVec;
 vector      Linear;
 vector      Angular;
 integer     Active = FALSE;
 float       lowestslowmsg = HUGE;               // for minimizing SLOW log messages
 key         sitting;                            // the driver's UUID
+integer     LockStatus = MSG_DEMO;              // demo version unless overridden
 
-integer     DIR_STOP = 100;
-integer     DIR_START = 101;
-integer     DIR_NORM = 102;
-integer     DIR_LEFT = 103;
-integer     DIR_RIGHT = 104;
 
 integer TurnSpeedNum=1;
 list turn_speeds=[.15,.12,.10,.01];
@@ -170,18 +177,20 @@ startup()
     llLoopSound(IdleSound,1);
     llSetTimerEvent(TIMER_INTERVAL);
     CurDir = DIR_NORM;
-    LastDir = DIR_NORM;
+    Gear = 0;                                   // start in low gear
 }
 //  shutdown -- shut down bike
-shutdown()
+shutdown(integer release)
 {
     llSetTimerEvent(0.0);
     llStopAnimation(DrivingAnim);
     llStopSound();
     llSetStatus(STATUS_PHYSICS, FALSE);
+    Active = FALSE;
 
     llMessageLinked(LINK_ALL_CHILDREN , DIR_STOP, "", NULL_KEY);
-    llReleaseControls();
+    if (release)
+    {   llReleaseControls(); }
     logrx(LOG_NOTE,"SHUTDOWN", "Distance traveled (km)",gDistanceTraveled/1000.0); // last log message
 }
 
@@ -194,7 +203,7 @@ default
         TurnSpeedAdjust *= 0.01;
         ForwardPower = llList2Integer(ForwardPowerGears, 0);
         NumGears = llGetListLength(ForwardPowerGears);
-        Active = 0;
+        Active = FALSE;
         llSetSitText(SitText);
         llCollisionSound("", 0.0);
         llSitTarget(SIT_TARGET_POS, llEuler2Rot(SIT_TARGET_ROT*DEG_TO_RAD));    // driver, not passenger
@@ -207,7 +216,6 @@ state Ground
 {
     state_entry()
     {   llStopSound();
-        llSay (11,"landed");
         if(!Active)
         {
             llSetStatus(STATUS_PHYSICS, FALSE);
@@ -215,7 +223,6 @@ state Ground
             llUnSit(llAvatarOnSitTarget());
         }else{
             llMessageLinked(LINK_ALL_CHILDREN, DIR_START, "", NULL_KEY);
-            llMessageLinked(LINK_ALL_CHILDREN, DIR_NORM, "", NULL_KEY);
             NewSound = 1;
             Sound = IdleSound;
             Linear = <0,0,DOWNFORCE>;
@@ -229,25 +236,53 @@ state Ground
         llResetScript();
     }
     
+    //  Message from lock/unlock dialog.
+    //  If we don't get a message from the lock/unlock dialog at startup, the bike is in demo
+    //  mode and will die when the rider gets off.  So removing the owner menu script makes a bike a demo.
+    link_message(integer sender_num, integer num, string msg, key id)
+    {   if (num == MSG_LOCKED || num == MSG_UNLOCKED)       // if from lock script
+        {   LockStatus = num;                               // set lock status
+            if (num == MSG_UNLOCKED) 
+            { llWhisper(0,"Bike unlocked - anyone can ride."); }
+            else 
+            { llWhisper(0,"Bike locked - owner only."); }
+        }
+    }
     
     changed(integer change)
     {   
         if((change & CHANGED_LINK) == CHANGED_LINK)         // rider got on or off
         {   sitting = llAvatarOnSitTarget();                // this is the driver, not any passengers
             if((sitting != NULL_KEY) && !Active)            // driver got on
-            {
+            {   if ((LockStatus == MSG_LOCKED) && (sitting != llGetOwner())) // if owner user only
+                {   llShout(0,"Get your own bike! Buy one at 2RAW EXTREME");
+                    llUnSit(sitting);                       // eject non-owner
+                    return;
+                }
                 startup();                                  // start up bike               
-            } else if ((sitting == NULL_KEY) && !Active) {  // passenger got on first
-                llWhisper(0,"You're on the passenger seat!");
+            } else if ((sitting == NULL_KEY) && !Active) {  // no driver, not active
+                integer linknum;                            // count sitters just for message
+                integer primcount = llGetNumberOfPrims();   // do once before loop
+                for (linknum = 1; linknum <= primcount; linknum++)    // check all links for sitters
+                {   key avatar = llAvatarOnLinkSitTarget(linknum);
+                    if (avatar != NULL_KEY)                     // found a seated avatar
+                    {   llWhisper(0,"You're on the passenger seat!");
+                        return;
+                    }
+                }
                 return;                                     // wait until driver gets on                                    
             } else if((sitting == NULL_KEY) && Active)
             {
                 handlechanged(change);
-                shutdown();                 // shut down bike and release
-                Active = FALSE;
-                return;                     // we want Shutdown to be the last logged event
+                shutdown(TRUE);                             // shut down bike and release
+                if (LockStatus == MSG_DEMO)                 // if this was a demo
+                {   llSay(0,"Thanks for trying this demo bike. Buy one at 2RAW EXTREME!");
+                    llDie();                                // bike disappears
+                }
+                return;                                     // we want Shutdown to be the last logged event
             }
         }
+        if (change & CHANGED_REGION) { Need_Camera_Reset = TRUE; } // reset camera after region change settles
         handlechanged(change);                                          // handle
     }
     
@@ -259,7 +294,9 @@ state Ground
             Linear = <0,0,DOWNFORCE>;
             Angular = <0,0,0>;
             llStopAnimation("sit");
-            llStartAnimation(DrivingAnim);
+            NextAnim = IdleAnim;
+            CurrentAnim = IdleAnim;
+            llStartAnimation(IdleAnim);
             llTakeControls(CONTROL_FWD | CONTROL_BACK | CONTROL_DOWN | CONTROL_UP | CONTROL_RIGHT | CONTROL_LEFT | CONTROL_ROT_RIGHT | CONTROL_ROT_LEFT, TRUE, FALSE);
             set_camera_params();    // set up camera
             logrx(LOG_DEBUG, "PERMS", "Got permissions", 0.0);
@@ -268,31 +305,45 @@ state Ground
     
     control(key id, integer levels, integer edges)
     {   
-        Back=FALSE;
-        if (levels & CONTROL_BACK)Back=TRUE;
         Angular.x=0;
         Angular.z=0;
         SpeedVec = llGetVel() / llGetRot();
-        if((edges & levels & CONTROL_RIGHT)) // shift-right => upshift
-        {
-            if((Gear + 1) != NumGears)
+        if ((edges & levels & CONTROL_RIGHT)) // shift-right => upshift
+        {   if (!Active)                                        // if not running, start
+            {   llWhisper(0, "Engine on.");
+                startup();
+                return;
+            }
+            if((Gear + 1) < NumGears)
             {
                 ++Gear;
                 llWhisper(0, "Gear " + (string)(Gear + 1));
                 ForwardPower = llList2Float(ForwardPowerGears, Gear);
                 if(Linear.x > 0) Linear.x = ForwardPower;
             }
-        }else if((edges & levels & CONTROL_LEFT)) // shift-left => downshift
+        } else if ((edges & levels & CONTROL_LEFT)) // shift-left => downshift
         {
-            if((Gear - 1) != -1)
+            if (Gear > 0)
             {
                 --Gear;
                 llWhisper(0, "Gear " + (string)(Gear + 1));
                 ForwardPower = llList2Float(ForwardPowerGears, Gear);
                 if(Linear.x > 0) Linear.x = ForwardPower;
+            } else {                                            // downshift from gear 1 is a shutdown
+                float speed = llVecMag(llGetVel());             // speed, absolute
+                if (speed < TINY)                               // if stopped
+                {   llWhisper(0, "Engine off.");                // turning engine off
+                    shutdown(FALSE);                            // shut down bike
+                    return;
+                }
+                
             }
         }
-        if((edges & levels & CONTROL_FWD))
+        if (!Active & (edges & levels != 0))                    // any arrow key press while stopped
+        {   llWhisper(0,"Shift right arrow to start engine.");
+            return;
+        }
+        if ((edges & levels & CONTROL_FWD))
         {
             Linear.x += ForwardPower;
             NewSound = 1;
@@ -374,8 +425,6 @@ state Ground
             Angular.y = 0;
         }
         llSetVehicleVectorParam(VEHICLE_ANGULAR_MOTOR_DIRECTION,Angular);
-        if (Back) llMessageLinked(LINK_ALL_OTHERS,10,"back",NULL_KEY);
-        else llMessageLinked(LINK_ALL_OTHERS,10,"regular",NULL_KEY);
     }
         
     timer()                                         // every 100ms when running
@@ -384,18 +433,30 @@ state Ground
         //  Prevents runaway bike
         if (stat == TICK_FAULT)                     // region crossing failure
         {   llSetVelocity(<0,0,0>,TRUE);            // force stop
-            shutdown();                             // force shutdown
+            shutdown(TRUE);                         // force shutdown
             return;
         }
         if (stat == TICK_CROSSSTOPPED)              // if stopped at region crossing
         {   return;  }                              // still crossing, just wait
-        if (Need_Camera_Reset && (!ifnotperms(Permission_Set)))      // reset on first good tick after sim crossing
-        {   set_camera_params();    // reset camera to avoid jerks at sim crossings
-            //  We restart the driving animation after every sim crossing, in case
-            //  it was lost, which happens. This does not result
-            //  in the animation running more than once.
-            llStartAnimation(DrivingAnim); // reset driving anim
-        }
+        integer resetanim = FALSE;
+        if (!ifnotperms(Permission_Set))            // if safe to set animations
+        {   if (Need_Camera_Reset)      // reset on first good tick after sim crossing
+            {   set_camera_params();    // reset camera to avoid jerks at sim crossings
+                //  We restart the driving animation after every sim crossing, in case
+                //  it was lost, which happens. This does not result
+                //  in the animation running more than once.
+                resetanim = TRUE;                       // force animation reset
+            }
+            if (CurrentAnim != NextAnim || resetanim)                // set next animation if needed
+            {   if (CurrentAnim != "")
+                {   llStopAnimation(CurrentAnim);
+                    CurrentAnim = "";
+                }      
+                if (NextAnim != "")
+                {   llStartAnimation(NextAnim); }
+                CurrentAnim = NextAnim;
+            }
+        }    
         //  Speed control - slows down for double region crossings, but only if really close
         vector pos = llGetPos();
         pos.z = 0.0;                                // only care about XY
@@ -423,11 +484,12 @@ state Ground
             }
         }
         if(Angular != <0.0, 0.0, 0.0>) { llSetVehicleVectorParam(VEHICLE_ANGULAR_MOTOR_DIRECTION, Angular); }
-        if(CurDir != LastDir)
-        {
-            llMessageLinked(LINK_ALL_CHILDREN, CurDir, "", NULL_KEY);
-            LastDir = CurDir;
-        }
+        //  Set next animation
+        if (speed > TINY) 
+        {   NextAnim = DrivingAnim; } 
+        else 
+        {   NextAnim = IdleAnim; }
+
         if(NewSound)
         {
             llStopSound();

@@ -11,7 +11,7 @@
 //  Configuration
 //
 float       WheelDiameter = 0.30;                   // diameter of wheel
-float       TimerPeriod = 0.5;                      // better looking but higher overhead
+float       TimerPeriod = 0.3;                      // smaller values better looking but higher overhead
 float       MaxRate = 10.0;                         // faster than this you can't see it anyway
 float       MinAdjust = 0.2;                        // must change by at least this much (fraction)
 //          Message IDs from main script
@@ -28,13 +28,15 @@ float   gLastRate;                                  // previous rate
 
 float abs(float a) { if (a > 0.0) { return(a); }  else { return(-a); }}
 
+//  Default state - stand by
 default
 {
     state_entry()
     {
         llSetLocalRot(llEuler2Rot(<0, 0, 0.0>));
-        llTargetOmega(axis, 0.0, 1.0);
+        llTargetOmega(axis, 0.0, 1.0);              // stop wheel
         gLastRate = 0.0;
+        llSetTimerEvent(0.0);                       // stop timer
     }
     
     on_rez(integer param)
@@ -44,13 +46,24 @@ default
 
     //  Message from master script to tell us to start and stop.
     link_message(integer sender, integer num, string message, key id)
-    {   if(num == DIR_STOP) 
-        {   llResetScript(); }
-        else if(num == DIR_START)
-        {   llSetTimerEvent(TimerPeriod);   }                   
+    {  if(num == DIR_START)
+        {   state Run;   }                                  // bike has been turned on            
+    }
+}   
+
+state Run {                                                 // bike is running
+    
+    state_entry() {
+        llSetTimerEvent(TimerPeriod); 
     }
     
-    timer()                                 // once per 500ms when running
+    //  Message from master script to tell us to start and stop.
+    link_message(integer sender, integer num, string message, key id)
+    {   if(num == DIR_STOP)                                 // if stopping
+        {   state default; }                                // back to default state
+    }
+    
+    timer()                                                 // frequently when running
     {
         //  Compute speed in forward direction. Can be positive or negative.
         vector vehdir = <1.0,0.0,0.0>*llGetRootRotation();  // global direction of vehicle
@@ -60,7 +73,7 @@ default
         if (abs(rate) < 0.01) rate = 0.0;                   // close enough to stopped
         if (rate > MaxRate) rate = MaxRate;                 // bound
         if (rate < -MaxRate) rate = -MaxRate;
-        //  Update only if significant change
+        //  Update only if significant change or stopping
         float err = abs(gLastRate - rate);                  // error 
         if ((abs(gLastRate - rate) > MinAdjust*rate) || (gLastRate != 0.0 && rate == 0.0))
         {   llTargetOmega(axis, rate, 1.0);                 // spin wheel visually
