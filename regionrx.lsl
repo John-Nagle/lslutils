@@ -7,7 +7,7 @@
 //    Basic settings
 float TIMER_INTERVAL = 0.1;                 // check timer rate
 float MAX_CROSSING_TIME = 30.0;             // stuck if crossing takes more than this long
-float HOVER_START_TIME = 0.5;               // start hovering when this far in time from region cross
+float HOVER_START_TIME = 0.2;               // start hovering when this far in time from region cross 
 integer MAX_SECS_BETWEEN_MSGS = 60;         // message at least once this often
 //  Constants
 integer TICK_NORMAL = 0;                    // normal tick event
@@ -116,8 +116,7 @@ integer handlechanged(integer change)           // returns TRUE if any riders
         logrx(LOG_NOTE, "CROSSSPEED", "", speed);
         if (llGetStatus(STATUS_PHYSICS))        // if physics on
         {   if (crossVel == <0,0,0>)            // if no saved pre-hover velocity (very fast driving)
-            {   crossVel = llGetVel();    //// }     // restore this velocity after crossing
-                llOwnerSay("Using vel from changed event: " + (string) crossVel.z); } // ***TEMP***
+            {   crossVel = llGetVel();  }       // restore this velocity after crossing
             crossAngularVelocity = <0,0,0>;     // there is no llGetAngularVelocity();
             llSetStatus(STATUS_PHYSICS, FALSE); // forcibly stop object
             crossFault = FALSE;                 // no fault yet
@@ -151,7 +150,7 @@ starthover()
         llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 0.1);       // start hovering
         llSetVehicleFloatParam(VEHICLE_HOVER_EFFICIENCY, 1.0);      // 
         crossHover = TRUE;                      //
-        llOwnerSay("Start hovering. Z vel: " + (string)crossVel.z);   // ***TEMP***
+        llOwnerSay("Start hovering.");   // ***TEMP***
     }
 }
 //
@@ -204,7 +203,7 @@ integer handletimer()                               // returns 0 if normal, 1 if
         {   llSetStatus(STATUS_PHYSICS, TRUE);      // physics back on
             vector CROSS_DOWN_VEL = <0,0,-1.0>;     // extra down velocity ***TEMP***
             llSetVelocity(crossVel + CROSS_DOWN_VEL, FALSE);         // use velocity from before
-            llOwnerSay("End crossing. Z vel: " + (string)crossVel.z); // ***TEMP***
+            ////llOwnerSay("End crossing. Z vel: " + (string)crossVel.z); // ***TEMP***
             crossVel = <0,0,0>;                     // consume velocity - do not use twice
             llSetAngularVelocity(crossAngularVelocity, FALSE);  // and angular velocity
             crossStopped = FALSE;                   // no longer stopped
