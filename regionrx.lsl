@@ -115,8 +115,9 @@ integer handlechanged(integer change)           // returns TRUE if any riders
         gRegionCrossCount++;                    // tally
         logrx(LOG_NOTE, "CROSSSPEED", "", speed);
         if (llGetStatus(STATUS_PHYSICS))        // if physics on
-        {   if (crossVel == <0,0,0>)            // if no saved pre-hover velocity
-            {   crossVel = llGetVel();    }     // restore this velocity after crossing
+        {   if (crossVel == <0,0,0>)            // if no saved pre-hover velocity (very fast driving)
+            {   crossVel = llGetVel();    //// }     // restore this velocity after crossing
+                llOwnerSay("Using vel from changed event: " + (string) crossVel.z); } // ***TEMP***
             crossAngularVelocity = <0,0,0>;     // there is no llGetAngularVelocity();
             llSetStatus(STATUS_PHYSICS, FALSE); // forcibly stop object
             crossFault = FALSE;                 // no fault yet
@@ -150,7 +151,7 @@ starthover()
         llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 0.1);       // start hovering
         llSetVehicleFloatParam(VEHICLE_HOVER_EFFICIENCY, 1.0);      // 
         crossHover = TRUE;                      //
-        llOwnerSay("Start hovering");   // ***TEMP***
+        llOwnerSay("Start hovering. Z vel: " + (string)crossVel.z);   // ***TEMP***
     }
 }
 //
@@ -160,9 +161,9 @@ endhover()
 {
     if (crossHover)
     {   llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT | VEHICLE_FLAG_HOVER_UP_ONLY);     // stop hovering
-        llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 999.0);     // stop hovering
+        llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 999.0);     // stop hovering (> 300 stops feature)
         crossHover = FALSE;
-        llOwnerSay("Stop hovering"); // ***TEMP***
+        llOwnerSay("Stop hovering."); // ***TEMP***
     }
 }
 //
@@ -201,7 +202,9 @@ integer handletimer()                               // returns 0 if normal, 1 if
         }
         if (allseated)                              // if all avatars are back in place
         {   llSetStatus(STATUS_PHYSICS, TRUE);      // physics back on
-            llSetVelocity(crossVel, FALSE);         // use velocity from before
+            vector CROSS_DOWN_VEL = <0,0,-1.0>;     // extra down velocity ***TEMP***
+            llSetVelocity(crossVel + CROSS_DOWN_VEL, FALSE);         // use velocity from before
+            llOwnerSay("End crossing. Z vel: " + (string)crossVel.z); // ***TEMP***
             crossVel = <0,0,0>;                     // consume velocity - do not use twice
             llSetAngularVelocity(crossAngularVelocity, FALSE);  // and angular velocity
             crossStopped = FALSE;                   // no longer stopped
