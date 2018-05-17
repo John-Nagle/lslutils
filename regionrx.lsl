@@ -150,7 +150,7 @@ starthover()
         llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 0.1);       // start hovering
         llSetVehicleFloatParam(VEHICLE_HOVER_EFFICIENCY, 1.0);      // 
         crossHover = TRUE;                      //
-        llOwnerSay("Start hovering.");   // ***TEMP***
+        ////llOwnerSay("Start hovering.");   
     }
 }
 //
@@ -162,7 +162,7 @@ endhover()
     {   llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT | VEHICLE_FLAG_HOVER_UP_ONLY);     // stop hovering
         llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 999.0);     // stop hovering (> 300 stops feature)
         crossHover = FALSE;
-        llOwnerSay("Stop hovering."); // ***TEMP***
+        ////llOwnerSay("Stop hovering."); 
     }
 }
 //
