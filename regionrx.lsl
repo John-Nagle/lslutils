@@ -7,7 +7,7 @@
 //    Basic settings
 float TIMER_INTERVAL = 0.1;                 // check timer rate
 float MAX_CROSSING_TIME = 30.0;             // stuck if crossing takes more than this long
-float HOVER_START_TIME = 0.2;               // start hovering when this far in time from region cross
+float HOVER_START_TIME = 0.5;               // start hovering when this far in time from region cross
 integer MAX_SECS_BETWEEN_MSGS = 60;         // message at least once this often
 //  Constants
 integer TICK_NORMAL = 0;                    // normal tick event
@@ -154,14 +154,19 @@ integer handletimer()                               // returns 0 if normal, 1 if
     if (outsideregion(pos) || outsideregion(pos + vel*HOVER_START_TIME)) // if outside region or about to leave
     {   if (!crossHover)                            // if not hovering
         {   llSetVehicleFloatParam(VEHICLE_HOVER_HEIGHT, crossHoverHeight);     // anti-sink
-            llSetVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT);  
-            crossHover = TRUE;                      // 
+            llSetVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT | VEHICLE_FLAG_HOVER_UP_ONLY);  
+            llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 0.1);       // start hovering
+            llSetVehicleFloatParam(VEHICLE_HOVER_EFFICIENCY, 1.0);      // ***TEMP*** do at startup
+            crossHover = TRUE;                      //
+            llOwnerSay("Start hovering");   // ***TEMP***
         }
     } else {
         crossHoverHeight = pos.z;
         if (crossHover)
-        {   llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT);
+        {   llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT | VEHICLE_FLAG_HOVER_UP_ONLY);     // stop hovering
+            llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 999.0);     // stop hovering
             crossHover = FALSE;
+            llOwnerSay("Stop hovering"); // ***TEMP***
         }
     }
  
