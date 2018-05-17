@@ -7,6 +7,7 @@
 //    Basic settings
 float TIMER_INTERVAL = 0.1;                 // check timer rate
 float MAX_CROSSING_TIME = 30.0;             // stuck if crossing takes more than this long
+float HOVER_START_TIME = 0.2;               // start hovering when this far in time from region cross
 integer MAX_SECS_BETWEEN_MSGS = 60;         // message at least once this often
 //  Constants
 integer TICK_NORMAL = 0;                    // normal tick event
@@ -148,7 +149,9 @@ integer handletimer()                               // returns 0 if normal, 1 if
     
     //  Hover control -- hover when outside region and unsupported.
     //  Should help on flat terrain. Too dumb for region crossings on hills.
-    if (outsideregion(pos))                         // if outside region
+    vector vel = llGetVel();                        // velocity
+    vel.z = 0.0;
+    if (outsideregion(pos) || outsideregion(pos + vel*HOVER_START_TIME)) // if outside region or about to leave
     {   if (!crossHover)                            // if not hovering
         {   llSetVehicleFloatParam(VEHICLE_HOVER_HEIGHT, crossHoverHeight);     // anti-sink
             llSetVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT);  
