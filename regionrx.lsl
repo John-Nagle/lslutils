@@ -28,7 +28,7 @@ list LOG_SEVERITY_NAMES = ["DEBUG", "NOTE", "WARNING", "ERROR", "FAULT", "FATAL"
 //
 //  Status during region crossing
 integer     crossStopped = FALSE;
-vector      crossVel;
+vector      crossVel = <0,0,0>;             // velocity before region crossing, to be restored later
 vector      crossAngularVelocity = <0,0,0>; // always zero for now
 float       crossStartTime;                 // starts at changed event, ends when avatar in place
 integer     crossFault = FALSE;             // no fault yet
@@ -74,6 +74,7 @@ initregionrx(integer loglevel)              // initialization - call at vehicle 
     gDistanceTraveled = 0.0;
     crossFault = FALSE;                     // no crossing fault
     crossStopped = FALSE;                   // not crossing
+    crossVel = <0,0,0>;                     // stationary
     crossHover = TRUE;                      // assuming hovering so we will turn hover off
                                             // trip ID is a random ID to connect messages
     gTripId = llSHA1String((string)llFrand(1.0) + (string)llGetOwner() + (string)llGetPos());
@@ -114,7 +115,8 @@ integer handlechanged(integer change)           // returns TRUE if any riders
         gRegionCrossCount++;                    // tally
         logrx(LOG_NOTE, "CROSSSPEED", "", speed);
         if (llGetStatus(STATUS_PHYSICS))        // if physics on
-        {   crossVel = llGetVel();              // save velocity
+        {   if (crossVel == <0,0,0>)            // if no saved pre-hover velocity
+            {   crossVel = llGetVel();    }     // restore this velocity after crossing
             crossAngularVelocity = <0,0,0>;     // there is no llGetAngularVelocity();
             llSetStatus(STATUS_PHYSICS, FALSE); // forcibly stop object
             crossFault = FALSE;                 // no fault yet
@@ -136,6 +138,34 @@ integer handlechanged(integer change)           // returns TRUE if any riders
 }
 
 //
+//  starthover --- start hovering over region crossing.  Internal
+//
+//  This prevents sinking or falling through unsupported region crossings.
+//
+starthover()
+{
+    if (!crossHover)                            // if not hovering
+    {   llSetVehicleFloatParam(VEHICLE_HOVER_HEIGHT, crossHoverHeight);     // anti-sink
+        llSetVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT | VEHICLE_FLAG_HOVER_UP_ONLY);  
+        llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 0.1);       // start hovering
+        llSetVehicleFloatParam(VEHICLE_HOVER_EFFICIENCY, 1.0);      // 
+        crossHover = TRUE;                      //
+        llOwnerSay("Start hovering");   // ***TEMP***
+    }
+}
+//
+//  endover  -- internal
+//
+endhover()
+{
+    if (crossHover)
+    {   llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT | VEHICLE_FLAG_HOVER_UP_ONLY);     // stop hovering
+        llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 999.0);     // stop hovering
+        crossHover = FALSE;
+        llOwnerSay("Stop hovering"); // ***TEMP***
+    }
+}
+//
 //  handletimer  --  call this on every timer tick
 //
 integer handletimer()                               // returns 0 if normal, 1 if cross-stopped, 2 if fault
@@ -149,24 +179,14 @@ integer handletimer()                               // returns 0 if normal, 1 if
     
     //  Hover control -- hover when outside region and unsupported.
     //  Should help on flat terrain. Too dumb for region crossings on hills.
-    vector vel = llGetVel();                        // velocity
-    vel.z = 0.0;
-    if (outsideregion(pos) || outsideregion(pos + vel*HOVER_START_TIME)) // if outside region or about to leave
-    {   if (!crossHover)                            // if not hovering
-        {   llSetVehicleFloatParam(VEHICLE_HOVER_HEIGHT, crossHoverHeight);     // anti-sink
-            llSetVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT | VEHICLE_FLAG_HOVER_UP_ONLY);  
-            llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 0.1);       // start hovering
-            llSetVehicleFloatParam(VEHICLE_HOVER_EFFICIENCY, 1.0);      // 
-            crossHover = TRUE;                      //
-            llOwnerSay("Start hovering");   // ***TEMP***
-        }
-    } else {
-        crossHoverHeight = pos.z;
-        if (crossHover)
-        {   llRemoveVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT | VEHICLE_FLAG_HOVER_UP_ONLY);     // stop hovering
-            llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 999.0);     // stop hovering
-            crossHover = FALSE;
-            llOwnerSay("Stop hovering"); // ***TEMP***
+    if (!crossStopped)                              // don't mess with hovering if crossing-stopped
+    {   vector vel = llGetVel();                    // velocity
+        if (outsideregion(pos) || outsideregion(pos + vel*HOVER_START_TIME)) // if outside region or about to leave
+        {   starthover();                           // start hovering  
+        } else {
+            crossHoverHeight = pos.z;               // save last height outside hover region
+            crossVel = vel;                         // restore this velocity after crossing
+            endhover();                             // stop hovering if hovering
         }
     }
  
@@ -182,6 +202,7 @@ integer handletimer()                               // returns 0 if normal, 1 if
         if (allseated)                              // if all avatars are back in place
         {   llSetStatus(STATUS_PHYSICS, TRUE);      // physics back on
             llSetVelocity(crossVel, FALSE);         // use velocity from before
+            crossVel = <0,0,0>;                     // consume velocity - do not use twice
             llSetAngularVelocity(crossAngularVelocity, FALSE);  // and angular velocity
             crossStopped = FALSE;                   // no longer stopped
             float crosstime = llGetTime() - crossStartTime;
