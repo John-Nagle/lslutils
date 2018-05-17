@@ -156,7 +156,7 @@ integer handletimer()                               // returns 0 if normal, 1 if
         {   llSetVehicleFloatParam(VEHICLE_HOVER_HEIGHT, crossHoverHeight);     // anti-sink
             llSetVehicleFlags(VEHICLE_FLAG_HOVER_GLOBAL_HEIGHT | VEHICLE_FLAG_HOVER_UP_ONLY);  
             llSetVehicleFloatParam(VEHICLE_HOVER_TIMESCALE, 0.1);       // start hovering
-            llSetVehicleFloatParam(VEHICLE_HOVER_EFFICIENCY, 1.0);      // ***TEMP*** do at startup
+            llSetVehicleFloatParam(VEHICLE_HOVER_EFFICIENCY, 1.0);      // 
             crossHover = TRUE;                      //
             llOwnerSay("Start hovering");   // ***TEMP***
         }
