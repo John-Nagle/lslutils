@@ -44,7 +44,7 @@ float       BankPower=6000;
 float       ForwardPower; //Forward power
 ////list        ForwardPowerGears = [10,20,26,30,38,150];
 list        ForwardPowerGears = [5,10,15,25,40,60,80];
-float       ReversePower = -14; //Reverse power
+float       ReversePower = -5; //Reverse power, same as first gear, but in reverse
 float       TurnPower = 1500;  //  was 1000; //Turning power
 float       TurnSpeedAdjust = 0.7; //how much effect speed has on turning, higher numbers effect more. 0.0 to disable
 integer     Permission_Set = 0; // must initialize at startup
@@ -178,6 +178,10 @@ startup()
     llSetTimerEvent(TIMER_INTERVAL);
     CurDir = DIR_NORM;
     Gear = 0;                                   // start in low gear
+    ForwardPower = llList2Float(ForwardPowerGears, Gear);
+    Linear.x = 0;
+    Linear.y = 0;
+
 }
 //  shutdown -- shut down bike
 shutdown(integer release)
@@ -304,11 +308,13 @@ state Ground
     }
     
     control(key id, integer levels, integer edges)
-    {   
+    {   ////llOwnerSay("Levels: " + (string) levels + "  Edges: " + (string) edges); // ***TEMP***
         Angular.x=0;
         Angular.z=0;
         SpeedVec = llGetVel() / llGetRot();
-        if ((edges & levels & CONTROL_RIGHT)) // shift-right => upshift
+        //  The way this is coded, engine control happens on edge events only.
+        //  Adjusting Linear power has to be symmetrical.
+        if ((edges & levels) & CONTROL_RIGHT)                   // shift-right => upshift
         {   if (!Active)                                        // if not running, start
             {   llWhisper(0, "Engine on.");
                 startup();
@@ -321,7 +327,7 @@ state Ground
                 ForwardPower = llList2Float(ForwardPowerGears, Gear);
                 if(Linear.x > 0) Linear.x = ForwardPower;
             }
-        } else if ((edges & levels & CONTROL_LEFT)) // shift-left => downshift
+        } else if ((edges & levels) & CONTROL_LEFT) // shift-left => downshift
         {
             if (Gear > 0)
             {
@@ -343,20 +349,20 @@ state Ground
         {   llWhisper(0,"Shift right arrow to start engine.");
             return;
         }
-        if ((edges & levels & CONTROL_FWD))
+        if ((edges & levels) & CONTROL_FWD)
         {
             Linear.x += ForwardPower;
             NewSound = 1;
-        }else if((edges & ~levels & CONTROL_FWD))
-        {
+        }else if ((edges & ~levels) & CONTROL_FWD)
+        {   
             Linear.x -= ForwardPower;
             NewSound = 1;
         }
-        if((edges & levels & CONTROL_BACK))
+        if ((edges & levels) & CONTROL_BACK)
         {
             Linear.x += ReversePower;
             NewSound = 1;
-        }else if((edges & ~levels & CONTROL_BACK))
+        } else if ((edges & ~levels) & CONTROL_BACK)
         {
             Linear.x -= ReversePower;
             NewSound = 1;
@@ -366,9 +372,9 @@ state Ground
             if(Linear.x) Sound = RunSound;
             else Sound = IdleSound;
         }
-        if(llFabs(SpeedVec.x) < 0.5)
+        if (llFabs(SpeedVec.x) < 0.5)
         {
-            if(levels & CONTROL_ROT_LEFT) CurDir = DIR_LEFT;
+            if (levels & CONTROL_ROT_LEFT) CurDir = DIR_LEFT;
             else if(levels & CONTROL_ROT_RIGHT) CurDir = DIR_RIGHT;
             else CurDir = DIR_NORM;
             Angular.z = 0.0;
@@ -381,12 +387,12 @@ state Ground
                 Forward = 1;
                 SpeedVec.x *= TurnSpeedAdjust;
             }
-            if(levels & CONTROL_ROT_LEFT)
+            if (levels & CONTROL_ROT_LEFT)
             {
                 CurDir = DIR_LEFT;
                 Angular.z = TurnPower ;
                 Angular.x=-BankPower;
-            }else if((edges & ~levels & CONTROL_ROT_LEFT))
+            }else if ((edges & ~levels) & CONTROL_ROT_LEFT)
             {
                 CurDir = DIR_NORM;
                 Angular.z = 0;
@@ -397,7 +403,7 @@ state Ground
                 CurDir = DIR_RIGHT;
                 Angular.z = -TurnPower;
                 Angular.x =BankPower;
-            }else if((edges & ~levels & CONTROL_ROT_RIGHT))
+            }else if ((edges & ~levels) & CONTROL_ROT_RIGHT)
             {
                 CurDir = DIR_NORM;
                 Angular.z = 0;
@@ -405,7 +411,7 @@ state Ground
             }
         }
          
-                 if(levels & (CONTROL_ROT_RIGHT))
+        if(levels & (CONTROL_ROT_RIGHT))
         {
             Angular.z -= TurnPower;
             Angular.x=BankPower;
