@@ -41,6 +41,7 @@ integer     gLogSerial = 0;                 // log serial number
 integer     gTimerTick = 0;                 // number of timer ticks
 float       gDistanceTraveled = 0.0;        // distance traveled
 vector      gPrevPos = <0,0,0>;             // previous position
+vector      gLastSafePos = <0,0,0>;         // last place everything was going well
 integer     gRegionCrossCount = 0;          // number of regions crossed
 string      gTripId = "???";                // random trip ID, for matching log messages
 integer     gLastMsgTime = 0;               // time last message was sent
@@ -71,6 +72,7 @@ initregionrx(integer loglevel)              // initialization - call at vehicle 
     vector pos = llGetPos();                // get starting position
     gPrevPos = pos + llGetRegionCorner();   // global pos
     gPrevPos.z = 0.0;                       // only care about XY
+    gLastSafePos = pos;                     // last safe position, region coords
     gDistanceTraveled = 0.0;
     crossFault = FALSE;                     // no crossing fault
     crossStopped = FALSE;                   // not crossing
@@ -113,6 +115,7 @@ integer handlechanged(integer change)           // returns TRUE if any riders
 {   if (change & CHANGED_REGION)                // if in new region
     {   float speed = llVecMag(llGetVel());     // get velocity
         gRegionCrossCount++;                    // tally
+        gLastSafePos = llGetPos();              // position in new region
         logrx(LOG_NOTE, "CROSSSPEED", "", speed);
         if (llGetStatus(STATUS_PHYSICS))        // if physics on
         {   if (crossVel == <0,0,0>)            // if no saved pre-hover velocity (very fast driving)
@@ -187,6 +190,20 @@ integer handletimer()                               // returns 0 if normal, 1 if
             crossHoverHeight = pos.z;               // save last height outside hover region
             crossVel = vel;                         // restore this velocity after crossing
             endhover();                             // stop hovering if hovering
+        }
+        //  Ban line / object not allowed to enter region recovery.  
+        //  Turns physics off, moves a short distance, turns physics back on.
+        if (!crossHover)                            // if not in cross stop or hover, situation is normal
+        {   integer physicson = llGetStatus(STATUS_PHYSICS);    // is physics on, as it should be?
+            if (!physicson)                         // physics is not on. Probably hit a ban line
+            {   float movemag = llVecMag(pos - gLastSafePos);
+                logrx(LOG_WARN, "BANLINE", "Hit ban line. Stopping. Back out.", movemag);   // note hit ban line
+                llSetPos(gLastSafePos);             // move to safe position
+                llSleep(0.5);                       // wait for move
+                llSetStatus(STATUS_PHYSICS, TRUE);  // turn physics back on
+            } else {
+                gLastSafePos = pos;
+            }
         }
     }
  
