@@ -46,5 +46,13 @@ Makes a vehicle wheel rotate as the vehicle moves. Just set the wheel diameter a
 and it handles everything else.  Needs to be sent DIR_START and DIR_STOP link messages
 to turn it on and off. Don't leave it running when the vehicle is parked as this will waste sim time.
 
+# travelbelt.lsl
+
+Moving sidewalk. The "belt" moves forward slowly, then jerks back. An avatar standing on it will move
+forward smoothly.
+The texture of the belt should have a texture repeat of 1 meter in the movement direction, so that
+the jerk back will be invisible. When idle, the belt switches from keyframed motion to a texture
+animation, to eliminate idle overhead.
+
 ## Status
 Production
