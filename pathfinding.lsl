@@ -212,10 +212,10 @@ pathActionRestart()
 //
 integer pathStallCheck()
 {
-    if (gPathPathmode == PATHMODE_OFF) { return(FALSE); } // idle, cannot stall
+    if (gPathPathmode == PATHMODE_OFF) { return(PATHSTALL_NONE); } // idle, cannot stall
     if (gPathPathmode == PATHMODE_WANDER 
     || gPathPathmode == PATHMODE_EVADE 
-    || gPathPathmode == PATHMODE_FLEE_FROM) { return(FALSE); }  // no meaningful completion criterion 
+    || gPathPathmode == PATHMODE_FLEE_FROM) { return(PATHSTALL_NONE); }  // no meaningful completion criterion 
     //  Stall timeout
     integer now = llGetUnixTime();                  // UNIX time since epoch, sects
     if (now - gPathRequestStartTime > PATH_STALL_TIME)// if totally stalled
