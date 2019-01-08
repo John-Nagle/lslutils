@@ -175,7 +175,6 @@ pathActionStart(integer pathmode)
 {
     gPathPathmode = pathmode;
     pathMsg(PATH_MSG_INFO, "Starting pathfinding.");
-    llOwnerSay("Key: " + (string)gPathTarget);  // ***TEMP**
     gPathRequestStartTime = llGetUnixTime();                    // start time of path operation
     pathActionRestart();                                        // start the task
 }
@@ -214,6 +213,9 @@ pathActionRestart()
 integer pathStallCheck()
 {
     if (gPathPathmode == PATHMODE_OFF) { return(FALSE); } // idle, cannot stall
+    if (gPathPathmode == PATHMODE_WANDER 
+    || gPathPathmode == PATHMODE_EVADE 
+    || gPathPathmode == PATHMODE_FLEE_FROM) { return(FALSE); }  // no meaningful completion criterion 
     //  Stall timeout
     integer now = llGetUnixTime();                  // UNIX time since epoch, sects
     if (now - gPathRequestStartTime > PATH_STALL_TIME)// if totally stalled
