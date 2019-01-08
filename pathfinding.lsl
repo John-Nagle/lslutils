@@ -167,7 +167,8 @@ pathMsg(integer level, string msg)                              // print debug m
 
 pathStop()
 {
-    // ***MORE***
+    llExecCharacterCmd(CHARACTER_CMD_STOP,[]);                  // stop whatever is going oin
+    gPathPathmode = PATHMODE_OFF;                               // not pathfinding
 }
 
 pathActionStart(integer pathmode)
@@ -263,7 +264,6 @@ integer pathAtGoal()                                // are we at the goal?
 //
 pathUnstick()
 {
-{
     pathMsg(PATH_MSG_WARN,"Attempting recovery - wandering briefly.");
     vector pos = llGetPos();
     llWanderWithin(pos, <2.0, 2.0, 1.0>,[]);    // move randomly to get unstuck
@@ -271,7 +271,7 @@ pathUnstick()
     llExecCharacterCmd(CHARACTER_CMD_STOP, []);
     llSleep(1.0);
     if (llVecMag(llGetPos() - pos) < 0.01) // if character did not move
-    {   llOwnerSay("Wandering recovery did not work.  Trying forced move.");
+    {   pathMsg(PATH_MSG_WARN,"Wandering recovery did not work.  Trying forced move.");
         pos.x = pos.x + 0.5;                // ***NEEDS TO BE SAFER ABOUT OBSTACLES***
         pos.y = pos.y + 0.5;
         llSetPos(pos);
@@ -279,8 +279,6 @@ pathUnstick()
         {   pathMsg(PATH_MSG_ERROR,"Second recovery did not work. Help.");
         }
     }   
-}
-    // ***MORE***
 }
 
 //  
