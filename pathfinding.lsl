@@ -72,7 +72,7 @@ float gPathTolerance;                                       // how close to end 
                                                             // other state
 integer gPathRequestStartTime;                              // UNIX time path operation started
 integer gPathActionStartTime;                               // UNIX time path operation started
-integer gPathMsgLevel = PATH_MSG_WARN;                      // debug message level                                    
+integer gPathMsgLevel = PATH_MSG_INFO;                      // debug message level                                    
 
 //
 //  Call these functions instead of the corresponding LSL functions
@@ -175,6 +175,7 @@ pathActionStart(integer pathmode)
 {
     gPathPathmode = pathmode;
     pathMsg(PATH_MSG_INFO, "Starting pathfinding.");
+    llOwnerSay("Key: " + (string)gPathTarget);  // ***TEMP**
     gPathRequestStartTime = llGetUnixTime();                    // start time of path operation
     pathActionRestart();                                        // start the task
 }
@@ -304,7 +305,7 @@ path_update(integer status)
     {   pathMsg(PATH_MSG_INFO, "Misc. path update status report: " + (string)status);
         pathUpdateCallback(status);                             // tell user
         return;
-    } else if 
+    } 
     //  Not done, and not a misc. status report. Fail.
     pathMsg(PATH_MSG_WARNING, "Path operation failed, status " + (string) status);
     pathStop();
