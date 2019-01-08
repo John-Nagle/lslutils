@@ -67,7 +67,7 @@ key gPathTarget = NULL_KEY;                                 // target avatar, wh
 vector gPathGoal;                                           // goal when navigating
 vector gPathDist;                                           // distance when wandering
 list gPathOptions;                                          // options for all operations
-floag gPathTolerance;                                       // how close to end is success
+float gPathTolerance;                                       // how close to end is success
  
                                                             // other state
 integer gPathRequestStartTime;                              // UNIX time path operation started
@@ -119,11 +119,11 @@ pathEvade(key target, list options)
     pathActionStart(PATHMODE_EVADE);
 }
 
-pathFleeFrom(vector goal, vector dist, list options)
+pathFleeFrom(vector goal, float distmag, list options)
 {
     if (gPathPathmode != PATHMODE_OFF) { pathStop(); }      // stop whatever we are doing
     gPathGoal = goal;
-    gPathDist = dist;
+    gPathDist = <distmag,0,0>;                              // because we only use the magnitude
     gPathOptions = options;
     pathActionStart(PATHMODE_FLEE_FROM);                        // use common fn
 }
@@ -144,31 +144,38 @@ pathTick()
     integer status = pathStallCheck();                          // are we stuck?
     if (status == PATHSTALL_NONE) { return; }                   // no problem, keep going
     if (status == PU_GOAL_REACHED)                              // success
-    {   pathStatus(status);                                     // call user-defined completion fn
+    {   pathUpdateCallback(status);                             // call user-defined completion fn
         return;
     }
     if (status == PATHSTALL_STALLED)                            // total fail
     {   pathStop();                                             // stop operation in progress
-        pathStatus(status);                                     // call user defined completion function
+        pathUpdateCallback(status);                             // call user defined completion function
         return;
     }
     //  Possible recoverable problem
-    pathMsg(PATH_MSG_WARNING, "Retrying path operation");
+    pathMsg(PATH_MSG_WARN, "Retrying path operation");
     pathUnstick();                                              // try to unstick situation
     pathActionRestart();                                        // and restart
 }
 //
 //  Internal functions
 //
-pathMsg(integer level, string msg)
+pathMsg(integer level, string msg)                              // print debug message
 {   if (level > gPathMsgLevel) { return; }                      // ignore if suppressed
     llOwnerSay("Pathfinding: " + msg);                          // message
 }
+
+pathStop()
+{
+    // ***MORE***
+}
+
 pathActionStart(integer pathmode)
 {
     gPathPathmode = pathmode;
-    //  ***MORE*** get tolerance from options, set timer, start operation
+    pathMsg(PATH_MSG_INFO, "Starting pathfinding.");
     gPathRequestStartTime = llGetUnixTime();                    // start time of path operation
+    pathActionRestart();                                        // start the task
 }
 
 //
@@ -183,12 +190,13 @@ pathActionRestart()
     {   llPursue(gPathTarget, gPathOptions);
     } else if (gPathPathmode == PATHMODE_WANDER)
     {   llWanderWithin(gPathGoal, gPathDist, gPathOptions);
-    } else if {gPathPathmode == PATHMODE_EVADE)
-    {   llEvade(gPathTarget, gPathOptions); }
+    } else if (gPathPathmode == PATHMODE_EVADE)
+    {   llEvade(gPathTarget, gPathOptions); 
     } else if (gPathPathmode == PATHMODE_FLEE_FROM)
-    {   llFleeFrom(gPathGoal, gPathDist, gPathOptions);
+    {   llFleeFrom(gPathGoal, llVecMag(gPathDist), gPathOptions);
     } else {
-        pathMsg(PATH_MSG_ERROR, "pathActionRestart called incorrectly with pathmode = " + (string)pathmode);
+        pathMsg(PATH_MSG_ERROR, "pathActionRestart called incorrectly with pathmode = " 
+            + (string)gPathPathmode);
     }
 }
 
@@ -203,23 +211,23 @@ pathActionRestart()
 //
 integer pathStallCheck()
 {
-    if (gPathPathmode == PATHMODE_NONE) { return(FALSE); } // idle, cannot stall
+    if (gPathPathmode == PATHMODE_OFF) { return(FALSE); } // idle, cannot stall
     //  Stall timeout
     integer now = llGetUnixTime();                  // UNIX time since epoch, sects
-    if (now - gPathRequestStarTime > PATH_STALL_TIME)// if totally stalled
+    if (now - gPathRequestStartTime > PATH_STALL_TIME)// if totally stalled
     {   pathStop();                                 // stop whatever is going on
         pathMsg(PATH_MSG_ERROR, "Request stalled after " + (string)PATH_STALL_TIME + " seconds."); 
         return(PATHSTALL_STALLED);
     }
     //  At-goal check. Usually happens when start and goal are too close
-    if (pathAtGoal)
+    if (pathAtGoal())
     {   pathStop();                                 // request complete
         return(PU_GOAL_REACHED);                    // Happy ending
     }
 
     //  Zero velocity check
-    if (now - gPathActionStartTime) > PATH_START_TIME) // if enough time for pathfinding to engage
-    {   if llVecMag(llGetVel() < 0.01 && llVecMag(llGetOmega()) < 0.01)
+    if (now - gPathActionStartTime > PATH_START_TIME) // if enough time for pathfinding to engage
+    {   if (llVecMag(llGetVel()) < 0.01 && llVecMag(llGetOmega()) < 0.01)
         {   // Not moving
             pathMsg(PATH_MSG_WARN, "Not moving");
             return(PATHSTALL_RETRY);                // retry needed
@@ -233,17 +241,17 @@ integer pathAtGoal()                                // are we at the goal?
 {
     //  At-goal check. Usually happens when start and goal are too close
     if (gPathPathmode == PATHMODE_NAVIGATE_TO)          // only if Navigate To
-    {   if (llVecMag(llGetPos() - gPathGoal) < gGoalTolerance) // if arrived.
-        {   pathMsg(PATH_MSG_WARNING, "At Navigate To goal.");
+    {   if (llVecMag(llGetPos() - gPathGoal) < gPathTolerance) // if arrived.
+        {   pathMsg(PATH_MSG_WARN, "At Navigate To goal.");
             return(TRUE);                    // Happy ending
         }
     } else if (gPathPathmode == PATHMODE_PURSUE)
-    {   if (llVecMag(llGetPos - llList2Vector(llGetFoo(gPathTarget, [FOO_POS]))) <= gPathTolerance)
-        {   pathMsg(PATH_MSG_WARNING, "At Pursuit goal.");
+    {   if (llVecMag(llGetPos() - llList2Vector(llGetObjectDetails(gPathTarget, [OBJECT_POS]),0)) <= gPathTolerance)
+        {   pathMsg(PATH_MSG_WARN, "At Pursuit goal.");
             return(TRUE);                    // Happy ending
         }
     }
-    return(FALSE)                           // not at goal
+    return(FALSE);                           // not at goal
 }
 
 //
@@ -255,6 +263,23 @@ integer pathAtGoal()                                // are we at the goal?
 //
 pathUnstick()
 {
+{
+    pathMsg(PATH_MSG_WARN,"Attempting recovery - wandering briefly.");
+    vector pos = llGetPos();
+    llWanderWithin(pos, <2.0, 2.0, 1.0>,[]);    // move randomly to get unstuck
+    llSleep(2.0);
+    llExecCharacterCmd(CHARACTER_CMD_STOP, []);
+    llSleep(1.0);
+    if (llVecMag(llGetPos() - pos) < 0.01) // if character did not move
+    {   llOwnerSay("Wandering recovery did not work.  Trying forced move.");
+        pos.x = pos.x + 0.5;                // ***NEEDS TO BE SAFER ABOUT OBSTACLES***
+        pos.y = pos.y + 0.5;
+        llSetPos(pos);
+        if (llVecMag(llGetPos() - pos) < 0.01) // if character did not move
+        {   pathMsg(PATH_MSG_ERROR,"Second recovery did not work. Help.");
+        }
+    }   
+}
     // ***MORE***
 }
 
