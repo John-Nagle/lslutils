@@ -252,16 +252,20 @@ integer pathAtGoal()                                // are we at the goal?
     //  At-goal check. Usually happens when start and goal are too close
     if (gPathPathmode == PATHMODE_NAVIGATE_TO)          // only if Navigate To
     {   if (llVecMag(llGetPos() - gPathGoal) < gPathTolerance) // if arrived.
-        {   pathMsg(PATH_MSG_WARN, "At Navigate To goal.");
+        {   pathMsg(PATH_MSG_INFO, "At Navigate To goal.");
             return(TRUE);                    // Happy ending
+        } else {
+            return(FALSE);
         }
     } else if (gPathPathmode == PATHMODE_PURSUE)
     {   if (llVecMag(llGetPos() - llList2Vector(llGetObjectDetails(gPathTarget, [OBJECT_POS]),0)) <= gPathTolerance)
-        {   pathMsg(PATH_MSG_WARN, "At Pursuit goal.");
-            return(TRUE);                    // Happy ending
+        {   pathMsg(PATH_MSG_INFO, "At Pursuit goal.");
+            return(TRUE);                       // Happy ending
+        } else {
+            return(FALSE);                      // not at goal
         }
     }
-    return(FALSE);                           // not at goal
+    return(TRUE);                               // not meaningful for this operation
 }
 
 //
@@ -310,9 +314,12 @@ pathUpdate(integer status, list reserved)
     {   //  Pathfinding system thinks goal reached. 
         if (pathAtGoal()) 
         {   pathStop();
-            pathUpdateCallback(PU_GOAL_REACHED);                // tell user
+            pathUpdateCallback(PU_GOAL_REACHED);        // tell user
             return;                                     // done
-        }   
+        } else {                                        // need to retry, not there yet.
+            pathMsg(PATH_MSG_WARN, "Pathfinding reported success, but goal not reached. Retry.");
+            pathActionRestart();                        // try again
+        }
         //  Not at goal,  
     } else if (status == PU_EVADE_HIDDEN 
             || status == PU_EVADE_SPOTTED 
