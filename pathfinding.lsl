@@ -52,6 +52,7 @@ integer PATHMODE_FLEE_FROM = 5;
 integer PATHSTALL_NONE = -1;                                // not stalled, keep going
 integer PATHSTALL_RETRY = -2;                               // unstick and retry
 integer PATHSTALL_STALLED = -3;                             // failed, despite retries
+integer PATHSTALL_CANNOT_MOVE = -4;                         // can't move at all at current position
 //
 //  Error levels
 //
@@ -72,7 +73,7 @@ float gPathTolerance;                                       // how close to end 
                                                             // other state
 integer gPathRequestStartTime;                              // UNIX time path operation started
 integer gPathActionStartTime;                               // UNIX time path operation started
-integer gPathMsgLevel = PATH_MSG_INFO;                      // debug message level                                    
+integer gPathMsgLevel = PATH_MSG_ERROR;                     // debug message level (set to change level)
 
 //
 //  Call these functions instead of the corresponding LSL functions
@@ -154,8 +155,14 @@ pathTick()
     }
     //  Possible recoverable problem
     pathMsg(PATH_MSG_WARN, "Retrying path operation");
-    pathUnstick();                                              // try to unstick situation
-    pathActionRestart();                                        // and restart
+    integer success = pathUnstick();                            // try to unstick situation
+    if (success)
+    {   pathActionRestart();                                    // and restart
+    } else {                                                    // unable to unstick
+        pathStop();                                             // fails
+        pathUpdateCallback(PATHSTALL_CANNOT_MOVE);              // we are stuck
+        return;
+    }
 }
 //
 //  Internal functions
@@ -232,8 +239,7 @@ integer pathStallCheck()
     //  Zero velocity check
     if (now - gPathActionStartTime > PATH_START_TIME) // if enough time for pathfinding to engage
     {   if (llVecMag(llGetVel()) < 0.01 && llVecMag(llGetOmega()) < 0.01)
-        {   // Not moving
-            pathMsg(PATH_MSG_WARN, "Not moving");
+        {   pathMsg(PATH_MSG_WARN, "Not moving");
             return(PATHSTALL_RETRY);                // retry needed
         }
     }
@@ -265,7 +271,7 @@ integer pathAtGoal()                                // are we at the goal?
 //      1. Wander a small amount.
 //      2. Do a small move with llPos.
 //
-pathUnstick()
+integer pathUnstick()
 {
     pathMsg(PATH_MSG_WARN,"Attempting recovery - wandering briefly.");
     vector pos = llGetPos();
@@ -277,19 +283,26 @@ pathUnstick()
     {   pathMsg(PATH_MSG_WARN,"Wandering recovery did not work.  Trying forced move.");
         pos.x = pos.x + 0.5;                // ***NEEDS TO BE SAFER ABOUT OBSTACLES***
         pos.y = pos.y + 0.5;
-        llSetPos(pos);
+        llSetPos(pos);                              // force a move
+        //  Try second wander. If it doesn't move, we're really stuck.
+        llWanderWithin(pos, <2.0, 2.0, 1.0>,[]);    // move randomly to get unstuck
+        llSleep(2.0);
+        llExecCharacterCmd(CHARACTER_CMD_STOP, []);
+        llSleep(1.0);
         if (llVecMag(llGetPos() - pos) < 0.01) // if character did not move
         {   pathMsg(PATH_MSG_ERROR,"Second recovery did not work. Help.");
+            return(FALSE);  // failed
         }
-    }   
+    }
+    return(TRUE);                               // unable to move at all
 }
 
 //  
 //  pathUpdate  -- Pathfinding system reports completion
 //
-path_update(integer status)
+pathUpdate(integer status, list reserved)
 {
-    if (gPathPathmode == PATHMODE_NONE)                 // idle, should not happen
+    if (gPathPathmode == PATHMODE_OFF)                  // idle, should not happen
     {   pathMsg(PATH_MSG_ERROR, "Unexpected path_update call, status " + (string)status);
         return;
     }
@@ -309,7 +322,41 @@ path_update(integer status)
         return;
     } 
     //  Not done, and not a misc. status report. Fail.
-    pathMsg(PATH_MSG_WARNING, "Path operation failed, status " + (string) status);
+    pathMsg(PATH_MSG_WARN, "Path operation failed, status " + (string) status);
     pathStop();
     pathUpdateCallback(status);                                         // tell user
+}
+//
+//  Useful utility functions. Optional.
+//
+//  pathErrMsg -- path error number to string.  Mostly for debug.
+//
+string pathErrMsg(integer patherr)
+{   list patherrspos =[
+    "Character is near current goal.",
+    "Character has reached the goal.",
+    "Character cannot navigate from the current location - e.g., the character is off the navmesh or too high above it.",
+    "Goal is not on the navmesh and cannot be reached.",
+    "Goal is no longer reachable for some reason - e.g., an obstacle blocks the path.",
+    "Target (for llPursue or llEvade) can no longer be tracked - e.g., it left the region or is an avatar that is now more than about 30m outside the region.",
+    "There's no good place for the character to go - e.g., it is patrolling and all the patrol points are now unreachable.",
+    "An llEvade character thinks it has hidden from its pursuer.",
+    "An llEvade character switches from hiding to running",
+    "A fatal error reported to a character when there is no navmesh for the region. This usually indicates a server failure and users should file a bug report and include the time and region in which they received this message.",
+    "Character entered a region with dynamic pathfinding disabled.",
+    "A character failed to enter a parcel because it is not allowed to enter, e.g. because the parcel is already full or because object entry was disabled after the navmesh was baked."];
+
+    list patherrsneg = [
+        "Error 0", 
+        "Retrying pathfinding", 
+        "Pathfinding stall timeout",
+        "Cannot move from current position"];
+        
+    if (patherr >= 0 && patherr < llGetListLength(patherrspos)) // positive numbers, defined by LL
+    {   return(llList2String(patherrspos,patherr));
+    } else if (-patherr < llGetListLength(patherrsneg))          // negative numbers, defined by us
+    {    return(llList2String(patherrsneg, -patherr)); 
+    } else {
+        return("Unknown path error " + (string) patherr);       // some bogus number
+    }
 }
