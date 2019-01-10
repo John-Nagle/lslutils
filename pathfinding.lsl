@@ -159,12 +159,12 @@ pathTick()
     integer status = pathStallCheck();                          // are we stuck?
     if (status == PATHSTALL_NONE) { return; }                   // no problem, keep going
     if (status == PU_GOAL_REACHED)                              // success
-    {   pathUpdateCallback(status);                             // call user-defined completion fn
+    {   pathUpdateCallback(status,[]);                          // call user-defined completion fn
         return;
     }
     if (status == PATHSTALL_STALLED || status == PATHSTALL_NOPROGRESS) // total fail
     {   pathStop();                                             // stop operation in progress
-        pathUpdateCallback(status);                             // call user defined completion function
+        pathUpdateCallback(status,[]);                          // call user defined completion function
         return;
     }
     //  Possible recoverable problem
@@ -174,7 +174,7 @@ pathTick()
     {   pathActionRestart();                                    // and restart
     } else {                                                    // unable to unstick
         pathStop();                                             // fails
-        pathUpdateCallback(PATHSTALL_CANNOT_MOVE);              // we are stuck
+        pathUpdateCallback(PATHSTALL_CANNOT_MOVE,[]);           // we are stuck
         return;
     }
 }
@@ -344,7 +344,7 @@ pathUpdate(integer status, list reserved)
     {   //  Pathfinding system thinks goal reached. 
         if (pathAtGoal()) 
         {   pathStop();
-            pathUpdateCallback(PU_GOAL_REACHED);        // tell user
+            pathUpdateCallback(PU_GOAL_REACHED,[]);        // tell user
             return;                                     // done
         } else {                                        // need to retry, not there yet.
             pathMsg(PATH_MSG_WARN, "Pathfinding reported success, but goal not reached. Retry.");
@@ -355,13 +355,13 @@ pathUpdate(integer status, list reserved)
             || status == PU_EVADE_SPOTTED 
             || status == PU_SLOWDOWN_DISTANCE_REACHED)
     {   pathMsg(PATH_MSG_INFO, "Misc. path update status report: " + (string)status);
-        pathUpdateCallback(status);                             // tell user
+        pathUpdateCallback(status,[]);                  // tell user
         return;
     } 
     //  Not done, and not a misc. status report. Fail.
     pathMsg(PATH_MSG_WARN, "Path operation failed, status " + (string) status);
     pathStop();
-    pathUpdateCallback(status);                                         // tell user
+    pathUpdateCallback(status,[]);                                         // tell user
 }
 //
 //  Useful utility functions. Optional.
