@@ -267,8 +267,8 @@ integer pathStallCheck()
     } else {
         if ((now - gPathLastGoodTime) > PATH_GOOD_MOVE_TIME) // not getting anywhere
         {   pathMsg(PATH_MSG_WARN, "Moving but not making progress.");
-            ////return(PATHSTALL_NOPROGRESS);           // fails
-            return(PATHSTALL_RETRY);                // try this again. This forces a replan.
+            return(PATHSTALL_NOPROGRESS);           // fails
+            ////return(PATHSTALL_RETRY);                // try this again. This forces a replan.
         }
     }
     return(PATHSTALL_NONE);                         // we are OK
