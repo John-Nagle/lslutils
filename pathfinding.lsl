@@ -1,13 +1,14 @@
 //
 //  Pathfinding library
 //
-//  IN PROGRESS - DO NOT USE YET
+//  ALPHA TEST version
 //
 //  Makes Second Life pathfinding work reliably.
 //
 //  Animats
 //  January, 2019
 //  License: GPL
+//  (c) 2019 John Nagle
 //
 //  Adds checking and retry, which is essential to getting anything done reliably.
 //
@@ -29,7 +30,16 @@
 //
 //  and call pathTick from a timer or sensor at least once every 2 seconds when pathfinding.
 //
-//  Retrying will happen when necessary.  
+//  Retrying will happen when necessary.
+//
+//  Call pathStop() to stop any operation in progress. It is not necessary to call pathStop before
+//  starting a new operation.
+//
+//  llNavigateTo and llPursue will always produce a callback to pathUpdateCallback when they are done or
+//  have failed to reach their goal; this package provides timeouts, retries, and checks for them
+// 
+//  llWander, llEvade, and llFleeFrom do not have timeouts, retries, or checks, because they
+//  have no well-defined goal. 
 //
 //
 //  Configuration
