@@ -47,6 +47,8 @@
 integer PATH_STALL_TIME = 120;                          // (secs) really stalled if greater than this
 integer PATH_START_TIME = 2;                            // (secs) allow this long for path operation to start
 float   PATH_GOAL_TOL = 3.0;                            // (m) how close to dest is success?
+float   PATH_GOOD_MOVE_DIST = 1.5;                      // (m) must move at least this far
+integer PATH_GOOD_MOVE_TIME = 5;                        // (secs) this often
 //
 //  Constants
 //
@@ -63,6 +65,7 @@ integer PATHSTALL_NONE = -1;                                // not stalled, keep
 integer PATHSTALL_RETRY = -2;                               // unstick and retry
 integer PATHSTALL_STALLED = -3;                             // failed, despite retries
 integer PATHSTALL_CANNOT_MOVE = -4;                         // can't move at all at current position
+integer PATHSTALL_NOPROGRESS = -5;                          // not making progress, fail
 //
 //  Error levels
 //
@@ -84,8 +87,9 @@ float gPathTolerance;                                       // how close to end 
 integer gPathRequestStartTime;                              // UNIX time path operation started
 integer gPathActionStartTime;                               // UNIX time path operation started
 integer gPathMsgLevel = PATH_MSG_ERROR;                     // debug message level (set to change level)
+vector gPathLastGoodPos;                                    // position of last good move
+integer gPathLastGoodTime;                                  // time of last good move
 
-//
 //  Call these functions instead of the corresponding LSL functions
 //
 pathNavigateTo(vector goal, list options)
@@ -158,7 +162,7 @@ pathTick()
     {   pathUpdateCallback(status);                             // call user-defined completion fn
         return;
     }
-    if (status == PATHSTALL_STALLED)                            // total fail
+    if (status == PATHSTALL_STALLED || status == PATHSTALL_NOPROGRESS) // total fail
     {   pathStop();                                             // stop operation in progress
         pathUpdateCallback(status);                             // call user defined completion function
         return;
@@ -202,6 +206,8 @@ pathActionStart(integer pathmode)
 pathActionRestart()
 {
     gPathActionStartTime = llGetUnixTime();                     // start timing
+    gPathLastGoodTime = gPathActionStartTime;                   // for progress detector
+    gPathLastGoodPos = llGetPos();
     if (gPathPathmode == PATHMODE_NAVIGATE_TO)                  // depending on operation in progress
     {   llNavigateTo(gPathGoal, gPathOptions);                  // restart using stored values
     } else if (gPathPathmode == PATHMODE_PURSUE)
@@ -235,6 +241,7 @@ integer pathStallCheck()
     || gPathPathmode == PATHMODE_FLEE_FROM) { return(PATHSTALL_NONE); }  // no meaningful completion criterion 
     //  Stall timeout
     integer now = llGetUnixTime();                  // UNIX time since epoch, sects
+    vector pos = llGetPos();
     if (now - gPathRequestStartTime > PATH_STALL_TIME)// if totally stalled
     {   pathStop();                                 // stop whatever is going on
         pathMsg(PATH_MSG_ERROR, "Request stalled after " + (string)PATH_STALL_TIME + " seconds."); 
@@ -253,7 +260,17 @@ integer pathStallCheck()
             return(PATHSTALL_RETRY);                // retry needed
         }
     }
-    //  ***MORE*** need check for dynamically stalled, moving but not making progress
+    //  Dynamically stalled, moving but not making progress. Usually means blocked by a new obstacle
+    if ((llVecMag(pos - gPathLastGoodPos)) > PATH_GOOD_MOVE_DIST)   // if making some progress
+    {   gPathLastGoodPos = pos;                     // we are good
+        gPathLastGoodTime = now;
+    } else {
+        if ((now - gPathLastGoodTime) > PATH_GOOD_MOVE_TIME) // not getting anywhere
+        {   pathMsg(PATH_MSG_WARN, "Moving but not making progress.");
+            ////return(PATHSTALL_NOPROGRESS);           // fails
+            return(PATHSTALL_RETRY);                // try this again. This forces a replan.
+        }
+    }
     return(PATHSTALL_NONE);                         // we are OK
 }
 
@@ -293,11 +310,14 @@ integer pathUnstick()
     llSleep(2.0);
     llExecCharacterCmd(CHARACTER_CMD_STOP, []);
     llSleep(1.0);
-    if (llVecMag(llGetPos() - pos) < 0.01) // if character did not move
+    vector newpos = llGetPos();
+    llOwnerSay("Unstick: pos was " + (string) pos + " and now is " + (string) newpos); // ***TEMP***
+    if (llVecMag(newpos - pos) < 0.001)             // if character did not move at all
     {   pathMsg(PATH_MSG_WARN,"Wandering recovery did not work.  Trying forced move.");
-        pos.x = pos.x + 0.5;                // ***NEEDS TO BE SAFER ABOUT OBSTACLES***
-        pos.y = pos.y + 0.5;
-        llSetPos(pos);                              // force a move
+        pos.x = pos.x + 0.25;                       // ***NEEDS TO BE SAFER ABOUT OBSTACLES***
+        pos.y = pos.y + 0.25;
+        llSetPos(pos);                              // force a move.
+        llSleep(2.0);                               // give physics time to settle if we collided
         //  Try second wander. If it doesn't move, we're really stuck.
         llWanderWithin(pos, <2.0, 2.0, 1.0>,[]);    // move randomly to get unstuck
         llSleep(2.0);
@@ -367,8 +387,9 @@ string pathErrMsg(integer patherr)
         "Error 0",                      // should not make it to user
         "No error",                     // should not make it to user
         "Retrying pathfinding", 
-        "Pathfinding stall timeout",
-        "Cannot move from current position"];
+        "Stall timeout",
+        "Cannot move from current position",
+        "Not making progress"];
         
     if (patherr >= 0 && patherr < llGetListLength(patherrspos)) // positive numbers, defined by LL
     {   return(llList2String(patherrspos,patherr));
