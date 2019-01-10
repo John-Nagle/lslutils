@@ -353,8 +353,9 @@ string pathErrMsg(integer patherr)
     "Character entered a region with dynamic pathfinding disabled.",
     "A character failed to enter a parcel because it is not allowed to enter, e.g. because the parcel is already full or because object entry was disabled after the navmesh was baked."];
 
-    list patherrsneg = [
-        "Error 0", 
+    list patherrsneg = [                // our additional errors
+        "Error 0",                      // should not make it to user
+        "No error",                     // should not make it to user
         "Retrying pathfinding", 
         "Pathfinding stall timeout",
         "Cannot move from current position"];
