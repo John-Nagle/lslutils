@@ -46,7 +46,7 @@
 //
 integer PATH_STALL_TIME = 120;                          // (secs) really stalled if greater than this
 integer PATH_START_TIME = 2;                            // (secs) allow this long for path operation to start
-float   PATH_GOAL_TOL = 3.0;                            // (m) how close to dest is success?
+float   PATH_GOAL_TOL = 2.0;                            // (m) how close to dest is success?
 float   PATH_GOOD_MOVE_DIST = 1.5;                      // (m) must move at least this far
 integer PATH_GOOD_MOVE_TIME = 5;                        // (secs) this often
 //
@@ -278,15 +278,17 @@ integer pathAtGoal()                                // are we at the goal?
 {
     //  At-goal check. Usually happens when start and goal are too close
     if (gPathPathmode == PATHMODE_NAVIGATE_TO)          // only if Navigate To
-    {   if (llVecMag(llGetPos() - gPathGoal) < gPathTolerance) // if arrived.
-        {   pathMsg(PATH_MSG_INFO, "At Navigate To goal.");
+    {   float dist = llVecMag(llGetPos() - gPathGoal);  // distance to target
+        if (dist <= gPathTolerance) // if arrived.
+        {   pathMsg(PATH_MSG_INFO, "At Navigate To goal, error distance: " + (string)dist);
             return(TRUE);                    // Happy ending
         } else {
             return(FALSE);
         }
     } else if (gPathPathmode == PATHMODE_PURSUE)
-    {   if (llVecMag(llGetPos() - llList2Vector(llGetObjectDetails(gPathTarget, [OBJECT_POS]),0)) <= gPathTolerance)
-        {   pathMsg(PATH_MSG_INFO, "At Pursuit goal.");
+    {   float dist = llVecMag(llGetPos() - llList2Vector(llGetObjectDetails(gPathTarget, [OBJECT_POS]),0));
+        if (dist <= gPathTolerance)
+        {   pathMsg(PATH_MSG_INFO, "At Pursuit goal, error distance: " + (string)dist);
             return(TRUE);                       // Happy ending
         } else {
             return(FALSE);                      // not at goal
