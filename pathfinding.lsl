@@ -439,18 +439,18 @@ integer pathNoObstacleBetween(vector targetpos, vector lookatpos)
     list path = llGetStaticPath(targetpos, lookatpos, OUR_CHARACTER_RADIUS, []);
     integer listlength = llGetListLength(path);  // last item is error code
     if (listlength < 1)
-    {   llOwnerSay("LSL INTERNAL ERROR: llGetStaticPath returned zero length list."); // broken
+    {   pathMsg(PATH_MSG_ERROR, "LSL INTERNAL ERROR: llGetStaticPath returned zero length list."); // broken
         return(FALSE);
     }
     integer status = llList2Integer(path,0);    // get status
     if (status != 0)
-    {   pathMsg(PATH_MSG_WARN, "Clear sightline check from "  
+    {   pathMsg(PATH_MSG_INFO, "Clear sightline check from "  
         + (string)targetpos + " to " + (string) lookatpos
         + " failed, status " + (string) status); 
         return(FALSE);  
     }
-    llOwnerSay("Clear sightline path has " + (string) (listlength-1) 
-        + " components: " + (string)path);  // ***TEMP***
+    pathMsg(PATH_MSG_INFO, "Clear sightline path has " + (string) (listlength-1) 
+        + " components: " + (string)path); 
     if (listlength <= 3) { return(TRUE); }
     //  Longer path, but points may be collinear. Length check.
     integer i;
@@ -458,7 +458,69 @@ integer pathNoObstacleBetween(vector targetpos, vector lookatpos)
     for (i=0; i<listlength-2; i++)      // sum length of path components
     {   total = total + llVecMag(llList2Vector(path,i) -llList2Vector(path,i+1)); } 
     float overall = llVecMag(llList2Vector(path,0) - llList2Vector(path, listlength-2));
-    llOwnerSay("Direct path length: " + (string)overall + " Total path length: " + (string)total); // ***TEMP***
+    pathMsg(MATH_MSG_INFO,"Direct path length: " + (string)overall + " Total path length: " + (string)total); // ***TEMP***
     if (total < (overall*1.1)) { return(TRUE); }    // if path almost straight, good
     return(FALSE);                      // no direct path available
+}
+
+float pathMin(float a, float b) { if (a<b) { return(a); } else { return(b); }} // usual min and max, avoiding name clashes
+float pathMax(float a, float b) { if (a>b) { return(a); } else { return(b); }}
+//
+//  pathGetBoundingBoxWorld -- get object bounding box in world coordinates
+//
+//  LSL gives us the bounding box in object coordinates. We have to rotate it
+//  and get the limits.  One vertex at a time.
+//
+list pathGetBoundingBoxWorld(key id)
+{
+    list info = llGetObjectDetails(id, [OBJECT_POS, OBJECT_ROT]) + llGetBoundingBox(id);
+    vector pos = llList2Vector(info, 0);            // position in world coords
+    rotation rot = llList2Rot(info, 1);             // rotation in world coords
+    integer ix; 
+    integer iy;
+    integer iz;
+    //  Convert each corner of the original bounding box to world coordinates.
+    vector mincorner;                               // bounding box in world coords
+    vector maxcorner;
+    integer first = TRUE;                           // first time through
+    for (ix=0; ix<2; ix++)                          // do all vertices of bounding box
+    {   vector vx = llList2Vector(info, ix+2);
+        for (iy=0; iy<2; iy++)
+        {   vector vy = llList2Vector(info, iy+2);
+            for (iz=0; iz<2; iz++)
+            {   vector vz = llList2Vector(info, iz+2);
+                vector pt = <vx.x, vy.y, vz.z>;     // one corner of the bounding box in obj coords
+                vector ptworld = pt * rot + pos;    // in world coords
+                if (first)
+                {   mincorner = ptworld;
+                    maxcorner = ptworld;
+                    first = FALSE;
+                }  else {
+                    mincorner = <pathMin(mincorner.x,ptworld.x), pathMin(mincorner.y, ptworld.y), pathMin(mincorner.z, ptworld.z)>;
+                    maxcorner = <pathMax(maxcorner.x,ptworld.x), pathMax(maxcorner.y, ptworld.y), pathMax(maxcorner.z, ptworld.z)>; 
+                }
+            }
+        }
+    }
+    return([mincorner, maxcorner]);                 // min and max corners, in world coordinates
+}
+//
+//  pathBoundingBoxOverlap -- true if bounding boxes overlap
+//
+integer pathBoundingBoxOverlap(key id0, key id1,  vector allowance)
+{   list bb0 = pathGetBoundingBoxWorld(id0);
+    list bb1 = pathGetBoundingBoxWorld(id1);
+    if (llGetListLength(bb0) != 2 || llGetListLength(bb1) != 2)
+    {   pathMsg(PATH_MSG_WARN, "Could not get bounding boxes.");
+        return(TRUE);                                   // treat as overlap
+    }
+    ////llOwnerSay("Bounding box check: " + (string)bb0 + "   " + (string)bb1);
+    vector bb0min = llList2Vector(bb0,0) + allowance;   // lower bound, plus allowance
+    vector bb0max = llList2Vector(bb0,1);               // upper bound
+    vector bb1min = llList2Vector(bb1,0) + allowance;   // lower bound, plus allowance
+    vector bb1max = llList2Vector(bb1,1);               // upper bound
+    if (bb0min.x > bb1max.x || bb1min.x > bb0max.x) { return(FALSE); } // no overlap
+    if (bb0min.y > bb1max.y || bb1min.y > bb0max.y) { return(FALSE); } // no overlap
+    if (bb0min.z > bb1max.z || bb1min.z > bb0max.z) { return(FALSE); } // no overlap
+    return(TRUE);                           // overlap
 }
