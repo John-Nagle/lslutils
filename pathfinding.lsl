@@ -66,6 +66,7 @@ integer PATHSTALL_RETRY = -2;                               // unstick and retry
 integer PATHSTALL_STALLED = -3;                             // failed, despite retries
 integer PATHSTALL_CANNOT_MOVE = -4;                         // can't move at all at current position
 integer PATHSTALL_NOPROGRESS = -5;                          // not making progress, fail
+integer PATHSTALL_UNSTICK = -6;                             // stuck, need to try an unstick
 //
 //  Error levels
 //
@@ -89,6 +90,7 @@ integer gPathActionStartTime;                               // UNIX time path op
 integer gPathMsgLevel = PATH_MSG_ERROR;                     // debug message level (set to change level)
 vector gPathLastGoodPos;                                    // position of last good move
 integer gPathLastGoodTime;                                  // time of last good move
+integer gPathRetries;                                       // retries after zero speed
 
 //  Call these functions instead of the corresponding LSL functions
 //
@@ -168,15 +170,18 @@ pathTick()
         return;
     }
     //  Possible recoverable problem
-    pathMsg(PATH_MSG_WARN, "Retrying path operation");
-    integer success = pathUnstick();                            // try to unstick situation
-    if (success)
-    {   pathActionRestart();                                    // and restart
-    } else {                                                    // unable to unstick
-        pathStop();                                             // fails
-        pathUpdateCallback(PATHSTALL_CANNOT_MOVE,[]);           // we are stuck
-        return;
+    if (status == PATHSTALL_UNSTICK)                            // if unstick needed
+    {
+        pathMsg(PATH_MSG_WARN, "Retrying path operation");
+        integer success = pathUnstick();                        // try to unstick situation
+        if (!success)
+        {   pathStop();                                         // fails
+            pathUpdateCallback(PATHSTALL_CANNOT_MOVE,[]);       // we are stuck
+            return;
+        }
     }
+    //  Recoverable error, try again.
+    pathActionRestart();         
 }
 //
 //  Internal functions
@@ -197,6 +202,7 @@ pathActionStart(integer pathmode)
     gPathPathmode = pathmode;
     pathMsg(PATH_MSG_INFO, "Starting pathfinding.");
     gPathRequestStartTime = llGetUnixTime();                    // start time of path operation
+    gPathRetries = 0;                                           // no retries yet
     pathActionRestart();                                        // start the task
 }
 
@@ -240,7 +246,7 @@ integer pathStallCheck()
     || gPathPathmode == PATHMODE_EVADE 
     || gPathPathmode == PATHMODE_FLEE_FROM) { return(PATHSTALL_NONE); }  // no meaningful completion criterion 
     //  Stall timeout
-    integer now = llGetUnixTime();                  // UNIX time since epoch, sects
+    integer now = llGetUnixTime();                  // UNIX time since epoch, secs
     vector pos = llGetPos();
     if (now - gPathRequestStartTime > PATH_STALL_TIME)// if totally stalled
     {   pathStop();                                 // stop whatever is going on
@@ -256,9 +262,17 @@ integer pathStallCheck()
     //  Zero velocity check
     if (now - gPathActionStartTime > PATH_START_TIME) // if enough time for pathfinding to engage
     {   if (llVecMag(llGetVel()) < 0.01 && llVecMag(llGetOmega()) < 0.01)
-        {   pathMsg(PATH_MSG_WARN, "Not moving");
-            return(PATHSTALL_RETRY);                // retry needed
+        {   pathMsg(PATH_MSG_WARN, "Not moving after " + (string) (now-gPathActionStartTime) 
+                + " secs. Vel: " + (string)(llVecMag(llGetVel())));
+            if (gPathRetries == 0)                      // if have not retried
+            {   gPathRetries++;              
+                return(PATHSTALL_RETRY);                // just restart operation
+            } else {                                    // tried that already
+                gPathRetries = 0;                           
+                return(PATHSTALL_UNSTICK);              // force unstick
+            }
         }
+        gPathRetries = 0;                           // we are moving
     }
     //  Dynamically stalled, moving but not making progress. Usually means blocked by a new obstacle
     if ((llVecMag(pos - gPathLastGoodPos)) > PATH_GOOD_MOVE_DIST)   // if making some progress
@@ -391,7 +405,8 @@ string pathErrMsg(integer patherr)
         "Retrying pathfinding", 
         "Stall timeout",
         "Cannot move from current position",
-        "Not making progress"];
+        "Not making progress",
+        "Stuck, need unstick"];
         
     if (patherr >= 0 && patherr < llGetListLength(patherrspos)) // positive numbers, defined by LL
     {   return(llList2String(patherrspos,patherr));
