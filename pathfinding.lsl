@@ -106,6 +106,7 @@ pathPursue(key target, list options)
 {
     if (gPathPathmode != PATHMODE_OFF) { pathStop(); }      // stop whatever we are doing
     gPathTolerance = PATH_GOAL_TOL;                         // default tolerance
+    gPathOptions = options;                                 // options for operation
     integer i;
     for (i=0; i<llGetListLength(gPathOptions); i++)         // search strided list
     {   if (llList2Integer(gPathOptions,i) == PURSUIT_GOAL_TOLERANCE) // if goal tolerance item
@@ -115,7 +116,6 @@ pathPursue(key target, list options)
         }
     }
     gPathTarget = target;
-    gPathOptions = options;
     pathActionStart(PATHMODE_PURSUE);                       // use common function
 }
                 
@@ -305,6 +305,7 @@ integer pathAtGoal()                                // are we at the goal?
         {   pathMsg(PATH_MSG_INFO, "At Pursuit goal, error distance: " + (string)dist);
             return(TRUE);                       // Happy ending
         } else {
+            pathMsg(PATH_MSG_INFO, "Not at Pursuit goal, error distance: " + (string)dist + ", tol: " + (string)gPathTolerance);
             return(FALSE);                      // not at goal
         }
     }
