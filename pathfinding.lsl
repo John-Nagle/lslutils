@@ -416,3 +416,42 @@ string pathErrMsg(integer patherr)
         return("Unknown path error " + (string) patherr);       // some bogus number
     }
 }
+//
+//  pathNoObstacleBetween  -- is there an obstacle in a straight line between two points?
+//
+//  Uses llGetStaticPath to test
+//
+//  Assumes we are near our own character for z-height purposes
+//
+integer pathNoObstacleBetween(vector targetpos, vector lookatpos)
+{   vector charsize = llGetScale();             //
+    float charaboveground = charsize.z * 0.5;   // must query at ground level
+    vector pos = llGetPos();
+    targetpos.z = pos.z - charaboveground;      // use base of character aa Z for test.
+    lookatpos.z = targetpos.z;
+    list path = llGetStaticPath(targetpos, lookatpos, OUR_CHARACTER_RADIUS, []);
+    integer listlength = llGetListLength(path);  // last item is error code
+    if (listlength < 1)
+    {   llOwnerSay("LSL INTERNAL ERROR: llGetStaticPath returned zero length list."); // broken
+        return(FALSE);
+    }
+    integer status = llList2Integer(path,0);    // get status
+    if (status != 0)
+    {   pathMsg(PATH_MSG_WARN, "Clear sightline check from "  
+        + (string)targetpos + " to " + (string) lookatpos
+        + " failed, status " + (string) status); 
+        return(FALSE);  
+    }
+    llOwnerSay("Clear sightline path has " + (string) (listlength-1) 
+        + " components: " + (string)path);  // ***TEMP***
+    if (listlength <= 3) { return(TRUE); }
+    //  Longer path, but points may be collinear. Length check.
+    integer i;
+    float total = 0.0;
+    for (i=0; i<listlength-2; i++)      // sum length of path components
+    {   total = total + llVecMag(llList2Vector(path,i) -llList2Vector(path,i+1)); } 
+    float overall = llVecMag(llList2Vector(path,0) - llList2Vector(path, listlength-2));
+    llOwnerSay("Direct path length: " + (string)overall + " Total path length: " + (string)total); // ***TEMP***
+    if (total < (overall*1.1)) { return(TRUE); }    // if path almost straight, good
+    return(FALSE);                      // no direct path available
+}
