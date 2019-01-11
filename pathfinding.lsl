@@ -278,11 +278,17 @@ integer pathStallCheck()
     if ((llVecMag(pos - gPathLastGoodPos)) > PATH_GOOD_MOVE_DIST)   // if making some progress
     {   gPathLastGoodPos = pos;                     // we are good
         gPathLastGoodTime = now;
+        gPathRetries = 0;                           // no need to retry
     } else {
         if ((now - gPathLastGoodTime) > PATH_GOOD_MOVE_TIME) // not getting anywhere
-        {   pathMsg(PATH_MSG_WARN, "Moving but not making progress.");
-            return(PATHSTALL_NOPROGRESS);           // fails
-            ////return(PATHSTALL_RETRY);                // try this again. This forces a replan.
+        {   pathMsg(PATH_MSG_WARN, "Moving but not making progress.");       
+            if (gPathRetries == 0)                      // if have not retried
+            {   gPathRetries++;              
+                return(PATHSTALL_RETRY);                // just restart operation
+            } else {                                    // tried that already
+                gPathRetries = 0;                           
+                return(PATHSTALL_UNSTICK);              // force unstick
+            }
         }
     }
     return(PATHSTALL_NONE);                         // we are OK
