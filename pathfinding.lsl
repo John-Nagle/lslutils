@@ -46,8 +46,8 @@
 //
 integer PATH_STALL_TIME = 120;                          // (secs) really stalled if greater than this
 integer PATH_START_TIME = 2;                            // (secs) allow this long for path operation to start
-float   PATH_GOAL_TOL = 2.0;                            // (m) how close to dest is success?
-float   PATH_GOOD_MOVE_DIST = 1.5;                      // (m) must move at least this far
+float   PATH_GOAL_TOL = 1.0;                            // (m) how close to dest is success?
+float   PATH_GOOD_MOVE_DIST = 2.0;                      // (m) must move at least this far
 integer PATH_GOOD_MOVE_TIME = 5;                        // (secs) this often
 //
 //  Constants
@@ -254,7 +254,7 @@ integer pathStallCheck()
         return(PATHSTALL_STALLED);
     }
     //  At-goal check. Usually happens when start and goal are too close
-    if (pathAtGoal())
+    if (pathAtGoal(gPathTolerance))                 // must be close to force an abort
     {   pathStop();                                 // request complete
         return(PU_GOAL_REACHED);                    // Happy ending
     }
@@ -294,12 +294,12 @@ integer pathStallCheck()
     return(PATHSTALL_NONE);                         // we are OK
 }
 
-integer pathAtGoal()                                // are we at the goal?
-{
+integer pathAtGoal(float tolerance)                                // are we at the goal?
+{   if (llVecMag(llGetVel()) < 0.01) { tolerance = 2*tolerance; } // if stopped, allow more error - pathfinding gave up
     //  At-goal check. Usually happens when start and goal are too close
     if (gPathPathmode == PATHMODE_NAVIGATE_TO)          // only if Navigate To
     {   float dist = llVecMag(llGetPos() - gPathGoal);  // distance to target
-        if (dist <= gPathTolerance) // if arrived.
+        if (dist <= tolerance) // if arrived.
         {   pathMsg(PATH_MSG_INFO, "At Navigate To goal, error distance: " + (string)dist);
             return(TRUE);                    // Happy ending
         } else {
@@ -307,11 +307,11 @@ integer pathAtGoal()                                // are we at the goal?
         }
     } else if (gPathPathmode == PATHMODE_PURSUE)
     {   float dist = llVecMag(llGetPos() - llList2Vector(llGetObjectDetails(gPathTarget, [OBJECT_POS]),0));
-        if (dist <= gPathTolerance)
+        if (dist <= tolerance)
         {   pathMsg(PATH_MSG_INFO, "At Pursuit goal, error distance: " + (string)dist);
             return(TRUE);                       // Happy ending
         } else {
-            pathMsg(PATH_MSG_INFO, "Not at Pursuit goal, error distance: " + (string)dist + ", tol: " + (string)gPathTolerance);
+            pathMsg(PATH_MSG_INFO, "Not at Pursuit goal, error distance: " + (string)dist + ", tol: " + (string)tolerance);
             return(FALSE);                      // not at goal
         }
     }
@@ -365,9 +365,9 @@ pathUpdate(integer status, list reserved)
     }
     if (status == PU_GOAL_REACHED)                      // may be at goal, or not.
     {   //  Pathfinding system thinks goal reached. 
-        if (pathAtGoal()) 
+        if (pathAtGoal(gPathTolerance)) 
         {   pathStop();
-            pathUpdateCallback(PU_GOAL_REACHED,[]);        // tell user
+            pathUpdateCallback(PU_GOAL_REACHED,[]);     // tell user
             return;                                     // done
         } else {                                        // need to retry, not there yet.
             pathMsg(PATH_MSG_WARN, "Pathfinding reported success, but goal not reached. Retry.");
@@ -458,7 +458,7 @@ integer pathNoObstacleBetween(vector targetpos, vector lookatpos)
     for (i=0; i<listlength-2; i++)      // sum length of path components
     {   total = total + llVecMag(llList2Vector(path,i) -llList2Vector(path,i+1)); } 
     float overall = llVecMag(llList2Vector(path,0) - llList2Vector(path, listlength-2));
-    pathMsg(MATH_MSG_INFO,"Direct path length: " + (string)overall + " Total path length: " + (string)total); // ***TEMP***
+    pathMsg(PATH_MSG_INFO,"Direct path length: " + (string)overall + " Total path length: " + (string)total); // ***TEMP***
     if (total < (overall*1.1)) { return(TRUE); }    // if path almost straight, good
     return(FALSE);                      // no direct path available
 }
