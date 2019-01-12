@@ -408,15 +408,20 @@ pathUpdate(integer status, list reserved)
 //
 list pathReplaceOption(list options, list update)
 {
-    list outlist = [];
-    integer k = llList2Integer(update,0);       // the key
-    integer v = llList2Integer(update,1);       // the value
+    integer k = llList2Integer(update,0);           // the key
     integer i;
-    for (i=0; i<llGetListLength(options); i = i+2)  // remove old value
-    {   if (llList2Integer(options,i) != k) 
-        {   outlist += [llList2Integer(options,i), llList2Integer(options,i+1)]; }
+    integer length = llGetListLength(options);      // length of options list
+    integer startpos = length;                      // add at end if no find
+    integer endpos = startpos;                      // add at end if no find
+    for (i=0; i<length; i = i+2)                    // remove old value
+    {   if (llList2Integer(options,i) == k) 
+        {   startpos = i;                               // replace here
+            endpos = i+1;                               // replace here
+        }
     }
-    return(outlist + [k,v]);                    // insert new value
+    list outlist = llListReplaceList(options, update, startpos, endpos);
+    llOwnerSay("PathReplaceOptions: " +  (string)options + " -> " + (string)outlist);    // ***TEMP***
+    return(outlist);                                // insert new value
 }
 //
 //  Useful utility functions. Optional.
