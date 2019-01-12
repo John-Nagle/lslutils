@@ -16,6 +16,8 @@
 //
 //  To use this, change your code as follows:
 //
+//      llCreateCharacter -> pathCreateCharacter
+//      llUpdateCharacter -> pathUpdateCharacter
 //      llNavigateTo -> pathNavigateTo
 //      llPursue -> pathPursue
 //      llWander -> pathWander
@@ -83,6 +85,7 @@ vector gPathGoal;                                           // goal when navigat
 vector gPathDist;                                           // distance when wandering
 list gPathOptions;                                          // options for all operations
 float gPathTolerance;                                       // how close to end is success
+list gPathCreateOptions;                                    // options from create and update
  
                                                             // other state
 integer gPathRequestStartTime;                              // UNIX time path operation started
@@ -91,9 +94,19 @@ integer gPathMsgLevel = PATH_MSG_ERROR;                     // debug message lev
 vector gPathLastGoodPos;                                    // position of last good move
 integer gPathLastGoodTime;                                  // time of last good move
 integer gPathRetries;                                       // retries after zero speed
-
+//
 //  Call these functions instead of the corresponding LSL functions
 //
+pathCreateCharacter(list options)
+{   gPathCreateOptions = options;                           // save options for later checks
+    llCreateCharacter(options);
+}
+
+pathUpdateCharacter(list options)
+{   gPathCreateOptions = options;                           // save options for later checks
+    llUpdateCharacter(options);
+}
+
 pathNavigateTo(vector goal, list options)
 {   if (gPathPathmode != PATHMODE_OFF) { pathStop(); }      // stop whatever we are doing
     gPathTolerance = PATH_GOAL_TOL;                         // default tolerance
@@ -329,6 +342,8 @@ integer pathUnstick()
 {
     pathMsg(PATH_MSG_WARN,"Attempting recovery - wandering briefly.");
     vector pos = llGetPos();
+    //  Have to disable avatar avoidance for this or it won't start when too close to an avi.
+    llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_AVOIDANCE_MODE, AVOID_CHARACTERS])); 
     llWanderWithin(pos, <2.0, 2.0, 1.0>,[]);    // move randomly to get unstuck
     llSleep(2.0);
     llExecCharacterCmd(CHARACTER_CMD_STOP, []);
@@ -348,9 +363,11 @@ integer pathUnstick()
         llSleep(1.0);
         if (llVecMag(llGetPos() - pos) < 0.01) // if character did not move
         {   pathMsg(PATH_MSG_ERROR,"Second recovery did not work. Help.");
+            llUpdateCharacter(gPathCreateOptions);      // restore old state
             return(FALSE);  // failed
         }
     }
+    llUpdateCharacter(gPathCreateOptions);      // restore old state
     return(TRUE);                               // unable to move at all
 }
 
@@ -385,6 +402,21 @@ pathUpdate(integer status, list reserved)
     pathMsg(PATH_MSG_WARN, "Path operation failed, status " + (string) status);
     pathStop();
     pathUpdateCallback(status,[]);                                         // tell user
+}
+//
+//  pathReplaceOption  -- replace option in strided integer key/value list with new value
+//
+list pathReplaceOption(list options, list update)
+{
+    list outlist = [];
+    integer k = llList2Integer(update,0);       // the key
+    integer v = llList2Integer(update,1);       // the value
+    integer i;
+    for (i=0; i<llGetListLength(options); i = i+2)  // remove old value
+    {   if (llList2Integer(options,i) != k) 
+        {   outlist += [llList2Integer(options,i), llList2Integer(options,i+1)]; }
+    }
+    return(outlist + [k,v]);                    // insert new value
 }
 //
 //  Useful utility functions. Optional.
