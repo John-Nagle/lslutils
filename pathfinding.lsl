@@ -524,3 +524,20 @@ integer pathBoundingBoxOverlap(key id0, key id1,  vector allowance)
     if (bb0min.z > bb1max.z || bb1min.z > bb0max.z) { return(FALSE); } // no overlap
     return(TRUE);                           // overlap
 }
+
+//
+//  pathFaceInDirection  --  face in desired direction
+//
+//  Uses llSetRot. OK to use on characters when no pathfinding operation is in progress.
+//
+pathFaceInDirection(vector lookdir)
+{   float TURNRATE = 90*DEG_TO_RAD;                             // (deg/sec) turn rate
+    lookdir.z = 0.0;                                            // rotate about XY axis only
+    rotation endrot = llRotBetween(<1,0,0>,llVecNorm(lookdir)); // finish here
+    rotation startrot = llGetRot();                             // starting from here
+    float turntime = llFabs(llAngleBetween(startrot, endrot)) / TURNRATE;  // how much time to spend turning
+    integer steps = llCeil(turntime/0.200 + 0.001);             // number of steps 
+    integer i;
+    for (i=0; i<= steps; i++)                                   // turn in 200ms steps, which is llSetRot delay
+    {   llSetRot(slerp(startrot, endrot, ((float)i)/steps)); }  // interpolate rotation
+}
