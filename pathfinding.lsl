@@ -404,6 +404,18 @@ pathUpdate(integer status, list reserved)
     pathUpdateCallback(status,[]);                                         // tell user
 }
 //
+//  pathList2String -- convert list to string with commas as delimiters. Useful for debug.
+//
+string pathList2String(list src)
+{   string out = "[";               
+    integer i;
+    for (i=0; i<llGetListLength(src); i++)                  // for each listitem
+    {   if (i>0) { out = out + ","; }
+        out = out + (string)llList2List(src, i,i);          // append to string with comma separator
+    }
+    return(out + "]");                                      // and enclosing brackets
+}
+//
 //  pathReplaceOption  -- replace option in strided integer key/value list with new value
 //
 list pathReplaceOption(list options, list update)
@@ -420,7 +432,7 @@ list pathReplaceOption(list options, list update)
         }
     }
     list outlist = llListReplaceList(options, update, startpos, endpos);
-    llOwnerSay("PathReplaceOptions: " +  (string)options + " -> " + (string)outlist);    // ***TEMP***
+    llOwnerSay("PathReplaceOptions: " +  pathList2String(options) + " -> " + pathList2String(outlist));    // ***TEMP***
     return(outlist);                                // insert new value
 }
 //
