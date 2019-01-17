@@ -228,15 +228,20 @@ pathActionRestart()
     gPathLastGoodTime = gPathActionStartTime;                   // for progress detector
     gPathLastGoodPos = llGetPos();
     if (gPathPathmode == PATHMODE_NAVIGATE_TO)                  // depending on operation in progress
-    {   llNavigateTo(gPathGoal, gPathOptions);                  // restart using stored values
+    {   pathMsg(PATH_MSG_INFO, "Starting llNavigateTo to " + (string)gPathGoal);
+        llNavigateTo(gPathGoal, gPathOptions);                  // restart using stored values
     } else if (gPathPathmode == PATHMODE_PURSUE)
-    {   llPursue(gPathTarget, gPathOptions);
+    {   pathMsg(PATH_MSG_INFO, "Starting llPursue of " + llKey2Name(gPathTarget));
+        llPursue(gPathTarget, gPathOptions);
     } else if (gPathPathmode == PATHMODE_WANDER)
-    {   llWanderWithin(gPathGoal, gPathDist, gPathOptions);
+    {   pathMsg(PATH_MSG_INFO, "Starting llWander around " + (string)gPathGoal);
+        llWanderWithin(gPathGoal, gPathDist, gPathOptions);
     } else if (gPathPathmode == PATHMODE_EVADE)
-    {   llEvade(gPathTarget, gPathOptions); 
+    {   pathMsg(PATH_MSG_INFO, "Starting llEvade of " + llKey2Name(gPathTarget));
+        llEvade(gPathTarget, gPathOptions); 
     } else if (gPathPathmode == PATHMODE_FLEE_FROM)
-    {   llFleeFrom(gPathGoal, llVecMag(gPathDist), gPathOptions);
+    {   pathMsg(PATH_MSG_INFO, "Starting llFleeFrom " + (string)gPathGoal);
+        llFleeFrom(gPathGoal, llVecMag(gPathDist), gPathOptions);
     } else {
         pathMsg(PATH_MSG_ERROR, "pathActionRestart called incorrectly with pathmode = " 
             + (string)gPathPathmode);
@@ -324,7 +329,7 @@ integer pathAtGoal(float tolerance)                                // are we at 
         {   pathMsg(PATH_MSG_INFO, "At Pursuit goal, error distance: " + (string)dist);
             return(TRUE);                       // Happy ending
         } else {
-            pathMsg(PATH_MSG_INFO, "Not at Pursuit goal, error distance: " + (string)dist + ", tol: " + (string)tolerance);
+            ////pathMsg(PATH_MSG_INFO, "Not at Pursuit goal, error distance: " + (string)dist + ", tol: " + (string)tolerance);
             return(FALSE);                      // not at goal
         }
     }
@@ -432,7 +437,7 @@ list pathReplaceOption(list options, list update)
         }
     }
     list outlist = llListReplaceList(options, update, startpos, endpos);
-    llOwnerSay("PathReplaceOptions: " +  pathList2String(options) + " -> " + pathList2String(outlist));    // ***TEMP***
+    ////llOwnerSay("PathReplaceOptions: " +  pathList2String(options) + " -> " + pathList2String(outlist));    // ***TEMP***
     return(outlist);                                // insert new value
 }
 //
