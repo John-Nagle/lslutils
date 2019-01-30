@@ -61,6 +61,8 @@ integer PATHMODE_PURSUE = 2;
 integer PATHMODE_WANDER = 3;
 integer PATHMODE_EVADE = 4;
 integer PATHMODE_FLEE_FROM = 5;
+
+list PATHMODE_NAMES = ["Off", "Navigate to", "Pursue", "Wander", "Evade", "Flee"];  // for messages
 //
 //  Path statuses.  Also, the LSL PU_* pathfinding statuses are used
 integer PATHSTALL_NONE = -1;                                // not stalled, keep going
@@ -187,7 +189,7 @@ pathTick()
     //  Possible recoverable problem
     if (status == PATHSTALL_UNSTICK)                            // if unstick needed
     {
-        pathMsg(PATH_MSG_WARN, "Retrying path operation");
+        pathMsg(PATH_MSG_WARN, "Retrying " + llList2String(PATHMODE_NAMES, gPathPathmode));
         integer success = pathUnstick();                        // try to unstick situation
         if (!success)
         {   pathStop();                                         // fails
@@ -215,7 +217,7 @@ pathStop()
 pathActionStart(integer pathmode)
 {
     gPathPathmode = pathmode;
-    pathMsg(PATH_MSG_INFO, "Starting pathfinding.");
+    pathMsg(PATH_MSG_INFO, "Starting " + llList2String(PATHMODE_NAMES, gPathPathmode));
     gPathRequestStartTime = llGetUnixTime();                    // start time of path operation
     gPathRetries = 0;                                           // no retries yet
     gPathRequestStartPos = llGetPos();                          // starting position
@@ -271,7 +273,7 @@ integer pathStallCheck()
     vector pos = llGetPos();
     if (now - gPathRequestStartTime > PATH_STALL_TIME)// if totally stalled
     {   pathStop();                                 // stop whatever is going on
-        pathMsg(PATH_MSG_ERROR, "Request stalled after " + (string)PATH_STALL_TIME + " seconds."); 
+        pathMsg(PATH_MSG_ERROR, llList2String(PATHMODE_NAMES, gPathPathmode) + " stalled after " + (string)PATH_STALL_TIME + " seconds."); 
         return(PATHSTALL_STALLED);
     }
     //  At-goal check. Usually happens when start and goal are too close
@@ -309,7 +311,7 @@ integer pathStallCheck()
         gPathRetries = 0;                           // no need to retry
     } else {
         if ((now - gPathLastGoodTime) > PATH_GOOD_MOVE_TIME) // not getting anywhere
-        {   pathMsg(PATH_MSG_WARN, "Moving but not making progress.");       
+        {   pathMsg(PATH_MSG_WARN, llList2String(PATHMODE_NAMES, gPathPathmode) + " moving but not making progress.");       
             if (gPathRetries == 0)                      // if have not retried
             {   gPathRetries++;              
                 return(PATHSTALL_RETRY);                // just restart operation
@@ -355,7 +357,7 @@ integer pathAtGoal(float tolerance)                                // are we at 
 //
 integer pathUnstick()
 {
-    pathMsg(PATH_MSG_WARN,"Attempting recovery - wandering briefly.");
+    pathMsg(PATH_MSG_WARN,"Attempting recovery for " + llList2String(PATHMODE_NAMES, gPathPathmode) + " - wandering briefly.");
     vector pos = llGetPos();
     //  Have to disable avatar avoidance for this or it won't start when too close to an avi.
     llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_AVOIDANCE_MODE, AVOID_CHARACTERS])); 
