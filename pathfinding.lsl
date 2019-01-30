@@ -286,8 +286,12 @@ integer pathStallCheck()
         {   pathMsg(PATH_MSG_WARN, "Not moving after " + (string) (now-gPathActionStartTime) 
                 + " secs. Vel: " + (string)(llVecMag(llGetVel())));
             //  Check for pursue fails to start. This usually means the destination is unreachable.
-            if (gPathPathmode == PATHMODE_PURSUE && llVecMag(gPathRequestStartPos - llGetPos()) < 0.01)
-            {   return(PATHSTALL_NOPURSUE); }           // pursuit will not start, don't try
+            if (gPathPathmode == PATHMODE_PURSUE) 
+            {   vector pos = llGetPos();                // we are here
+                pathMsg(PATH_MSG_WARN, "Pursuit not moving, started at " + (string)gPathRequestStartPos + " and now at " + (string)pos);
+                if (llVecMag(gPathRequestStartPos - llGetPos()) < 0.01)
+                {   return(PATHSTALL_NOPURSUE); }           // pursuit will not start, don't try
+            }
             if (gPathRetries == 0)                      // if have not retried
             {   gPathRetries++;              
                 return(PATHSTALL_RETRY);                // just restart operation
