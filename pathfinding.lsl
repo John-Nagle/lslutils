@@ -69,6 +69,7 @@ integer PATHSTALL_STALLED = -3;                             // failed, despite r
 integer PATHSTALL_CANNOT_MOVE = -4;                         // can't move at all at current position
 integer PATHSTALL_NOPROGRESS = -5;                          // not making progress, fail
 integer PATHSTALL_UNSTICK = -6;                             // stuck, need to try an unstick
+integer PATHSTALL_NOPURSUE = -7;                            // pursue did not start, unreachable				                
 //
 //  Error levels
 //
@@ -91,6 +92,7 @@ list gPathCreateOptions;                                    // options from crea
 integer gPathRequestStartTime;                              // UNIX time path operation started
 integer gPathActionStartTime;                               // UNIX time path operation started
 integer gPathMsgLevel = PATH_MSG_ERROR;                     // debug message level (set to change level)
+vector gPathRequestStartPos;                                // position at start
 vector gPathLastGoodPos;                                    // position of last good move
 integer gPathLastGoodTime;                                  // time of last good move
 integer gPathRetries;                                       // retries after zero speed
@@ -177,7 +179,7 @@ pathTick()
     {   pathUpdateCallback(status,[]);                          // call user-defined completion fn
         return;
     }
-    if (status == PATHSTALL_STALLED || status == PATHSTALL_NOPROGRESS) // total fail
+    if (status == PATHSTALL_STALLED || status == PATHSTALL_NOPROGRESS || status == PATHSTALL_NOPURSUE) // total fail
     {   pathStop();                                             // stop operation in progress
         pathUpdateCallback(status,[]);                          // call user defined completion function
         return;
@@ -216,6 +218,7 @@ pathActionStart(integer pathmode)
     pathMsg(PATH_MSG_INFO, "Starting pathfinding.");
     gPathRequestStartTime = llGetUnixTime();                    // start time of path operation
     gPathRetries = 0;                                           // no retries yet
+    gPathRequestStartPos = llGetPos();                          // starting position
     pathActionRestart();                                        // start the task
 }
 
@@ -282,6 +285,9 @@ integer pathStallCheck()
     {   if (llVecMag(llGetVel()) < 0.01 && llVecMag(llGetOmega()) < 0.01)
         {   pathMsg(PATH_MSG_WARN, "Not moving after " + (string) (now-gPathActionStartTime) 
                 + " secs. Vel: " + (string)(llVecMag(llGetVel())));
+            //  Check for pursue fails to start. This usually means the destination is unreachable.
+            if (gPathPathmode == PATHMODE_PURSUE && llVecMag(gPathRequestStartPos - llGetPos()) < 0.01)
+            {   return(PATHSTALL_NOPURSUE); }           // pursuit will not start, don't try
             if (gPathRetries == 0)                      // if have not retried
             {   gPathRetries++;              
                 return(PATHSTALL_RETRY);                // just restart operation
@@ -467,7 +473,8 @@ string pathErrMsg(integer patherr)
         "Stall timeout",
         "Cannot move from current position",
         "Not making progress",
-        "Stuck, need unstick"];
+        "Stuck, need unstick",
+        "Unable to start Pursue operation"];
         
     if (patherr >= 0 && patherr < llGetListLength(patherrspos)) // positive numbers, defined by LL
     {   return(llList2String(patherrspos,patherr));
