@@ -293,16 +293,18 @@ integer pathStallCheck()
                 pathMsg(PATH_MSG_WARN, "Pursuit not moving, started at " + (string)gPathRequestStartPos + " and now at " + (string)pos);
                 if (llVecMag(gPathRequestStartPos - llGetPos()) < 0.01)
                 {   return(PATHSTALL_NOPURSUE); }           // pursuit will not start, don't try
+                if (gPathRetries > 2)
+                {   return(PATHSTALL_NOPURSUE); }           // pursuit retry failed, give up
             }
             if (gPathRetries == 0)                      // if have not retried
             {   gPathRetries++;              
                 return(PATHSTALL_RETRY);                // just restart operation
             } else {                                    // tried that already
-                gPathRetries = 0;                           
+                gPathRetries++;
                 return(PATHSTALL_UNSTICK);              // force unstick
             }
         }
-        gPathRetries = 0;                           // we are moving
+        gPathRetries = 0;                               // we are moving
     }
     //  Dynamically stalled, moving but not making progress. Usually means blocked by a new obstacle
     if ((llVecMag(pos - gPathLastGoodPos)) > PATH_GOOD_MOVE_DIST)   // if making some progress
@@ -316,7 +318,7 @@ integer pathStallCheck()
             {   gPathRetries++;              
                 return(PATHSTALL_RETRY);                // just restart operation
             } else {                                    // tried that already
-                gPathRetries = 0;                           
+                gPathRetries++;                           
                 return(PATHSTALL_UNSTICK);              // force unstick
             }
         }
@@ -354,21 +356,27 @@ integer pathAtGoal(float tolerance)                                // are we at 
 //  Unstick steps:
 //      1. Wander a small amount.
 //      2. Do a small move with llPos.
+//      3. Wander some more.  
 //
 integer pathUnstick()
 {
     pathMsg(PATH_MSG_WARN,"Attempting recovery for " + llList2String(PATHMODE_NAMES, gPathPathmode) + " - wandering briefly.");
-    vector pos = llGetPos();
+    vector pos = pathClosestNavPoint(llGetPos());
+    if (pos == ZERO_VECTOR)
+    {   pathMsg(PATH_MSG_ERROR, "Unable to find a navigatable place for unstick."); 
+        return(FALSE);
+    }
     //  Have to disable avatar avoidance for this or it won't start when too close to an avi.
+    llExecCharacterCmd(CHARACTER_CMD_STOP, []);
     llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_AVOIDANCE_MODE, AVOID_CHARACTERS])); 
-    llWanderWithin(pos, <2.0, 2.0, 1.0>,[]);    // move randomly to get unstuck
+    llWanderWithin(pos, <2.0, 2.0, 1.0>,[]);        // move randomly to get unstuck
     llSleep(2.0);
     llExecCharacterCmd(CHARACTER_CMD_STOP, []);
     llSleep(1.0);
     vector newpos = llGetPos();
     llOwnerSay("Unstick: pos was " + (string) pos + " and now is " + (string) newpos); // ***TEMP***
     if (llVecMag(newpos - pos) < 0.001)             // if character did not move at all
-    {   pathMsg(PATH_MSG_WARN,"Wandering recovery did not work.  Trying forced move.");
+    {   pathMsg(PATH_MSG_WARN,"Wandering recovery did not work.  Trying forced move."); // far too common.
         pos.x = pos.x + 0.25;                       // ***NEEDS TO BE SAFER ABOUT OBSTACLES***
         pos.y = pos.y + 0.25;
         llSetPos(pos);                              // force a move.
@@ -385,7 +393,7 @@ integer pathUnstick()
         }
     }
     llUpdateCharacter(gPathCreateOptions);      // restore old state
-    return(TRUE);                               // unable to move at all
+    return(TRUE);                               // successful recovery
 }
 
 //  
@@ -491,6 +499,25 @@ string pathErrMsg(integer patherr)
     }
 }
 //
+//  pathClosestNavPoint -- get closest nav point to current position.
+//
+//  This is mostly to find the point on the ground below the target.
+//
+vector pathClosestNavPoint(vector pos)
+{
+    vector pos = llGetPos();
+    vector charsize = llGetScale();            
+    float charaboveground = charsize.z * 0.5;   // must query close to ground level
+    list points = llGetClosestNavPoint(pos - <0,0,charaboveground>, [GCNP_RADIUS, charsize.z]);   // get navmesh point under object.
+    if (!llGetListLength(points))
+    {   pathMsg(PATH_MSG_WARN, "No nav point close to " + (string)pos);
+        return(ZERO_VECTOR);
+    }
+    vector pnt = llList2Vector(points,0);
+    pathMsg(PATH_MSG_INFO, "Closest nav point to " + (string)pos + " is " + (string)pnt);
+    return(pnt);    
+}
+//
 //  pathNoObstacleBetween  -- is there an obstacle in a straight line between two points?
 //
 //  Uses llGetStaticPath to test
@@ -498,11 +525,8 @@ string pathErrMsg(integer patherr)
 //  Assumes we are near our own character for z-height purposes
 //
 integer pathNoObstacleBetween(vector targetpos, vector lookatpos)
-{   vector charsize = llGetScale();             //
-    float charaboveground = charsize.z * 0.5;   // must query at ground level
-    vector pos = llGetPos();
-    targetpos.z = pos.z - charaboveground;      // use base of character aa Z for test.
-    lookatpos.z = targetpos.z;
+{   targetpos = pathClosestNavPoint(targetpos);
+    lookatpos = pathClosestNavPoint(lookatpos);
     list path = llGetStaticPath(targetpos, lookatpos, OUR_CHARACTER_RADIUS, []);
     integer listlength = llGetListLength(path);  // last item is error code
     if (listlength < 1)
