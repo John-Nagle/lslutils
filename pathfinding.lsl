@@ -287,6 +287,15 @@ integer pathStallCheck()
     {   if (llVecMag(llGetVel()) < 0.01 && llVecMag(llGetOmega()) < 0.01)
         {   pathMsg(PATH_MSG_WARN, "Not moving after " + (string) (now-gPathActionStartTime) 
                 + " secs. Vel: " + (string)(llVecMag(llGetVel())));
+            //  Check to see if we can't get there from here.
+            if (gPathPathmode == PATHMODE_PURSUE)
+            {   if (!pathReachableStatic(pos, target_pos(gTarget)))
+                {   return(PATHSTALL_NOPURSUE); }       // abandon pursuit, target is not reachable
+            }
+            if (gPathPathmode == PATHMODE_NAVIGATE_TO)
+            {   if (!pathReachableStatic(pos, gPathGoal))
+                {   return(PU_FAILURE_UNREACHABLE); }   // destination is unreachable but we do not know why
+            }
             //  Check for pursue fails to start. This usually means the destination is unreachable.
             if (gPathPathmode == PATHMODE_PURSUE) 
             {   vector pos = llGetPos();                // we are here
@@ -457,7 +466,6 @@ list pathReplaceOption(list options, list update)
         }
     }
     list outlist = llListReplaceList(options, update, startpos, endpos);
-    ////llOwnerSay("PathReplaceOptions: " +  pathList2String(options) + " -> " + pathList2String(outlist));    // ***TEMP***
     return(outlist);                                // insert new value
 }
 //
@@ -517,6 +525,30 @@ vector pathClosestNavPoint(vector pos)
     pathMsg(PATH_MSG_INFO, "Closest nav point to " + (string)pos + " is " + (string)pnt);
     return(pnt);    
 }
+
+//
+//  pathReachableStatic  -- can we get there from here, as a static path?
+//
+//  Uses llGetStaticPath to test
+//
+integer pathReachableStatic(vector pt0, vector pt1)
+{   pt0 = pathClosestNavPoint(pt0);
+    pt1 = pathClosestNavPoint(pt1);
+    list path = llGetStaticPath(pt0, pt1, OUR_CHARACTER_RADIUS, []);
+    integer listlength = llGetListLength(path);  // last item is error code
+    if (listlength < 1)
+    {   pathMsg(PATH_MSG_ERROR, "LSL INTERNAL ERROR: llGetStaticPath returned zero length list."); // broken
+        return(FALSE);
+    }
+    integer status = llList2Integer(path,-1);       // get status
+    if (status == 0) {  return(TRUE);   }           // sucesss, can at least try this move
+    pathMsg(PATH_MSG_WARN, "No path from "          // failed
+        + (string)pt0 + " to " + (string)pt1
+        + " status " + pathErrMsg( status)); 
+    return(FALSE);  
+}
+
+#ifdef OBSOLETE // no longer using this
 //
 //  pathNoObstacleBetween  -- is there an obstacle in a straight line between two points?
 //
@@ -533,7 +565,7 @@ integer pathNoObstacleBetween(vector targetpos, vector lookatpos)
     {   pathMsg(PATH_MSG_ERROR, "LSL INTERNAL ERROR: llGetStaticPath returned zero length list."); // broken
         return(FALSE);
     }
-    integer status = llList2Integer(path,0);    // get status
+    integer status = llList2Integer(path,-1);    // get status
     if (status != 0)
     {   pathMsg(PATH_MSG_INFO, "Clear sightline check from "  
         + (string)targetpos + " to " + (string) lookatpos
@@ -615,6 +647,7 @@ integer pathBoundingBoxOverlap(key id0, key id1,  vector allowance)
     if (bb0min.z > bb1max.z || bb1min.z > bb0max.z) { return(FALSE); } // no overlap
     return(TRUE);                           // overlap
 }
+#endif // OBSOLETE
 
 //
 //  pathFaceInDirection  --  face in desired direction
