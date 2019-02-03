@@ -71,8 +71,8 @@ integer PATHSTALL_STALLED = -3;                             // failed, despite r
 integer PATHSTALL_CANNOT_MOVE = -4;                         // can't move at all at current position
 integer PATHSTALL_NOPROGRESS = -5;                          // not making progress, fail
 integer PATHSTALL_UNSTICK = -6;                             // stuck, need to try an unstick
-integer PATHSTALL_NOPURSUE = -7;                            // pursue did not start, unreachable				                
-//
+integer PATHSTALL_UNREACHABLE = -7;                         // pursue did not start, unreachable				                
+
 //  Error levels
 //
 integer PATH_MSG_ERROR = 0;
@@ -181,7 +181,7 @@ pathTick()
     {   pathUpdateCallback(status,[]);                          // call user-defined completion fn
         return;
     }
-    if (status == PATHSTALL_STALLED || status == PATHSTALL_NOPROGRESS || status == PATHSTALL_NOPURSUE) // total fail
+    if (status == PATHSTALL_STALLED || status == PATHSTALL_NOPROGRESS || status == PATHSTALL_UNREACHABLE) // total fail
     {   pathStop();                                             // stop operation in progress
         pathUpdateCallback(status,[]);                          // call user defined completion function
         return;
@@ -290,7 +290,7 @@ integer pathStallCheck()
             //  Check to see if we can't get there from here.
             if (gPathPathmode == PATHMODE_PURSUE)
             {   if (!pathReachableStatic(pos, target_pos(gTarget)))
-                {   return(PATHSTALL_NOPURSUE); }       // abandon pursuit, target is not reachable
+                {   return(PATHSTALL_UNREACHABLE); }       // abandon pursuit, target is not reachable
             }
             if (gPathPathmode == PATHMODE_NAVIGATE_TO)
             {   if (!pathReachableStatic(pos, gPathGoal))
@@ -301,19 +301,22 @@ integer pathStallCheck()
             {   vector pos = llGetPos();                // we are here
                 pathMsg(PATH_MSG_WARN, "Pursuit not moving, started at " + (string)gPathRequestStartPos + " and now at " + (string)pos);
                 if (llVecMag(gPathRequestStartPos - llGetPos()) < 0.01)
-                {   return(PATHSTALL_NOPURSUE); }           // pursuit will not start, don't try
+                {   return(PATHSTALL_UNREACHABLE); }           // pursuit will not start, don't try
                 if (gPathRetries > 2)
-                {   return(PATHSTALL_NOPURSUE); }           // pursuit retry failed, give up
+                {   return(PATHSTALL_UNREACHABLE); }           // pursuit retry failed, give up
             }
-            if (gPathRetries == 0)                      // if have not retried
+            //  Retry for other operations. 
+             if (gPathRetries == 0)                     // if have not retried
             {   gPathRetries++;              
                 return(PATHSTALL_RETRY);                // just restart operation
-            } else {                                    // tried that already
+            } else if (gPathRetries > 2)                // retrying is not helping
+            {  return(PATHSTALL_UNREACHABLE);           // navigate retry failed, give up
+            } else {                                    // tried that already         
                 gPathRetries++;
                 return(PATHSTALL_UNSTICK);              // force unstick
             }
         }
-        gPathRetries = 0;                               // we are moving
+        gPathRetries = 0;                               // we are moving, reset stuck counter
     }
     //  Dynamically stalled, moving but not making progress. Usually means blocked by a new obstacle
     if ((llVecMag(pos - gPathLastGoodPos)) > PATH_GOOD_MOVE_DIST)   // if making some progress
@@ -496,7 +499,7 @@ string pathErrMsg(integer patherr)
         "Cannot move from current position",
         "Not making progress",
         "Stuck, need unstick",
-        "Unable to start Pursue operation"];
+        "Pursue or Navigate To goal unreachable"];
         
     if (patherr >= 0 && patherr < llGetListLength(patherrspos)) // positive numbers, defined by LL
     {   return(llList2String(patherrspos,patherr));
@@ -529,7 +532,9 @@ vector pathClosestNavPoint(vector pos)
 //
 //  pathReachableStatic  -- can we get there from here, as a static path?
 //
-//  Uses llGetStaticPath to test
+//  Uses llGetStaticPath to test.
+//
+//  Too generous. Will consider off-parcel places reachable.
 //
 integer pathReachableStatic(vector pt0, vector pt1)
 {   pt0 = pathClosestNavPoint(pt0);
@@ -540,11 +545,12 @@ integer pathReachableStatic(vector pt0, vector pt1)
     {   pathMsg(PATH_MSG_ERROR, "LSL INTERNAL ERROR: llGetStaticPath returned zero length list."); // broken
         return(FALSE);
     }
+    pathMsg(PATH_MSG_INFO, "Path reachable: " + pathList2String(path)); // ***TEMP***
     integer status = llList2Integer(path,-1);       // get status
     if (status == 0) {  return(TRUE);   }           // sucesss, can at least try this move
     pathMsg(PATH_MSG_WARN, "No path from "          // failed
         + (string)pt0 + " to " + (string)pt1
-        + " status " + pathErrMsg( status)); 
+        + " status " + pathErrMsg(status)); 
     return(FALSE);  
 }
 
