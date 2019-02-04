@@ -424,8 +424,15 @@ pathUpdate(integer status, list reserved)
             pathUpdateCallback(PU_GOAL_REACHED,[]);     // tell user
             return;                                     // done
         } else {                                        // need to retry, not there yet.
-            pathMsg(PATH_MSG_WARN, "Pathfinding reported success, but goal not reached. Retry.");
-            pathActionRestart();                        // try again
+            if (llVecMag(llGetPos() - gPathLastGoodPos) < 0.01) // if we are stuck
+            {   pathMsg(PATH_MSG_WARN, "Pathfinding reported success, but goal not reached and stalled.");
+                pathStop();                             // stop motion
+                pathUpdateCallback(PATHSTALL_NOPROGRESS,[]);    // tell user
+            } else {
+                pathMsg(PATH_MSG_WARN, "Pathfinding reported success, but goal not reached. Retry.");
+                pathActionRestart();                    // try again
+            }
+            return;
         }
         //  Not at goal,  
     } else if (status == PU_EVADE_HIDDEN 
