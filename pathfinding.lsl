@@ -51,6 +51,7 @@ integer PATH_START_TIME = 2;                            // (secs) allow this lon
 float   PATH_GOAL_TOL = 1.0;                            // (m) how close to dest is success?
 float   PATH_GOOD_MOVE_DIST = 2.0;                      // (m) must move at least this far
 integer PATH_GOOD_MOVE_TIME = 5;                        // (secs) this often
+float   PATH_ROTATION_EASE = 0.5;                       // (0..1) Rotation ease-in/ease out strength
 //
 //  Constants
 //
@@ -438,12 +439,12 @@ pathUpdate(integer status, list reserved)
     } else if (status == PU_EVADE_HIDDEN 
             || status == PU_EVADE_SPOTTED 
             || status == PU_SLOWDOWN_DISTANCE_REACHED)
-    {   pathMsg(PATH_MSG_INFO, "Misc. path update status report: " + (string)status);
+    {   pathMsg(PATH_MSG_INFO, "Misc. path update status report: " + pathErrMsg(status));
         pathUpdateCallback(status,[]);                  // tell user
         return;
     } 
     //  Not done, and not a misc. status report. Fail.
-    pathMsg(PATH_MSG_WARN, "Path operation failed, status " + (string) status);
+    pathMsg(PATH_MSG_WARN, "Path operation failed: " + pathErrMsg(status));
     pathStop();
     pathUpdateCallback(status,[]);                                         // tell user
 }
@@ -663,6 +664,25 @@ integer pathBoundingBoxOverlap(key id0, key id1,  vector allowance)
 #endif // OBSOLETE
 
 //
+//   pathLinearInterpolate  -- simple linear interpolation
+//
+float pathLinearInterpolate(float n1 , float n2 , float fract )
+{   return n1 + ( (n2-n1) * fract );    } 
+
+//
+//  easeineaseout  --  interpolate from 0 to 1 with ease in and ease out using cubic Bezier.
+//
+//  ease = 0: no smoothing
+//  ease = 0.5: reasonable smoothing
+//
+float easeineaseout(float ease, float fract)
+{   float ym = pathLinearInterpolate( 0 , fract, fract );
+    float yn = pathLinearInterpolate(fract , 1 , fract );
+    float y = pathLinearInterpolate( ym , yn , fract);
+    return(y);
+}
+
+//
 //  pathFaceInDirection  --  face in desired direction
 //
 //  Uses llSetRot. OK to use on characters when no pathfinding operation is in progress.
@@ -676,5 +696,8 @@ pathFaceInDirection(vector lookdir)
     integer steps = llCeil(turntime/0.200 + 0.001);             // number of steps 
     integer i;
     for (i=0; i<= steps; i++)                                   // turn in 200ms steps, which is llSetRot delay
-    {   llSetRot(slerp(startrot, endrot, ((float)i)/steps)); }  // interpolate rotation
+    {   float fract = ((float)i) / steps;                       // fraction of turn (0..1)
+        float easefract = easeineaseout(PATH_ROTATION_EASE, fract); // smooth acceleration
+        llSetRot(slerp(startrot, endrot, easefract));           // interpolate rotation
+    }
 }
