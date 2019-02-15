@@ -290,7 +290,10 @@ integer pathStallCheck()
                 + " secs. Vel: " + (string)(llVecMag(llGetVel())));
             //  Check to see if we can't get there from here.
             if (gPathPathmode == PATHMODE_PURSUE)
-            {   if (!pathReachableStatic(pos, target_pos(gTarget)))
+            {   list v = llGetObjectDetails(gPathTarget, [OBJECT_POS]); 
+                if (v == []) { return(PATHSTALL_UNREACHABLE); }    // can't find target. Maybe it left.
+                vector targetpos = llList2Vector(v,0);
+                if (!pathReachableStatic(pos, targetpos))
                 {   return(PATHSTALL_UNREACHABLE); }       // abandon pursuit, target is not reachable
             }
             if (gPathPathmode == PATHMODE_NAVIGATE_TO)
@@ -562,7 +565,7 @@ integer pathReachableStatic(vector pt0, vector pt1)
     return(FALSE);  
 }
 
-#ifdef OBSOLETE // no longer using this
+////#ifdef OBSOLETE // no longer using this
 //
 //  pathNoObstacleBetween  -- is there an obstacle in a straight line between two points?
 //
@@ -651,7 +654,7 @@ integer pathBoundingBoxOverlap(key id0, key id1,  vector allowance)
     {   pathMsg(PATH_MSG_WARN, "Could not get bounding boxes.");
         return(TRUE);                                   // treat as overlap
     }
-    ////llOwnerSay("Bounding box check: " + (string)bb0 + "   " + (string)bb1);
+    llOwnerSay("Bounding box check: " + (string)bb0 + "   " + (string)bb1);
     vector bb0min = llList2Vector(bb0,0) + allowance;   // lower bound, plus allowance
     vector bb0max = llList2Vector(bb0,1);               // upper bound
     vector bb1min = llList2Vector(bb1,0) + allowance;   // lower bound, plus allowance
@@ -661,7 +664,7 @@ integer pathBoundingBoxOverlap(key id0, key id1,  vector allowance)
     if (bb0min.z > bb1max.z || bb1min.z > bb0max.z) { return(FALSE); } // no overlap
     return(TRUE);                           // overlap
 }
-#endif // OBSOLETE
+////#endif // OBSOLETE
 
 //
 //   pathLinearInterpolate  -- simple linear interpolation

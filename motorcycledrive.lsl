@@ -26,6 +26,7 @@ vector SIT_TARGET_ROT = <0.0,0,0.0>;     // Sit target rotation (degrees)
 float MIN_SAFE_DOUBLE_REGION_CROSS_TIME = 2.0;      // min time between double region crosses at speed
 float MIN_BRAKE_SPEED = 0.2;                        // minimum speed we will ever brake to
 float COAST_POWER = 2.0;                            // power to use when coasting across a region crossing
+int   MAX_MISSED_TICKS = 2;                         // miss this many ticks and we brake
 
 float DOWNFORCE = -10.0;                             // was 2.0
 
@@ -62,9 +63,10 @@ string      DrivingAnim = "Bike_Ride01";        // Driver when riding
 string      IdleAnim = "Biker_Idle01";          // Driver when idle or off
 string      CurrentAnim = "";                   // animation currently running, if any
 string      NextAnim = "";                      // animation we want running
-//Other variables
+//  Other variables
 integer     NumGears;
 integer     Gear = 0;
+integer     MissedTicks = 0;                    // no input arrow info for this many ticks
 integer     NewSound;
 string      Sound;
 integer     CurDir;                             // left, right, or norm
@@ -311,6 +313,7 @@ state Ground
     {   ////llOwnerSay("Levels: " + (string) levels + "  Edges: " + (string) edges); // ***TEMP***
         Angular.x=0;
         Angular.z=0;
+        MissedTicks = 0;                                        // no missed ticks
         SpeedVec = llGetVel() / llGetRot();
         //  The way this is coded, engine control happens on edge events only.
         //  Adjusting Linear power has to be symmetrical.
