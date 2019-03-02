@@ -99,6 +99,7 @@ vector gPathRequestStartPos;                                // position at start
 vector gPathLastGoodPos;                                    // position of last good move
 integer gPathLastGoodTime;                                  // time of last good move
 integer gPathRetries;                                       // retries after zero speed
+integer gAccountForSkippedFrames;                           // account for skipped frames mode on
 //
 //  Call these functions instead of the corresponding LSL functions
 //
@@ -201,6 +202,21 @@ pathTick()
     //  Recoverable error, try again.
     pathActionRestart();         
 }
+
+//
+//  pathCollide --  call when character hits something it sholdn't.
+//
+//  This slows it down for a while
+//
+pathCollide()
+{   if (gPathPathmode == PATHMODE_OFF) { return; }              // not pathfinding, nothing to do.
+    if (!gAccountForSkippedFrames) { return; }                  // already in slow mode
+    gAccountForSkippedFrames = FALSE;                           // enter slow mode
+    //  More accurate motion, but slower. Needed when sim is overloaded
+    llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_ACCOUNT_FOR_SKIPPED_FRAMES, FALSE])); 
+    pathMsg(PATH_MSG_WARN, "Collision - starting slow precise mode.");
+}
+//  
 //
 //  Internal functions
 //
@@ -233,6 +249,8 @@ pathActionRestart()
     gPathActionStartTime = llGetUnixTime();                     // start timing
     gPathLastGoodTime = gPathActionStartTime;                   // for progress detector
     gPathLastGoodPos = llGetPos();
+    llUpdateCharacter(gPathCreateOptions);                      // back to standard options
+    gAccountForSkippedFrames = TRUE;                            // standard fast mode
     if (gPathPathmode == PATHMODE_NAVIGATE_TO)                  // depending on operation in progress
     {   pathMsg(PATH_MSG_INFO, "Starting llNavigateTo to " + (string)gPathGoal);
         llNavigateTo(gPathGoal, gPathOptions);                  // restart using stored values
