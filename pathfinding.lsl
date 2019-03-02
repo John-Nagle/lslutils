@@ -249,7 +249,7 @@ pathActionRestart()
     gPathActionStartTime = llGetUnixTime();                     // start timing
     gPathLastGoodTime = gPathActionStartTime;                   // for progress detector
     gPathLastGoodPos = llGetPos();
-    llUpdateCharacter(gPathCreateOptions);                      // back to standard options
+    llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_ACCOUNT_FOR_SKIPPED_FRAMES, TRUE])); // normal fast mode
     gAccountForSkippedFrames = TRUE;                            // standard fast mode
     if (gPathPathmode == PATHMODE_NAVIGATE_TO)                  // depending on operation in progress
     {   pathMsg(PATH_MSG_INFO, "Starting llNavigateTo to " + (string)gPathGoal);
