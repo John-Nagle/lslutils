@@ -32,6 +32,9 @@
 //
 //  and call pathTick from a timer or sensor at least once every 2 seconds when pathfinding.
 //
+//  Optionally, call pathCollide when the character hits an obstacle (not the ground).
+//  This will switch to a more conservative mode needed in overloaded sims.
+//
 //  Retrying will happen when necessary.
 //
 //  Call pathStop() to stop any operation in progress. It is not necessary to call pathStop before
@@ -46,7 +49,7 @@
 //
 //  Configuration
 //
-integer PATH_STALL_TIME = 120;                          // (secs) really stalled if greater than this
+integer PATH_STALL_TIME = 300;                          // (secs) really stalled if greater than this
 integer PATH_START_TIME = 2;                            // (secs) allow this long for path operation to start
 float   PATH_GOAL_TOL = 1.0;                            // (m) how close to dest is success?
 float   PATH_GOOD_MOVE_DIST = 2.0;                      // (m) must move at least this far
@@ -99,7 +102,7 @@ vector gPathRequestStartPos;                                // position at start
 vector gPathLastGoodPos;                                    // position of last good move
 integer gPathLastGoodTime;                                  // time of last good move
 integer gPathRetries;                                       // retries after zero speed
-integer gAccountForSkippedFrames;                           // account for skipped frames mode on
+integer gPathCollisionTime;                                 // time of last collision where skipped frames mode turned off, or 0
 //
 //  Call these functions instead of the corresponding LSL functions
 //
@@ -178,7 +181,11 @@ pathTick()
 {
     if (gPathPathmode == PATHMODE_OFF) { return; }              // not pathfinding, nothing to do.
     integer status = pathStallCheck();                          // are we stuck?
-    if (status == PATHSTALL_NONE) { return; }                   // no problem, keep going
+    if (status == PATHSTALL_NONE) 
+    {   if (gPathCollisionTime != 0 && llGetUnixTime() - gPathCollisionTime > PATH_GOOD_MOVE_TIME) // if going OK for a while
+        {   pathResetCollision(); }                             
+        return;                                                 // no problem, keep going
+    }
     if (status == PU_GOAL_REACHED)                              // success
     {   pathUpdateCallback(status,[]);                          // call user-defined completion fn
         return;
@@ -204,14 +211,17 @@ pathTick()
 }
 
 //
-//  pathCollide --  call when character hits something it sholdn't.
+//  pathCollide --  call when character hits something it shouldn't.
 //
-//  This slows it down for a while
+//  This slows it down for a while by not skipping frames and making big jumps.
 //
 pathCollide()
 {   if (gPathPathmode == PATHMODE_OFF) { return; }              // not pathfinding, nothing to do.
-    if (!gAccountForSkippedFrames) { return; }                  // already in slow mode
-    gAccountForSkippedFrames = FALSE;                           // enter slow mode
+    if (gPathCollisionTime != 0)                                // if already in slow mode
+    {   gPathCollisionTime = llGetUnixTime();                   // update time of last collision
+        return;
+    }
+    gPathCollisionTime = llGetUnixTime();                       // entering slow mode
     //  More accurate motion, but slower. Needed when sim is overloaded
     llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_ACCOUNT_FOR_SKIPPED_FRAMES, FALSE])); 
     pathMsg(PATH_MSG_WARN, "Collision - starting slow precise mode.");
@@ -227,7 +237,8 @@ pathMsg(integer level, string msg)                              // print debug m
 
 pathStop()
 {
-    llExecCharacterCmd(CHARACTER_CMD_STOP,[]);                  // stop whatever is going oin
+    llExecCharacterCmd(CHARACTER_CMD_STOP,[]);                  // stop whatever is going on
+    pathResetCollision();                                       // reset slow mode if needed
     gPathPathmode = PATHMODE_OFF;                               // not pathfinding
 }
 
@@ -237,7 +248,9 @@ pathActionStart(integer pathmode)
     pathMsg(PATH_MSG_INFO, "Starting " + llList2String(PATHMODE_NAMES, gPathPathmode));
     gPathRequestStartTime = llGetUnixTime();                    // start time of path operation
     gPathRetries = 0;                                           // no retries yet
+    gPathCollisionTime = 0;                                     // no recent collision
     gPathRequestStartPos = llGetPos();                          // starting position
+    pathResetCollision();                                       // reset slow mode if needed
     pathActionRestart();                                        // start the task
 }
 
@@ -249,8 +262,6 @@ pathActionRestart()
     gPathActionStartTime = llGetUnixTime();                     // start timing
     gPathLastGoodTime = gPathActionStartTime;                   // for progress detector
     gPathLastGoodPos = llGetPos();
-    llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_ACCOUNT_FOR_SKIPPED_FRAMES, TRUE])); // normal fast mode
-    gAccountForSkippedFrames = TRUE;                            // standard fast mode
     if (gPathPathmode == PATHMODE_NAVIGATE_TO)                  // depending on operation in progress
     {   pathMsg(PATH_MSG_INFO, "Starting llNavigateTo to " + (string)gPathGoal);
         llNavigateTo(gPathGoal, gPathOptions);                  // restart using stored values
@@ -272,6 +283,14 @@ pathActionRestart()
     }
 }
 
+//
+//  pathResetCollision -- go back to fast mode if no collisions for a while
+//
+pathResetCollision()
+{   llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_ACCOUNT_FOR_SKIPPED_FRAMES, TRUE])); // normal fast mode
+    if (gPathCollisionTime != 0) { pathMsg(PATH_MSG_WARN, "No collisions recently, slow mode turned off."); }
+    gPathCollisionTime = 0;                             // end of slow mode
+}
 //
 //  pathStallCheck  --  is pathfinding stalled?
 //
