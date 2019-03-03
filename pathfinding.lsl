@@ -528,16 +528,16 @@ string pathErrMsg(integer patherr)
 {   list patherrspos =[
     "Character is near current goal.",
     "Character has reached the goal.",
-    "Character cannot navigate from the current location - e.g., the character is off the navmesh or too high above it.",
+    "Character cannot navigate from the current location.",
     "Goal is not on the navmesh and cannot be reached.",
-    "Goal is no longer reachable for some reason - e.g., an obstacle blocks the path.",
-    "Target (for llPursue or llEvade) can no longer be tracked - e.g., it left the region or is an avatar that is now more than about 30m outside the region.",
-    "There's no good place for the character to go - e.g., it is patrolling and all the patrol points are now unreachable.",
-    "An llEvade character thinks it has hidden from its pursuer.",
-    "An llEvade character switches from hiding to running",
+    "Goal is no longer reachable.",
+    "Target avi can no longer be tracked.",
+    "No place for character to go.",
+    "Evade  - hiding.",
+    "Evade - running",
     "A fatal error reported to a character when there is no navmesh for the region. This usually indicates a server failure and users should file a bug report and include the time and region in which they received this message.",
-    "Character entered a region with dynamic pathfinding disabled.",
-    "A character failed to enter a parcel because it is not allowed to enter, e.g. because the parcel is already full or because object entry was disabled after the navmesh was baked."];
+    "Dynamic pathfinding disabled.",
+    "Not allowed to enter parcel."];
 
     list patherrsneg = [                // our additional errors
         "Error 0",                      // should not make it to user
@@ -547,7 +547,7 @@ string pathErrMsg(integer patherr)
         "Cannot move from current position",
         "Not making progress",
         "Stuck, need unstick",
-        "Pursue or Navigate To goal unreachable"];
+        "Goal unreachable"];
         
     if (patherr >= 0 && patherr < llGetListLength(patherrspos)) // positive numbers, defined by LL
     {   return(llList2String(patherrspos,patherr));
@@ -590,7 +590,7 @@ integer pathReachableStatic(vector pt0, vector pt1)
     list path = llGetStaticPath(pt0, pt1, OUR_CHARACTER_RADIUS, []);
     integer listlength = llGetListLength(path);  // last item is error code
     if (listlength < 1)
-    {   pathMsg(PATH_MSG_ERROR, "LSL INTERNAL ERROR: llGetStaticPath returned zero length list."); // broken
+    {   pathMsg(PATH_MSG_ERROR, "LSL INTERNAL ERROR: llGetStaticPath zero length list."); // broken
         return(FALSE);
     }
     pathMsg(PATH_MSG_INFO, "Path reachable: " + pathList2String(path)); // ***TEMP***
