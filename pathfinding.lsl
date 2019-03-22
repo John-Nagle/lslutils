@@ -32,7 +32,7 @@
 //
 //  and call pathTick from a timer or sensor at least once every 2 seconds when pathfinding.
 //
-//  Optionally, call pathCollide when the character hits an obstacle (not the ground).
+//  Optionally, call pathCollide(num_detected) when the character hits an obstacle.
 //  This will switch to a more conservative mode needed in overloaded sims.
 //
 //  Retrying will happen when necessary.
@@ -215,8 +215,28 @@ pathTick()
 //
 //  This slows it down for a while by not skipping frames and making big jumps.
 //
-pathCollide()
+pathCollide(integer num_detected)
 {   if (gPathPathmode == PATHMODE_OFF) { return; }              // not pathfinding, nothing to do.
+    //  Did we collide with a non-walkable object?
+    integer collided = FALSE;
+    integer i;
+    for (i=0; i<num_detected; i++)
+    {   key id = llDetectedKey(i);                              // object hit 
+        list hitinfo = llGetObjectDetails(id, [OBJECT_PATHFINDING_TYPE]); // what did we hit?
+        if (llGetListLength(hitinfo) == 1)
+        {   integer hitobjtype = llList2Integer(hitinfo,0);     // get pathfinding type
+            if (hitobjtype != OPT_WALKABLE)                     // if not a walkable
+            {   collided = TRUE;                                // hit a non walkable object
+                string name = llList2String(llGetObjectDetails(id, [OBJECT_NAME]),i);
+                if (name == "") { name = (string)id; }  // unnamed object
+                pathMsg(PATH_MSG_WARN, "Hit obstacle " + name + ".");
+            }
+        } else {
+            pathMsg(PATH_MSG_ERROR, "Unable to get pathfinding type for object."); // unlikely
+        }
+    }
+    if (!collided) { return; }                                  // not a real collision
+    //  Hit something. Must do something about it.
     if (gPathCollisionTime != 0)                                // if already in slow mode
     {   gPathCollisionTime = llGetUnixTime();                   // update time of last collision
         return;
