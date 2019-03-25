@@ -244,7 +244,7 @@ pathCollide(integer num_detected)
     gPathCollisionTime = llGetUnixTime();                       // entering slow mode
     //  More accurate motion, but slower. Needed when sim is overloaded
     llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_ACCOUNT_FOR_SKIPPED_FRAMES, FALSE])); 
-    pathMsg(PATH_MSG_WARN, "Collision - starting slow precise mode.");
+    pathMsg(PATH_MSG_INFO, "Collision - starting slow precise mode.");
 }
 //  
 //
@@ -308,7 +308,7 @@ pathActionRestart()
 //
 pathResetCollision()
 {   llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_ACCOUNT_FOR_SKIPPED_FRAMES, TRUE])); // normal fast mode
-    if (gPathCollisionTime != 0) { pathMsg(PATH_MSG_WARN, "No collisions recently, slow mode turned off."); }
+    if (gPathCollisionTime != 0) { pathMsg(PATH_MSG_INFO, "No collisions recently, slow mode turned off."); }
     gPathCollisionTime = 0;                             // end of slow mode
 }
 //
@@ -490,7 +490,7 @@ pathUpdate(integer status, list reserved)
                 pathStop();                             // stop motion
                 pathUpdateCallback(PATHSTALL_NOPROGRESS,[]);    // tell user
             } else {
-                pathMsg(PATH_MSG_WARN, "Pathfinding reported success, but goal not reached. Retry.");
+                pathMsg(PATH_MSG_INFO, "Pathfinding reported success, but goal not reached. Retry.");
                 pathActionRestart();                    // try again
             }
             return;
