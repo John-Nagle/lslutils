@@ -219,6 +219,7 @@ pathCollide(integer num_detected)
 {   if (gPathPathmode == PATHMODE_OFF) { return; }              // not pathfinding, nothing to do.
     //  Did we collide with a non-walkable object?
     integer collided = FALSE;
+    integer hitavatar = FALSE;
     integer i;
     for (i=0; i<num_detected; i++)
     {   key id = llDetectedKey(i);                              // object hit 
@@ -227,10 +228,14 @@ pathCollide(integer num_detected)
         {   integer hitobjtype = llList2Integer(hitinfo,0);     // get pathfinding type
             if (hitobjtype != OPT_WALKABLE)                     // if not a walkable
             {   collided = TRUE;                                // hit a non walkable object
+                if (hitobjtype == OPT_AVATAR)                   // if hit an avatar
+                {   hitavatar = TRUE;                           // want to avoid that
+                    llSay(0,"Excuse me.");
+                }
                 string name = llList2String(llGetObjectDetails(id, [OBJECT_NAME]),i);
                 if (name == "") { name = (string)id; }  // unnamed object
                 pathMsg(PATH_MSG_WARN, "Hit obstacle " + name + ".");
-            }
+            } 
         } else {
             pathMsg(PATH_MSG_ERROR, "Unable to get pathfinding type for object."); // unlikely
         }
@@ -242,8 +247,13 @@ pathCollide(integer num_detected)
         return;
     }
     gPathCollisionTime = llGetUnixTime();                       // entering slow mode
-    //  More accurate motion, but slower. Needed when sim is overloaded
-    llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_ACCOUNT_FOR_SKIPPED_FRAMES, FALSE])); 
+    //  More accurate motion, but slower. Needed when sim is overloaded.
+    //  If we hit something, avoid characters and dynamic obstacles briefly.
+    list newopts = pathReplaceOption(gPathCreateOptions, [CHARACTER_ACCOUNT_FOR_SKIPPED_FRAMES, FALSE]); 
+    if (hitavatar) 
+    {   newopts = pathReplaceOption(newopts, [CHARACTER_AVOIDANCE_MODE, AVOID_CHARACTERS | AVOID_DYNAMIC_OBSTACLES]); }
+    //  And switch to "slow mode".
+    llUpdateCharacter(newopts); 
     pathMsg(PATH_MSG_INFO, "Collision - starting slow precise mode.");
 }
 //  
@@ -307,7 +317,7 @@ pathActionRestart()
 //  pathResetCollision -- go back to fast mode if no collisions for a while
 //
 pathResetCollision()
-{   llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_ACCOUNT_FOR_SKIPPED_FRAMES, TRUE])); // normal fast mode
+{   llUpdateCharacter(gPathCreateOptions);              // back to normal mode
     if (gPathCollisionTime != 0) { pathMsg(PATH_MSG_INFO, "No collisions recently, slow mode turned off."); }
     gPathCollisionTime = 0;                             // end of slow mode
 }
