@@ -29,9 +29,6 @@
 //  Internal functions
 //
 //
-    //  ***NEED CREATE CHARACTER, UPDATE CHARACTER, PATH STOP***
-
-//
 //  pathActionRequestRecv -- call from link_msg
 //
 integer pathActionRequestRecv(integer sender_num, integer num, string jsonstr, key id)
@@ -63,4 +60,11 @@ integer pathActionRequestRecv(integer sender_num, integer num, string jsonstr, k
     return(TRUE);                                   // handled
 }
 
+//
+//  pathUpdateCallback -- pathfinding is done, tell requesting script
+//
+pathUpdateCallback(integer status, list unused])
+{
+    llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, NULL_KEY);  // send to worker script
+}   
 

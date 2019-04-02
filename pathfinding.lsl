@@ -242,7 +242,7 @@ pathMsg(integer level, string msg)                              // print debug m
 }
 
 pathStop()
-{
+{   if (gPathPathmode == PATHMODE_OFF) { return; }              // not doing anything
     llExecCharacterCmd(CHARACTER_CMD_STOP,[]);                  // stop whatever is going on
     pathResetCollision();                                       // reset slow mode if needed
     gPathPathmode = PATHMODE_OFF;                               // not pathfinding
@@ -283,6 +283,15 @@ pathActionRestart()
     } else if (gPathPathmode == PATHMODE_FLEE_FROM)
     {   pathMsg(PATH_MSG_INFO, "llFleeFrom " + (string)gPathGoal);
         llFleeFrom(gPathGoal, llVecMag(gPathDist), gPathOptions);
+    } else if (gPathPathmode == PATHMODE_OFF)
+        pathStop();
+    } else if (gPathPathmode == PATHMODE_CREATE_CHARACTER)      // only use at startup
+    {   gPathCreateOptions = gPathOptions;
+        llCreateCharacter(gPathCreateOptions); 
+    } else if (gPathPathmode == PATHMODE_UPDATE_CHARACTER)
+        gPathCreateOptions = gPathOptions;
+        llUpdateCharacter(gPathCreateOptions);
+    }
     } else {
         pathMsg(PATH_MSG_ERROR, "pathActionRestart called incorrectly with pathmode = " 
             + (string)gPathPathmode);
