@@ -293,19 +293,19 @@ pathActionRestart()
     gPathLastGoodTime = gPathActionStartTime;                   // for progress detector
     gPathLastGoodPos = llGetPos();
     if (gPathPathmode == PATHMODE_NAVIGATE_TO)                  // depending on operation in progress
-    {   pathMsg(PATH_MSG_INFO, "Starting llNavigateTo to " + (string)gPathGoal);
+    {   pathMsg(PATH_MSG_INFO, "llNavigateTo " + (string)gPathGoal);
         llNavigateTo(gPathGoal, gPathOptions);                  // restart using stored values
     } else if (gPathPathmode == PATHMODE_PURSUE)
-    {   pathMsg(PATH_MSG_INFO, "Starting llPursue of " + llKey2Name(gPathTarget));
+    {   pathMsg(PATH_MSG_INFO, "llPursue of " + llKey2Name(gPathTarget));
         llPursue(gPathTarget, gPathOptions);
     } else if (gPathPathmode == PATHMODE_WANDER)
-    {   pathMsg(PATH_MSG_INFO, "Starting llWander around " + (string)gPathGoal);
+    {   pathMsg(PATH_MSG_INFO, "llWander around " + (string)gPathGoal);
         llWanderWithin(gPathGoal, gPathDist, gPathOptions);
     } else if (gPathPathmode == PATHMODE_EVADE)
-    {   pathMsg(PATH_MSG_INFO, "Starting llEvade of " + llKey2Name(gPathTarget));
+    {   pathMsg(PATH_MSG_INFO, "llEvade of " + llKey2Name(gPathTarget));
         llEvade(gPathTarget, gPathOptions); 
     } else if (gPathPathmode == PATHMODE_FLEE_FROM)
-    {   pathMsg(PATH_MSG_INFO, "Starting llFleeFrom " + (string)gPathGoal);
+    {   pathMsg(PATH_MSG_INFO, "llFleeFrom " + (string)gPathGoal);
         llFleeFrom(gPathGoal, llVecMag(gPathDist), gPathOptions);
     } else {
         pathMsg(PATH_MSG_ERROR, "pathActionRestart called incorrectly with pathmode = " 
