@@ -559,13 +559,13 @@ string pathErrMsg(integer patherr)
     "Character is near current goal.",
     "Character has reached the goal.",
     "Character cannot navigate from the current location.",
-    "Goal is not on the navmesh and cannot be reached.",
+    "Goal is not on the navmesh.",
     "Goal is no longer reachable.",
     "Target avi can no longer be tracked.",
     "No place for character to go.",
     "Evade  - hiding.",
     "Evade - running",
-    "A fatal error reported to a character when there is no navmesh for the region. This usually indicates a server failure and users should file a bug report and include the time and region in which they received this message.",
+    "Fatal pathfinding server error.",
     "Dynamic pathfinding disabled.",
     "Not allowed to enter parcel."];
 
@@ -632,7 +632,7 @@ integer pathReachableStatic(vector pt0, vector pt1)
     return(FALSE);  
 }
 
-////#ifdef OBSOLETE // no longer using this
+#ifdef OBSOLETE // no longer using this
 //
 //  pathNoObstacleBetween  -- is there an obstacle in a straight line between two points?
 //
@@ -731,7 +731,7 @@ integer pathBoundingBoxOverlap(key id0, key id1,  vector allowance)
     if (bb0min.z > bb1max.z || bb1min.z > bb0max.z) { return(FALSE); } // no overlap
     return(TRUE);                           // overlap
 }
-////#endif // OBSOLETE
+#endif // OBSOLETE
 
 //
 //   pathLinearInterpolate  -- simple linear interpolation
