@@ -46,6 +46,8 @@
 //  llWander, llEvade, and llFleeFrom do not have timeouts, retries, or checks, because they
 //  have no well-defined goal. 
 //
+//  Common definitions
+#include "pathdefs.lsl"
 //
 //  Configuration
 //
@@ -55,33 +57,7 @@ float   PATH_GOAL_TOL = 1.0;                            // (m) how close to dest
 float   PATH_GOOD_MOVE_DIST = 2.0;                      // (m) must move at least this far
 integer PATH_GOOD_MOVE_TIME = 5;                        // (secs) this often
 float   PATH_ROTATION_EASE = 0.5;                       // (0..1) Rotation ease-in/ease out strength
-//
-//  Constants
-//
-//  Pathmode - what we're doing now.
-integer PATHMODE_OFF = 0;                                   // what we're doing now
-integer PATHMODE_NAVIGATE_TO = 1;
-integer PATHMODE_PURSUE = 2;
-integer PATHMODE_WANDER = 3;
-integer PATHMODE_EVADE = 4;
-integer PATHMODE_FLEE_FROM = 5;
 
-list PATHMODE_NAMES = ["Off", "Navigate to", "Pursue", "Wander", "Evade", "Flee"];  // for messages
-//
-//  Path statuses.  Also, the LSL PU_* pathfinding statuses are used
-integer PATHSTALL_NONE = -1;                                // not stalled, keep going
-integer PATHSTALL_RETRY = -2;                               // unstick and retry
-integer PATHSTALL_STALLED = -3;                             // failed, despite retries
-integer PATHSTALL_CANNOT_MOVE = -4;                         // can't move at all at current position
-integer PATHSTALL_NOPROGRESS = -5;                          // not making progress, fail
-integer PATHSTALL_UNSTICK = -6;                             // stuck, need to try an unstick
-integer PATHSTALL_UNREACHABLE = -7;                         // pursue did not start, unreachable				                
-
-//  Error levels
-//
-integer PATH_MSG_ERROR = 0;
-integer PATH_MSG_WARN = 1;
-integer PATH_MSG_INFO = 2;
 //
 //  Globals internal to this module
 //
