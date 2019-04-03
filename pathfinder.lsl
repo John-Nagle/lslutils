@@ -48,13 +48,15 @@ integer actionRequestRecv(integer sender_num, integer num, string jsonstr, key i
     for (i=0; i<llGetListLength(jsonlist); i = i + 2)      // go through strided list
     {   string itemid = llList2String(jsonlist,i);           // which item in JSON
         if (itemid == "action") 
-        { gPathPathmode = llList2Integer(jsonlist,i+1);      // set action
+        { pathaction = llList2Integer(jsonlist,i+1);      // set action
+          llOwnerSay("Action: " + (string)pathaction);  // ***TEMP***
         } else if (itemid == "target")
         { gPathTarget = llList2Key(jsonlist,i+1);
         } else if (itemid == "goal")
-        { gPathGoal = llList2Vector(jsonlist,i+1);  
+        { gPathGoal = (vector)llList2String(jsonlist,i+1); 
+          llOwnerSay("goal: " + (string)gPathGoal); // ***TEMP*** 
         } else if (itemid == "dist")
-        { gPathDist = llList2Vector(jsonlist,i+1);  // set dist
+        { gPathDist = (vector)llList2String(jsonlist,i+1);  // set dist
         } else {
             llSay(DEBUG_CHANNEL, "Invalid pathfinding request msg: " + jsonstr);   // BUG
             return(FALSE);                          // failed 
@@ -95,6 +97,7 @@ default {
     state_entry()
     {
         pathInit();                                         // initialize the pathfinding library
+        gPathMsgLevel = PATH_MSG_INFO;                      // ***TEMP***
     }
     
     timer()
@@ -107,5 +110,8 @@ default {
     {   actionRequestRecv(sender_num, num, str, id); 
         setTimer();
     }
+    
+    path_update(integer type, list reserved)
+    {   pathUpdate(type, reserved); }
 }  
 
