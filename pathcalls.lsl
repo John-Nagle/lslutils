@@ -38,6 +38,13 @@
 //
 #include "pathdefs.lsl"
 //
+integer gPathMsgLevel;                      // ***TEMP*** doesn't do anything
+//
+pathInit() {}                               // initialization, nothing to do
+pathTick() {}                               // unneeded, backwards compat
+pathUpdate(integer status, list reserved) {}// unneeded, backwards compat
+pathCollide(integer num_detected) {}                // unneeded, backwards compat
+
 pathCreateCharacter(list options)
 {   pathActionRequest(PATHMODE_CREATE_CHARACTER, NULL_KEY, ZERO_VECTOR, ZERO_VECTOR, options); }
 
@@ -59,7 +66,7 @@ pathEvade(key target, list options)
 {   pathActionRequest(PATHMODE_EVADE, target, ZERO_VECTOR, ZERO_VECTOR, options); }
 
 pathFleeFrom(vector goal, float distmag, list options)
-{   pathActionRequest(PATHMODE_FLEE_FROM, NULL_KEY, goal, dist, options); }
+{   pathActionRequest(PATHMODE_FLEE_FROM, NULL_KEY, goal, <distmag,0,0>, options); }
 
 pathStop()
 {   pathActionRequest(PATHMODE_OFF, NULL_KEY, ZERO_VECTOR, ZERO_VECTOR, []); }
@@ -75,7 +82,7 @@ pathStop()
 //  
 pathActionRequest(integer action, key target, vector goal, vector dist, list options)
 {
-    string jsonpts = llList2Json(JSON_ARRAY, options);          // convert options to JSON
+    string jsonopts = llList2Json(JSON_ARRAY, options);          // convert options to JSON
     string json = llList2Json(JSON_OBJECT, ["action", action, "target", target, "goal", goal, "dist", dist]);
     llMessageLinked(LINK_THIS, PATH_DIR_REQUEST, json, jsonopts );  // send to worker script
 }
