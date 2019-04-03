@@ -23,35 +23,42 @@
 //      llWander -> pathWander
 //      llEvade -> pathEvade
 //      llFlee -> pathFlee
+//      llExecCharacterCmd(CHARACTER_CMD_STOP,[]) -> pathStop()
 //
 //  Also:
 //      path_update -> pathUpdateCallback - define this for your own callback
 //      In your path_update, call pathUpdate.
 //
-//      (llPatrol is not implemented. Suggest using llNavigateTo for each goal point.)
+//      similarly, for
+//      link_message -> pathLinkMsg
+//      In your link_message, call pathLinkMsg
 //
+//  (llPatrol is not implemented. Suggest using llNavigateTo for each goal point.)
 //
 //  Call these functions instead of the corresponding LSL functions.
 //
 //  The work is all done in a separate script because the workarounds are big and
 //  stack/heap collisions occur if everything is done in one script.
 //
+//  TODO: 
+//      1. Add way to turn debugging messages on and off
+//      2. Add detection for lost link messages.
+//
 #include "pathdefs.lsl"
 //
-integer gPathMsgLevel;                      // ***TEMP*** doesn't do anything
+//  Compatibility with usage as a library.
 //
+integer gPathMsgLevel;                      // ***TEMP*** doesn't do anything
 pathInit() {}                               // initialization, nothing to do
 pathTick() {}                               // unneeded, backwards compat
 pathUpdate(integer status, list reserved) {}// unneeded, backwards compat
-pathCollide(integer num_detected) {}                // unneeded, backwards compat
+pathCollide(integer num_detected) {}        // unneeded, backwards compat
 
 pathCreateCharacter(list options)
 {   pathActionRequest(PATHMODE_CREATE_CHARACTER, NULL_KEY, ZERO_VECTOR, ZERO_VECTOR, options); }
 
-
 pathUpdateCharacter(list options)
 {   pathActionRequest(PATHMODE_UPDATE_CHARACTER, NULL_KEY, ZERO_VECTOR, ZERO_VECTOR, options); }
-
 
 pathNavigateTo(vector goal, list options)
 {   pathActionRequest(PATHMODE_NAVIGATE_TO, NULL_KEY, goal, ZERO_VECTOR, options); }

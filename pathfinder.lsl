@@ -80,7 +80,7 @@ setTimer()
 //  pathUpdateCallback -- pathfinding is done, tell requesting script
 //
 pathUpdateCallback(integer status, list unused)
-{   llOwnerSay("pathfinder -> client status: " + (string)status);   // ***TEMP***
+{   ////llOwnerSay("pathfinder -> client status: " + (string)status);   // ***TEMP***
     llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, NULL_KEY);  // send to worker script
     setTimer();
 } 
@@ -111,5 +111,10 @@ default {
     
     path_update(integer type, list reserved)
     {   pathUpdate(type, reserved); }                       // send event to library
+    
+    collision_start(integer num_detected)
+    {   
+        pathCollide(num_detected);
+    }
 }  
 
