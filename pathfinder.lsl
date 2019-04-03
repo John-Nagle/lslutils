@@ -30,7 +30,7 @@
 //  Constants
 //
 float WORKINGTIMER = 2.0;                           // update ever 2 seconds when active
-float OUR_CHARACTER_RADIUS = 0.125;                 // ***TEMP*** need to get from options
+float OUR_CHARACTER_RADIUS = 0.125;                 // ***TEMP*** need to make parameter
 //
 //
 //  actionRequestRecv -- call from link_msg
@@ -63,6 +63,7 @@ integer actionRequestRecv(integer sender_num, integer num, string jsonstr, key i
             return(FALSE);                          // failed
         }
     }
+    pathMsg(PATH_MSG_INFO, "Action: " + pathList2String(jsonlist) + " Options: " + pathList2String(opts));  // ***TEMP***
     pathActionStart(pathaction, opts);              // common function for all commands
     return(TRUE);                                   // handled
 }

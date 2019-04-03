@@ -246,14 +246,11 @@ pathMsg(integer level, string msg)                              // print debug m
 
 pathPursueToleranceUpdate(list options)                         // update pursue tolerance from options
 {   gPathTolerance = PATH_GOAL_TOL;                             // default tolerance
-    gPathOptions = options;                                     // options for operation
-    integer i;
-    for (i=0; i<llGetListLength(gPathOptions); i++)             // search strided list
-    {   if (llList2Integer(gPathOptions,i) == PURSUIT_GOAL_TOLERANCE) // if goal tolerance item
-        {   gPathTolerance = llList2Float(gPathOptions,i+1);    // get tolerance
-            gPathTolerance = gPathTolerance + PATH_GOAL_TOL;    // add safety margin
-            pathMsg(PATH_MSG_INFO, "Pursue tolerance (m): " + (string) gPathTolerance);
-        }
+    list tolopt = pathGetOption(options, PURSUIT_GOAL_TOLERANCE); // get goal tolerance
+    if (llGetListLength(tolopt) == 1)
+    {   gPathTolerance = llList2Float(tolopt,0);    // get tolerance
+        gPathTolerance = gPathTolerance + PATH_GOAL_TOL;    // add safety margin
+        pathMsg(PATH_MSG_INFO, "Pursue tolerance (m): " + (string) gPathTolerance);
     }
 }
 
@@ -533,6 +530,22 @@ string pathList2String(list src)
     }
     return(out + "]");                                      // and enclosing brackets
 }
+//
+//  pathGetOption -- get option as list of 1 element, or empty list
+//
+list pathGetOption(list options, integer k)
+{
+    integer i;
+    integer length = llGetListLength(options);      // length of options list
+    for (i=0; i<length; i = i+2)                    // remove old value
+    {   if (llList2Integer(options,i) == k) 
+        {   
+            return(llList2List(options, i+1,i+1));  // return matching item
+        }
+    }
+    return([]);                                     // no find
+}
+
 //
 //  pathReplaceOption  -- replace option in strided integer key/value list with new value
 //
