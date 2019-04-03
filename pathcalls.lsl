@@ -48,7 +48,7 @@
 //
 //  Compatibility with usage as a library.
 //
-integer gPathMsgLevel;                      // ***TEMP*** doesn't do anything
+integer gPathMsgLevel;                      // passed to server
 pathInit() {}                               // initialization, nothing to do
 pathUpdate(integer status, list reserved) {}// unneeded, backwards compat
 pathCollide(integer num_detected) {}        // unneeded, backwards compat
@@ -104,7 +104,7 @@ pathStop()
 pathActionRequest(integer action, key target, vector goal, vector dist, list options)
 {
     string jsonopts = llList2Json(JSON_ARRAY, options);          // convert options to JSON
-    string json = llList2Json(JSON_OBJECT, ["action", action, "target", target, "goal", goal, "dist", dist]);
+    string json = llList2Json(JSON_OBJECT, ["action", action, "target", target, "goal", goal, "dist", dist, "msglev", gPathMsgLevel]);
     llMessageLinked(LINK_THIS, PATH_DIR_REQUEST, json, jsonopts );  // send to worker script
     gPathLastTick = llGetUnixTime();                // reset the timeout
     gPathPathmode = action;                         // what we are doing

@@ -56,8 +56,10 @@ integer actionRequestRecv(integer sender_num, integer num, string jsonstr, key i
         { gPathGoal = (vector)llList2String(jsonlist,i+1); 
         } else if (itemid == "dist")
         { gPathDist = (vector)llList2String(jsonlist,i+1);  // set dist
+        } else if (itemid == "msglev")
+        { gPathMsgLevel = llList2Integer(jsonlist,i+1); // set verbosity level
         } else {
-            llSay(DEBUG_CHANNEL, "Invalid pathfinding request msg: " + jsonstr);   // BUG
+            llSay(DEBUG_CHANNEL, "Invalid pathfinding request msg key: '" + itemid + "' in " + jsonstr);   // BUG
             return(FALSE);                          // failed 
         }
     }
@@ -95,7 +97,6 @@ default {
     state_entry()
     {
         pathInit();                                         // initialize the pathfinding library
-        gPathMsgLevel = PATH_MSG_INFO;                      // ***TEMP***
     }
     
     timer()
