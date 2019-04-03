@@ -126,5 +126,50 @@ integer pathLinkMsg(integer sender_num, integer num, string str, key id)
     }
     return(FALSE);                                  // not handled
 }
+//
+//  Utility functions. May change.
+//
+//
+//  pathFaceInDirection  --  face in desired direction
+//
+//  Uses llSetRot. OK to use on characters when no pathfinding operation is in progress.
+//
+pathFaceInDirection(vector lookdir)
+{   float TURNRATE = 90*DEG_TO_RAD;                             // (deg/sec) turn rate
+    float   PATH_ROTATION_EASE = 0.5;                           // (0..1) Rotation ease-in/ease out strength
+    lookdir.z = 0.0;                                            // rotate about XY axis only
+    rotation endrot = llRotBetween(<1,0,0>,llVecNorm(lookdir)); // finish here
+    rotation startrot = llGetRot();                             // starting from here
+    float turntime = llFabs(llAngleBetween(startrot, endrot)) / TURNRATE;  // how much time to spend turning
+    integer steps = llCeil(turntime/0.200 + 0.001);             // number of steps 
+    integer i;
+    for (i=0; i<= steps; i++)                                   // turn in 200ms steps, which is llSetRot delay
+    {   float fract = ((float)i) / steps;                       // fraction of turn (0..1)
+        float easefract = easeineaseout(PATH_ROTATION_EASE, fract); // smooth acceleration
+        llSetRot(slerp(startrot, endrot, easefract));           // interpolate rotation
+    }
+}
+pathMsg(integer level, string msg)                              // print debug message
+{   if (level > gPathMsgLevel) { return; }                      // ignore if suppressed
+    llOwnerSay("Pathfinding: " + msg);                          // message
+}
+//
+//   pathLinearInterpolate  -- simple linear interpolation
+//
+float pathLinearInterpolate(float n1 , float n2 , float fract )
+{   return n1 + ( (n2-n1) * fract );    } 
+
+//
+//  easeineaseout  --  interpolate from 0 to 1 with ease in and ease out using cubic Bezier.
+//
+//  ease = 0: no smoothing
+//  ease = 0.5: reasonable smoothing
+//
+float easeineaseout(float ease, float fract)
+{   float ym = pathLinearInterpolate( 0 , fract, fract );
+    float yn = pathLinearInterpolate(fract , 1 , fract );
+    float y = pathLinearInterpolate( ym , yn , fract);
+    return(y);
+}
 
 

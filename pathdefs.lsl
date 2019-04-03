@@ -43,3 +43,41 @@ integer PATH_MSG_INFO = 2;
 integer PATH_DIR_REQUEST = 101;                             // application to path finding script
 integer PATH_DIR_REPLY = 102;                               // reply coming back
 integer PATH_DIR_REPLY_TICK = 103;                          // reply indicating other end is still alive
+
+//
+//  pathErrMsg -- path error number to string.  Mostly for debug.
+//
+string pathErrMsg(integer patherr)
+{   list patherrspos =[
+    "Character is near current goal.",
+    "Character has reached the goal.",
+    "Character cannot navigate from the current location.",
+    "Goal is not on the navmesh.",
+    "Goal is no longer reachable.",
+    "Target avi can no longer be tracked.",
+    "No place for character to go.",
+    "Evade  - hiding.",
+    "Evade - running",
+    "Fatal pathfinding server error.",
+    "Dynamic pathfinding disabled.",
+    "Not allowed to enter parcel."];
+
+    list patherrsneg = [                // our additional errors
+        "Error 0",                      // should not make it to user
+        "No error",                     // should not make it to user
+        "Retrying pathfinding", 
+        "Stall timeout",
+        "Cannot move from current position",
+        "Not making progress",
+        "Stuck, need unstick",
+        "Goal unreachable",
+        "Link message failed"];
+        
+    if (patherr >= 0 && patherr < llGetListLength(patherrspos)) // positive numbers, defined by LL
+    {   return(llList2String(patherrspos,patherr));
+    } else if (-patherr < llGetListLength(patherrsneg))          // negative numbers, defined by us
+    {    return(llList2String(patherrsneg, -patherr)); 
+    } else {
+        return("Unknown path error " + (string) patherr);       // some bogus number
+    }
+}
