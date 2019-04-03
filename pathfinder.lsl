@@ -3,6 +3,13 @@
 //
 //  Makes Second Life pathfinding work reliably.
 //
+//  Used as a standalone script in the pathfinding object.
+//  The controlling script includes "pathcalls.lsl" and
+//  calls the functions there.
+//
+//  This is in a separate script because the size of the recovery code has become so large.
+//
+//
 //  Animats
 //  January, 2019
 //  License: GPL
@@ -10,41 +17,38 @@
 //
 //  Adds checking and retry, which is essential to getting anything done reliably.
 //
-//  Communicates with other scripts to do pathfinding tasks.
-//
-//  This is in a separate script because the size of the recovery code has become so large.
-//
 //  Works around Second Life bugs BUG-5021, BUG-226061.
 //
 //  Retrying will happen when necessary.
 //
-//  llNavigateTo and llPursue will always produce a callback to pathUpdateCallback when they are done or
-//  have failed to reach their goal; this package provides timeouts, retries, and checks for them
-// 
-//  llWander, llEvade, and llFleeFrom do not have timeouts, retries, or checks, because they
-//  have no well-defined goal. 
+//
+//  TODO:
+//  1. Make sure link messages never get lost. If they do, we need a "tick" event to keep alive. 
 //
 #include "pathfinding.lsl"
 //
-//  Internal functions
+//  Constants
+//
+float WORKINGTIMER = 2.0;                           // update ever 2 seconds when active
+float OUR_CHARACTER_RADIUS = 0.125;                 // ***TEMP*** need to get from options
 //
 //
-//  pathActionRequestRecv -- call from link_msg
+//  actionRequestRecv -- call from link_msg
 //
-integer pathActionRequestRecv(integer sender_num, integer num, string jsonstr, key id)
+integer actionRequestRecv(integer sender_num, integer num, string jsonstr, key id)
 {   if (num != PATH_DIR_REQUEST) { return(FALSE); } // not ours to handle
     if (gPathPathmode != PATHMODE_OFF) { pathStop(); }      // stop whatever we are doing
-    string opts = llJson2List((string)id);          // the options
+    list opts = llJson2List((string)id);            // the options
     list jsonlist = llJson2List(jsonstr);           // key/value pairs
     integer pathaction = PATHMODE_OFF;              // no action yet
-    gPathTarget = NULL_KEY;                         // reset current state
+    gPathTarget = NULL_KEY;                         // reset current state of pathfinding engine
     gPathDist = ZERO_VECTOR;
-    gpathGoal = ZERO_VECTOR;
+    gPathGoal = ZERO_VECTOR;
     integer i;    
-    for (i=0; i<llListLength(json); i = i + 2)      // go through strided list
-    {   string itemid = llList2String(i);           // which item in JSON
+    for (i=0; i<llGetListLength(jsonlist); i = i + 2)      // go through strided list
+    {   string itemid = llList2String(jsonlist,i);           // which item in JSON
         if (itemid == "action") 
-        { gPathPathmode = llList2Integer(i+1);      // set action
+        { gPathPathmode = llList2Integer(jsonlist,i+1);      // set action
         } else if (itemid == "target")
         { gPathTarget = llList2Key(jsonlist,i+1);
         } else if (itemid == "goal")
@@ -52,7 +56,7 @@ integer pathActionRequestRecv(integer sender_num, integer num, string jsonstr, k
         } else if (itemid == "dist")
         { gPathDist = llList2Vector(jsonlist,i+1);  // set dist
         } else {
-            llSay(DEBUG_CHAN, "Invalid pathfinding request msg: " + jsonstr);   // BUG
+            llSay(DEBUG_CHANNEL, "Invalid pathfinding request msg: " + jsonstr);   // BUG
             return(FALSE);                          // failed 
         }
     }
@@ -60,11 +64,48 @@ integer pathActionRequestRecv(integer sender_num, integer num, string jsonstr, k
     return(TRUE);                                   // handled
 }
 
+//  
+//  setTimer -- set our timer based on state of pathfinding system
+//
+setTimer()
+{
+    if (gPathPathmode == PATHMODE_OFF)              // if no pathfinding in progress
+    {   llSetTimerEvent(0.0); }                     // no timer
+    else
+    {   llSetTimerEvent(WORKINGTIMER); }            // timer event every few seconds
+}
+
+
 //
 //  pathUpdateCallback -- pathfinding is done, tell requesting script
 //
-pathUpdateCallback(integer status, list unused])
+pathUpdateCallback(integer status, list unused)
 {
     llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, NULL_KEY);  // send to worker script
-}   
+    setTimer();
+} 
+
+//  The "main program" of this task.
+//  Waits for incoming requests and handles them.
+default {
+    
+    on_rez(integer rezinfo)
+    {   llResetScript(); }                                  // just reset on init
+    
+    state_entry()
+    {
+        pathInit();                                         // initialize the pathfinding library
+    }
+    
+    timer()
+    {
+        pathTick();                                         // pathfinding library timer
+        setTimer();                                         // do we still need a timer?      
+    }
+    
+    link_message(integer sender_num, integer num, string str, key id)
+    {   actionRequestRecv(sender_num, num, str, id); 
+        setTimer();
+    }
+}  
 

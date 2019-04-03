@@ -36,6 +36,7 @@
 //  The work is all done in a separate script because the workarounds are big and
 //  stack/heap collisions occur if everything is done in one script.
 //
+#include "pathdefs.lsl"
 //
 pathCreateCharacter(list options)
 {   pathActionRequest(PATHMODE_CREATE_CHARACTER, NULL_KEY, ZERO_VECTOR, ZERO_VECTOR, options); }
