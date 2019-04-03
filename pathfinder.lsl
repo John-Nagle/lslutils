@@ -60,10 +60,10 @@ integer actionRequestRecv(integer sender_num, integer num, string jsonstr, key i
         { gPathMsgLevel = llList2Integer(jsonlist,i+1); // set verbosity level
         } else {
             llSay(DEBUG_CHANNEL, "Invalid pathfinding request msg key: '" + itemid + "' in " + jsonstr);   // BUG
-            return(FALSE);                          // failed 
+            return(FALSE);                          // failed
         }
     }
-    pathActionStart(pathaction);                    // common function for all commands
+    pathActionStart(pathaction, opts);              // common function for all commands
     return(TRUE);                                   // handled
 }
 

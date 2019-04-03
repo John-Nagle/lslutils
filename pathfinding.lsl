@@ -82,6 +82,7 @@ integer gPathCollisionTime;                                 // time of last coll
 //
 //  Call these functions instead of the corresponding LSL functions
 //
+#ifdef OBSOLETE
 pathCreateCharacter(list options)
 {   gPathCreateOptions = options;                           // save options for later checks
     llCreateCharacter(options);
@@ -142,6 +143,8 @@ pathFleeFrom(vector goal, float distmag, list options)
     gPathOptions = options;
     pathActionStart(PATHMODE_FLEE_FROM);                        // use common fn
 }
+#endif // OBSOLETE
+
 //
 //  pathInit -- call this at startup/rez to initialize the variables
 //
@@ -241,6 +244,20 @@ pathMsg(integer level, string msg)                              // print debug m
     llOwnerSay("Pathfinding: " + msg);                          // message
 }
 
+pathPursueToleranceUpdate(list options)                         // update pursue tolerance from options
+{   gPathTolerance = PATH_GOAL_TOL;                             // default tolerance
+    gPathOptions = options;                                     // options for operation
+    integer i;
+    for (i=0; i<llGetListLength(gPathOptions); i++)             // search strided list
+    {   if (llList2Integer(gPathOptions,i) == PURSUIT_GOAL_TOLERANCE) // if goal tolerance item
+        {   gPathTolerance = llList2Float(gPathOptions,i+1);    // get tolerance
+            gPathTolerance = gPathTolerance + PATH_GOAL_TOL;    // add safety margin
+            pathMsg(PATH_MSG_INFO, "Pursue tolerance (m): " + (string) gPathTolerance);
+        }
+    }
+}
+
+
 pathStop()
 {   if (gPathPathmode == PATHMODE_OFF) { return; }              // not doing anything
     llExecCharacterCmd(CHARACTER_CMD_STOP,[]);                  // stop whatever is going on
@@ -248,9 +265,10 @@ pathStop()
     gPathPathmode = PATHMODE_OFF;                               // not pathfinding
 }
 
-pathActionStart(integer pathmode)
+pathActionStart(integer pathmode, list options)
 {
     gPathPathmode = pathmode;
+    gPathOptions = options;                                     // options for this operation
     pathMsg(PATH_MSG_INFO, "Starting " + llList2String(PATHMODE_NAMES, gPathPathmode));
     gPathRequestStartTime = llGetUnixTime();                    // start time of path operation
     gPathRetries = 0;                                           // no retries yet
@@ -273,6 +291,7 @@ pathActionRestart()
         llNavigateTo(gPathGoal, gPathOptions);                  // restart using stored values
     } else if (gPathPathmode == PATHMODE_PURSUE)
     {   pathMsg(PATH_MSG_INFO, "llPursue of " + llKey2Name(gPathTarget));
+        pathPursueToleranceUpdate(gPathOptions);                // need some info from the options
         llPursue(gPathTarget, gPathOptions);
     } else if (gPathPathmode == PATHMODE_WANDER)
     {   pathMsg(PATH_MSG_INFO, "llWander around " + (string)gPathGoal);
