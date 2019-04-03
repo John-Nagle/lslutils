@@ -44,17 +44,16 @@ integer actionRequestRecv(integer sender_num, integer num, string jsonstr, key i
     gPathTarget = NULL_KEY;                         // reset current state of pathfinding engine
     gPathDist = ZERO_VECTOR;
     gPathGoal = ZERO_VECTOR;
+    gPathTolerance = PATH_GOAL_TOL;                 // default tolerance ***TEMP***
     integer i;    
     for (i=0; i<llGetListLength(jsonlist); i = i + 2)      // go through strided list
     {   string itemid = llList2String(jsonlist,i);           // which item in JSON
         if (itemid == "action") 
         { pathaction = llList2Integer(jsonlist,i+1);      // set action
-          llOwnerSay("Action: " + (string)pathaction);  // ***TEMP***
         } else if (itemid == "target")
         { gPathTarget = llList2Key(jsonlist,i+1);
         } else if (itemid == "goal")
         { gPathGoal = (vector)llList2String(jsonlist,i+1); 
-          llOwnerSay("goal: " + (string)gPathGoal); // ***TEMP*** 
         } else if (itemid == "dist")
         { gPathDist = (vector)llList2String(jsonlist,i+1);  // set dist
         } else {
@@ -77,12 +76,11 @@ setTimer()
     {   llSetTimerEvent(WORKINGTIMER); }            // timer event every few seconds
 }
 
-
 //
 //  pathUpdateCallback -- pathfinding is done, tell requesting script
 //
 pathUpdateCallback(integer status, list unused)
-{
+{   llOwnerSay("pathfinder -> client status: " + (string)status);   // ***TEMP***
     llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, NULL_KEY);  // send to worker script
     setTimer();
 } 
@@ -112,6 +110,6 @@ default {
     }
     
     path_update(integer type, list reserved)
-    {   pathUpdate(type, reserved); }
+    {   pathUpdate(type, reserved); }                       // send event to library
 }  
 
