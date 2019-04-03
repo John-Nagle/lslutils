@@ -81,7 +81,7 @@ setTimer()
 //
 pathUpdateCallback(integer status, list unused)
 {   ////llOwnerSay("pathfinder -> client status: " + (string)status);   // ***TEMP***
-    llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, NULL_KEY);  // send to worker script
+    llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, NULL_KEY);  // status to client
     setTimer();
 } 
 
@@ -101,7 +101,11 @@ default {
     timer()
     {
         pathTick();                                         // pathfinding library timer
-        setTimer();                                         // do we still need a timer?      
+        if (gPathPathmode == PATHMODE_OFF)                  // if no pathfinding in progress
+        {   llSetTimerEvent(0.0);                          // no need for a timer
+            return; 
+        }
+        llMessageLinked(LINK_THIS, PATH_DIR_REPLY_TICK, "", NULL_KEY);  // keep alive        
     }
     
     link_message(integer sender_num, integer num, string str, key id)

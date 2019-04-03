@@ -42,7 +42,7 @@
 //
 //  TODO: 
 //      1. Add way to turn debugging messages on and off
-//      2. Add detection for lost link messages.
+//      2. Add detection for lost link messages. [DONE]
 //
 #include "pathdefs.lsl"
 //
@@ -50,9 +50,23 @@
 //
 integer gPathMsgLevel;                      // ***TEMP*** doesn't do anything
 pathInit() {}                               // initialization, nothing to do
-pathTick() {}                               // unneeded, backwards compat
 pathUpdate(integer status, list reserved) {}// unneeded, backwards compat
 pathCollide(integer num_detected) {}        // unneeded, backwards compat
+//
+//  Globals
+//
+integer PATHTICKTIMEOUT = 10;               // no reply in 10 secs will abort
+integer gPathLastTick = 0;                  // last reply from pathfinder
+integer gPathPathmode = PATHMODE_OFF;       // doing anything?
+
+pathTick() 
+{   if (gPathPathmode == PATHMODE_OFF) { return; }  // idle
+    if (llGetUnixTime() - gPathLastTick > PATHTICKTIMEOUT)
+    {   pathUpdateCallback(PATHSTALL_LINKMSGFAIL,[]);   // tell caller so they can do something
+        llSay(DEBUG_CHANNEL,"Pathfinding task not responding"); // should not be happening
+        gPathPathmode = PATHMODE_OFF;       // failed
+    }
+}
 
 pathCreateCharacter(list options)
 {   pathActionRequest(PATHMODE_CREATE_CHARACTER, NULL_KEY, ZERO_VECTOR, ZERO_VECTOR, options); }
@@ -92,15 +106,25 @@ pathActionRequest(integer action, key target, vector goal, vector dist, list opt
     string jsonopts = llList2Json(JSON_ARRAY, options);          // convert options to JSON
     string json = llList2Json(JSON_OBJECT, ["action", action, "target", target, "goal", goal, "dist", dist]);
     llMessageLinked(LINK_THIS, PATH_DIR_REQUEST, json, jsonopts );  // send to worker script
+    gPathLastTick = llGetUnixTime();                // reset the timeout
+    gPathPathmode = action;                         // what we are doing
 }
 
 //
 //  pathLinkMsg -- call from link_msg
 //
 integer pathLinkMsg(integer sender_num, integer num, string str, key id)
-{   if (num != PATH_DIR_REPLY) { return(FALSE); }   // not ours to handle
-    pathUpdateCallback((integer)str,[]);            // all that comes back is an integer status
-    return(TRUE);                                   // handled
+{   if (num == PATH_DIR_REPLY_TICK)                 // keep alive
+    {   gPathLastTick = llGetUnixTime();            // time of last tick
+        return(TRUE);
+    }
+    if (num == PATH_DIR_REPLY)                      // return status
+    {   integer status = (integer)str;              // all that comes back is an integer status
+        if (status != 0) { gPathPathmode = PATHMODE_OFF; }// we are now idle
+        pathUpdateCallback(status,[]);              // all that comes back is an integer status
+        return(TRUE);
+    }
+    return(FALSE);                                  // not handled
 }
 
 

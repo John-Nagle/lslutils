@@ -31,7 +31,8 @@ integer PATHSTALL_STALLED = -3;                             // failed, despite r
 integer PATHSTALL_CANNOT_MOVE = -4;                         // can't move at all at current position
 integer PATHSTALL_NOPROGRESS = -5;                          // not making progress, fail
 integer PATHSTALL_UNSTICK = -6;                             // stuck, need to try an unstick
-integer PATHSTALL_UNREACHABLE = -7;                         // pursue did not start, unreachable				                
+integer PATHSTALL_UNREACHABLE = -7;                         // pursue did not start, unreachable
+integer PATHSTALL_LINKMSGFAIL = -8;                         // link messages stopped - script crash or queue overflow				                
 
 //  Error levels
 integer PATH_MSG_ERROR = 0;
@@ -41,3 +42,4 @@ integer PATH_MSG_INFO = 2;
 //  Message direction (because both ends see a reply)
 integer PATH_DIR_REQUEST = 101;                             // application to path finding script
 integer PATH_DIR_REPLY = 102;                               // reply coming back
+integer PATH_DIR_REPLY_TICK = 103;                          // reply indicating other end is still alive
