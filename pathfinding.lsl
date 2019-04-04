@@ -54,8 +54,8 @@
 integer PATH_STALL_TIME = 300;                          // (secs) really stalled if greater than this
 integer PATH_START_TIME = 2;                            // (secs) allow this long for path operation to start
 float   PATH_GOAL_TOL = 1.0;                            // (m) how close to dest is success?
-float   PATH_GOOD_MOVE_DIST = 2.0;                      // (m) must move at least this far
-integer PATH_GOOD_MOVE_TIME = 5;                        // (secs) this often
+float   PATH_GOOD_MOVE_DIST = 1.5;                      // (m) must move at least this far
+integer PATH_GOOD_MOVE_TIME = 7;                        // (secs) this often
 float   PATH_ROTATION_EASE = 0.5;                       // (0..1) Rotation ease-in/ease out strength
 
 //
