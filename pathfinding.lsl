@@ -157,6 +157,7 @@ pathInit()
 //
 pathTick()
 {
+    if (gPathPathmode == PATHMODE_UNINITIALIZED) { return; }    // need startup
     if (gPathPathmode == PATHMODE_OFF) { return; }              // not pathfinding, nothing to do.
     integer status = pathStallCheck();                          // are we stuck?
     if (status == PATHSTALL_NONE) 
@@ -194,7 +195,8 @@ pathTick()
 //  This slows it down for a while by not skipping frames and making big jumps.
 //
 pathCollide(integer num_detected)
-{   if (gPathPathmode == PATHMODE_OFF) { return; }              // not pathfinding, nothing to do.
+{   if (gPathPathmode == PATHMODE_UNINITIALIZED) { return; }    // need startup
+    if (gPathPathmode == PATHMODE_OFF) { return; }              // not pathfinding, nothing to do.
     //  Did we collide with a non-walkable object?
     integer collided = FALSE;
     integer hitavatar = FALSE;
@@ -252,7 +254,8 @@ pathPursueToleranceUpdate(list options)                         // update pursue
 
 
 pathStop()
-{   if (gPathPathmode == PATHMODE_OFF) { return; }              // not doing anything
+{   if (gPathPathmode == PATHMODE_UNINITIALIZED) { return; }    // need startup
+    if (gPathPathmode == PATHMODE_OFF) { return; }              // not doing anything
     llExecCharacterCmd(CHARACTER_CMD_STOP,[]);                  // stop whatever is going on
     pathResetCollision();                                       // reset slow mode if needed
     gPathPathmode = PATHMODE_OFF;                               // not pathfinding
@@ -260,9 +263,15 @@ pathStop()
 
 pathActionStart(integer pathmode, list options)
 {
+    pathMsg(PATH_MSG_INFO, "Starting " + llList2String(PATHMODE_NAMES, pathmode));
+    if (gPathPathmode == PATHMODE_UNINITIALIZED && pathmode != PATHMODE_CREATE_CHARACTER)   // must create character first 
+    {
+        pathMsg(PATH_MSG_WARN, "Not initialized");
+        pathUpdateCallback(PATHSTALL_UNINITIALIZED,[]);
+        return;
+    }
     gPathPathmode = pathmode;
     gPathOptions = options;                                     // options for this operation
-    pathMsg(PATH_MSG_INFO, "Starting " + llList2String(PATHMODE_NAMES, gPathPathmode));
     gPathRequestStartTime = llGetUnixTime();                    // start time of path operation
     gPathRetries = 0;                                           // no retries yet
     gPathCollisionTime = 0;                                     // no recent collision
@@ -299,7 +308,9 @@ pathActionRestart()
     {   pathStop();
     } else if (gPathPathmode == PATHMODE_CREATE_CHARACTER)      // only use at startup
     {   gPathCreateOptions = gPathOptions;
+        llDeleteCharacter();                                    // in case already created
         llCreateCharacter(gPathCreateOptions); 
+        gPathPathmode = PATHMODE_OFF;                           // we are now ready to go
     } else if (gPathPathmode == PATHMODE_UPDATE_CHARACTER)
     {   gPathCreateOptions = gPathOptions;
         llUpdateCharacter(gPathCreateOptions);
@@ -481,7 +492,7 @@ integer pathUnstick()
 pathUpdate(integer status, list reserved)
 {
     if (gPathPathmode == PATHMODE_OFF)                  // idle, should not happen
-    {   pathMsg(PATH_MSG_ERROR, "Unexpected path_update call, status " + (string)status);
+    {   pathMsg(PATH_MSG_WARN, "Unexpected path_update call, status " + (string)status);
         return;
     }
     if (status == PU_GOAL_REACHED)                      // may be at goal, or not.

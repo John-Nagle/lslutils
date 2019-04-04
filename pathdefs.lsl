@@ -13,16 +13,17 @@
 //  Constants
 //
 //  Pathmode - what we're doing now.
-integer PATHMODE_OFF = 0;                                   // what we're doing now
-integer PATHMODE_NAVIGATE_TO = 1;
-integer PATHMODE_PURSUE = 2;
-integer PATHMODE_WANDER = 3;
-integer PATHMODE_EVADE = 4;
-integer PATHMODE_FLEE_FROM = 5;
-integer PATHMODE_CREATE_CHARACTER = 6;                      // create character, used at start
-integer PATHMODE_UPDATE_CHARACTER = 7;                      // update character
+integer PATHMODE_UNINITIALIZED = 0;                         // no character yet
+integer PATHMODE_OFF = 1;                                   // what we're doing now
+integer PATHMODE_NAVIGATE_TO = 2;
+integer PATHMODE_PURSUE =  3;
+integer PATHMODE_WANDER =  4;
+integer PATHMODE_EVADE = 5;
+integer PATHMODE_FLEE_FROM = 6;
+integer PATHMODE_CREATE_CHARACTER = 7;                      // create character, used at start
+integer PATHMODE_UPDATE_CHARACTER = 8;                      // update character
 
-list PATHMODE_NAMES = ["Off", "Navigate to", "Pursue", "Wander", "Evade", "Flee", "Create", "Update"];  // for messages
+list PATHMODE_NAMES = ["Uninitalized", "Off", "Navigate to", "Pursue", "Wander", "Evade", "Flee", "Create", "Update"];  // for messages
 //
 //  Path statuses.  Also, the LSL PU_* pathfinding statuses are used
 integer PATHSTALL_NONE = -1;                                // not stalled, keep going
@@ -32,7 +33,8 @@ integer PATHSTALL_CANNOT_MOVE = -4;                         // can't move at all
 integer PATHSTALL_NOPROGRESS = -5;                          // not making progress, fail
 integer PATHSTALL_UNSTICK = -6;                             // stuck, need to try an unstick
 integer PATHSTALL_UNREACHABLE = -7;                         // pursue did not start, unreachable
-integer PATHSTALL_LINKMSGFAIL = -8;                         // link messages stopped - script crash or queue overflow				                
+integer PATHSTALL_LINKMSGFAIL = -8;                         // link messages stopped - script crash or queue overflow
+integer PATHSTALL_UNINITIALIZED = -9;                       // not initialized yet			                
 
 //  Error levels
 integer PATH_MSG_ERROR = 0;
@@ -84,7 +86,8 @@ string pathErrMsg(integer patherr)
         "Not making progress",
         "Stuck, need unstick",
         "Goal unreachable",
-        "Link message failed"];
+        "Link message failed",
+        "Uninitialized"];
         
     if (patherr >= 0 && patherr < llGetListLength(patherrspos)) // positive numbers, defined by LL
     {   return(llList2String(patherrspos,patherr));
