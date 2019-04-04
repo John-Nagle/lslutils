@@ -149,7 +149,7 @@ pathFleeFrom(vector goal, float distmag, list options)
 //
 pathInit()
 {
-    gPathPathmode = PATHMODE_OFF;
+    gPathPathmode = PATHMODE_UNINITIALIZED;                 // not ready yet
     gPathTarget = NULL_KEY;
 }
 //
