@@ -712,7 +712,7 @@ integer pathBoundingBoxOverlap(key id0, key id1,  vector allowance)
     if (bb0min.z > bb1max.z || bb1min.z > bb0max.z) { return(FALSE); } // no overlap
     return(TRUE);                           // overlap
 }
-#endif // OBSOLETE
+
 
 //
 //   pathLinearInterpolate  -- simple linear interpolation
@@ -752,3 +752,4 @@ pathFaceInDirection(vector lookdir)
         llSetRot(slerp(startrot, endrot, easefract));           // interpolate rotation
     }
 }
+#endif // OBSOLETE
