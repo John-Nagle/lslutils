@@ -43,7 +43,20 @@ integer PATH_MSG_INFO = 2;
 integer PATH_DIR_REQUEST = 101;                             // application to path finding script
 integer PATH_DIR_REPLY = 102;                               // reply coming back
 integer PATH_DIR_REPLY_TICK = 103;                          // reply indicating other end is still alive
-
+//
+//  Global
+//
+integer gPathMsgLevel = 0;                                  // debug logging off by default. Set this to change level
+//
+//  pathMsg  -- call for pathfinding problems
+//
+pathMsg(integer level, string msg)                              // print debug message
+{   if (level > gPathMsgLevel) { return; }                      // ignore if suppressed
+    string s = "Pathfinding: " + msg;
+    llOwnerSay(s);                                              // message
+    if (level <= PATH_MSG_ERROR) 
+    {   llSay(DEBUG_CHANNEL, s); }                              // serious, pop up the red message
+}
 //
 //  pathErrMsg -- path error number to string.  Mostly for debug.
 //

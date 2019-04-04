@@ -73,7 +73,6 @@ list gPathCreateOptions;                                    // options from crea
                                                             // other state
 integer gPathRequestStartTime;                              // UNIX time path operation started
 integer gPathActionStartTime;                               // UNIX time path operation started
-integer gPathMsgLevel = PATH_MSG_ERROR;                     // debug message level (set to change level)
 vector gPathRequestStartPos;                                // position at start
 vector gPathLastGoodPos;                                    // position of last good move
 integer gPathLastGoodTime;                                  // time of last good move
@@ -239,10 +238,7 @@ pathCollide(integer num_detected)
 //
 //  Internal functions
 //
-pathMsg(integer level, string msg)                              // print debug message
-{   if (level > gPathMsgLevel) { return; }                      // ignore if suppressed
-    llOwnerSay("Pathfinding: " + msg);                          // message
-}
+
 
 pathPursueToleranceUpdate(list options)                         // update pursue tolerance from options
 {   gPathTolerance = PATH_GOAL_TOL;                             // default tolerance

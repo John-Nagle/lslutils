@@ -48,7 +48,6 @@
 //
 //  Compatibility with usage as a library.
 //
-integer gPathMsgLevel;                      // passed to server
 pathInit() {}                               // initialization, nothing to do
 pathUpdate(integer status, list reserved) {}// unneeded, backwards compat
 pathCollide(integer num_detected) {}        // unneeded, backwards compat
@@ -63,7 +62,7 @@ pathTick()
 {   if (gPathPathmode == PATHMODE_OFF) { return; }  // idle
     if (llGetUnixTime() - gPathLastTick > PATHTICKTIMEOUT)
     {   pathUpdateCallback(PATHSTALL_LINKMSGFAIL,[]);   // tell caller so they can do something
-        llSay(DEBUG_CHANNEL,"Pathfinding task not responding"); // should not be happening
+        pathMsg(PATH_MSG_ERROR,"Pathfinding task not responding"); // should not be happening
         gPathPathmode = PATHMODE_OFF;       // failed
     }
 }
