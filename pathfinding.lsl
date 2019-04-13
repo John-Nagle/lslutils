@@ -394,9 +394,9 @@ integer pathStallCheck()
                 return(PATHSTALL_UNSTICK);              // force unstick
             }
         }
-        gPathRetries = 0;                               // we are moving, reset stuck counter
+        ////gPathRetries = 0;                               // we are moving, reset stuck counter
     }
-    //  Dynamically stalled, moving but not making progress. Usually means blocked by a new obstacle
+    //  Check for dynamically stalled, moving but not making progress. Usually means blocked by a new obstacle
     if ((llVecMag(pos - gPathLastGoodPos)) > PATH_GOOD_MOVE_DIST)   // if making some progress
     {   gPathLastGoodPos = pos;                     // we are good
         gPathLastGoodTime = now;
