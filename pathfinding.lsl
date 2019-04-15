@@ -57,6 +57,7 @@ float   PATH_GOAL_TOL = 1.0;                            // (m) how close to dest
 float   PATH_GOOD_MOVE_DIST = 1.5;                      // (m) must move at least this far
 integer PATH_GOOD_MOVE_TIME = 7;                        // (secs) this often
 float   PATH_ROTATION_EASE = 0.5;                       // (0..1) Rotation ease-in/ease out strength
+float   PATH_MIN_PATHFINDING_PCT = 25.0;                // (0..100) Minimum pathfinding steps executed to get out of slow mode
 
 //
 //  Globals internal to this module
@@ -162,7 +163,15 @@ pathTick()
     integer status = pathStallCheck();                          // are we stuck?
     if (status == PATHSTALL_NONE) 
     {   if (gPathCollisionTime != 0 && llGetUnixTime() - gPathCollisionTime > PATH_GOOD_MOVE_TIME) // if going OK for a while
-        {   pathResetCollision(); }                             
+        {   float pathfindingpct = llGetSimStats(SIM_STAT_PCT_CHARS_STEPPED); // check for sim in severe overload
+            ////llOwnerSay("Pathfinding pct: " + (string)pathfindingpct);    // ***TEMP***
+            if (pathfindingpct > PATH_MIN_PATHFINDING_PCT)
+            {   pathResetCollision(); }  
+            else 
+            {   pathMsg(PATH_MSG_WARN, "Staying in slow mode, pathfinding running too slow: " + (string)pathfindingpct + "% of normal");
+                gPathCollisionTime = llGetUnixTime() + 60;      // don't recheck for a full minute
+            }
+        }                           
         return;                                                 // no problem, keep going
     }
     if (status == PU_GOAL_REACHED)                              // success
