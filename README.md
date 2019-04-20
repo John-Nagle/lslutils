@@ -56,3 +56,12 @@ animation, to eliminate idle overhead.
 
 ## Status
 Production
+
+# touchtester.lsl
+
+Demo of how to check whether a "touch" operation comes from an avatar with line of sight to
+the object being touched. Useful for preventing buttons from being pushed or doors opened by
+someone camming.
+
+## Status
+Demo
