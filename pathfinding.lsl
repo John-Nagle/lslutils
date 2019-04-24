@@ -194,6 +194,14 @@ pathTick()
             return;
         }
     }
+    if (status == PATHSTALL_OUT_OF_BOUNDS)                      // somehow in a bad place
+    {   
+        integer status = pathRecoverOutOfBounds(gPathLastGoodPos);
+        if (status != PU_GOAL_REACHED)                          // if that didn't work
+        {   pathUpdateCallback(status,[]);                      // big trouble
+            return;
+        }
+    }
     //  Recoverable error, try again.
     pathActionRestart();         
 }
@@ -337,6 +345,33 @@ pathResetCollision()
     if (gPathCollisionTime != 0) { pathMsg(PATH_MSG_INFO, "No collisions recently, slow mode turned off."); }
     gPathCollisionTime = 0;                             // end of slow mode
 }
+
+//
+//  pathRecoverOutOfBounds  -- somehow got out of bounds
+//
+//  Do a non-physical move back to a safe place.
+//
+integer pathRecoverOutOfBounds(vector safepos)
+{
+    if (llVecMag(safepos - llGetPos()) < 0.05)     // if no better pos available
+    {  pathMsg(PATH_MSG_ERROR, "Out of bounds and no recovery position."); // not recoverable
+       pathUpdateCallback(PATHSTALL_UNREACHABLE,[]);          // report unreachable, probably won't work
+       return(PU_FAILURE_PARCEL_UNREACHABLE);                   // really stuck
+    }
+    pathMsg(PATH_MSG_WARN, "Forced move back within bounds to " + (string) gPathLastGoodPos);
+    //  Recovery sequence for ban lines and such
+    llDeleteCharacter();
+    llSleep(0.5);
+    llSetPos(safepos);                              // move to last good position
+    //  Total reset of pathfinding      
+    llSleep(0.5);
+    llCreateCharacter(gPathCreateOptions);          // recreate after forced move
+    llSleep(0.5);
+    if (llGetStatus(STATUS_PHYSICS))                // if physics turned back on
+    {   return(PU_GOAL_REACHED); }                  // well, our local goal, anyway
+    pathMsg(PATH_MSG_ERROR, "Out of bounds and recovery failed."); // not recoverable
+    return(PU_FAILURE_PARCEL_UNREACHABLE);          // report unreachable, do something else
+}
 //
 //  pathStallCheck  --  is pathfinding stalled?
 //
@@ -348,7 +383,11 @@ pathResetCollision()
 //
 integer pathStallCheck()
 {
-    if (gPathPathmode == PATHMODE_OFF) { return(PATHSTALL_NONE); } // idle, cannot stall
+    if (gPathPathmode == PATHMODE_OFF || gPathPathmode == PATHMODE_UNINITIALIZED) { return(PATHSTALL_NONE); } // idle, cannot stall
+    if (llGetStatus(STATUS_PHYSICS) == 0)
+    {   pathMsg(PATH_MSG_WARN,"Physics turned off");
+        return(PATHSTALL_OUT_OF_BOUNDS);            // we are somewhere we should not be
+    }
     if (gPathPathmode == PATHMODE_WANDER 
     || gPathPathmode == PATHMODE_EVADE 
     || gPathPathmode == PATHMODE_FLEE_FROM) { return(PATHSTALL_NONE); }  // no meaningful completion criterion 
@@ -501,7 +540,8 @@ integer pathUnstick()
 pathUpdate(integer status, list reserved)
 {
     if (gPathPathmode == PATHMODE_OFF)                  // idle, should not happen
-    {   pathMsg(PATH_MSG_WARN, "Unexpected path_update call, status " + (string)status);
+    {   pathMsg(PATH_MSG_WARN, "Unexpected path_update call, status " + pathErrMsg(status));
+        llSleep(2.0);                                   // avoid compute loop when stuck
         return;
     }
     if (status == PU_GOAL_REACHED)                      // may be at goal, or not.

@@ -34,7 +34,8 @@ integer PATHSTALL_NOPROGRESS = -5;                          // not making progre
 integer PATHSTALL_UNSTICK = -6;                             // stuck, need to try an unstick
 integer PATHSTALL_UNREACHABLE = -7;                         // pursue did not start, unreachable
 integer PATHSTALL_LINKMSGFAIL = -8;                         // link messages stopped - script crash or queue overflow
-integer PATHSTALL_UNINITIALIZED = -9;                       // not initialized yet			                
+integer PATHSTALL_UNINITIALIZED = -9;                       // not initialized yet	
+integer PATHSTALL_OUT_OF_BOUNDS = -10;                      // somewhere we should not be		                
 
 //  Error levels
 integer PATH_MSG_ERROR = 0;
@@ -87,7 +88,8 @@ string pathErrMsg(integer patherr)
         "Stuck, need unstick",
         "Goal unreachable",
         "Link message failed",
-        "Uninitialized"];
+        "Uninitialized",
+        "Out of bounds"];
         
     if (patherr >= 0 && patherr < llGetListLength(patherrspos)) // positive numbers, defined by LL
     {   return(llList2String(patherrspos,patherr));
