@@ -77,7 +77,7 @@ vector      Linear;
 vector      Angular;
 integer     Active = FALSE;
 float       lowestslowmsg = HUGE;               // for minimizing SLOW log messages
-key         sitting;                            // the driver's UUID
+key         sitting = NULL_KEY;                 // the driver's UUID
 integer     LockStatus = MSG_DEMO;              // demo version unless overridden
 float       Loudness = LOUD_VOLUME;             // start out loud
 
@@ -173,6 +173,7 @@ startup()
 {   initregionrx(LOG_WARN);                     // init region crossing system
     llSay(9890,"s " +(string)TurnSpeedNum);
     llWhisper(11,"started");
+    sitting = llAvatarOnSitTarget();                // this is the driver, not any passengers
     llRequestPermissions(sitting, Permission_Set);
     llStopSound();
     llTriggerSound(StartupSound, Loudness);
@@ -203,6 +204,7 @@ shutdown(integer release)
     if (release)
     {   llReleaseControls(); }
     logrx(LOG_NOTE,"SHUTDOWN", "Distance traveled (km)",gDistanceTraveled/1000.0); // last log message
+    sitting = NULL_KEY;
 }
 
 
@@ -215,6 +217,7 @@ default
         ForwardPower = llList2Integer(ForwardPowerGears, 0);
         NumGears = llGetListLength(ForwardPowerGears);
         Active = FALSE;
+        sitting = NULL_KEY;                                                     // nobody is sitting
         llSetSitText(SitText);
         llCollisionSound("", 0.0);
         llSitTarget(SIT_TARGET_POS, llEuler2Rot(SIT_TARGET_ROT*DEG_TO_RAD));    // driver, not passenger
@@ -233,12 +236,11 @@ state Ground
             llSetStatus(STATUS_PHYSICS, FALSE);
             llMessageLinked(LINK_ALL_CHILDREN , DIR_STOP, "", NULL_KEY);
             llUnSit(llAvatarOnSitTarget());
-        }else{
+        } else {
             llMessageLinked(LINK_ALL_CHILDREN, DIR_START, "", NULL_KEY);
             NewSound = 1;
             Sound = IdleSound;
-            Linear = <0,0,DOWNFORCE>;
-    
+            Linear = <0,0,DOWNFORCE>;  
         }
         set_vehicle_params();
     }
@@ -272,15 +274,15 @@ state Ground
     changed(integer change)
     {   
         if((change & CHANGED_LINK) == CHANGED_LINK)         // rider got on or off
-        {   sitting = llAvatarOnSitTarget();                // this is the driver, not any passengers
-            if((sitting != NULL_KEY) && !Active)            // driver got on
-            {   if ((LockStatus == MSG_LOCKED) && (sitting != llGetOwner())) // if owner user only
+        {   key newsitting = llAvatarOnSitTarget();         // this is the driver, not any passengers
+            if((newsitting != NULL_KEY && sitting == NULL_KEY) && !Active)            // driver got on
+            {   if ((LockStatus == MSG_LOCKED) && (newsitting != llGetOwner())) // if owner user only
                 {   llShout(0,"Get your own bike! Buy one at 2RAW EXTREME");
-                    llUnSit(sitting);                       // eject non-owner
+                    llUnSit(newsitting);                    // eject non-owner
                     return;
                 }
                 startup();                                  // start up bike               
-            } else if ((sitting == NULL_KEY) && !Active) {  // no driver, not active
+            } else if ((newsitting == NULL_KEY) && !Active) {  // no driver, not active
                 integer linknum;                            // count sitters just for message
                 integer primcount = llGetNumberOfPrims();   // do once before loop
                 for (linknum = 1; linknum <= primcount; linknum++)    // check all links for sitters
@@ -291,7 +293,7 @@ state Ground
                     }
                 }
                 return;                                     // wait until driver gets on                                    
-            } else if((sitting == NULL_KEY) && Active)
+            } else if((newsitting == NULL_KEY) && Active)
             {
                 handlechanged(change);
                 shutdown(TRUE);                             // shut down bike and release
