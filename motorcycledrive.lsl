@@ -26,9 +26,10 @@ vector SIT_TARGET_ROT = <0.0,0,0.0>;     // Sit target rotation (degrees)
 float MIN_SAFE_DOUBLE_REGION_CROSS_TIME = 2.0;      // min time between double region crosses at speed
 float MIN_BRAKE_SPEED = 0.2;                        // minimum speed we will ever brake to
 float COAST_POWER = 2.0;                            // power to use when coasting across a region crossing
-int   MAX_MISSED_TICKS = 2;                         // miss this many ticks and we brake
 
-float DOWNFORCE = -10.0;                             // was 2.0
+float DOWNFORCE = -10.0;                            // was 2.0
+float LOUD_VOLUME = 1.0;                            // full annoying hog volume
+float SOFT_VOLUME = 0.15;                           // much quieter
 
 //  Inter-link messages within bike
 integer     DIR_STOP = 100;
@@ -40,10 +41,12 @@ integer     DIR_RIGHT = 104;
 integer     MSG_DEMO = 200;                         // will die when rider gets off
 integer     MSG_LOCKED = 201;                       // will only accept owner
 integer     MSG_UNLOCKED = 202;                     // will accept anyone
+integer     MSG_LOUD = 301;                         // loud sounds
+integer     MSG_SOFT = 302;                         // softer sounds                  
+
 
 float       BankPower=6000;
 float       ForwardPower; //Forward power
-////list        ForwardPowerGears = [10,20,26,30,38,150];
 list        ForwardPowerGears = [5,10,15,25,40,60,80];
 float       ReversePower = -5; //Reverse power, same as first gear, but in reverse
 float       TurnPower = 1500;  //  was 1000; //Turning power
@@ -56,17 +59,15 @@ string      SitText = "Drive"; //Text to show on pie menu
 string      IdleSound = "idle";                 // Sound to play when idling
 string      RunSound = "run";                   // Sound to play when the gas in pressed
 string      StartupSound = "starter";           // Sound to play when owner sits
-string      CurrentSound = "";                  // sound currently running, if any
 string      NextSound = "";                     // sound to run next
 //      Animation control
 string      DrivingAnim = "Bike_Ride01";        // Driver when riding
 string      IdleAnim = "Biker_Idle01";          // Driver when idle or off
 string      CurrentAnim = "";                   // animation currently running, if any
 string      NextAnim = "";                      // animation we want running
-//  Other variables
+//Other variables
 integer     NumGears;
 integer     Gear = 0;
-integer     MissedTicks = 0;                    // no input arrow info for this many ticks
 integer     NewSound;
 string      Sound;
 integer     CurDir;                             // left, right, or norm
@@ -78,6 +79,7 @@ integer     Active = FALSE;
 float       lowestslowmsg = HUGE;               // for minimizing SLOW log messages
 key         sitting;                            // the driver's UUID
 integer     LockStatus = MSG_DEMO;              // demo version unless overridden
+float       Loudness = LOUD_VOLUME;             // start out loud
 
 
 integer TurnSpeedNum=1;
@@ -172,11 +174,13 @@ startup()
     llSay(9890,"s " +(string)TurnSpeedNum);
     llWhisper(11,"started");
     llRequestPermissions(sitting, Permission_Set);
-    llTriggerSound(StartupSound, 1.0);
+    llStopSound();
+    llTriggerSound(StartupSound, Loudness);
     llMessageLinked(LINK_ALL_CHILDREN, DIR_START, "", NULL_KEY);
     llSetPos(llGetPos() + <0,0,0.15>);
     llSetStatus(STATUS_PHYSICS, TRUE);
-    llLoopSound(IdleSound,1);
+    Sound = IdleSound;
+    llLoopSound(Sound, Loudness);
     llSetTimerEvent(TIMER_INTERVAL);
     CurDir = DIR_NORM;
     Gear = 0;                                   // start in low gear
@@ -191,6 +195,7 @@ shutdown(integer release)
     llSetTimerEvent(0.0);
     llStopAnimation(DrivingAnim);
     llStopSound();
+    Sound = "";                             // no current sound
     llSetStatus(STATUS_PHYSICS, FALSE);
     Active = FALSE;
 
@@ -222,6 +227,7 @@ state Ground
 {
     state_entry()
     {   llStopSound();
+        Sound = "";
         if(!Active)
         {
             llSetStatus(STATUS_PHYSICS, FALSE);
@@ -252,6 +258,14 @@ state Ground
             { llWhisper(0,"Bike unlocked - anyone can ride."); }
             else 
             { llWhisper(0,"Bike locked - owner only."); }
+        }
+        if (num == MSG_LOUD || num == MSG_SOFT)             // if menu command to change volume
+        {   if (num == MSG_LOUD) { Loudness = LOUD_VOLUME; } else { Loudness = SOFT_VOLUME; }
+            if (Sound != "")
+            {   llStopSound();                              // stop previous sound
+                llLoopSound(Sound,Loudness);                // change volume of sound
+            }
+            ////llOwnerSay("Sound change: " + Sound + " " + (string)Loudness);  // ***TEMP***
         }
     }
     
@@ -313,7 +327,6 @@ state Ground
     {   ////llOwnerSay("Levels: " + (string) levels + "  Edges: " + (string) edges); // ***TEMP***
         Angular.x=0;
         Angular.z=0;
-        MissedTicks = 0;                                        // no missed ticks
         SpeedVec = llGetVel() / llGetRot();
         //  The way this is coded, engine control happens on edge events only.
         //  Adjusting Linear power has to be symmetrical.
@@ -503,7 +516,7 @@ state Ground
         {
             llStopSound();
             NewSound = 0;
-            llLoopSound(Sound, 1.0);
+            llLoopSound(Sound, Loudness);
         }
     }
 }
