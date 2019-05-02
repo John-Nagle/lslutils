@@ -570,7 +570,7 @@ pathUpdate(integer status, list reserved)
         return;
     } 
     //  Not done, and not a misc. status report. Fail.
-    pathMsg(PATH_MSG_WARN, "Path operation failed: " + pathErrMsg(status));
+    pathMsg(PATH_MSG_INFO, "Path operation failed: " + pathErrMsg(status));
     pathStop();
     pathUpdateCallback(status,[]);                                         // tell user
 }
