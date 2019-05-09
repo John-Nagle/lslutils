@@ -47,9 +47,12 @@ integer PATH_DIR_REQUEST = 101;                             // application to pa
 integer PATH_DIR_REPLY = 102;                               // reply coming back
 integer PATH_DIR_REPLY_TICK = 103;                          // reply indicating other end is still alive
 //
+integer PATH_MIN_IM_INTERVAL = 3600;                        // seconds between IMs. Do not overdo.
+//
 //  Global
 //
 integer gPathMsgLevel = 0;                                  // debug logging off by default. Set this to change level
+integer gPathLastIMTime = 0;                                // last instant message sent. Do this rarely.
 //
 //  pathMsg  -- call for pathfinding problems
 //
@@ -58,7 +61,13 @@ pathMsg(integer level, string msg)                              // print debug m
     string s = "Pathfinding: " + msg;
     llOwnerSay(s);                                              // message
     if (level <= PATH_MSG_ERROR) 
-    {   llSay(DEBUG_CHANNEL, s); }                              // serious, pop up the red message
+    {   llSay(DEBUG_CHANNEL, s);                                // serious, pop up the red message
+        integer now = llGetUnixTime();
+        if (now - gPathLastIMTime > PATH_MIN_IM_INTERVAL)       // do this very infrequently
+        {   llInstantMessage(llGetOwner(), llGetObjectName() + " in trouble at " + llGetRegionName() + " " + (string)llGetPos() + ": " + s);     // send IM to owner
+            gPathLastIMTime = now;
+        } 
+    }                            
 }
 //
 //  pathErrMsg -- path error number to string.  Mostly for debug.
