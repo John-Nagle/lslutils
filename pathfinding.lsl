@@ -194,7 +194,7 @@ pathTick()
             return;
         }
     }
-    if (status == PATHSTALL_OUT_OF_BOUNDS)                      // somehow in a bad place
+    if (status == PATHSTALL_OUT_OF_BOUNDS || status == PU_FAILURE_PARCEL_UNREACHABLE) // somehow in a bad place
     {   
         integer status = pathRecoverOutOfBounds(gPathLastGoodPos);
         if (status != PU_GOAL_REACHED)                          // if that didn't work
