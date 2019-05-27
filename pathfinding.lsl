@@ -58,7 +58,7 @@ float   PATH_GOOD_MOVE_DIST = 1.5;                      // (m) must move at leas
 integer PATH_GOOD_MOVE_TIME = 7;                        // (secs) this often
 float   PATH_ROTATION_EASE = 0.5;                       // (0..1) Rotation ease-in/ease out strength
 float   PATH_MIN_PATHFINDING_PCT = 25.0;                // (0..100) Minimum pathfinding steps executed to get out of slow mode
-
+float   PATH_RANDOM_UNSTICK_MOVE = 0.25;                // (m) max distance to move randomly to get unstuck
 //
 //  Globals internal to this module
 //
@@ -79,10 +79,13 @@ vector gPathLastGoodPos;                                    // position of last 
 integer gPathLastGoodTime;                                  // time of last good move
 integer gPathRetries;                                       // retries after zero speed
 integer gPathCollisionTime;                                 // time of last collision where skipped frames mode turned off, or 0
+key gSafeParcelKey;                                         // key of last parcel known to be safe to enter
+key gSafeParcelOwner;                                       // owner of last parcel known to be safe to enter
+key gSafeParcelGroup;                                       // group of last parcel known to be safe to enter
 //
 //  Call these functions instead of the corresponding LSL functions
 //
-#ifdef OBSOLETE
+#ifdef OBSOLETE // now called via pathfinder.lsl because this is run in a seperate script due to size problems.
 pathCreateCharacter(list options)
 {   gPathCreateOptions = options;                           // save options for later checks
     llCreateCharacter(options);
@@ -150,8 +153,12 @@ pathFleeFrom(vector goal, float distmag, list options)
 //
 pathInit()
 {
-    gPathPathmode = PATHMODE_UNINITIALIZED;                 // not ready yet
-    gPathTarget = NULL_KEY;
+    gPathPathmode = PATHMODE_UNINITIALIZED;                     // not ready yet
+    gPathTarget = NULL_KEY;                                     // no goal yet
+    gSafeParcelKey = NULL_KEY;                                  // no known safe parcel yet
+    gSafeParcelOwner = NULL_KEY;
+    gSafeParcelGroup = NULL_KEY;
+    gPathLastGoodPos = ZERO_VECTOR;                             // no known good position yet
 }
 //
 //  pathTick --  call this at least once every 2 seconds.
@@ -328,6 +335,9 @@ pathActionRestart()
         llDeleteCharacter();                                    // in case already created
         llCreateCharacter(gPathCreateOptions); 
         gPathPathmode = PATHMODE_OFF;                           // we are now ready to go
+        list heredata = llGetParcelDetails(llGetPos(), [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP]);
+        gSafeParcelOwner = llList2Key(heredata,0);              // assume that where user turns us on is safe
+        gSafeParcelGroup = llList2Key(heredata,1);                
     } else if (gPathPathmode == PATHMODE_UPDATE_CHARACTER)
     {   gPathCreateOptions = gPathOptions;
         llUpdateCharacter(gPathCreateOptions);
@@ -353,7 +363,7 @@ pathResetCollision()
 //
 integer pathRecoverOutOfBounds(vector safepos)
 {
-    if (llVecMag(safepos - llGetPos()) < 0.05)     // if no better pos available
+    if (safepos == ZERO_VECTOR || llVecMag(safepos - llGetPos()) < 0.05)     // if no better pos available
     {  pathMsg(PATH_MSG_ERROR, "Out of bounds and no recovery position."); // not recoverable
        pathUpdateCallback(PATHSTALL_UNREACHABLE,[]);          // report unreachable, probably won't work
        return(PU_FAILURE_PARCEL_UNREACHABLE);                   // really stuck
@@ -376,24 +386,25 @@ integer pathRecoverOutOfBounds(vector safepos)
 //  pathStallCheck  --  is pathfinding stalled?
 //
 //  Checks:
-//      1. Stall timeout - entire operation took too long. Usual limit is about 2 minutes.
-//      2. We're at the goal, so stop.
-//      3. Zero velocity and zero angular rate - pathfinding quit on us.
-//      4. No significant progress in last few seconds - pathfinding is stalled dynamically.
+//      1. Are we out of our allowed area?
+//      2. Stall timeout - entire operation took too long. Usual limit is about 2 minutes.
+//      3. We're at the goal, so stop.
+//      4. Zero velocity and zero angular rate - pathfinding quit on us.
+//      5. No significant progress in last few seconds - pathfinding is stalled dynamically.
 //
 integer pathStallCheck()
 {
     if (gPathPathmode == PATHMODE_OFF || gPathPathmode == PATHMODE_UNINITIALIZED) { return(PATHSTALL_NONE); } // idle, cannot stall
-    if (llGetStatus(STATUS_PHYSICS) == 0)
-    {   pathMsg(PATH_MSG_WARN,"Physics turned off");
-        return(PATHSTALL_OUT_OF_BOUNDS);            // we are somewhere we should not be
+    vector pos = llGetPos();
+    if (llGetStatus(STATUS_PHYSICS) == 0 || !pathValidDest(pos))
+    {   pathMsg(PATH_MSG_WARN,"Out of bounds at " + (string)pos);
+        return(PATHSTALL_OUT_OF_BOUNDS);            // we are somewhere we should not be. Force back to a good location
     }
     if (gPathPathmode == PATHMODE_WANDER 
     || gPathPathmode == PATHMODE_EVADE 
     || gPathPathmode == PATHMODE_FLEE_FROM) { return(PATHSTALL_NONE); }  // no meaningful completion criterion 
     //  Stall timeout
     integer now = llGetUnixTime();                  // UNIX time since epoch, secs
-    vector pos = llGetPos();
     if (now - gPathRequestStartTime > PATH_STALL_TIME)// if totally stalled
     {   pathStop();                                 // stop whatever is going on
         pathMsg(PATH_MSG_ERROR, llList2String(PATHMODE_NAMES, gPathPathmode) + " stalled after " + (string)PATH_STALL_TIME + " seconds."); 
@@ -489,6 +500,23 @@ integer pathAtGoal(float tolerance)                                // are we at 
 }
 
 //
+//  pathUnstickFindPos -- find place to move when stuck
+//
+//  Returns ZERO_VECTOR if fail
+//
+vector pathUnstickFindPos(vector pos)
+{
+    integer i;
+    vector wpos = pos;
+    for (i=0; i<10; i++)                            // 10 tries
+    {   wpos.x = pos.x + llFrand(2.0*PATH_RANDOM_UNSTICK_MOVE) - PATH_RANDOM_UNSTICK_MOVE;   // ***NEEDS TO BE SAFER ABOUT OBSTACLES***
+        wpos.y = pos.y + llFrand(2.0*PATH_RANDOM_UNSTICK_MOVE) - PATH_RANDOM_UNSTICK_MOVE;   // 
+        if (pathValidDest(wpos)) { return(wpos); }   // success if random pos looks OK
+    }
+    return(ZERO_VECTOR);                            // fail
+ 
+}
+//
 //  pathUnstick  -- get stuck object moving again
 //
 //  Unstick steps:
@@ -515,8 +543,9 @@ integer pathUnstick()
     llOwnerSay("Unstick: pos was " + (string) pos + " and now is " + (string) newpos); // ***TEMP***
     if (llVecMag(newpos - pos) < 0.001)             // if character did not move at all
     {   pathMsg(PATH_MSG_WARN,"Wandering recovery did not work.  Trying forced move."); // far too common.
-        pos.x = pos.x + 0.25;                       // ***NEEDS TO BE SAFER ABOUT OBSTACLES***
-        pos.y = pos.y + 0.25;
+        pos = pathUnstickFindPos(pos);              // try to find someplace to go by random search
+        if (pos == ZERO_VECTOR)
+        {   pathMsg(PATH_MSG_ERROR,"Stuck and no place to go"); return(FALSE); }
         llSetPos(pos);                              // force a move.
         llSleep(2.0);                               // give physics time to settle if we collided
         //  Try second wander. If it doesn't move, we're really stuck.
@@ -573,6 +602,41 @@ pathUpdate(integer status, list reserved)
     pathMsg(PATH_MSG_INFO, "Path operation failed: " + pathErrMsg(status));
     pathStop();
     pathUpdateCallback(status,[]);                                         // tell user
+}
+
+
+//
+//  pathValidDest - is target valid (same sim and same parcel ownership as at start)
+//
+integer pathValidDest(vector pos) 
+{   float REGION_SIZE = 256;                            // SL only, not for OpenSim
+    if (pos.x <= 0 || pos.x >= REGION_SIZE || pos.y <= 0 || pos.y >= REGION_SIZE) { return(FALSE); }
+    list theredata = llGetParcelDetails(pos, [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP, PARCEL_DETAILS_ID]);
+    key therekey = llList2Key(theredata,2);             // key of this parcel
+    if (therekey == gSafeParcelKey) { return(TRUE); }   // previously checked, OK
+    //  New parcel, must make all the checks.
+    integer thereflags = llGetParcelFlags(pos);         // flags for dest parcel
+    key thereowner = llList2Key(theredata,0);
+    key theregroup = llList2Key(theredata,1);
+    if ((gSafeParcelOwner != thereowner)                 // dest parcel must have same ownership
+    && (gSafeParcelGroup != theregroup))
+    {   return(FALSE); } // different group and owner at dest parcel
+    //  Check for no-script area
+    if (thereflags & PARCEL_FLAG_ALLOW_SCRIPTS == 0)            // if scripts off for almost everybody
+    {   if (gSafeParcelOwner != thereowner)
+        {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_SCRIPTS == 0) || (gSafeParcelGroup != theregroup))
+            { return(FALSE); }                                  // would die
+        }
+    }                                // no script area, we would die
+    //  Can we enter the destination parcel?
+    if (thereflags && PARCEL_FLAG_ALLOW_ALL_OBJECT_ENTRY == 0) 
+    {    if (gSafeParcelOwner == thereowner) { return(TRUE); } // same owner, OK
+        {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_OBJECT_ENTRY) || (gSafeParcelGroup != theregroup))
+            { return(FALSE); }
+        }
+    }
+    gSafeParcelKey = therekey;                          // this parcel is OK
+    return(TRUE);  // OK to enter destination parcel
 }
 //
 //  pathList2String -- convert list to string with commas as delimiters. Useful for debug.
