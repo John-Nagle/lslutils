@@ -193,7 +193,7 @@ pathTick()
     //  Possible recoverable problem
     if (status == PATHSTALL_UNSTICK)                            // if unstick needed
     {
-        pathMsg(PATH_MSG_WARN, "Retrying " + llList2String(PATHMODE_NAMES, gPathPathmode));
+        pathMsg(PATH_MSG_WARN, "Retrying " + pathActionName(gPathPathmode));
         integer success = pathUnstick();                        // try to unstick situation
         if (!success)
         {   pathStop();                                         // fails
@@ -287,7 +287,7 @@ pathStop()
 
 pathActionStart(integer pathmode, list options)
 {
-    pathMsg(PATH_MSG_INFO, "Starting " + llList2String(PATHMODE_NAMES, pathmode));
+    pathMsg(PATH_MSG_INFO, "Starting " + pathActionName(pathmode));
     if (gPathPathmode == PATHMODE_UNINITIALIZED && pathmode != PATHMODE_CREATE_CHARACTER)   // must create character first 
     {
         pathMsg(PATH_MSG_WARN, "Not initialized");
@@ -407,7 +407,7 @@ integer pathStallCheck()
     integer now = llGetUnixTime();                  // UNIX time since epoch, secs
     if (now - gPathRequestStartTime > PATH_STALL_TIME)// if totally stalled
     {   pathStop();                                 // stop whatever is going on
-        pathMsg(PATH_MSG_ERROR, llList2String(PATHMODE_NAMES, gPathPathmode) + " stalled after " + (string)PATH_STALL_TIME + " seconds."); 
+        pathMsg(PATH_MSG_ERROR, pathActionName(gPathPathmode) + " stalled after " + (string)(now - gPathRequestStartTime) + " seconds."); 
         return(PATHSTALL_STALLED);
     }
     //  At-goal check. Usually happens when start and goal are too close
@@ -462,7 +462,7 @@ integer pathStallCheck()
         gPathRetries = 0;                           // no need to retry
     } else {
         if ((now - gPathLastGoodTime) > PATH_GOOD_MOVE_TIME) // not getting anywhere
-        {   pathMsg(PATH_MSG_WARN, llList2String(PATHMODE_NAMES, gPathPathmode) + " moving but not making progress.");       
+        {   pathMsg(PATH_MSG_WARN, pathActionName(gPathPathmode) + " moving but not making progress.");       
             if (gPathRetries == 0)                      // if have not retried
             {   gPathRetries++;              
                 return(PATHSTALL_RETRY);                // just restart operation
@@ -526,7 +526,7 @@ vector pathUnstickFindPos(vector pos)
 //
 integer pathUnstick()
 {
-    pathMsg(PATH_MSG_WARN,"Attempting recovery for " + llList2String(PATHMODE_NAMES, gPathPathmode) + " - wandering briefly.");
+    pathMsg(PATH_MSG_WARN,"Attempting recovery for " + pathActionName(gPathPathmode) + " - wandering briefly.");
     vector pos = pathClosestNavPoint(llGetPos());
     if (pos == ZERO_VECTOR)
     {   pathMsg(PATH_MSG_ERROR, "Unable to find a navigatable place for unstick."); 
@@ -637,6 +637,13 @@ integer pathValidDest(vector pos)
     }
     gSafeParcelKey = therekey;                          // this parcel is OK
     return(TRUE);  // OK to enter destination parcel
+}
+//
+//  pathActionName -- name of path action in quotes, for messages
+//
+string pathActionName(integer pathmode)
+{   if (pathmode < 0 || pathmode >= llGetListLength(PATHMODE_NAMES)) { return("Invalid pathmode " + (string)pathmode); } // debug check
+    return("\"" + llList2String(PATHMODE_NAMES, pathmode) + "\"");  // name in quotes
 }
 //
 //  pathList2String -- convert list to string with commas as delimiters. Useful for debug.
