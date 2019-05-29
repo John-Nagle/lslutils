@@ -591,9 +591,9 @@ pathUpdate(integer status, list reserved)
             return;
         }
         //  Not at goal,  
-    } else if (status == PU_EVADE_HIDDEN 
-            || status == PU_EVADE_SPOTTED 
-            || status == PU_SLOWDOWN_DISTANCE_REACHED)
+    } else if ((status == PU_EVADE_HIDDEN)
+            || (status == PU_EVADE_SPOTTED) 
+            || (status == PU_SLOWDOWN_DISTANCE_REACHED))
     {   pathMsg(PATH_MSG_INFO, "Misc. path update status report: " + pathErrMsg(status));
         pathUpdateCallback(status,[]);                  // tell user
         return;
@@ -610,7 +610,7 @@ pathUpdate(integer status, list reserved)
 //
 integer pathValidDest(vector pos) 
 {   float REGION_SIZE = 256;                            // SL only, not for OpenSim
-    if (pos.x <= 0 || pos.x >= REGION_SIZE || pos.y <= 0 || pos.y >= REGION_SIZE) { return(FALSE); }
+    if ((pos.x <= 0) || (pos.x >= REGION_SIZE) || (pos.y <= 0) || (pos.y >= REGION_SIZE)) { return(FALSE); }
     list theredata = llGetParcelDetails(pos, [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP, PARCEL_DETAILS_ID]);
     key therekey = llList2Key(theredata,2);             // key of this parcel
     if (therekey == gSafeParcelKey) { return(TRUE); }   // previously checked, OK
@@ -642,7 +642,7 @@ integer pathValidDest(vector pos)
 //  pathActionName -- name of path action in quotes, for messages
 //
 string pathActionName(integer pathmode)
-{   if (pathmode < 0 || pathmode >= llGetListLength(PATHMODE_NAMES)) { return("Invalid pathmode " + (string)pathmode); } // debug check
+{   if ((pathmode < 0) || (pathmode >= llGetListLength(PATHMODE_NAMES))) { return("Invalid pathmode " + (string)pathmode); } // debug check
     return("\"" + llList2String(PATHMODE_NAMES, pathmode) + "\"");  // name in quotes
 }
 //
@@ -825,7 +825,7 @@ list pathGetBoundingBoxWorld(key id)
 integer pathBoundingBoxOverlap(key id0, key id1,  vector allowance)
 {   list bb0 = pathGetBoundingBoxWorld(id0);
     list bb1 = pathGetBoundingBoxWorld(id1);
-    if (llGetListLength(bb0) != 2 || llGetListLength(bb1) != 2)
+    if ((llGetListLength(bb0) != 2) || (llGetListLength(bb1) != 2))
     {   pathMsg(PATH_MSG_WARN, "Could not get bounding boxes.");
         return(TRUE);                                   // treat as overlap
     }
@@ -834,9 +834,9 @@ integer pathBoundingBoxOverlap(key id0, key id1,  vector allowance)
     vector bb0max = llList2Vector(bb0,1);               // upper bound
     vector bb1min = llList2Vector(bb1,0) + allowance;   // lower bound, plus allowance
     vector bb1max = llList2Vector(bb1,1);               // upper bound
-    if (bb0min.x > bb1max.x || bb1min.x > bb0max.x) { return(FALSE); } // no overlap
-    if (bb0min.y > bb1max.y || bb1min.y > bb0max.y) { return(FALSE); } // no overlap
-    if (bb0min.z > bb1max.z || bb1min.z > bb0max.z) { return(FALSE); } // no overlap
+    if ((bb0min.x > bb1max.x) || (bb1min.x > bb0max.x)) { return(FALSE); } // no overlap
+    if ((bb0min.y > bb1max.y) || (bb1min.y > bb0max.y)) { return(FALSE); } // no overlap
+    if ((bb0min.z > bb1max.z) || (bb1min.z > bb0max.z)) { return(FALSE); } // no overlap
     return(TRUE);                           // overlap
 }
 
