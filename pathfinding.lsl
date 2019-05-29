@@ -79,9 +79,10 @@ vector gPathLastGoodPos;                                    // position of last 
 integer gPathLastGoodTime;                                  // time of last good move
 integer gPathRetries;                                       // retries after zero speed
 integer gPathCollisionTime;                                 // time of last collision where skipped frames mode turned off, or 0
-key gSafeParcelKey;                                         // key of last parcel known to be safe to enter
-key gSafeParcelOwner;                                       // owner of last parcel known to be safe to enter
-key gSafeParcelGroup;                                       // group of last parcel known to be safe to enter
+key gPathSafeParcelKey;                                     // key of last parcel known to be safe to enter
+key gPathSafeParcelOwner;                                   // owner of last parcel known to be safe to enter
+key gPathSafeParcelGroup;                                   // group of last parcel known to be safe to enter
+vector gPathLastSafePos;                                    // last safe position - go back if real trouble
 //
 //  Call these functions instead of the corresponding LSL functions
 //
@@ -155,10 +156,11 @@ pathInit()
 {
     gPathPathmode = PATHMODE_UNINITIALIZED;                     // not ready yet
     gPathTarget = NULL_KEY;                                     // no goal yet
-    gSafeParcelKey = NULL_KEY;                                  // no known safe parcel yet
-    gSafeParcelOwner = NULL_KEY;
-    gSafeParcelGroup = NULL_KEY;
+    gPathSafeParcelKey = NULL_KEY;                                  // no known safe parcel yet
+    gPathSafeParcelOwner = NULL_KEY;
+    gPathSafeParcelGroup = NULL_KEY;
     gPathLastGoodPos = ZERO_VECTOR;                             // no known good position yet
+    gPathLastSafePos = ZERO_VECTOR;                             // no known safe position yet
 }
 //
 //  pathTick --  call this at least once every 2 seconds.
@@ -203,7 +205,7 @@ pathTick()
     }
     if ((status == PATHSTALL_OUT_OF_BOUNDS) || (status == PU_FAILURE_PARCEL_UNREACHABLE)) // somehow in a bad place
     {   
-        integer status = pathRecoverOutOfBounds(gPathLastGoodPos);
+        integer status = pathRecoverOutOfBounds(gPathLastSafePos);
         if (status != PU_GOAL_REACHED)                          // if that didn't work
         {   pathUpdateCallback(status,[]);                      // big trouble
             return;
@@ -336,8 +338,9 @@ pathActionRestart()
         llCreateCharacter(gPathCreateOptions); 
         gPathPathmode = PATHMODE_OFF;                           // we are now ready to go
         list heredata = llGetParcelDetails(llGetPos(), [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP]);
-        gSafeParcelOwner = llList2Key(heredata,0);              // assume that where user turns us on is safe
-        gSafeParcelGroup = llList2Key(heredata,1);                
+        gPathSafeParcelOwner = llList2Key(heredata,0);          // assume that where user turns us on is safe
+        gPathSafeParcelGroup = llList2Key(heredata,1);  
+        gPathLastSafePos = ZERO_VECTOR;                         // no safe pos after restart              
     } else if (gPathPathmode == PATHMODE_UPDATE_CHARACTER)
     {   gPathCreateOptions = gPathOptions;
         llUpdateCharacter(gPathCreateOptions);
@@ -368,7 +371,7 @@ integer pathRecoverOutOfBounds(vector safepos)
        pathUpdateCallback(PATHSTALL_UNREACHABLE,[]);          // report unreachable, probably won't work
        return(PU_FAILURE_PARCEL_UNREACHABLE);                   // really stuck
     }
-    pathMsg(PATH_MSG_WARN, "Forced move back within bounds to " + (string) gPathLastGoodPos);
+    pathMsg(PATH_MSG_WARN, "Forced move back within bounds to " + (string) safepos);
     //  Recovery sequence for ban lines and such
     llDeleteCharacter();
     llSleep(0.5);
@@ -400,6 +403,7 @@ integer pathStallCheck()
     {   pathMsg(PATH_MSG_WARN,"Out of bounds at " + (string)pos);
         return(PATHSTALL_OUT_OF_BOUNDS);            // we are somewhere we should not be. Force back to a good location
     }
+    gPathLastSafePos = pos;                         // this position is safe, save it for recovery
     if ((gPathPathmode == PATHMODE_WANDER) 
     || (gPathPathmode == PATHMODE_EVADE) 
     || (gPathPathmode == PATHMODE_FLEE_FROM)) { return(PATHSTALL_NONE); }  // no meaningful completion criterion 
@@ -614,29 +618,29 @@ integer pathValidDest(vector pos)
     if ((pos.x <= 0) || (pos.x >= REGION_SIZE) || (pos.y <= 0) || (pos.y >= REGION_SIZE)) { return(FALSE); }
     list theredata = llGetParcelDetails(pos, [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP, PARCEL_DETAILS_ID]);
     key therekey = llList2Key(theredata,2);             // key of this parcel
-    if (therekey == gSafeParcelKey) { return(TRUE); }   // previously checked, OK
+    if (therekey == gPathSafeParcelKey) { return(TRUE); }   // previously checked, OK
     //  New parcel, must make all the checks.
     integer thereflags = llGetParcelFlags(pos);         // flags for dest parcel
     key thereowner = llList2Key(theredata,0);
     key theregroup = llList2Key(theredata,1);
-    if ((gSafeParcelOwner != thereowner)                 // dest parcel must have same ownership
-    && (gSafeParcelGroup != theregroup))
+    if ((gPathSafeParcelOwner != thereowner)                 // dest parcel must have same ownership
+    && (gPathSafeParcelGroup != theregroup))
     {   return(FALSE); } // different group and owner at dest parcel
     //  Check for no-script area
     if (thereflags & PARCEL_FLAG_ALLOW_SCRIPTS == 0)            // if scripts off for almost everybody
-    {   if (gSafeParcelOwner != thereowner)
-        {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_SCRIPTS == 0) || (gSafeParcelGroup != theregroup))
+    {   if (gPathSafeParcelOwner != thereowner)
+        {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_SCRIPTS == 0) || (gPathSafeParcelGroup != theregroup))
             { return(FALSE); }                                  // would die
         }
     }                                // no script area, we would die
     //  Can we enter the destination parcel?
     if (thereflags && PARCEL_FLAG_ALLOW_ALL_OBJECT_ENTRY == 0) 
-    {    if (gSafeParcelOwner == thereowner) { return(TRUE); } // same owner, OK
-        {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_OBJECT_ENTRY) || (gSafeParcelGroup != theregroup))
+    {    if (gPathSafeParcelOwner == thereowner) { return(TRUE); } // same owner, OK
+        {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_OBJECT_ENTRY) || (gPathSafeParcelGroup != theregroup))
             { return(FALSE); }
         }
     }
-    gSafeParcelKey = therekey;                          // this parcel is OK
+    gPathSafeParcelKey = therekey;                          // this parcel is OK
     return(TRUE);  // OK to enter destination parcel
 }
 //
