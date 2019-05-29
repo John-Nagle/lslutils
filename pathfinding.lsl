@@ -185,7 +185,7 @@ pathTick()
     {   pathUpdateCallback(status,[]);                          // call user-defined completion fn
         return;
     }
-    if (status == PATHSTALL_STALLED || status == PATHSTALL_NOPROGRESS || status == PATHSTALL_UNREACHABLE) // total fail
+    if ((status == PATHSTALL_STALLED) || (status == PATHSTALL_NOPROGRESS) || (status == PATHSTALL_UNREACHABLE)) // total fail
     {   pathStop();                                             // stop operation in progress
         pathUpdateCallback(status,[]);                          // call user defined completion function
         return;
@@ -201,7 +201,7 @@ pathTick()
             return;
         }
     }
-    if (status == PATHSTALL_OUT_OF_BOUNDS || status == PU_FAILURE_PARCEL_UNREACHABLE) // somehow in a bad place
+    if ((status == PATHSTALL_OUT_OF_BOUNDS) || (status == PU_FAILURE_PARCEL_UNREACHABLE)) // somehow in a bad place
     {   
         integer status = pathRecoverOutOfBounds(gPathLastGoodPos);
         if (status != PU_GOAL_REACHED)                          // if that didn't work
@@ -363,7 +363,7 @@ pathResetCollision()
 //
 integer pathRecoverOutOfBounds(vector safepos)
 {
-    if (safepos == ZERO_VECTOR || llVecMag(safepos - llGetPos()) < 0.05)     // if no better pos available
+    if ((safepos == ZERO_VECTOR) || (llVecMag(safepos - llGetPos()) < 0.05))     // if no better pos available
     {  pathMsg(PATH_MSG_ERROR, "Out of bounds and no recovery position."); // not recoverable
        pathUpdateCallback(PATHSTALL_UNREACHABLE,[]);          // report unreachable, probably won't work
        return(PU_FAILURE_PARCEL_UNREACHABLE);                   // really stuck
@@ -394,15 +394,15 @@ integer pathRecoverOutOfBounds(vector safepos)
 //
 integer pathStallCheck()
 {
-    if (gPathPathmode == PATHMODE_OFF || gPathPathmode == PATHMODE_UNINITIALIZED) { return(PATHSTALL_NONE); } // idle, cannot stall
+    if ((gPathPathmode == PATHMODE_OFF) || (gPathPathmode == PATHMODE_UNINITIALIZED)) { return(PATHSTALL_NONE); } // idle, cannot stall
     vector pos = llGetPos();
-    if (llGetStatus(STATUS_PHYSICS) == 0 || !pathValidDest(pos))
+    if ((llGetStatus(STATUS_PHYSICS) == 0) || (!pathValidDest(pos)))
     {   pathMsg(PATH_MSG_WARN,"Out of bounds at " + (string)pos);
         return(PATHSTALL_OUT_OF_BOUNDS);            // we are somewhere we should not be. Force back to a good location
     }
-    if (gPathPathmode == PATHMODE_WANDER 
-    || gPathPathmode == PATHMODE_EVADE 
-    || gPathPathmode == PATHMODE_FLEE_FROM) { return(PATHSTALL_NONE); }  // no meaningful completion criterion 
+    if ((gPathPathmode == PATHMODE_WANDER) 
+    || (gPathPathmode == PATHMODE_EVADE) 
+    || (gPathPathmode == PATHMODE_FLEE_FROM)) { return(PATHSTALL_NONE); }  // no meaningful completion criterion 
     //  Stall timeout
     integer now = llGetUnixTime();                  // UNIX time since epoch, secs
     if (now - gPathRequestStartTime > PATH_STALL_TIME)// if totally stalled
