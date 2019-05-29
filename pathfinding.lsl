@@ -406,8 +406,9 @@ integer pathStallCheck()
     //  Stall timeout
     integer now = llGetUnixTime();                  // UNIX time since epoch, secs
     if (now - gPathRequestStartTime > PATH_STALL_TIME)// if totally stalled
-    {   pathStop();                                 // stop whatever is going on
+    {                                               // stop whatever is going on
         pathMsg(PATH_MSG_ERROR, pathActionName(gPathPathmode) + " stalled after " + (string)(now - gPathRequestStartTime) + " seconds."); 
+        pathStop(); 
         return(PATHSTALL_STALLED);
     }
     //  At-goal check. Usually happens when start and goal are too close
