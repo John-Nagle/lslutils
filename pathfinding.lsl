@@ -403,7 +403,7 @@ integer pathStallCheck()
     {   pathMsg(PATH_MSG_WARN,"Out of bounds at " + (string)pos);
         return(PATHSTALL_OUT_OF_BOUNDS);            // we are somewhere we should not be. Force back to a good location
     }
-    gPathLastSafePos = pos;                         // this position is safe, save it for recovery
+    gPathLastSafePos = pos;                         // this position is safe, save it for recovery  
     if ((gPathPathmode == PATHMODE_WANDER) 
     || (gPathPathmode == PATHMODE_EVADE) 
     || (gPathPathmode == PATHMODE_FLEE_FROM)) { return(PATHSTALL_NONE); }  // no meaningful completion criterion 
@@ -602,7 +602,18 @@ pathUpdate(integer status, list reserved)
     {   pathMsg(PATH_MSG_INFO, "Misc. path update status report: " + pathErrMsg(status));
         pathUpdateCallback(status,[]);                  // tell user
         return;
-    } 
+    }
+    //  Check for went off the allowed area
+    vector pos = llGetPos();
+    if ((status == PU_FAILURE_INVALID_START) || !pathValidDest(pos))
+    {   {   pathMsg(PATH_MSG_WARN,"Out of bounds, status " + pathErrMsg(status) + ", at " + (string)pos);
+            integer stat = pathRecoverOutOfBounds(gPathLastSafePos);            // try to recover             
+            if (stat == PU_GOAL_REACHED)                    // if successful recovery back in bounds    
+            {   pathActionRestart();                        // try again
+                return;
+            }
+        }          
+    }
     //  Not done, and not a misc. status report. Fail.
     pathMsg(PATH_MSG_INFO, "Path operation failed: " + pathErrMsg(status));
     pathStop();
