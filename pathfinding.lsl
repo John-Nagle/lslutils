@@ -360,6 +360,21 @@ pathResetCollision()
 }
 
 //
+//  pathRecoverOffNavmesh -- off the navmesh, emergency recovery
+//
+integer pathRecoverOffNavmesh()
+{   vector pos = llGetPos();
+    list navinfo = llGetClosestNavPoint(pos, []);
+    if (llGetListLength(navinfo) < 1)
+    {   pathMsg(PATH_MSG_ERROR, "Off the navmesh and can't get back."); return(PU_FAILURE_INVALID_START); } // failed
+    vector newpos = llList2Vector(navinfo,0);       // get nearest point on navmesh
+    if (!pathValidDest(newpos))                     // if recovery pos is off parcel
+    {   pathMsg(PATH_MSG_WARN, "Off the navmesh and recovered but off parcel."); return(PATHSTALL_OUT_OF_BOUNDS); }
+    llSetPos(newpos);                               // FORCED MOVE - try to go there
+    pathMsg(PATH_MSG_INFO, "Off navmesh, recovered.");
+    return(PU_GOAL_REACHED);                        // assume success    
+}
+//
 //  pathRecoverOutOfBounds  -- somehow got out of bounds
 //
 //  Do a non-physical move back to a safe place.
@@ -604,8 +619,19 @@ pathUpdate(integer status, list reserved)
         return;
     }
     //  Check for went off the allowed area
+    if (status == PU_FAILURE_INVALID_START)                 // off the navmesh
+    {   integer stat = pathRecoverOffNavmesh();             // try to recover
+        if (stat == PU_GOAL_REACHED)                        // if successful recovery back in bounds    
+        {   pathActionRestart();                            // try again
+            return;
+        } else if (stat == PU_FAILURE_INVALID_START) {
+            pathMsg(PATH_MSG_INFO, "Path operation failed: " + pathErrMsg(status));
+            pathStop();
+            pathUpdateCallback(status,[]);                  // tell user       
+        }      
+    }
     vector pos = llGetPos();
-    if ((status == PU_FAILURE_INVALID_START) || !pathValidDest(pos))
+    if (!pathValidDest(pos))                                // outside the parcel
     {   {   pathMsg(PATH_MSG_WARN,"Out of bounds, status " + pathErrMsg(status) + ", at " + (string)pos);
             integer stat = pathRecoverOutOfBounds(gPathLastSafePos);            // try to recover             
             if (stat == PU_GOAL_REACHED)                    // if successful recovery back in bounds    
