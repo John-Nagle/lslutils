@@ -260,7 +260,7 @@ pathCollide(integer num_detected)
     {   newopts = pathReplaceOption(newopts, [CHARACTER_AVOIDANCE_MODE, AVOID_CHARACTERS | AVOID_DYNAMIC_OBSTACLES]); }
     //  And switch to "slow mode".
     llUpdateCharacter(newopts); 
-    pathMsg(PATH_MSG_INFO, "Collision - starting slow precise mode.");
+    pathMsg(PATH_MSG_INFO, "Collision - slow mode.");
 }
 //  
 //
@@ -274,7 +274,7 @@ pathPursueToleranceUpdate(list options)                         // update pursue
     if (llGetListLength(tolopt) == 1)
     {   gPathTolerance = llList2Float(tolopt,0);    // get tolerance
         gPathTolerance = gPathTolerance + PATH_GOAL_TOL;    // add safety margin
-        pathMsg(PATH_MSG_INFO, "Pursue tolerance (m): " + (string) gPathTolerance);
+        ////pathMsg(PATH_MSG_INFO, "Pursue tolerance (m): " + (string) gPathTolerance);
     }
 }
 
@@ -345,8 +345,7 @@ pathActionRestart()
     {   gPathCreateOptions = gPathOptions;
         llUpdateCharacter(gPathCreateOptions);
     } else {
-        pathMsg(PATH_MSG_ERROR, "pathActionRestart called incorrectly with pathmode = " 
-            + (string)gPathPathmode);
+        pathMsg(PATH_MSG_ERROR, "pathActionRestart called incorrectly");
     }
 }
 
@@ -355,7 +354,7 @@ pathActionRestart()
 //
 pathResetCollision()
 {   llUpdateCharacter(gPathCreateOptions);              // back to normal mode
-    if (gPathCollisionTime != 0) { pathMsg(PATH_MSG_INFO, "No collisions recently, slow mode turned off."); }
+    if (gPathCollisionTime != 0) { pathMsg(PATH_MSG_INFO, "Slow mode turned off."); }
     gPathCollisionTime = 0;                             // end of slow mode
 }
 
@@ -364,14 +363,17 @@ pathResetCollision()
 //
 integer pathRecoverOffNavmesh()
 {   vector pos = llGetPos();
-    list navinfo = llGetClosestNavPoint(pos, []);
-    if (llGetListLength(navinfo) < 1)
+    vector charsize = llGetScale();            
+    float charaboveground = charsize.z * 0.5;   // must query close to ground level
+    list points = llGetClosestNavPoint(pos - <0,0,charaboveground>,[]);   // get navmesh point near object.
+    if (llGetListLength(points) < 1)
     {   pathMsg(PATH_MSG_ERROR, "Off the navmesh and can't get back."); return(PU_FAILURE_INVALID_START); } // failed
-    vector newpos = llList2Vector(navinfo,0);       // get nearest point on navmesh
+    vector newpos = llList2Vector(points,0);        // get nearest point on navmesh
     if (!pathValidDest(newpos))                     // if recovery pos is off parcel
-    {   pathMsg(PATH_MSG_WARN, "Off the navmesh and recovered but off parcel."); return(PATHSTALL_OUT_OF_BOUNDS); }
+    {   pathMsg(PATH_MSG_WARN, "Off the navmesh and off parcel."); return(PATHSTALL_OUT_OF_BOUNDS); }
+    newpos.z = newpos.z + charaboveground;          // put back above ground, not in it.
     llSetPos(newpos);                               // FORCED MOVE - try to go there
-    pathMsg(PATH_MSG_INFO, "Off navmesh, recovered to " + string(newpos));
+    pathMsg(PATH_MSG_INFO, "Off navmesh, recovered");
     return(PU_GOAL_REACHED);                        // assume success    
 }
 //
@@ -386,7 +388,7 @@ integer pathRecoverOutOfBounds(vector safepos)
        pathUpdateCallback(PATHSTALL_UNREACHABLE,[]);          // report unreachable, probably won't work
        return(PU_FAILURE_PARCEL_UNREACHABLE);                   // really stuck
     }
-    pathMsg(PATH_MSG_WARN, "Forced move back within bounds to " + (string) safepos);
+    pathMsg(PATH_MSG_WARN, "Forced move to " + (string) safepos);
     //  Recovery sequence for ban lines and such
     llDeleteCharacter();
     llSleep(0.5);
@@ -445,14 +447,14 @@ integer pathStallCheck()
             if (gPathPathmode == PATHMODE_PURSUE)
             {   list v = llGetObjectDetails(gPathTarget, [OBJECT_POS]); 
                 if (v == []) { return(PATHSTALL_UNREACHABLE); }    // can't find target. Maybe it left.
-                vector targetpos = llList2Vector(v,0);
-                if (!pathReachableStatic(pos, targetpos))
-                {   return(PATHSTALL_UNREACHABLE); }       // abandon pursuit, target is not reachable
+                ////vector targetpos = llList2Vector(v,0);
+                ////if (!pathReachableStatic(pos, targetpos))
+                ////{   return(PATHSTALL_UNREACHABLE); }       // abandon pursuit, target is not reachable
             }
-            if (gPathPathmode == PATHMODE_NAVIGATE_TO)
-            {   if (!pathReachableStatic(pos, gPathGoal))
-                {   return(PU_FAILURE_UNREACHABLE); }   // destination is unreachable but we do not know why
-            }
+            ////if (gPathPathmode == PATHMODE_NAVIGATE_TO)
+            ////{   if (!pathReachableStatic(pos, gPathGoal))
+            ////    {   return(PU_FAILURE_UNREACHABLE); }   // destination is unreachable but we do not know why
+            ////}
             //  Check for pursue fails to start. This usually means the destination is unreachable.
             if (gPathPathmode == PATHMODE_PURSUE) 
             {   vector pos = llGetPos();                // we are here
@@ -547,11 +549,11 @@ vector pathUnstickFindPos(vector pos)
 integer pathUnstick()
 {
     pathMsg(PATH_MSG_WARN,"Attempting recovery for " + pathActionName(gPathPathmode) + " - wandering briefly.");
-    vector pos = pathClosestNavPoint(llGetPos());
-    if (pos == ZERO_VECTOR)
-    {   pathMsg(PATH_MSG_ERROR, "Unable to find a navigatable place for unstick."); 
-        return(FALSE);
-    }
+    vector pos = llGetPos();                        // wander near current position
+    ////if (pos == ZERO_VECTOR)
+    ////{   pathMsg(PATH_MSG_ERROR, "Unable to find a navigatable place for unstick."); 
+    ////    return(FALSE);
+    ////}
     //  Have to disable avatar avoidance for this or it won't start when too close to an avi.
     llExecCharacterCmd(CHARACTER_CMD_STOP, []);
     llUpdateCharacter(pathReplaceOption(gPathCreateOptions, [CHARACTER_AVOIDANCE_MODE, AVOID_CHARACTERS])); 
@@ -605,7 +607,7 @@ pathUpdate(integer status, list reserved)
                 pathStop();                             // stop motion
                 pathUpdateCallback(PATHSTALL_NOPROGRESS,[]);    // tell user
             } else {
-                pathMsg(PATH_MSG_INFO, "Pathfinding reported success, but goal not reached. Retry.");
+                ////pathMsg(PATH_MSG_INFO, "Pathfinding reported success, but goal not reached. Retry.");
                 pathActionRestart();                    // try again
             }
             return;
@@ -684,21 +686,7 @@ integer pathValidDest(vector pos)
 //  pathActionName -- name of path action in quotes, for messages
 //
 string pathActionName(integer pathmode)
-{   if ((pathmode < 0) || (pathmode >= llGetListLength(PATHMODE_NAMES))) { return("Invalid pathmode " + (string)pathmode); } // debug check
-    return("\"" + llList2String(PATHMODE_NAMES, pathmode) + "\"");  // name in quotes
-}
-//
-//  pathList2String -- convert list to string with commas as delimiters. Useful for debug.
-//
-string pathList2String(list src)
-{   string out = "[";               
-    integer i;
-    for (i=0; i<llGetListLength(src); i++)                  // for each listitem
-    {   if (i>0) { out = out + ","; }
-        out = out + (string)llList2List(src, i,i);          // append to string with comma separator
-    }
-    return(out + "]");                                      // and enclosing brackets
-}
+{    return("\"" + llList2String(PATHMODE_NAMES, pathmode) + "\""); } // name in quotes
 //
 //  pathGetOption -- get option as list of 1 element, or empty list
 //
@@ -734,9 +722,23 @@ list pathReplaceOption(list options, list update)
     list outlist = llListReplaceList(options, update, startpos, endpos);
     return(outlist);                                // insert new value
 }
+#ifdef OBSOLETE
 //
 //  Useful utility functions. Optional.
 //
+//
+//  pathList2String -- convert list to string with commas as delimiters. Useful for debug.
+//
+string pathList2String(list src)
+{   string out = "[";               
+    integer i;
+    for (i=0; i<llGetListLength(src); i++)                  // for each listitem
+    {   if (i>0) { out = out + ","; }
+        out = out + (string)llList2List(src, i,i);          // append to string with comma separator
+    }
+    return(out + "]");                                      // and enclosing brackets
+}
+
 //
 //  pathClosestNavPoint -- get closest nav point to current position.
 //
@@ -756,7 +758,6 @@ vector pathClosestNavPoint(vector pos)
     pathMsg(PATH_MSG_INFO, "Closest nav point to " + (string)pos + " is " + (string)pnt);
     return(pnt);    
 }
-
 //
 //  pathReachableStatic  -- can we get there from here, as a static path?
 //
@@ -773,7 +774,7 @@ integer pathReachableStatic(vector pt0, vector pt1)
     {   pathMsg(PATH_MSG_ERROR, "LSL INTERNAL ERROR: llGetStaticPath zero length list."); // broken
         return(FALSE);
     }
-    pathMsg(PATH_MSG_INFO, "Path reachable: " + pathList2String(path)); // ***TEMP***
+    ////pathMsg(PATH_MSG_INFO, "Path reachable: " + pathList2String(path)); // ***TEMP***
     integer status = llList2Integer(path,-1);       // get status
     if (status == 0) {  return(TRUE);   }           // sucesss, can at least try this move
     pathMsg(PATH_MSG_WARN, "No path from "          // failed
@@ -782,7 +783,6 @@ integer pathReachableStatic(vector pt0, vector pt1)
     return(FALSE);  
 }
 
-#ifdef OBSOLETE // no longer using this
 //
 //  pathNoObstacleBetween  -- is there an obstacle in a straight line between two points?
 //
