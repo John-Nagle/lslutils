@@ -371,7 +371,7 @@ integer pathRecoverOffNavmesh()
     if (!pathValidDest(newpos))                     // if recovery pos is off parcel
     {   pathMsg(PATH_MSG_WARN, "Off the navmesh and recovered but off parcel."); return(PATHSTALL_OUT_OF_BOUNDS); }
     llSetPos(newpos);                               // FORCED MOVE - try to go there
-    pathMsg(PATH_MSG_INFO, "Off navmesh, recovered.");
+    pathMsg(PATH_MSG_INFO, "Off navmesh, recovered to " + string(newpos));
     return(PU_GOAL_REACHED);                        // assume success    
 }
 //
