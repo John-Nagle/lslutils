@@ -55,7 +55,7 @@ integer PATH_STALL_TIME = 300;                          // (secs) really stalled
 integer PATH_START_TIME = 2;                            // (secs) allow this long for path operation to start
 float   PATH_GOAL_TOL = 1.0;                            // (m) how close to dest is success?
 float   PATH_GOOD_MOVE_DIST = 1.5;                      // (m) must move at least this far
-integer PATH_GOOD_MOVE_TIME = 7;                        // (secs) this often
+integer PATH_GOOD_MOVE_TIME = 2;                        // (secs) this often
 float   PATH_ROTATION_EASE = 0.5;                       // (0..1) Rotation ease-in/ease out strength
 float   PATH_MIN_PATHFINDING_PCT = 25.0;                // (0..100) Minimum pathfinding steps executed to get out of slow mode
 float   PATH_RANDOM_UNSTICK_MOVE = 0.25;                // (m) max distance to move randomly to get unstuck
@@ -83,6 +83,7 @@ key gPathSafeParcelKey;                                     // key of last parce
 key gPathSafeParcelOwner;                                   // owner of last parcel known to be safe to enter
 key gPathSafeParcelGroup;                                   // group of last parcel known to be safe to enter
 vector gPathLastSafePos;                                    // last safe position - go back if real trouble
+float gPathFindingPct;                                      // check for sim in severe overload
 //
 //  Call these functions instead of the corresponding LSL functions
 //
@@ -161,6 +162,7 @@ pathInit()
     gPathSafeParcelGroup = NULL_KEY;
     gPathLastGoodPos = ZERO_VECTOR;                             // no known good position yet
     gPathLastSafePos = ZERO_VECTOR;                             // no known safe position yet
+    gPathFindingPct = 100.0;                                    // assume pathfinding system OK
 }
 //
 //  pathTick --  call this at least once every 2 seconds.
@@ -169,15 +171,15 @@ pathTick()
 {
     if (gPathPathmode == PATHMODE_UNINITIALIZED) { return; }    // need startup
     if (gPathPathmode == PATHMODE_OFF) { return; }              // not pathfinding, nothing to do.
+    gPathFindingPct = llGetSimStats(SIM_STAT_PCT_CHARS_STEPPED);// check for sim in severe overload
     integer status = pathStallCheck();                          // are we stuck?
     if (status == PATHSTALL_NONE) 
-    {   if (gPathCollisionTime != 0 && llGetUnixTime() - gPathCollisionTime > PATH_GOOD_MOVE_TIME) // if going OK for a while
-        {   float pathfindingpct = llGetSimStats(SIM_STAT_PCT_CHARS_STEPPED); // check for sim in severe overload
-            ////llOwnerSay("Pathfinding pct: " + (string)pathfindingpct);    // ***TEMP***
-            if (pathfindingpct > PATH_MIN_PATHFINDING_PCT)
+    {   if (gPathCollisionTime != 0 && llGetUnixTime() - gPathCollisionTime > PATH_GOOD_MOVE_TIME * (100.0 / (gPathFindingPct + 1.0))) // if going OK for a while
+        {   ////llOwnerSay("Pathfinding pct: " + (string)gPathFindingPct);    // ***TEMP***
+            if (gPathFindingPct > PATH_MIN_PATHFINDING_PCT)
             {   pathResetCollision(); }  
             else 
-            {   pathMsg(PATH_MSG_WARN, "Staying in slow mode, pathfinding running too slow: " + (string)pathfindingpct + "% of normal");
+            {   pathMsg(PATH_MSG_WARN, "Staying in slow mode, pathfinding running too slow: " + (string)gPathFindingPct  + "% of normal");
                 gPathCollisionTime = llGetUnixTime() + 60;      // don't recheck for a full minute
             }
         }                           
@@ -483,7 +485,7 @@ integer pathStallCheck()
         gPathLastGoodTime = now;
         gPathRetries = 0;                           // no need to retry
     } else {
-        if ((now - gPathLastGoodTime) > PATH_GOOD_MOVE_TIME) // not getting anywhere
+        if ((now - gPathLastGoodTime) > PATH_GOOD_MOVE_TIME * (100.0 / (gPathFindingPct + 1.0))) // not getting anywhere, scaled by pathfinding slowdown
         {   pathMsg(PATH_MSG_WARN, pathActionName(gPathPathmode) + " moving but not making progress.");       
             if (gPathRetries == 0)                      // if have not retried
             {   gPathRetries++;              
@@ -568,8 +570,9 @@ integer pathUnstick()
         pos = pathUnstickFindPos(pos);              // try to find someplace to go by random search
         if (pos == ZERO_VECTOR)
         {   pathMsg(PATH_MSG_ERROR,"Stuck and no place to go"); return(FALSE); }
-        llSetPos(pos);                              // force a move.
+        llSetPos(pos);                              // force a small move.
         llSleep(2.0);                               // give physics time to settle if we collided
+#ifdef OBSOLETE // don't wander here again,  try restarting the operation
         //  Try second wander. If it doesn't move, we're really stuck.
         llWanderWithin(pos, <2.0, 2.0, 1.0>,[]);    // move randomly to get unstuck
         llSleep(2.0);
@@ -580,6 +583,7 @@ integer pathUnstick()
             llUpdateCharacter(gPathCreateOptions);      // restore old state
             return(FALSE);  // failed
         }
+#endif // OBSOLETE
     }
     llUpdateCharacter(gPathCreateOptions);      // restore old state
     return(TRUE);                               // successful recovery
