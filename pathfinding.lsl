@@ -51,7 +51,7 @@
 //
 //  Configuration
 //
-integer PATH_STALL_TIME = 300;                          // (secs) really stalled if greater than this
+integer PATH_STALL_TIME = 90;                           // (secs) really stalled if greater than this
 integer PATH_START_TIME = 2;                            // (secs) allow this long for path operation to start
 float   PATH_GOAL_TOL = 1.0;                            // (m) how close to dest is success?
 float   PATH_GOOD_MOVE_DIST = 1.5;                      // (m) must move at least this far
@@ -428,7 +428,7 @@ integer pathStallCheck()
     || (gPathPathmode == PATHMODE_FLEE_FROM)) { return(PATHSTALL_NONE); }  // no meaningful completion criterion 
     //  Stall timeout
     integer now = llGetUnixTime();                  // UNIX time since epoch, secs
-    if (now - gPathRequestStartTime > PATH_STALL_TIME)// if totally stalled
+    if (now - gPathRequestStartTime > (PATH_STALL_TIME * (100.0 / (gPathFindingPct + 1.0))))     // if totally stalled
     {                                               // stop whatever is going on
         pathMsg(PATH_MSG_ERROR, pathActionName(gPathPathmode) + " stalled after " + (string)(now - gPathRequestStartTime) + " seconds."); 
         pathStop(); 
@@ -441,7 +441,7 @@ integer pathStallCheck()
     }
 
     //  Zero velocity check
-    if (now - gPathActionStartTime > PATH_START_TIME) // if enough time for pathfinding to engage
+    if (now - gPathActionStartTime > (PATH_START_TIME * (100.0 / (gPathFindingPct + 1.0)))) // if enough time for pathfinding to engage
     {   if (llVecMag(llGetVel()) < 0.01 && llVecMag(llGetOmega()) < 0.01)
         {   pathMsg(PATH_MSG_WARN, "Not moving after " + (string) (now-gPathActionStartTime) 
                 + " secs. Vel: " + (string)(llVecMag(llGetVel())));
