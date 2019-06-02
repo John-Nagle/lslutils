@@ -82,7 +82,8 @@ integer gPathCollisionTime;                                 // time of last coll
 key gPathSafeParcelKey;                                     // key of last parcel known to be safe to enter
 key gPathSafeParcelOwner;                                   // owner of last parcel known to be safe to enter
 key gPathSafeParcelGroup;                                   // group of last parcel known to be safe to enter
-vector gPathLastSafePos;                                    // last safe position - go back if real trouble
+vector gPathLastSafePos;                                    // last safe position
+vector gPathPrevSafePos;                                    // Recovery to here when in big trouble
 float gPathFindingPct;                                      // check for sim in severe overload
 //
 //  Call these functions instead of the corresponding LSL functions
@@ -162,6 +163,7 @@ pathInit()
     gPathSafeParcelGroup = NULL_KEY;
     gPathLastGoodPos = ZERO_VECTOR;                             // no known good position yet
     gPathLastSafePos = ZERO_VECTOR;                             // no known safe position yet
+    gPathPrevSafePos = ZERO_VECTOR;                             // recover to here on real trouble
     gPathFindingPct = 100.0;                                    // assume pathfinding system OK
 }
 //
@@ -207,7 +209,7 @@ pathTick()
     }
     if ((status == PATHSTALL_OUT_OF_BOUNDS) || (status == PU_FAILURE_PARCEL_UNREACHABLE)) // somehow in a bad place
     {   
-        integer status = pathRecoverOutOfBounds(gPathLastSafePos);
+        integer status = pathRecoverOutOfBounds(gPathPrevSafePos);
         if (status != PU_GOAL_REACHED)                          // if that didn't work
         {   pathUpdateCallback(status,[]);                      // big trouble
             return;
@@ -342,7 +344,8 @@ pathActionRestart()
         list heredata = llGetParcelDetails(llGetPos(), [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP]);
         gPathSafeParcelOwner = llList2Key(heredata,0);          // assume that where user turns us on is safe
         gPathSafeParcelGroup = llList2Key(heredata,1);  
-        gPathLastSafePos = ZERO_VECTOR;                         // no safe pos after restart              
+        gPathLastSafePos = ZERO_VECTOR;                         // no safe pos after restart  
+        gPathPrevSafePos = ZERO_VECTOR;            
     } else if (gPathPathmode == PATHMODE_UPDATE_CHARACTER)
     {   gPathCreateOptions = gPathOptions;
         llUpdateCharacter(gPathCreateOptions);
@@ -359,7 +362,7 @@ pathResetCollision()
     if (gPathCollisionTime != 0) { pathMsg(PATH_MSG_INFO, "Slow mode turned off."); }
     gPathCollisionTime = 0;                             // end of slow mode
 }
-
+#ifdef OBSOLETE
 //
 //  pathRecoverOffNavmesh -- off the navmesh, emergency recovery
 //
@@ -378,6 +381,7 @@ integer pathRecoverOffNavmesh()
     pathMsg(PATH_MSG_INFO, "Off navmesh, recovered");
     return(PU_GOAL_REACHED);                        // assume success    
 }
+#endif // OBSOLETE
 //
 //  pathRecoverOutOfBounds  -- somehow got out of bounds
 //
@@ -422,7 +426,6 @@ integer pathStallCheck()
     {   pathMsg(PATH_MSG_WARN,"Out of bounds at " + (string)pos);
         return(PATHSTALL_OUT_OF_BOUNDS);            // we are somewhere we should not be. Force back to a good location
     }
-    gPathLastSafePos = pos;                         // this position is safe, save it for recovery  
     if ((gPathPathmode == PATHMODE_WANDER) 
     || (gPathPathmode == PATHMODE_EVADE) 
     || (gPathPathmode == PATHMODE_FLEE_FROM)) { return(PATHSTALL_NONE); }  // no meaningful completion criterion 
@@ -483,7 +486,9 @@ integer pathStallCheck()
     if ((llVecMag(pos - gPathLastGoodPos)) > PATH_GOOD_MOVE_DIST)   // if making some progress
     {   gPathLastGoodPos = pos;                     // we are good
         gPathLastGoodTime = now;
-        gPathRetries = 0;                           // no need to retry
+        gPathRetries = 0;                               // no need to retry
+        gPathPrevSafePos = gPathLastSafePos;            // this pos is good, and we got here from somewhere else OK, so keep
+        gPathLastSafePos = pos;
     } else {
         if ((now - gPathLastGoodTime) > PATH_GOOD_MOVE_TIME * (100.0 / (gPathFindingPct + 1.0))) // not getting anywhere, scaled by pathfinding slowdown
         {   pathMsg(PATH_MSG_WARN, pathActionName(gPathPathmode) + " moving but not making progress.");       
@@ -625,6 +630,7 @@ pathUpdate(integer status, list reserved)
         return;
     }
     //  Check for went off the allowed area
+#ifdef OBSOLETE
     if (status == PU_FAILURE_INVALID_START)                 // off the navmesh
     {   integer stat = pathRecoverOffNavmesh();             // try to recover
         if (stat == PU_GOAL_REACHED)                        // if successful recovery back in bounds    
@@ -636,10 +642,11 @@ pathUpdate(integer status, list reserved)
             pathUpdateCallback(status,[]);                  // tell user       
         }      
     }
+#endif // OBSOLETE
     vector pos = llGetPos();
-    if (!pathValidDest(pos))                                // outside the parcel
+    if ((status == PU_FAILURE_INVALID_START) || !pathValidDest(pos))                                // outside the parcel
     {   {   pathMsg(PATH_MSG_WARN,"Out of bounds, status " + pathErrMsg(status) + ", at " + (string)pos);
-            integer stat = pathRecoverOutOfBounds(gPathLastSafePos);            // try to recover             
+            integer stat = pathRecoverOutOfBounds(gPathPrevSafePos);            // try to recover             
             if (stat == PU_GOAL_REACHED)                    // if successful recovery back in bounds    
             {   pathActionRestart();                        // try again
                 return;
