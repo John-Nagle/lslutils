@@ -604,7 +604,9 @@ pathUpdate(integer status, list reserved)
         llSleep(2.0);                                   // avoid compute loop when stuck
         return;
     }
-    if (status == PU_GOAL_REACHED)                      // may be at goal, or not.
+    //  May be at goal, or not. GOAL_REACHED is sometimes a false alarm.
+    //  NO_VALID_DESTINATION is also sometimes a false alarm. 
+    if ((status == PU_GOAL_REACHED) || (status == PU_FAILURE_NO_VALID_DESTINATION))                      // may be at goal, or not.
     {   //  Pathfinding system thinks goal reached. 
         if (pathAtGoal(gPathTolerance)) 
         {   pathStop();
@@ -612,7 +614,7 @@ pathUpdate(integer status, list reserved)
             return;                                     // done
         } else {                                        // need to retry, not there yet.
             if (llVecMag(llGetPos() - gPathLastGoodPos) < 0.01) // if we are stuck
-            {   pathMsg(PATH_MSG_WARN, "Pathfinding reported success, but goal not reached and stalled.");
+            {   pathMsg(PATH_MSG_WARN, "Pathfinding reported " + pathErrMsg(status) + ", but goal not reached and stalled.");
                 pathStop();                             // stop motion
                 pathUpdateCallback(PATHSTALL_NOPROGRESS,[]);    // tell user
             } else {
