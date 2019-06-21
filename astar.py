@@ -52,7 +52,7 @@ class AStarGraph(object):
         self.barrierarray = numpy.full((xsize, ysize),0)            # 0 means unknown, 1 means obstacle, -1 means clear
         self.closedverticesarray = numpy.full((xsize, ysize), 0)    # 0 means not closed, 1 means closed
         self.camefromarray = numpy.full((xsize, ysize), 0)          # index into ALLOWEDMOVES
-        self.gcostarray = numpy.full((xsize, ysize), 0)             # G cost
+        self.gcostarray = numpy.full((xsize, ysize), 0.0)             # G cost
  
     def heuristic(self, start, goal):
         """
