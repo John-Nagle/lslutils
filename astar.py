@@ -33,6 +33,7 @@
 #   2. X and Y are reversed in maps so arrows are wrong.    [FIXED]
 #
 import numpy
+import math
 
 #
 #   Data storage.
@@ -59,7 +60,7 @@ class AStarGraph(object):
         """
         dx = start[0] - goal[0]
         dy = start[1] - goal[1]
-        return (dx*dx + dy*dy)              # squared distance
+        return math.sqrt(dx*dx + dy*dy)              # squared distance
  
     def get_vertex_neighbours(self, pos):
         """
@@ -91,7 +92,10 @@ class AStarGraph(object):
             self.update_barrier(x,y, checkbarrier)            # so go look at barrier info
         if self.barrierarray[x][y] > 0:
             return 10000                        # move into barrier, infinite cost
-        return 1
+        dx = a[0]-b[0]
+        dy = a[1]-b[1]
+        return math.sqrt(dx*dx + dy*dy)
+        ####return 1
         
     def dump(self, route) :
         """
