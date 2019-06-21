@@ -30,7 +30,7 @@
 #
 #   BUGS:
 #   1. Route is suboptimal.
-#   2. X and Y are reversed in maps so arrows are wrong.
+#   2. X and Y are reversed in maps so arrows are wrong.    [FIXED]
 #
 import numpy
 
@@ -51,7 +51,7 @@ class AStarGraph(object):
         self.barrierarray = numpy.full((xsize, ysize),0)            # 0 means unknown, 1 means obstacle, -1 means clear
         self.closedverticesarray = numpy.full((xsize, ysize), 0)    # 0 means not closed, 1 means closed
         self.camefromarray = numpy.full((xsize, ysize), 0)          # index into ALLOWEDMOVES
-        self.gcostarray = numpy.full((xsize, ysize), 999999)        # G cost
+        self.gcostarray = numpy.full((xsize, ysize), 0)             # G cost
  
     def heuristic(self, start, goal):
         """
@@ -93,23 +93,36 @@ class AStarGraph(object):
             return 10000                        # move into barrier, infinite cost
         return 1
         
-    def dump(self) :
+    def dump(self, route) :
         """
         Debug dump
         """
-        print("Came From info.")
+        print("Graph info.")
         for i in range(self.ysize) :
             s = ""
             for j in range(self.xsize) :
-                direction = self.camefromarray[i][j]
-                barrier = self.barrierarray[i][j]
+                direction = self.camefromarray[j][i]
+                barrier = self.barrierarray[j][i]
+                ch = " "
                 if barrier == 0 :
                     s = s + " "
                 elif barrier > 0 :
-                    s = s + "█"
+                    ch = "█"
                 else :
-                    s = s + self.ALLOWEDARROWS[direction] # show appropriate arrow
+                    if (j,i) in route :                    
+                        ch = self.ALLOWEDARROWSBOLD[direction] # show appropriate arrow
+                    else :
+                        ch = self.ALLOWEDARROWS[direction] # show appropriate arrow
+                s = s + ch
             print(s)
+        print("Cost info")
+        for i in range(self.ysize) :
+            s = ""
+            for j in range(self.xsize) :
+                cost = self.gcostarray[j][i]
+                s = s + ("%7i " % (cost,))
+            print(s)
+
             
         
  
@@ -119,17 +132,16 @@ def AStarSearch(start, end, graph, checkbarrier):
     openVertices = [(start, graph.heuristic(start, end))]            # our to-do ilst
  
     while len(openVertices) > 0:
-        #   Get the vertex in the open list with the lowest F score
+        #   Get the vertex in the open list with the lowest F score.
         current = None
         currentFscore = None
         for (pos, fscore) in openVertices:
-            if current is None or fscore < currentFscore:
+            if current is None or fscore < currentFscore :
                 currentFscore = fscore
                 current = pos
  
         #   Check if we have reached the goal
         if current == end :
-            print(graph.camefromarray)
             #   Retrace our route backward
             path = [current]
             while current != start :
@@ -137,7 +149,7 @@ def AStarSearch(start, end, graph, checkbarrier):
                 currentdir = graph.ALLOWEDMOVES[currentdirix]       # get current dir offset
                 current = (current[0] - currentdir[0], current[1] - currentdir[1])
                 if graph.barrierarray[current[0]][current[1]] > 0 :
-                    print("ERROR: path through blocked point at " + str(current))
+                    RuntimeError("ERROR: path through blocked point at " + str(current))
                 path.append(current)
             path.reverse()
             return path                                                 # done
@@ -146,23 +158,25 @@ def AStarSearch(start, end, graph, checkbarrier):
         ix = findinpairlist(openVertices, current)                      # index of vertex to remove
         assert(ix >= 0)
         del(openVertices[ix])
+        #   Expensive update step
         graph.closedverticesarray[current[0]][current[1]] = 1           # update map of vertices done
  
         #   Update scores for vertices near the current position
         for neighbor in graph.get_vertex_neighbours(current):
-            if graph.closedverticesarray[neighbor[0],neighbor[1]] :   # cell marked as done, skip
+            if graph.closedverticesarray[neighbor[0],neighbor[1]] :     # cell marked as done, skip
                 continue
             candidateG = graph.gcostarray[current[0]][current[1]] + graph.move_cost(current, neighbor, checkbarrier) # always 1 or infinite.
  
             ix = findinpairlist(openVertices, neighbor)
             if ix < 0 :                                                 # new neighbor
-                openVertices.append((neighbor, 0))                     # Discovered a new vertex - add with dummy fscore
+                openVertices.append((neighbor, 0))                      # discovered a new vertex - add with dummy fscore
             elif candidateG >= graph.gcostarray[neighbor[0]][neighbor[1]]:
-                continue #This G score is worse than previously found
+                continue                                                # this G score is no better than previously found
  
             #   Adopt this G score
             neighbordiff = (neighbor[0] - current[0], neighbor[1] - current[1]) # offset to neighbor
             assert(neighbordiff in graph.ALLOWEDMOVES)                        # must be valid move
+            #   Expensive update step where lists are updated
             graph.camefromarray[neighbor[0]][neighbor[1]] = graph.ALLOWEDMOVES.index(neighbordiff)    # move from previous
             graph.gcostarray[neighbor[0]][neighbor[1]] = candidateG
             H = graph.heuristic(neighbor, end)
@@ -189,7 +203,6 @@ def findinpairlist(lst, key) :
 #   Test barrier. These cells are blocked.
 BARRIERDEF = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
 
-
 def checkbarriercell(ix, iy) :
     """
     Get whether a point is a barrier cell.
@@ -204,6 +217,5 @@ if __name__=="__main__":
     result = AStarSearch((0,0), (7,7), graph, checkbarriercell)
     print ("route", result)
     print ("cost", len(result))
-    print(graph.barrierarray)
-    graph.dump()
+    graph.dump(result)
 
