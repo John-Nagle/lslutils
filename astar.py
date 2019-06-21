@@ -52,7 +52,7 @@ class AStarGraph(object):
         self.barrierarray = numpy.full((xsize, ysize),0)            # 0 means unknown, 1 means obstacle, -1 means clear
         self.closedverticesarray = numpy.full((xsize, ysize), 0)    # 0 means not closed, 1 means closed
         self.camefromarray = numpy.full((xsize, ysize), 0)          # index into ALLOWEDMOVES
-        self.gcostarray = numpy.full((xsize, ysize), 0.0)             # G cost
+        self.gcostarray = numpy.full((xsize, ysize), 0)             # G cost
  
     def heuristic(self, start, goal):
         """
@@ -60,7 +60,7 @@ class AStarGraph(object):
         """
         dx = start[0] - goal[0]
         dy = start[1] - goal[1]
-        return math.sqrt(dx*dx + dy*dy)              # squared distance
+        return int(4*math.sqrt(dx*dx + dy*dy))              # squared distance
  
     def get_vertex_neighbours(self, pos):
         """
@@ -91,10 +91,10 @@ class AStarGraph(object):
         if v == 0 :                             # not defined yet
             self.update_barrier(x,y, checkbarrier)            # so go look at barrier info
         if self.barrierarray[x][y] > 0:
-            return 10000                        # move into barrier, infinite cost
+            return 255                        # move into barrier, infinite cost
         dx = a[0]-b[0]
         dy = a[1]-b[1]
-        return math.sqrt(dx*dx + dy*dy)
+        return int(4*math.sqrt(dx*dx + dy*dy))
         ####return 1
         
     def dump(self, route) :
@@ -124,7 +124,7 @@ class AStarGraph(object):
             s = ""
             for j in range(self.xsize) :
                 cost = self.gcostarray[j][i]
-                s = s + ("%7i " % (cost,))
+                s = s + ("%5i " % (cost,))
             print(s)
 
             
@@ -180,7 +180,8 @@ def AStarSearch(start, end, graph, checkbarrier):
             #   Adopt this G score
             neighbordiff = (neighbor[0] - current[0], neighbor[1] - current[1]) # offset to neighbor
             assert(neighbordiff in graph.ALLOWEDMOVES)                        # must be valid move
-            #   Expensive update step where lists are updated
+            #   Expensive update step where lists are updated.
+            #   Here, we know that closed is true, barrier is false, and examined is true
             graph.camefromarray[neighbor[0]][neighbor[1]] = graph.ALLOWEDMOVES.index(neighbordiff)    # move from previous
             graph.gcostarray[neighbor[0]][neighbor[1]] = candidateG
             H = graph.heuristic(neighbor, end)
