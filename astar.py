@@ -41,8 +41,9 @@ import math
 #   This will have to be done with globals in LSL
 #
 class AStarGraph(object):
-    ALLOWEDMOVES = [(-1,0), (1,0), (0,-1), (0,1), (-1,-1), (1,-1), (1,1), (-1,1)] # allow diagonal moves   
-    ALLOWEDARROWS = "🡠🡢🡡🡣🡤🡥🡦🡧"                                  # down is + here
+    ALLOWEDMOVES = [(-1,0), (1,0), (0,-1), (0,1), (-1,-1), (1,-1), (1,1), (-1,1)] # allow diagonal moves  
+    ALLOWEDMOVES = [(-1,0), (1,0), (0,-1), (0,1)]                   # do not diagonal moves  
+    ALLOWEDARROWS = "🡠🡢🡡🡣🡤🡥🡦🡧"                                 # down is + here
     ALLOWEDARROWSBOLD = "🡰🡲🡱🡳🡴🡵🡶🡷"
 
  
