@@ -47,6 +47,17 @@ class AStarGraph(object):
     ALLOWEDMOVES = [(-1,0), (1,0), (0,-1), (0,1)]                   # do not diagonal moves  
     ALLOWEDARROWS = "🡠🡢🡡🡣🡤🡥🡦🡧"                                 # down is + here
     ALLOWEDARROWSBOLD = "🡰🡲🡱🡳🡴🡵🡶🡷"
+    
+    #   Item format
+    MASKCOST = 0x00ff                                               # 8 bits for cost
+    SHIFTCLOSED = 8
+    MASKCLOSED = 1 << SHIFTCLOSED                                   # closed bit
+    SHIFTBARRIER = 9
+    MASKBARRIER = 1 << SHIFTBARRIER                                 # barrier bit
+    SHIFTEXAMINED = 10
+    MASKEXAMINED = 1 << SHIFTEXAMINED                               # examined bit
+    SHIFTCAMEFROM = 11;
+    MASKCAMEFROM = 0x7 << SHIFTCAMEFROM                             # came from 3-bit field 
 
  
     def __init__(self, xsize, ysize) :
@@ -58,6 +69,9 @@ class AStarGraph(object):
         self.gcostarray = numpy.full((xsize, ysize), 0)             # G cost
         
     def update(self, x, y, camefrom, cost, examined, barrier, closed) :
+        """
+        Full update
+        """
         graph.camefromarray[x][y] = camefrom    # move from previous
         graph.gcostarray[x][y] = cost
         graph.closedverticesarray[x][y] = closed
@@ -68,6 +82,9 @@ class AStarGraph(object):
             else :
                 barrierval = -1
         graph.barrierarray[x][y] = barrierval
+        #   New form - pack into 16 bit word
+        datum = (camefrom << self.SHIFTCAMEFROM | (cost & self.MASKCOST) | (examined << self.SHIFTEXAMINED) |
+            (closed << self.SHIFTCLOSED) | (barrier << self.SHIFTBARRIER))
                                                        
  
     def heuristic(self, start, goal):
