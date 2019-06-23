@@ -99,7 +99,7 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, integ
 {
     float disttohit = castbeam(p0, p1, width, height, TESTPOINTS, FALSE);
     if (disttohit != INFINITY)
-    {   llOwnerSay("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
+    {   ////llOwnerSay("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
         return(FALSE);
     }
 #ifdef TEMPTURNOFF // need to check for redundant collinear points
@@ -120,7 +120,7 @@ list simpleobstacletrypath(vector p0, vector p1, float width, float height, inte
     vector sidewaysdir = <0,1,0>*rotperpenonground(p0,p1);      // offset for horizontal part of scan
     vector interp0 = p0 + sidewaysdir*offset;                   // first intermediate point, sideways move
     vector interp1 = p1 + sidewaysdir*offset;                   // second intermediate point
-    llOwnerSay("try path, offset: " + (string) offset + "  " + (string) interp0 + " " + (string)interp1);
+    ////llOwnerSay("try path, offset: " + (string) offset + "  " + (string) interp0 + " " + (string)interp1);
     if (!obstaclecheckpath(p0, interp0, width, height, chartype)) { return([]);} // fail
     if (!obstaclecheckpath(interp0, interp1, width, height, chartype)) { return([]);} // fail
     if (!obstaclecheckpath(interp1, p1, width, height, chartype)) { return([]);} // fail
