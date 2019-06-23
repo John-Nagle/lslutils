@@ -13,6 +13,7 @@ integer CASTRAYRETRIES = 10;                                // retry up to 10 ti
 float CASTRAYRETRYDELAY = 0.200;                            // if a problem, retry slowly
 #define INFINITY ((float)"inf")                             // is there a better way?
 float GROUNDCLEARANCE = 0.05;                               // avoid false ground collisions
+float MAXAVOIDMOVE = 8.0;                                   // max distance to avoid obstacle
 
 //
 //  rotperpenonground  -- rotation to get line on ground perpendicular to vector
@@ -88,5 +89,68 @@ float castbeam(vector p0, vector p1, float width, float height, float probecnt, 
         }
     }
     return(nearestdist);   // no obstacles
+}
+//
+//  obstaclecheckpath  -- is path obstacle-free?
+//
+//  Does both a ray check and a llGetStaticPath check.
+//
+integer obstaclecheckpath(vector p0, vector p1, float width, float height, integer chartype)
+{
+    if (castbeam(p0, p1, width, height, TESTPOINTS, FALSE) != INFINITY) { return(FALSE); }  // failed beam check
+    list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, CHARTYPE]);
+    integer status = llList2Integer(path,-1);                   // last item is status
+    if (status != 0 || llGetListLength(path) != 3)
+    {   llOwnerSay("Path static check failed for " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
+        return(FALSE);
+    }   
+    return(TRUE);                                               // success
+}
+//
+//  simpleobstacletrypath -- try one path for simple obstacle avoidance
+//
+list simpleobstacletrypath(vector p0, vector p1, float width, float height, integer chartype, float offset)
+{
+    vector sidewaysdir = <0,1,0>*rotperpenonground(p0,p1);      // offset for horizontal part of scan
+    vector interp0 = p0 + sidewaysdir*offset;                   // first intermediate point, sideways move
+    vector interp1 = p1 + sidewaysdir*offset;                   // second intermediate point
+    if (!obstaclecheckpath(p0, interp1, width, height, chartype)) { return([]);} // fail
+    if (!obstaclecheckpath(interp0, interp1, width, height, chartype)) { return([]);} // fail
+    if (!obstaclecheckpath(interp1, p1, width, height, chartype)) { return([]);} // fail
+    return([p0, interp0, interp1, p1]);                         // success, return new path
+}
+
+//
+//  simpleobstacleavoid  -- simple planner to get around simple obstacles
+//
+//  This just tries a sideways move, then a forward move, then a sideways move back to the end point.
+//
+//  Worth trying before bringing up the heavy machinery of A*
+//
+//  p0 must be in clear space and clear for a "width" circle around p0.
+//
+list simpleobstacleavoid(vector p0, vector p1, float width, float height, integer chartype)
+{
+    vector sidewaysdir = <0,1,0>*rotperpenonground(p0,p1);      // offset for horizontal part of scan
+    float rightmax = castbeam(p0, p0+sidewaysdir*MAXAVOIDMOVE, width, height, TESTPOINTS, TRUE); // max dist to scan to right 
+    float leftmax = castbeam(p0, p0-sidewaysdir*MAXAVOIDMOVE, width, height, TESTPOINTS, TRUE);  // max dist to scan to right 
+    float offsetlim = MAXAVOIDMOVE;
+    float maxoffset = rightmax;
+    if (leftmax > maxoffset) { maxoffset = leftmax; }
+    if (maxoffset > MAXAVOIDMOVE) { maxoffset = MAXAVOIDMOVE; } // bound range to search
+    float offset;
+    //  Linear search. Expensive. Consider making bigger moves, then smaller ones.
+    for (offset = 0.0; offset <= maxoffset + 0.001; offset += width)   // all offsets to try
+    {   
+        if (offset <= rightmax)
+        {   list avoidpath = simpleobstacletrypath(p0, p1, width, height, chartype, offset); // try avoiding obstacle by going right
+            if (llGetListLength(avoidpath) > 0) { return(avoidpath); }  // alternate route found
+        }
+                if (offset <= rightmax)
+        {   list avoidpath = simpleobstacletrypath(p0, p1, width, height, chartype, offset); // try avoiding obstacle by going right
+            if (llGetListLength(avoidpath) > 0) { return(avoidpath); }  // alternate route found
+        }
+    }
+    return([]);                                                         // no route found
 }
 
