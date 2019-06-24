@@ -14,7 +14,23 @@ float CASTRAYRETRYDELAY = 0.200;                            // if a problem, ret
 #define INFINITY ((float)"inf")                             // is there a better way?
 float GROUNDCLEARANCE = 0.05;                               // avoid false ground collisions
 float MAXAVOIDMOVE = 8.0;                                   // max distance to avoid obstacle
-
+//
+//  
+//
+//  distpointtoline -- point to line distance, infinite line
+//
+//  Formula from geomalgorithms.com
+//
+float distpointtoline(vector p, vector p0, vector p1)
+{
+     vector v = p1 - p0;                // the line
+     vector w = p - p0;                 
+     float c1 = w*v;
+     float c2 = v*v;
+     float b = c1 / c2;
+     vector pb = p0 + b * v;            // closest point on line to p
+     return (llVecMag(p, pb));          // return distance
+}
 //
 //  rotperpenonground  -- rotation to get line on ground perpendicular to vector
 //

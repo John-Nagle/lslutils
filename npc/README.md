@@ -58,4 +58,16 @@ check for obstacles ahead of the character, using llCastRay. If an obstacle is
 encountered, the character stops. We then repeat the planning process and try
 to follow the new plan.
 
+### Technical notes
+
+#### Limitations of llGetStaticPath
+
+#### Limitations of llCastRay
+
+If the starting point for llCastRay is inside an object, that object will not be detected. This
+makes it hard to find the far side of an object. Working backwards from the next waypoint of the
+static path will fail if that waypoint is inside an object. 
+
+Safely checking a path requires working forwards from a known point outside any solid object.
+
 
