@@ -81,11 +81,11 @@ class AStarGraph(object):
         Stored in 4 lists because LSL has constant performance up to size 128,
         then it gets worse. So to allow for 32x32 storage, we do this.
         """
-        ix = y*ysize+x;
-        ixitem = ix / 2
+        ix = y*self.ysize+x;
+        ixitem = int(ix / 2)
         ixoffset = (ix % 2) * 16            # bit offset
-        ixrow = ixitem / 4
-        ixix = ixitem % 4
+        ixrow = ixitem % 4
+        ixix = int(ixitem / 4)
         if (ixrow == 0) :
             return (self.data0[ixix] >> ixoffset) & 0xffff
         elif ixrow == 1 :
@@ -105,20 +105,21 @@ class AStarGraph(object):
         then it gets worse. So to allow for 32x32 storage, we do this.
         """
         newval = newval & 0xffff            # redundant, for safety
-        ix = y*ysize+x;
-        ixitem = ix / 2
+        ix = y*self.ysize+x;
+        ixitem = int(ix / 2)
         ixoffset = (ix % 2) * 16            # bit offset
-        ixrow = ixitem / 4
-        ixix = ixitem % 4
+        ixrow = ixitem % 4
+        ixix = int(ixitem / 4)
         if (ixrow == 0) :
-            self.data0[ixix] =  (self.data0[ixix] & ~(0xffff << ioffset)) | (newval << ioffset)
+            self.data0[ixix] =  (self.data0[ixix] & ~(0xffff << ixoffset)) | (newval << ixoffset)
         elif ixrow == 1 :
-            self.data1[ixix] =  (self.data1[ixix] & ~(0xffff << ioffset)) | (newval << ioffset)
+            self.data1[ixix] =  (self.data1[ixix] & ~(0xffff << ixoffset)) | (newval << ixoffset)
         elif ixrow == 2 :
-            self.data2[ixix] =  (self.data2[ixix] & ~(0xffff << ioffset)) | (newval << ioffset)
+            self.data2[ixix] =  (self.data2[ixix] & ~(0xffff << ixoffset)) | (newval << ixoffset)
         elif ixrow == 3 :
-            self.data3[ixix] =  (self.data3[ixix] & ~(0xffff << ioffset)) | (newval << ioffset)
+            self.data3[ixix] =  (self.data3[ixix] & ~(0xffff << ixoffset)) | (newval << ixoffset)
         else :
+            print(x,y,ixrow)
             raise ValueError                # unlikely
           
         
