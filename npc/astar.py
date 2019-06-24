@@ -63,17 +63,18 @@ class AStarGraph(object):
     def __init__(self, xsize, ysize) :
         self.xsize = xsize                                          # set size of map
         self.ysize = ysize
+        #   Crosscheck data - not needed in LSL
         self.barrierarray = numpy.full((xsize, ysize),0)            # 0 means unknown, 1 means obstacle, -1 means clear
         self.closedverticesarray = numpy.full((xsize, ysize), 0)    # 0 means not closed, 1 means closed
         self.camefromarray = numpy.full((xsize, ysize), 0)          # index into ALLOWEDMOVES
         self.gcostarray = numpy.full((xsize, ysize), 0)             # G cost
+        self.datacheck = numpy.full((xsize,ysize), 0);              # debug use only
+
         #   Data storage in a form LSL can do efficiently.  
         self.data0 = [0]*int((xsize*ysize+3)/4);                       # fill with zeroes
         self.data1 = [0]*int((xsize*ysize+3)/4);                       # fill with zeroes
         self.data2 = [0]*int((xsize*ysize+3)/4);                       # fill with zeroes
         self.data3 = [0]*int((xsize*ysize+3)/4);                       # fill with zeroes
-        #   Data storage check - to check on get and set
-        self.datacheck = numpy.full((xsize,ysize), 0);              # debug use only
         
         
     def get(self, x, y) :
@@ -188,12 +189,11 @@ class AStarGraph(object):
  
     def move_cost(self, a, b, checkbarrier):
         x,y = b
-        oldv = self.barrierarray[x][y]
         if (self.get(x,y) & self.MASKEXAMINED == 0) :    # if cell not tested yet
+            assert(self.barrierarray[x][y] == 0)                      # crosscheck
             self.update_barrier(x,y, checkbarrier)      # go update barrier
-            assert(oldv == 0)                      # crosscheck
         else :
-            assert(oldv != 0)                   # crosscheck
+            assert(self.barrierarray[x][y] != 0)                   # crosscheck
         barrier = (self.get(x,y) & self.MASKBARRIER) != 0 # if barrier present
         assert((self.barrierarray[x][y]>0) == barrier)      # crosscheck
         if barrier :
