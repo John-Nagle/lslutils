@@ -26,9 +26,14 @@ float distpointtoline(vector p, vector p0, vector p1)
      vector v = p1 - p0;                // the line
      vector w = p - p0;                 
      float c1 = w*v;
-     float c2 = v*v;
-     float b = c1 / c2;
-     vector pb = p0 + b * v;            // closest point on line to p
+     float c2 = v*v;                    // length squared
+     vector pb;
+     if (c2 > 0.00001)                  // nonzero line length
+     {  float b = c1 / c2;              // would divide by 0 for null line
+        pb = p0 + b * v;                // closest point on line to p
+     } else {
+        pb = p0;                        // zero length line case
+     }
      return (llVecMag(p, pb));          // return distance
 }
 //
