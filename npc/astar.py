@@ -72,6 +72,8 @@ class AStarGraph(object):
         self.data1 = [0]*int((xsize*ysize+3)/4);                       # fill with zeroes
         self.data2 = [0]*int((xsize*ysize+3)/4);                       # fill with zeroes
         self.data3 = [0]*int((xsize*ysize+3)/4);                       # fill with zeroes
+        #   Data storage check - to check on get and set
+        self.datacheck = numpy.full((xsize,ysize), 0);              # debug use only
         
         
     def get(self, x, y) :
@@ -87,15 +89,17 @@ class AStarGraph(object):
         ixrow = ixitem % 4
         ixix = int(ixitem / 4)
         if (ixrow == 0) :
-            return (self.data0[ixix] >> ixoffset) & 0xffff
+            v = (self.data0[ixix] >> ixoffset) & 0xffff
         elif ixrow == 1 :
-            return (self.data1[ixix] >> ixoffset) & 0xffff
+            v = (self.data1[ixix] >> ixoffset) & 0xffff
         elif ixrow == 2 :
-            return (self.data2[ixix] >> ixoffset) & 0xffff
+            v = (self.data2[ixix] >> ixoffset) & 0xffff
         elif ixrow == 3 :
-            return (self.data3[ixix] >> ixoffset) & 0xffff
+            v = (self.data3[ixix] >> ixoffset) & 0xffff
         else :
-            raise ValueError                # unlikely
+            raise ValueError                    # unlikely
+        assert(v == self.datacheck[x][y])       # check
+        return(v)
             
     def set(self, x, y, newval) :
         """
@@ -105,6 +109,7 @@ class AStarGraph(object):
         then it gets worse. So to allow for 32x32 storage, we do this.
         """
         newval = newval & 0xffff            # redundant, for safety
+        self.datacheck[x][y] = newval            # for checking only
         ix = y*self.ysize+x;
         ixitem = int(ix / 2)
         ixoffset = (ix % 2) * 16            # bit offset
@@ -121,6 +126,7 @@ class AStarGraph(object):
         else :
             print(x,y,ixrow)
             raise ValueError                # unlikely
+        assert(newval == self.get(x,y));    # checking
           
         
     def update(self, x, y, camefrom, cost, examined, barrier, closed) :
