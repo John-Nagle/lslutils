@@ -89,44 +89,49 @@ class AStarGraph(object):
         ixrow = ixitem % 4
         ixix = int(ixitem / 4)
         if (ixrow == 0) :
-            v = (self.data0[ixix] >> ixoffset) & 0xffff
+            v = self.data0[ixix] 
         elif ixrow == 1 :
-            v = (self.data1[ixix] >> ixoffset) & 0xffff
+            v = self.data1[ixix] 
         elif ixrow == 2 :
-            v = (self.data2[ixix] >> ixoffset) & 0xffff
+            v = self.data2[ixix] 
         elif ixrow == 3 :
-            v = (self.data3[ixix] >> ixoffset) & 0xffff
+            v = self.data3[ixix] 
         else :
             raise ValueError                    # unlikely
+        v = (v >> ixoffset) & 0xffff
+        print("Get: 0x%x from %d,%d and expected 0x%x" % (v, x, y, self.datacheck[x][y]))
         assert(v == self.datacheck[x][y])       # check
         return(v)
             
-    def set(self, x, y, newval) :
+    def set(self, x, y, newval, mask = 0xffff) :
         """
         Set 16-bit value at X,Y.
         Storage is 2 16 bit values per 32-bit word, for LSL.
         Stored in 4 lists because LSL has constant performance up to size 128,
         then it gets worse. So to allow for 32x32 storage, we do this.
         """
-        newval = newval & 0xffff            # redundant, for safety
-        self.datacheck[x][y] = newval            # for checking only
+        assert(mask & ~0xffff == 0)              # stay in 16 bits
+        assert(newval & ~0xffff == 0)           # stay in 16 bits
+        newval = newval & mask                  # redundant, for safety
+        self.datacheck[x][y] = (self.datacheck[x,y] & ~mask) | newval            # for checking only
         ix = y*self.ysize+x;
         ixitem = int(ix / 2)
         ixoffset = (ix % 2) * 16            # bit offset
         ixrow = ixitem % 4
         ixix = int(ixitem / 4)
         if (ixrow == 0) :
-            self.data0[ixix] =  (self.data0[ixix] & ~(0xffff << ixoffset)) | (newval << ixoffset)
+            self.data0[ixix] =  (self.data0[ixix] & ~(mask << ixoffset)) | (newval << ixoffset)
         elif ixrow == 1 :
-            self.data1[ixix] =  (self.data1[ixix] & ~(0xffff << ixoffset)) | (newval << ixoffset)
+            self.data1[ixix] =  (self.data1[ixix] & ~(mask << ixoffset)) | (newval << ixoffset)
         elif ixrow == 2 :
-            self.data2[ixix] =  (self.data2[ixix] & ~(0xffff << ixoffset)) | (newval << ixoffset)
+            self.data2[ixix] =  (self.data2[ixix] & ~(mask << ixoffset)) | (newval << ixoffset)
         elif ixrow == 3 :
-            self.data3[ixix] =  (self.data3[ixix] & ~(0xffff << ixoffset)) | (newval << ixoffset)
+            self.data3[ixix] =  (self.data3[ixix] & ~(mask << ixoffset)) | (newval << ixoffset)
         else :
-            print(x,y,ixrow)
+            print("Set error:",x,y,ixrow)
             raise ValueError                # unlikely
-        assert(newval == self.get(x,y));    # checking
+        print("Set: 0x%x into %d,%d and got 0x%x" % (newval, x, y, self.get(x,y)))
+        assert(newval == mask & self.get(x,y));    # checking
           
         
     def update(self, x, y, camefrom, cost, examined, barrier, closed) :
@@ -175,6 +180,7 @@ class AStarGraph(object):
         Get info about barrier. Only do this once per cell.
         """
         find = checkbarrier(x,y) # go out and check the barrier in the world
+        self.set(x,y, (find << self.SHIFTBARRIER) | (1 << self.SHIFTEXAMINED), self.SHIFTBARRIER|self.SHIFTEXAMINED) # set barrier and examined bits
         if find :
             self.barrierarray[x][y] = 1         # barrier
         else :
@@ -218,7 +224,9 @@ class AStarGraph(object):
         for i in range(self.ysize) :
             s = ""
             for j in range(self.xsize) :
-                cost = self.gcostarray[j][i]
+                oldcost = self.gcostarray[j][i]
+                cost = self.get(j,i) & self.MASKCOST
+                assert(cost == oldcost)
                 s = s + ("%4i " % (cost,))
             print(s)
 
@@ -259,10 +267,14 @@ def AStarSearch(start, end, graph, checkbarrier):
         del(openVertices[ix])
         #   Expensive update step
         graph.closedverticesarray[current[0]][current[1]] = 1           # update map of vertices done
+        graph.set(current[0], current[1], 1<<graph.SHIFTCLOSED, graph.MASKCLOSED)
  
         #   Update scores for vertices near the current position
         for neighbor in graph.get_vertex_neighbours(current):
-            if graph.closedverticesarray[neighbor[0],neighbor[1]] :     # cell marked as done, skip
+            isclosed = (graph.get(neighbor[0], neighbor[1]) & graph.MASKCLOSED) >> graph.SHIFTCLOSED
+            oldclosed = graph.closedverticesarray[neighbor[0]][neighbor[1]]     # cell marked as done, skip
+            assert(isclosed == oldclosed)
+            if isclosed :
                 continue
             candidateG = graph.gcostarray[current[0]][current[1]] + graph.move_cost(current, neighbor, checkbarrier) # always 1 or infinite.
             if candidateG >= graph.MAXCOST :                            # bound cost
