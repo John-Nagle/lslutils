@@ -99,7 +99,7 @@ class AStarGraph(object):
         else :
             raise ValueError                    # unlikely
         v = (v >> ixoffset) & 0xffff
-        print("Get: 0x%x from %d,%d and expected 0x%x" % (v, x, y, self.datacheck[x][y]))
+        ////print("Get: 0x%x from %d,%d and expected 0x%x" % (v, x, y, self.datacheck[x][y]))
         assert(v == self.datacheck[x][y])       # check
         return(v)
             
@@ -130,7 +130,7 @@ class AStarGraph(object):
         else :
             print("Set error:",x,y,ixrow)
             raise ValueError                # unlikely
-        print("Set: 0x%x into %d,%d and got 0x%x" % (newval, x, y, self.get(x,y)))
+        ////print("Set: 0x%x into %d,%d and got 0x%x" % (newval, x, y, self.get(x,y)))
         assert(newval == mask & self.get(x,y));    # checking
           
         
