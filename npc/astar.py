@@ -99,7 +99,7 @@ class AStarGraph(object):
         else :
             raise ValueError                    # unlikely
         v = (v >> ixoffset) & 0xffff
-        ////print("Get: 0x%x from %d,%d and expected 0x%x" % (v, x, y, self.datacheck[x][y]))
+        ####print("Get: 0x%x from %d,%d and expected 0x%x" % (v, x, y, self.datacheck[x][y]))
         assert(v == self.datacheck[x][y])       # check
         return(v)
             
@@ -130,7 +130,7 @@ class AStarGraph(object):
         else :
             print("Set error:",x,y,ixrow)
             raise ValueError                # unlikely
-        ////print("Set: 0x%x into %d,%d and got 0x%x" % (newval, x, y, self.get(x,y)))
+        ####print("Set: 0x%x into %d,%d and got 0x%x" % (newval, x, y, self.get(x,y)))
         assert(newval == mask & self.get(x,y));    # checking
           
         
@@ -180,7 +180,7 @@ class AStarGraph(object):
         Get info about barrier. Only do this once per cell.
         """
         find = checkbarrier(x,y) # go out and check the barrier in the world
-        self.set(x,y, (find << self.SHIFTBARRIER) | (1 << self.SHIFTEXAMINED), self.SHIFTBARRIER|self.SHIFTEXAMINED) # set barrier and examined bits
+        self.set(x,y, (find << self.SHIFTBARRIER) | (1 << self.SHIFTEXAMINED), self.MASKBARRIER|self.MASKEXAMINED) # set barrier and examined bits
         if find :
             self.barrierarray[x][y] = 1         # barrier
         else :
@@ -188,10 +188,15 @@ class AStarGraph(object):
  
     def move_cost(self, a, b, checkbarrier):
         x,y = b
-        v = self.barrierarray[x][y]
-        if v == 0 :                             # not defined yet
-            self.update_barrier(x,y, checkbarrier)            # so go look at barrier info
-        if self.barrierarray[x][y] > 0:
+        oldv = self.barrierarray[x][y]
+        if (self.get(x,y) & self.MASKEXAMINED == 0) :    # if cell not tested yet
+            self.update_barrier(x,y, checkbarrier)      # go update barrier
+            assert(oldv == 0)                      # crosscheck
+        else :
+            assert(oldv != 0)                   # crosscheck
+        barrier = (self.get(x,y) & self.MASKBARRIER) != 0 # if barrier present
+        assert((self.barrierarray[x][y]>0) == barrier)      # crosscheck
+        if barrier :
             return self.MAXCOST                        # move into barrier, infinite cost
         dx = a[0]-b[0]
         dy = a[1]-b[1]
