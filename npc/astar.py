@@ -139,6 +139,7 @@ class AStarGraph(object):
         #   New form - pack into 16 bit word
         datum = (camefrom << self.SHIFTCAMEFROM | (cost & self.MASKCOST) | (examined << self.SHIFTEXAMINED) |
             (closed << self.SHIFTCLOSED) | (barrier << self.SHIFTBARRIER))
+        self.set(x,y,datum)                                 # set into storage
                                                        
  
     def heuristic(self, start, goal):
