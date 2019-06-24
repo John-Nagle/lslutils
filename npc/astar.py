@@ -67,6 +67,60 @@ class AStarGraph(object):
         self.closedverticesarray = numpy.full((xsize, ysize), 0)    # 0 means not closed, 1 means closed
         self.camefromarray = numpy.full((xsize, ysize), 0)          # index into ALLOWEDMOVES
         self.gcostarray = numpy.full((xsize, ysize), 0)             # G cost
+        #   Data storage in a form LSL can do efficiently.  
+        self.data0 = [0]*int((xsize*ysize+3)/4);                       # fill with zeroes
+        self.data1 = [0]*int((xsize*ysize+3)/4);                       # fill with zeroes
+        self.data2 = [0]*int((xsize*ysize+3)/4);                       # fill with zeroes
+        self.data3 = [0]*int((xsize*ysize+3)/4);                       # fill with zeroes
+        
+        
+    def get(self, x, y) :
+        """
+        Get 16-bit value at X,Y.
+        Storage is 2 16 bit values per 32-bit word, for LSL.
+        Stored in 4 lists because LSL has constant performance up to size 128,
+        then it gets worse. So to allow for 32x32 storage, we do this.
+        """
+        ix = y*ysize+x;
+        ixitem = ix / 2
+        ixoffset = (ix % 2) * 16            # bit offset
+        ixrow = ixitem / 4
+        ixix = ixitem % 4
+        if (ixrow == 0) :
+            return (self.data0[ixix] >> ixoffset) & 0xffff
+        elif ixrow == 1 :
+            return (self.data1[ixix] >> ixoffset) & 0xffff
+        elif ixrow == 2 :
+            return (self.data2[ixix] >> ixoffset) & 0xffff
+        elif ixrow == 3 :
+            return (self.data3[ixix] >> ixoffset) & 0xffff
+        else :
+            raise ValueError                # unlikely
+            
+    def set(self, x, y, newval) :
+        """
+        Set 16-bit value at X,Y.
+        Storage is 2 16 bit values per 32-bit word, for LSL.
+        Stored in 4 lists because LSL has constant performance up to size 128,
+        then it gets worse. So to allow for 32x32 storage, we do this.
+        """
+        newval = newval & 0xffff            # redundant, for safety
+        ix = y*ysize+x;
+        ixitem = ix / 2
+        ixoffset = (ix % 2) * 16            # bit offset
+        ixrow = ixitem / 4
+        ixix = ixitem % 4
+        if (ixrow == 0) :
+            self.data0[ixix] =  (self.data0[ixix] & ~(0xffff << ioffset)) | (newval << ioffset)
+        elif ixrow == 1 :
+            self.data1[ixix] =  (self.data1[ixix] & ~(0xffff << ioffset)) | (newval << ioffset)
+        elif ixrow == 2 :
+            self.data2[ixix] =  (self.data2[ixix] & ~(0xffff << ioffset)) | (newval << ioffset)
+        elif ixrow == 3 :
+            self.data3[ixix] =  (self.data3[ixix] & ~(0xffff << ioffset)) | (newval << ioffset)
+        else :
+            raise ValueError                # unlikely
+          
         
     def update(self, x, y, camefrom, cost, examined, barrier, closed) :
         """
