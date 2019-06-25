@@ -281,13 +281,16 @@ def AStarSearch(start, end, graph, checkbarrier):
             assert(isclosed == oldclosed)
             if isclosed :
                 continue
-            candidateG = graph.gcostarray[current[0]][current[1]] + graph.move_cost(current, neighbor, checkbarrier) # always 1 or infinite.
+            oldcandidateG = graph.gcostarray[current[0]][current[1]] + graph.move_cost(current, neighbor, checkbarrier) # always 1 or infinite.
+            candidateG = (graph.get(current[0], current[1]) & graph.MASKCOST) + graph.move_cost(current, neighbor, checkbarrier) # new cost
+            assert(oldcandidateG == candidateG)
             if candidateG >= graph.MAXCOST :                            # bound cost
                 continue                                                # hit barrier, skip
             ix = findinpairlist(openVertices, neighbor)
             if ix < 0 :                                                 # new neighbor
                 openVertices.append((neighbor, 0))                      # discovered a new vertex - add with dummy fscore
-            elif candidateG >= graph.gcostarray[neighbor[0]][neighbor[1]]:
+            ####elif candidateG >= graph.gcostarray[neighbor[0]][neighbor[1]]:
+            elif candidateG >= graph.get(neighbor[0], neighbor[1]) & graph.MASKCOST :
                 continue                                                # this G score is no better than previously found
  
             #   Adopt this G score
@@ -299,7 +302,9 @@ def AStarSearch(start, end, graph, checkbarrier):
             ####graph.gcostarray[neighbor[0]][neighbor[1]] = candidateG
             graph.update(neighbor[0],neighbor[1], graph.ALLOWEDMOVES.index(neighbordiff), candidateG, True, False, True)   # update graph
             H = graph.heuristic(neighbor, end)
-            fscore = graph.gcostarray[neighbor[0]][neighbor[1]] + H
+            oldfscore = graph.gcostarray[neighbor[0]][neighbor[1]] + H
+            fscore = (graph.get(neighbor[0], neighbor[1]) & graph.MASKCOST) + H
+            assert(oldfscore == fscore)
             #   Update fscore for this item in to-do list
             ix = findinpairlist(openVertices, neighbor)
             assert(ix >= 0)                                             # must find
