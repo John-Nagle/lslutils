@@ -81,7 +81,8 @@ def limitto1(n) :
         return -1
     if (n > 0) :
         return 1
-    return 0            
+    return 0  
+             
         
  
 def solvemaze(start, end, graph ) :
@@ -99,9 +100,11 @@ def solvemaze(start, end, graph ) :
     path = [(x,y)]                                      # working path
     edgefollow = 0                                      # -1=right edge, 1 = left edge, 0=no edge
     edgefollowdir = 0                                   # 0=+x, 1 = +y, 2=-x, 3=-y
+    bestdist = graph.xsize + graph.ysize + 1            # worst possible distance
     print("Solving maze")
     while True:                                         # until done or loop
         print("(%d,%d)" % (x,y))                        # ***TEMP***
+        assert(not graph.testcell(x,y));                # must not be on an obstacle cell
         dx = xend - x                                   # distance to end
         dy = yend - y
         if (dx == 0) and (dy == 0) :                    # if done
@@ -137,43 +140,42 @@ def solvemaze(start, end, graph ) :
                 dx = 0
                 dy = -1
 
-        obstacle = graph.testcell(x+dx, y+dy)           # check for obstacle ahead
-        if not obstacle :                               # it worked
+        #   x+dx, y+dy is the "productive path".
+        currdist = abs(x-xend) + abs(y-yend)            # distance to obstacle
+        obstacle = graph.testcell(x+dx, y+dy)           # check for obstacle on productive path
+        if (not obstacle) and (currdist != bestdist) and edgefollow == 0:  # can advance, and not in a loop, and not edge following
             x = x + dx                                  # advance to new point
             y = y + dy
             path += [(x,y)]                             # add point to path
-            edgefollow = 0
+            edgefollow = 0                              # no edge follow direction
             continue                                    # and keep going
         #   Can't advance directly towards goal. Must now follow an edge.
-        #   
         if edgefollow == 0 :                            # if don't have an edge direction
-            edgefollow = newedgefollow                  # choose new edge follow direction
+            edgefollow = newedgefollow                  # use new edge follow direction
+            edgefollowdir = ahead                       # assume ahead, not that it will work
+            bestdist = currdist
         #   Collect data on obstacles ahead, left, and right
-        aheaddx, aheaddy = EDGEFOLLOWDIRS[edgefollowdir]          # get delta for this direction
-        obstacleahead = graph.testcell(x+aheaddx,y+aheaddy)   # test cell ahead
+        aheaddx, aheaddy = EDGEFOLLOWDIRS[edgefollowdir]    # get delta for this direction
+        obstacleahead = graph.testcell(x+aheaddx,y+aheaddy) # test cell ahead
         leftdx, leftdy = EDGEFOLLOWDIRS[(edgefollowdir + 1) % 4] # on right
         obstacleleft = graph.testcell(x + leftdx, y + leftdy)
         rightdx, rightdy = EDGEFOLLOWDIRS[(edgefollowdir -1 + 4) % 4] # on left
-        obstacleright = graph.testcell(x + rightdx, y + rightdy)           
+        obstacleright = graph.testcell(x + rightdx, y + rightdy) 
+        print("Wall following at (%d,%d): l/r %d, heading %d, ahead %d, left %d, right %d" % (x,y,edgefollow, edgefollowdir, obstacleahead, obstacleleft, obstacleright))        
         #   If no obstacle ahead, we are still wall following and there is an
         #   obstacle to left or right, so move ahead.
-        if not obstacleahead :                              # if no obstacle ahead
-            assert(obstacleright or obstacleleft)           # must be one of the other
+        #   ***WRONG***
+        if not obstacleahead :                              # if no obstacle ahead in follow dir
+            assert(obstacleright or obstacleleft)           # must be next to a wall
             x = x + dx
             y = y + dy
-            path += [(x,y)]                                   # add to path
+            path += [(x,y)]                                 # add to path
             #   Now decide next direction for wall following.
             #   If no obstacle on followed side, turn that way and advance
             if (not obstacleright) and edgefollow == -1 :   # if open on right and following right
                 edgefollowdir = (edgefollowdir - 1 + 4) % 4 # right turn
             elif (not obstacleleft) and edgefollow == 1 :   # if open on left and following left
                 edgefollowdir = (edgefollowdir +1) % 4      # left turn
-            else :
-                continue                                    # not turning on this cycle
-            dx, dy = EDGEFOLLOWDIRS[edgefollowdir]          # one step in new dir
-            x = x + dx
-            y = y + dy
-            path += [(x,y)]
             continue
         #   Obstacle ahead. Must turn.        
         if (not obstacleright) and edgefollow == -1 :       # if open on right and following right
