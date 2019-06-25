@@ -111,27 +111,46 @@ def solvemaze(start, end, graph ) :
         #   Which direction is most direct towards goal?
         if abs(dx) > abs(dy) :                          # X is most direct
             dy = 0
-            dx = limitto1(dx)
+            if (dx > 0) :
+                dx = 1
+                ahead = 0                               # +X is ahead, for later use
+            else :
+                dx = -1
+                ahead = 3
         else :                                          # Y is most direct
             dx = 0
-            dy = limitto1(dy)        
-        obstacle = graph.testcell(x+dx, y+dy)           # check for obstacle
+            if (dy > 0) :                               # we want to move in +Y
+                dy = 1
+                ahead = 1
+            else :                                      # move in -Y
+                dy = -1
+                ahead = 3
+        obstacle = graph.testcell(x+dx, y+dy)           # check for obstacle ahead
         if not obstacle :                               # it worked
             x = x + dx                                  # advance to new point
             y = y + dy
-            path += [(x,y)]                               # add point to path
+            path += [(x,y)]                             # add point to path
             edgefollow = 0
             continue                                    # and keep going
         #   Can't advance directly towards goal. Must now follow an edge.
-        if edgefollow != 0 :                            # if don't have an edge direction
-           pass ### ***MORE***
+        #   
+        if edgefollow == 0 :                            # if don't have an edge direction
+            if ahead == 0 :                             # if obstacle is to +X
+                if yend - y > 0 :                       # if +Y movement would help more                  
+                    edgefollow  = -1                    # follow right edge and go up
+                    edgefollowdir = 1
+                else :
+                    edgefollow = 1                      # follow left edge and head down
+                    edgefollowdir = 3
+            ####else if ahead == 1 .... ***NEED SOME EASIER WAY TO WRITE THIS WITHOUT 8 CASES ***
+            ####edgefollowdir = (ahead + 
         #   Collect data on obstacles ahead, left, and right
         aheaddx, aheaddy = EDGEFOLLOWDIRS[edgefollowdir]          # get delta for this direction
         obstacleahead = graph.testcell(x+aheaddx,y+aheaddy)   # test cell ahead
         leftdx, leftdy = EDGEFOLLOWDIRS[(edgefollowdir + 1) % 4] # on right
         obstacleleft = graph.testcell(x + leftdx, y + leftdy)
         rightdx, rightdy = EDGEFOLLOWDIRS[(edgefollowdir -1 + 4) % 4] # on left
-        obstacleright = graph.testcell(x + rightdx, y + rightdy)
+        obstacleright = graph.testcell(x + rightdx, y + rightdy)           
         #   If no obstacle ahead, we are still wall following and there is an
         #   obstacle to left or right, so move ahead.
         if not obstacleahead :                              # if no obstacle ahead
