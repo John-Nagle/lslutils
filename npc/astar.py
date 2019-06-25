@@ -139,16 +139,16 @@ class AStarGraph(object):
         """
         Full update
         """
-        graph.camefromarray[x][y] = camefrom    # move from previous
-        graph.gcostarray[x][y] = cost
-        graph.closedverticesarray[x][y] = closed
+        self.camefromarray[x][y] = camefrom    # move from previous
+        self.gcostarray[x][y] = cost
+        self.closedverticesarray[x][y] = closed
         barrierval = 0
         if examined :
             if barrier :
                 barrierval = 1
             else :
                 barrierval = -1
-        graph.barrierarray[x][y] = barrierval
+        self.barrierarray[x][y] = barrierval
         #   New form - pack into 16 bit word
         datum = (camefrom << self.SHIFTCAMEFROM | (cost & self.MASKCOST) | (examined << self.SHIFTEXAMINED) |
             (closed << self.SHIFTCLOSED) | (barrier << self.SHIFTBARRIER))
@@ -324,22 +324,38 @@ def findinpairlist(lst, key) :
             return ix
     return -1                                                       # no find
     
-#   Test barrier. These cells are blocked.
-BARRIERDEF = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
+#   Test barriers. These cells are blocked.
+BARRIERDEF1 = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
 
-def checkbarriercell(ix, iy) :
+def checkbarriercell1(ix, iy) :
     """
     Get whether a point is a barrier cell.
     
     Simulates actually probing the world for obstacles
     """
-    return (ix, iy) in BARRIERDEF           # true if on barrier
+    return (ix, iy) in BARRIERDEF1           # true if on barrier
     
- 
-if __name__=="__main__":
-    graph = AStarGraph(8,8)
-    result = AStarSearch((0,0), (7,7), graph, checkbarriercell)
+#   Test barriers. These cells are blocked.
+BARRIERDEF2 = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
+
+def checkbarriercell2(ix, iy) :
+    """
+    Get whether a point is a barrier cell.
+    
+    Simulates actually probing the world for obstacles
+    """
+    return (ix, iy) in BARRIERDEF2           # true if on barrier
+    
+def runtest(xsize, ysize, barrierfn) :
+    graph = AStarGraph(xsize, ysize)
+    result = AStarSearch((0,0), (xsize-1, ysize-1), graph, barrierfn)
     print ("route", result)
     print ("cost", len(result))
     graph.dump(result)
+
+    
+ 
+if __name__=="__main__":
+    runtest(8,8,checkbarriercell1)
+    runtest(32,32,checkbarriercell2)
 
