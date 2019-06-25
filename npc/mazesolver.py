@@ -31,6 +31,8 @@ import math
 BARRIER = 0x1                                   # must be low bit
 EXAMINED = 0x2
 
+EDGEFOLLOWDIRS = [(1,0), (0, 1), (-1, 0), (0, -1)]  # edge following dirs to dx and dy
+
 #
 #   Data storage.
 #
@@ -96,10 +98,11 @@ def solvemaze(start, end, graph, checkbarrier) :
     xend = end[0]
     yend = end[1]
     path = [(x,y)]                                      # working path
-    edgefollow = 0                                      # 1=right edge, -1 = left edge, 0=no edge
+    edgefollow = 0                                      # -1=right edge, 1 = left edge, 0=no edge
     edgefollowdir = 0                                   # 0=+x, 1 = +y, 2=-x, 3=-y
     
-    while x != start[0] and y != start[1] and len(path) > 0 : # if we end up back a the starting point, we are in a loop
+    while x != start[0] and y != start[1] and len(path) > 1 : # if we end up back at the starting point, we are in a loop
+        print("(%d,%d)" % (x,y))                        # ***TEMP***
         dx = xend - x                                   # distance to end
         dy = yend - y
         if (dx == 0) and (dy == 0) :                    # if done
@@ -123,12 +126,45 @@ def solvemaze(start, end, graph, checkbarrier) :
         #   Can't advance directly towards goal. Must now follow an edge.
         if edgefollow != 0 :                            # if don't have an edge direction
            pass ### ***MORE***
-        if edgefollow > 0 :                             # if following right edge
-            pass ###***MORE***   
-        
-        
-        
-        
+        #   Collect data on obstacles ahead, left, and right
+        aheaddx, aheaddy = EDGEFOLLOWDIRS(edgefollowdir)          # get delta for this direction
+        obstacleahead = graph.testobstacle(x+aheaddx,y+aheaddy)   # test cell ahead
+        leftdx, leftdy = EDGEFOLLOWDIRS((edgefollowdir + 1) % 4) # on right
+        obstacleleft = graph.testcell(x + leftdx, y + leftdy, checkbarrier)
+        rightdx, rightdy = EDGEFOLLOWDIRS((edgefollowdir -1 + 4) % 4) # on left
+        obstacleright = graph.testcell(x + rightdx, y + rightdy, checkbarrier)
+        #   If no obstacle ahead, we are still wall following and there is an
+        #   obstacle to left or right, so move ahead.
+        if not obstacleahead :                              # if no obstacle ahead
+            assert(obstacleright or obstacleleft)           # must be one of the other
+            x = x + dx
+            y = y + dy
+            path += (x,y)                                   # add to path
+            #   Now decide next direction for wall following.
+            #   If no obstacle on followed side, turn that way and advance
+            if (not obstacleright) and edgefollow == -1 :   # if open on right and following right
+                edgefollowdir = (edgefollowdir - 1 + 4) % 4 # right turn
+            elif (not obstacleleft) and edgefollow == 1 :   # if open on left and following left
+                edgefollowdir = (edgefollowdir +1) % 4      # left turn
+            else :
+                continue                                    # not turning on this cycle
+            dx, dy = EDGEFOLLOWDIRS(edgefollowdir)          # one step in new dir
+            x = x + dx
+            y = y + dy
+            path += (x,y)
+            continue
+        #   Obstacle ahead. Must turn.        
+        if (not obstacleright) and edgefollow == -1 :       # if open on right and following right
+            edgefollowdir = (edgefollowdir - 1 + 4) % 4     # right turn
+        elif (not obstacleleft) and edgefollow == 1 :       # if open on left and following left
+            edgefollowdir = (edgefollowdir +1) % 4          # left turn
+        else :                                              # blocked on both sides
+            edgefollowdir = (edgefollowdir + 2) % 4         # reverse direction
+        dx, dy = EDGEFOLLOWDIRS(edgefollowdir)          # one step in new dir
+        x = x + dx
+        y = y + dy
+        path += (x,y)
+        continue
     return []                                           # fails
     
     
