@@ -40,16 +40,17 @@ EDGEFOLLOWDIRS = [(1,0), (0, 1), (-1, 0), (0, -1)]  # edge following dirs to dx 
 #
 class Mazegraph(object):
    
-    def __init__(self, xsize, ysize) :
+    def __init__(self, xsize, ysize, barrierfn) :
         self.xsize = xsize                                          # set size of map
         self.ysize = ysize
+        self.barrierfn = barrierfn
         self.testdata = numpy.full((xsize, ysize), 0)
                         
-    def testcell(self, x, y, barriercheck) :
+    def testcell(self, x, y) :
         v = self.testdata[x][y]                 # this cell
         if (v & EXAMINED) :
             return v & BARRIER                  # already have this one
-        barrier = barriercheck(x,y)             # check this location
+        barrier = self.barrierfn(x,y)             # check this location
         v = EXAMINED | barrier
         self.testdata[x][y] = v                 # update sites checked
         return barrier                          # return 1 if obstacle
@@ -64,9 +65,7 @@ class Mazegraph(object):
             for j in range(self.xsize) :
                 barrier = self.testdata[j][i] & BARRIER
                 ch = " "
-                if barrier == 0 :
-                    s = s + " "
-                elif barrier > 0 :
+                if barrier > 0 :
                     ch = "█"
                 else :
                     if (j,i) in route :                    
@@ -85,7 +84,7 @@ def limitto1(n) :
     return 0            
         
  
-def solvemaze(start, end, graph, checkbarrier) :
+def solvemaze(start, end, graph ) :
     """
     Maze solver. Returns a path through the maze.
     
@@ -100,8 +99,8 @@ def solvemaze(start, end, graph, checkbarrier) :
     path = [(x,y)]                                      # working path
     edgefollow = 0                                      # -1=right edge, 1 = left edge, 0=no edge
     edgefollowdir = 0                                   # 0=+x, 1 = +y, 2=-x, 3=-y
-    
-    while x != start[0] and y != start[1] and len(path) > 1 : # if we end up back at the starting point, we are in a loop
+    print("Solving maze")
+    while (x != start[0] or y != start[1]) or len(path) <= 1 : # if we end up back at the starting point, we are in a loop
         print("(%d,%d)" % (x,y))                        # ***TEMP***
         dx = xend - x                                   # distance to end
         dy = yend - y
@@ -116,30 +115,30 @@ def solvemaze(start, end, graph, checkbarrier) :
         else :                                          # Y is most direct
             dx = 0
             dy = limitto1(dy)        
-        obstacle = graph.testobstacle(x+dx, y+dy)       # check for obstacle
+        obstacle = graph.testcell(x+dx, y+dy)           # check for obstacle
         if not obstacle :                               # it worked
             x = x + dx                                  # advance to new point
             y = y + dy
-            path += (x,y)                               # add point to path
+            path += [(x,y)]                               # add point to path
             edgefollow = 0
             continue                                    # and keep going
         #   Can't advance directly towards goal. Must now follow an edge.
         if edgefollow != 0 :                            # if don't have an edge direction
            pass ### ***MORE***
         #   Collect data on obstacles ahead, left, and right
-        aheaddx, aheaddy = EDGEFOLLOWDIRS(edgefollowdir)          # get delta for this direction
-        obstacleahead = graph.testobstacle(x+aheaddx,y+aheaddy)   # test cell ahead
-        leftdx, leftdy = EDGEFOLLOWDIRS((edgefollowdir + 1) % 4) # on right
-        obstacleleft = graph.testcell(x + leftdx, y + leftdy, checkbarrier)
-        rightdx, rightdy = EDGEFOLLOWDIRS((edgefollowdir -1 + 4) % 4) # on left
-        obstacleright = graph.testcell(x + rightdx, y + rightdy, checkbarrier)
+        aheaddx, aheaddy = EDGEFOLLOWDIRS[edgefollowdir]          # get delta for this direction
+        obstacleahead = graph.testcell(x+aheaddx,y+aheaddy)   # test cell ahead
+        leftdx, leftdy = EDGEFOLLOWDIRS[(edgefollowdir + 1) % 4] # on right
+        obstacleleft = graph.testcell(x + leftdx, y + leftdy)
+        rightdx, rightdy = EDGEFOLLOWDIRS[(edgefollowdir -1 + 4) % 4] # on left
+        obstacleright = graph.testcell(x + rightdx, y + rightdy)
         #   If no obstacle ahead, we are still wall following and there is an
         #   obstacle to left or right, so move ahead.
         if not obstacleahead :                              # if no obstacle ahead
             assert(obstacleright or obstacleleft)           # must be one of the other
             x = x + dx
             y = y + dy
-            path += (x,y)                                   # add to path
+            path += [(x,y)]                                   # add to path
             #   Now decide next direction for wall following.
             #   If no obstacle on followed side, turn that way and advance
             if (not obstacleright) and edgefollow == -1 :   # if open on right and following right
@@ -148,10 +147,10 @@ def solvemaze(start, end, graph, checkbarrier) :
                 edgefollowdir = (edgefollowdir +1) % 4      # left turn
             else :
                 continue                                    # not turning on this cycle
-            dx, dy = EDGEFOLLOWDIRS(edgefollowdir)          # one step in new dir
+            dx, dy = EDGEFOLLOWDIRS[edgefollowdir]          # one step in new dir
             x = x + dx
             y = y + dy
-            path += (x,y)
+            path += [(x,y)]
             continue
         #   Obstacle ahead. Must turn.        
         if (not obstacleright) and edgefollow == -1 :       # if open on right and following right
@@ -160,10 +159,10 @@ def solvemaze(start, end, graph, checkbarrier) :
             edgefollowdir = (edgefollowdir +1) % 4          # left turn
         else :                                              # blocked on both sides
             edgefollowdir = (edgefollowdir + 2) % 4         # reverse direction
-        dx, dy = EDGEFOLLOWDIRS(edgefollowdir)          # one step in new dir
+        dx, dy = EDGEFOLLOWDIRS[edgefollowdir]              # one step in new dir
         x = x + dx
         y = y + dy
-        path += (x,y)
+        path += [(x,y)]
         continue
     return []                                           # fails
     
@@ -192,8 +191,8 @@ def checkbarriercell2(ix, iy) :
     return (ix, iy) in BARRIERDEF2           # true if on barrier
     
 def runtest(xsize, ysize, barrierfn) :
-    graph = Mazegraph(xsize, ysize)
-    result = solvemaze((0,0), (xsize-1, ysize-1), graph, barrierfn)
+    graph = Mazegraph(xsize, ysize,  barrierfn)
+    result = solvemaze((0,0), (xsize-1, ysize-1), graph)
     print ("route", result)
     print ("cost", len(result))
     graph.dump(result)
@@ -202,5 +201,5 @@ def runtest(xsize, ysize, barrierfn) :
  
 if __name__=="__main__":
     runtest(8,8,checkbarriercell1)
-    runtest(32,32,checkbarriercell2)
+    ####runtest(32,32,checkbarriercell2)
 
