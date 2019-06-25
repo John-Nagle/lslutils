@@ -100,7 +100,7 @@ def solvemaze(start, end, graph ) :
     edgefollow = 0                                      # -1=right edge, 1 = left edge, 0=no edge
     edgefollowdir = 0                                   # 0=+x, 1 = +y, 2=-x, 3=-y
     print("Solving maze")
-    while (x != start[0] or y != start[1]) or len(path) <= 1 : # if we end up back at the starting point, we are in a loop
+    while True:                                         # until done or loop
         print("(%d,%d)" % (x,y))                        # ***TEMP***
         dx = xend - x                                   # distance to end
         dy = yend - y
@@ -109,22 +109,34 @@ def solvemaze(start, end, graph ) :
         if len(path) > graph.xsize * graph.ysize :      # are we in a loop?
             return []                                   # yes, quit
         #   Which direction is most direct towards goal?
+        newedgefollow = 1                               # assume follow right
         if abs(dx) > abs(dy) :                          # X is most direct
-            dy = 0
-            if (dx > 0) :
-                dx = 1
+            if (dx > 0) :                               # +X wins
                 ahead = 0                               # +X is ahead, for later use
-            else :
+                if (dy > 0) :                           # if +Y is better
+                    newedgefollow = -1                  # follow left edge
+                dx = 1
+                dy = 0
+            else :                                      # -X wins
+                ahead = 3                               # -X direction
+                if (dy < 0) :                           # follow
+                    newedgefollow = -1                  # follow left edge
                 dx = -1
-                ahead = 3
+                dy = 0
         else :                                          # Y is most direct
-            dx = 0
             if (dy > 0) :                               # we want to move in +Y
+                ahead = 1                               # +Y direction
+                if (dx < 0) :                            
+                    newedgefollow = -1                  # follow left edge                  
+                dx = 0
                 dy = 1
-                ahead = 1
             else :                                      # move in -Y
-                dy = -1
                 ahead = 3
+                if (dx > 0) :
+                    newedgefollow = -1                  # follow left edge
+                dx = 0
+                dy = -1
+
         obstacle = graph.testcell(x+dx, y+dy)           # check for obstacle ahead
         if not obstacle :                               # it worked
             x = x + dx                                  # advance to new point
@@ -135,15 +147,7 @@ def solvemaze(start, end, graph ) :
         #   Can't advance directly towards goal. Must now follow an edge.
         #   
         if edgefollow == 0 :                            # if don't have an edge direction
-            if ahead == 0 :                             # if obstacle is to +X
-                if yend - y > 0 :                       # if +Y movement would help more                  
-                    edgefollow  = -1                    # follow right edge and go up
-                    edgefollowdir = 1
-                else :
-                    edgefollow = 1                      # follow left edge and head down
-                    edgefollowdir = 3
-            ####else if ahead == 1 .... ***NEED SOME EASIER WAY TO WRITE THIS WITHOUT 8 CASES ***
-            ####edgefollowdir = (ahead + 
+            edgefollow = newedgefollow                  # choose new edge follow direction
         #   Collect data on obstacles ahead, left, and right
         aheaddx, aheaddy = EDGEFOLLOWDIRS[edgefollowdir]          # get delta for this direction
         obstacleahead = graph.testcell(x+aheaddx,y+aheaddy)   # test cell ahead
