@@ -158,6 +158,9 @@ class Mazegraph(object):
     def takeproductivepath(self) :
         """
         Follow productive path or return 0
+        
+        Consider adding check to generate diagonals to reduce path
+        cleanup cost.
         """
         dx = self.endx - self.x
         dy = self.endy - self.y
