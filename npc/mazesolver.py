@@ -77,7 +77,7 @@ class Mazegraph(object):
         self.path = []                          # accumulated path
         #   Outer loop - shortcuts or wall following
         while (self.x != self.endx or self.y != self.endy) : # while not at dest
-            if (len(self.path) > self.xsize*self.ysize) :
+            if (len(self.path) > self.xsize*self.ysize*2) :
                 return []                       # we are in a loop
             if (self.existsproductivepath()) :
                 self.takeproductivepath()
@@ -86,6 +86,7 @@ class Mazegraph(object):
                 sidelr, direction = self.pickside()        # follow left or right?
                 while md(self.x, self.y, self.endx, self.endy) != self.mdbest or not self.existsproductivepath() :
                     direction = self.followwall(sidelr, direction)     # follow edge, advance one cell
+                    assert(len(self.path) <= self.xsize*self.ysize*2)   # runaway check
         return(self.path)
                     
     def addtopath(self) :
@@ -231,28 +232,32 @@ class Mazegraph(object):
         dy = EDGEFOLLOWDY[direction]
         blockedahead = self.testcell(self.x, self.y, self.x + dx, self.y + dy)
         if blockedahead :
-            dxopposite = EDGEFOLLOWDX[(direction - sidelr + 4) % 4]
-            dyopposite = EDGEFOLLOWDY[(direction - sidelr + 4) % 4]
+            dxopposite = EDGEFOLLOWDX[(direction + sidelr + 4) % 4]
+            dyopposite = EDGEFOLLOWDY[(direction + sidelr + 4) % 4]
             blockedopposite = self.testcell(self.x, self.y, self.x + dxopposite, self.y + dyopposite)
             if blockedopposite :
+                print("Dead end")
                 direction = (direction + 2) % 4         # dead end, reverse direction
             else :
+                print("Inside corner")
                 direction = (direction -1 + 4) % 4      # inside corner, turn (***CHECK THIS***)
         else :
-            dxsame = EDGEFOLLOWDX[(direction + sidelr) % 4] # if not blocked ahead
-            dysame = EDGEFOLLOWDX[(direction + sidelr) % 4] 
+            dxsame = EDGEFOLLOWDX[(direction - sidelr + 4) % 4] # if not blocked ahead
+            dysame = EDGEFOLLOWDY[(direction - sidelr + 4) % 4] 
             blockedsameahead = self.testcell(self.x + dx, self.y + dy, self.x + dx + dxsame, self.y + dy + dysame);
             if blockedsameahead :                       # straight, not outside corner
+                print("Straight")
                 self.x += dx                            # move ahead 1
                 self.y += dy
                 self.addtopath()
             else :                                      # outside corner
+                print("Outside corner")
                 self.x += dx                            # move ahead 1
                 self.y += dy
                 self.addtopath()
-                direction = (direction + sidelr + 4) % 4    # turn in direction
+                direction = (direction - sidelr + 4) % 4    # turn in direction
                 self.x += dxsame                        # move around corner
-                self.y += dxsame
+                self.y += dysame
                 self.addtopath() 
         return direction                                # new direction   
         
