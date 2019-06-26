@@ -34,26 +34,135 @@ EXAMINED = 0x2
 EDGEFOLLOWDIRS = [(1,0), (0, 1), (-1, 0), (0, -1)]  # edge following dirs to dx and dy
 
 #
-#   Data storage.
+#   md -- rectangular "Manhattan" distance
+#
+def md(p0x, p0y, p1x, p1y) :
+    return abs(p1x-p0x) + abs(p1y-p0y)
+    
+#
+#   clipto1 -- clip to range -1, 1
+#
+def clipto1(n) :
+    if n > 0 :
+        return 1
+    elif n < 0 :
+        return -1
+    return 0
+#
+#   Mazegraph
 #
 #   This will have to be done with globals in LSL
 #
 class Mazegraph(object):
    
-    def __init__(self, xsize, ysize, barrierfn) :
+    def __init__(self, xsize, ysize) :
         self.xsize = xsize                                          # set size of map
         self.ysize = ysize
-        self.barrierfn = barrierfn
         self.testdata = numpy.full((xsize, ysize), 0)
-                        
-    def testcell(self, x, y) :
+       
+    def solvemaze(self,     startx, starty, endx, endy, barrierfn) :
+        self.x = startx
+        self.y = starty
+        self.barrierfn = barrierfn              # tests cell for blocked
+        self.endx = endx
+        self.endy = endy
+        self.mdbest = self.xsize+self.ysize+1   # best dist to target init
+        self.path = []                          # accumulated path
+        #   Outer loop - shortcuts or wall following
+        while (self.x != self.endx and self.y != self.endy) : # while not at dest
+            if (len(self.path) > self.xsize*self.ysize) :
+                return []                       # we are in a loop
+            if (self.existsproductivepath()) :
+                self.takeproductivepath()
+            else :
+                self.mdbest = md(self.x, self.y, self.endx, self.endy)
+                sidelr = self.pickside()        # follow left or right?
+                while md(self.x, self.y, self.endx, self.endy) != self.mdbest or not self.existsproductivepath() :
+                    self.followwall(sidelr)           # follow edge, advance one cell
+                    
+    def addtopath(self) :
+        """
+        Add current position to path
+        """
+        self.path += [self.x, self.y]
+        print("(%d,%d)" % (self.x, self.y))
+                                                     
+    def testcell(self, fromx, fromy, x, y) :
+        """
+        Returns 1 if occupied cell
+        """
+        if (x < 0 or x >= self.xsize or y < 0 or self.ysize) : # if off grid
+            return 1                            # treat as occupied
         v = self.testdata[x][y]                 # this cell
         if (v & EXAMINED) :
             return v & BARRIER                  # already have this one
-        barrier = self.barrierfn(x,y)             # check this location
+        barrier = self.barrierfn(fromx, fromy, x,y)             # check this location
         v = EXAMINED | barrier
         self.testdata[x][y] = v                 # update sites checked
         return barrier                          # return 1 if obstacle
+        
+    def existsproductivepath(self) :
+        """
+        True if a productive path exists
+        """
+        dx = clipto1(self.endx - self.x)
+        dy = clipto1(self.endy - self.y)
+        if abs(dx) > abs(dy) :                  # better to move in X
+            dy = 0 
+        else :
+            dx = 0
+        assert(dx != 0 or dy != 0)              # error to call this at dest
+        return not self.testcell(self.x, self.y, dx, dy) # test if cell in productive direction is clear
+         
+    def takeproductivepath(self) :
+        """
+        Follow productive path or return 0
+        """
+        dx = clipto1(self.endx - self.x)
+        dy = clipto1(self.endy - self.y)
+        if abs(dx) > abs(dy) :                  # better to move in X
+            dy = 0 
+        else :
+            dx = 0
+        assert(dx != 0 or dy != 0)              # error to call this at dest
+        if (self.testcell(self.x, self.y, dx, dy)) :
+            return 0                            # hit wall, stop
+        self.x += dx                            # advance in desired dir
+        self.y += dy
+        self.addtopath()
+        return 1                                # success
+        
+    def pickside(self) :
+        pass
+        
+        
+        
+    def followwall(self, sidelr) :
+        """
+        Follow wall from current point.
+        
+        Wall following rules:
+        Always blocked on follow side. Algorithm error if not.
+        
+        If open ahead and blocked on follow side 1 ahead, 
+            advance straight.
+        If open ahead and not blocked on follow side 1 ahead, outside corner,
+            advance straight, 
+            turn towards follow side, 
+            advance straight.
+        If not open ahead and not blocked opposite follow side, inside corner
+            turn away from follow side. No move.
+        If not open ahead and blocked opposite follow side, dead end
+            turn twice to reverse direction, no move.
+            
+        "sidelr" is 1 for left, 0 for right
+
+        """
+        assert(False)   # ***TEMP***
+        pass
+        
+        
+        
         
     def dump(self, route) :
         """
@@ -64,12 +173,15 @@ class Mazegraph(object):
             s = ""
             for j in range(self.xsize) :
                 barrier = self.testdata[j][i] & BARRIER
+                examined = self.testdata[j][i] & EXAMINED
                 ch = " "
+                if examined :
+                    ch = "◦"
                 if barrier > 0 :
                     ch = "█"
                 else :
                     if (j,i) in route :                    
-                        ch = "*"
+                        ch = "•"
                 s = s + ch
             print(s)
  
@@ -91,6 +203,26 @@ def solvemaze(start, end, graph ) :
     
     This is not always optimal in terms of route length, but is efficient
     in terms of number of cells tested.
+    
+    Algorithm is from Wikipedia: 
+    
+    https://en.wikipedia.org/wiki/Maze_solving_algorithm#Maze-routing_algorithm
+    
+    It's wall-following with shortcuts through open spaces.
+    
+    Wall following rules:
+        Always blocked on follow side. Algorithm error if not.
+        
+        If open ahead and blocked on follow side 1 ahead, 
+            advance straight.
+        If open ahead and not blocked on follow side 1 ahead, outside corner,
+            advance straight, 
+            turn towards follow side, 
+            advance straight.
+        If not open ahead and not blocked opposite follow side, inside corner
+            turn away from follow side. No move.
+        If not open ahead and blocked opposite follow side, dead end
+            turn twice to reverse direction, no move.
     """
  
     x = start[0]                                        # current working position in cell coords
@@ -112,31 +244,32 @@ def solvemaze(start, end, graph ) :
         if len(path) > graph.xsize * graph.ysize :      # are we in a loop?
             return []                                   # yes, quit
         #   Which direction is most direct towards goal?
-        newedgefollow = 1                               # assume follow right
+        #   Newedgefollow does not match Wikipedia.
+        newedgefollow = 1                               # assume follow left
         if abs(dx) > abs(dy) :                          # X is most direct
             if (dx > 0) :                               # +X wins
                 ahead = 0                               # +X is ahead, for later use
-                if (dy > 0) :                           # if +Y is better
-                    newedgefollow = -1                  # follow left edge
+                if (dy < 0) :                           # if +Y is better
+                    newedgefollow = -1                  # follow right edge
                 dx = 1
                 dy = 0
             else :                                      # -X wins
                 ahead = 3                               # -X direction
-                if (dy < 0) :                           # follow
-                    newedgefollow = -1                  # follow left edge
+                if (dy > 0) :                           # follow
+                    newedgefollow = -1                  # follow right edge
                 dx = -1
                 dy = 0
         else :                                          # Y is most direct
             if (dy > 0) :                               # we want to move in +Y
                 ahead = 1                               # +Y direction
                 if (dx < 0) :                            
-                    newedgefollow = -1                  # follow left edge                  
+                    newedgefollow = -1                  # follow right edge                  
                 dx = 0
                 dy = 1
             else :                                      # move in -Y
                 ahead = 3
                 if (dx > 0) :
-                    newedgefollow = -1                  # follow left edge
+                    newedgefollow = -1                  # follow right edge
                 dx = 0
                 dy = -1
 
@@ -154,6 +287,7 @@ def solvemaze(start, end, graph ) :
         if edgefollow == 0 :                            # if don't have an edge direction
             edgefollow = newedgefollow                  # use new edge follow direction
             edgefollowdir = ahead                       # assume ahead, not that it will work
+            print("(%d,%d) Starting edge follow." % (x,y))
             bestdist = currdist
         #   Collect data on obstacles ahead, left, and right
         aheaddx, aheaddy = EDGEFOLLOWDIRS[edgefollowdir]    # get delta for this direction
@@ -165,24 +299,42 @@ def solvemaze(start, end, graph ) :
         print("Wall following from (%d,%d): l/r %d, heading %d, ahead %d, left %d, right %d" % (x,y,edgefollow, edgefollowdir, obstacleahead, obstacleleft, obstacleright))        
         #   If no obstacle ahead, we are still wall following and there is an
         #   obstacle to left or right, so move ahead.
-        #   ***WRONG***
         if not obstacleahead :                              # if no obstacle ahead in follow dir
+            #   ***WRONG*** Must go ahead, but then what?
             assert(obstacleright or obstacleleft)           # must be next to a wall
-            x = x + dx
-            y = y + dy
+            x = x + aheaddx
+            y = y + aheaddy
             path += [(x,y)]                                 # add to path
+            print("(%d,%d) No obstacle ahead" % (x,y))
+            ####continue    ### ***WRONG***
+            #   If nothing on follow side after that move, must turn and advance
+            #   to get around an outside corner
+            obstacleleft = graph.testcell(x + leftdx, y + leftdy)
+            obstacleright = graph.testcell(x + rightdx, y + rightdy) 
+            
             #   Now decide next direction for wall following.
             #   If no obstacle on followed side, turn that way and advance
             if (not obstacleright) and edgefollow == -1 :   # if open on right and following right
-                edgefollowdir = (edgefollowdir + 1) % 4 # right turn
+                edgefollowdir = (edgefollowdir + -1 + 4) % 4     # right turn
+                aheaddx, aheaddy = EDGEFOLLOWDIRS[edgefollowdir]    # get delta for this direction
+                x = x + aheaddx
+                y = y + aheaddy
+                print("Wall following outside right turn extra move (%d,%d)" % (x,y))
+                path += [(x,y)]                                 # add to path
+                continue
             elif (not obstacleleft) and edgefollow == 1 :   # if open on left and following left
-                edgefollowdir = (edgefollowdir -1 + 4) % 4      # left turn
+                edgefollowdir = (edgefollowdir + 1) % 4  # left turn
+                aheaddx, aheaddy = EDGEFOLLOWDIRS[edgefollowdir]    # get delta for this direction
+                x = x + aheaddx
+                y = y + aheaddy
+                print("Wall following outside left turn extra move (%d,%d)" % (x,y))
+                path += [(x,y)]                                 # add to path               
             continue
         #   Obstacle ahead. Must turn.        
         if (not obstacleright) and edgefollow == -1 :       # if open on right and following right
-            edgefollowdir = (edgefollowdir + 1) % 4     # right turn
+            edgefollowdir = (edgefollowdir + 1) % 4         # right turn
         elif (not obstacleleft) and edgefollow == 1 :       # if open on left and following left
-            edgefollowdir = (edgefollowdir -1 + 4) % 4          # left turn
+            edgefollowdir = (edgefollowdir -1 + 4) % 4         # left turn
         else :                                              # blocked on both sides
             edgefollowdir = (edgefollowdir + 2) % 4         # reverse direction
         dx, dy = EDGEFOLLOWDIRS[edgefollowdir]              # one step in new dir
@@ -208,7 +360,7 @@ def checkbarriercell1(ix, iy) :
 #   Test barriers. These cells are blocked.
 BARRIERDEF2 = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
 
-def checkbarriercell2(ix, iy) :
+def checkbarriercell2(prevx, prevy, ix, iy) :
     """
     Get whether a point is a barrier cell.
     
@@ -217,8 +369,8 @@ def checkbarriercell2(ix, iy) :
     return (ix, iy) in BARRIERDEF2           # true if on barrier
     
 def runtest(xsize, ysize, barrierfn) :
-    graph = Mazegraph(xsize, ysize,  barrierfn)
-    result = solvemaze((0,0), (xsize-1, ysize-1), graph)
+    graph = Mazegraph(xsize, ysize)
+    result = graph.solvemaze(0, 0, xsize-1, ysize-1, barrierfn)
     print ("route", result)
     print ("cost", len(result))
     graph.dump(result)
