@@ -9,9 +9,20 @@
 #   Animats
 #   June, 2019
 #
-#   The algorithm is classic, and from Wikipedia. 
+#   The algorithm is from Wikipedia:
 #
+#   https://en.wikipedia.org/wiki/Maze_solving_algorithm#Maze-routing_algorithm
 #
+#   This is guaranteed to produce a path if one exists, but it may be non-optimal.
+#
+#   The basic approach is to head for the goal, and if there's an obstacle, follow
+#   the edge of the obstacle until there's a good route to the goal.
+#
+#   The main problem is keeping this from looping endlessly. If it hits the
+#   start point 3 times, from all possible directions, there's no solution.
+#
+#   Paths from this need tightening up afterwards.
+# 
 #
 #   The data for each cell is:
 #   - barrier - 1 bit, obstacle present
@@ -243,15 +254,15 @@ class Mazegraph(object):
         dy = EDGEFOLLOWDY[direction]
         blockedahead = self.testcell(self.x, self.y, self.x + dx, self.y + dy)
         if blockedahead :
-            dxopposite = EDGEFOLLOWDX[(direction + sidelr + 4) % 4]
-            dyopposite = EDGEFOLLOWDY[(direction + sidelr + 4) % 4]
+            dxopposite = EDGEFOLLOWDX[(direction + sidelr) % 4]
+            dyopposite = EDGEFOLLOWDY[(direction + sidelr) % 4]
             blockedopposite = self.testcell(self.x, self.y, self.x + dxopposite, self.y + dyopposite)
             if blockedopposite :
                 print("Dead end")
                 direction = (direction + 2) % 4         # dead end, reverse direction
             else :
                 print("Inside corner")
-                direction = (direction -1 + 4) % 4      # inside corner, turn (***CHECK THIS***)
+                direction = (direction -1 + 4) % 4      # inside corner, turn
         else :
             dxsame = EDGEFOLLOWDX[(direction - sidelr + 4) % 4] # if not blocked ahead
             dysame = EDGEFOLLOWDY[(direction - sidelr + 4) % 4] 
@@ -296,6 +307,9 @@ class Mazegraph(object):
     
 #   Test barriers. These cells are blocked.
 BARRIERDEF1 = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
+BARRIERBLOCKER = [(0,8),(1,8),(2,8),(3,8),(4,8),(5,8),(6,8),(7,8),(8,8),(9,8),(10,8),(11,8)]
+BARRIERCENTER = [(4,8),(5,8),(6,8),(7,8),(8,8),(9,8),(4,9),(5,9),(6,9)]
+
 
 def checkbarriercell1(prevx, prevy, ix, iy) :
     """
@@ -303,11 +317,10 @@ def checkbarriercell1(prevx, prevy, ix, iy) :
     
     Simulates actually probing the world for obstacles
     """
-    return (ix, iy) in BARRIERDEF1           # true if on barrier
+    return (ix, iy) in BARRIERDEF1 + BARRIERCENTER          # true if on barrier
     
 #   Test barriers. These cells are blocked.
 ####BARRIERDEF2 = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
-BARRIERBLOCKER = [(0,8),(1,8),(2,8),(3,8),(4,8),(5,8),(6,8),(7,8),(8,8),(9,8),(10,8),(11,8)]
 
 def checkbarriercell2(prevx, prevy, ix, iy) :
     """
@@ -327,6 +340,6 @@ def runtest(xsize, ysize, barrierfn) :
     
  
 if __name__=="__main__":
-    runtest(8,8,checkbarriercell1)
+    runtest(12,12,checkbarriercell1)
     runtest(12,12,checkbarriercell2)
 
