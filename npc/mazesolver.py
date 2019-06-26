@@ -76,7 +76,7 @@ class Mazegraph(object):
         self.mdbest = self.xsize+self.ysize+1   # best dist to target init
         self.path = []                          # accumulated path
         #   Outer loop - shortcuts or wall following
-        while (self.x != self.endx and self.y != self.endy) : # while not at dest
+        while (self.x != self.endx or self.y != self.endy) : # while not at dest
             if (len(self.path) > self.xsize*self.ysize) :
                 return []                       # we are in a loop
             if (self.existsproductivepath()) :
@@ -92,7 +92,7 @@ class Mazegraph(object):
         """
         Add current position to path
         """
-        self.path += [self.x, self.y]
+        self.path += [(self.x, self.y)]
         print("(%d,%d)" % (self.x, self.y))
         ####assert(not self.testcell(self.x, self.y, self.x + dx, self.y + dy)) # path must not go into an occupied cell
 
