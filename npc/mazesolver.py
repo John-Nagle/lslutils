@@ -33,6 +33,9 @@ EXAMINED = 0x2
 
 EDGEFOLLOWDIRS = [(1,0), (0, 1), (-1, 0), (0, -1)]  # edge following dirs to dx and dy
 
+EDGEFOLLOWDX = [1,0,-1,0]
+EDGEFOLLOWDY = [0,1,0,-1]
+
 #
 #   md -- rectangular "Manhattan" distance
 #
@@ -76,9 +79,9 @@ class Mazegraph(object):
                 self.takeproductivepath()
             else :
                 self.mdbest = md(self.x, self.y, self.endx, self.endy)
-                sidelr = self.pickside()        # follow left or right?
+                sidelr, direction = self.pickside()        # follow left or right?
                 while md(self.x, self.y, self.endx, self.endy) != self.mdbest or not self.existsproductivepath() :
-                    self.followwall(sidelr)           # follow edge, advance one cell
+                    direction = self.followwall(sidelr, direction)     # follow edge, advance one cell
                     
     def addtopath(self) :
         """
@@ -137,32 +140,56 @@ class Mazegraph(object):
         
         
         
-    def followwall(self, sidelr) :
+    def followwall(self, sidelr, direction) :
         """
-        Follow wall from current point.
+        Follow wall from current point. Single move per call
         
         Wall following rules:
         Always blocked on follow side. Algorithm error if not.
         
-        If open ahead and blocked on follow side 1 ahead, 
+       If blocked ahead and not blocked opposite follow side, inside corner
+            turn away from follow side. No move.
+       If blocked ahead and blocked opposite follow side, dead end
+            turn twice to reverse direction, no move.
+       If not blocked ahead and blocked on follow side 1 ahead, 
             advance straight.
-        If open ahead and not blocked on follow side 1 ahead, outside corner,
+       If not blocked ahead and not blocked on follow side 1 ahead, outside corner,
             advance straight, 
             turn towards follow side, 
             advance straight.
-        If not open ahead and not blocked opposite follow side, inside corner
-            turn away from follow side. No move.
-        If not open ahead and blocked opposite follow side, dead end
-            turn twice to reverse direction, no move.
             
-        "sidelr" is 1 for left, 0 for right
+        "sidelr" is 1 for left, -1 for right
+        "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
 
         """
-        assert(False)   # ***TEMP***
-        pass
-        
-        
-        
+        dx = EDGEFOLLOWDX[direction]
+        dy = EDGEFOLLOWDY[direction]
+        blockedahead = self.testcell(self.x, self.y, self.x + dx, self.y + dy)
+        if blockedahead :
+            dxopposite = EDGEFOLLOWDX[(direction - sidelr + 4) % 4]
+            dyopposite = EDGEFOLLOWDY[(direction - sidelr + 4) % 4]
+            blockedopposite = self.testcell(self.x, self.y, self.x + dxopposite, self.y + dyopposite)
+            if blockedopposite :
+                direction = (direction + 2) % 4         # dead end, reverse direction
+            else :
+                direction = (direction -1 + 4) % 4      # inside corner, turn (***CHECK THIS***)
+        else :
+            dxsame = EDGEFOLLOWDX[(direction + sidelr) % 4] # if not blocked ahead
+            dysame = EDGEFOLLOWDX[(direction + sidelr) % 4] 
+            blockedsameahead = self.testcell(self.x + dx, self.y+dy, self.x + dx + dxsame, self.dy + dysame);
+            if blockedsameahead :                       # straight, not outside corner
+                self.x += dx                            # move ahead 1
+                self.y += dy
+                self.addtopath()
+            else :                                      # outside corner
+                self.x += dx                            # move ahead 1
+                self.y += dy
+                self.addtopath()
+                direction = (direction + sidelr + 4) % 4    # turn in direction
+                self.x += dxsame                        # move around corner
+                self.y += dxsame
+                self.addtopath() 
+        return direction                                # new direction   
         
     def dump(self, route) :
         """
