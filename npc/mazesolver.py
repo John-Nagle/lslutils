@@ -67,7 +67,7 @@ class Mazegraph(object):
         self.ysize = ysize
         self.testdata = numpy.full((xsize, ysize), 0)
        
-    def solvemaze(self,     startx, starty, endx, endy, barrierfn) :
+    def solvemaze(self, startx, starty, endx, endy, barrierfn) :
         self.x = startx
         self.y = starty
         self.barrierfn = barrierfn              # tests cell for blocked
@@ -86,6 +86,7 @@ class Mazegraph(object):
                 sidelr, direction = self.pickside()        # follow left or right?
                 while md(self.x, self.y, self.endx, self.endy) != self.mdbest or not self.existsproductivepath() :
                     direction = self.followwall(sidelr, direction)     # follow edge, advance one cell
+        return(self.path)
                     
     def addtopath(self) :
         """
@@ -93,17 +94,19 @@ class Mazegraph(object):
         """
         self.path += [self.x, self.y]
         print("(%d,%d)" % (self.x, self.y))
-        assert(not self.testcell(self.x, self.y, self.x + dx, self.y + dy)) # path must not go into an occupied cell
+        ####assert(not self.testcell(self.x, self.y, self.x + dx, self.y + dy)) # path must not go into an occupied cell
 
                                                      
     def testcell(self, fromx, fromy, x, y) :
         """
         Returns 1 if occupied cell
         """
-        if (x < 0 or x >= self.xsize or y < 0 or self.ysize) : # if off grid
+        print("Testcell (%d,%d)" % (x,y))       # ***TEMP***
+        if (x < 0 or x >= self.xsize or y < 0 or y >= self.ysize) : # if off grid
             return 1                            # treat as occupied
         v = self.testdata[x][y]                 # this cell
         if (v & EXAMINED) :
+            print
             return v & BARRIER                  # already have this one
         barrier = self.barrierfn(fromx, fromy, x,y)             # check this location
         v = EXAMINED | barrier
@@ -124,7 +127,9 @@ class Mazegraph(object):
         dy = clipto1(dy)
         assert(dx != 0 or dy != 0)              # error to call this at dest
         assert(dx == 0 or dy == 0)              # must be rectangular move
-        return not self.testcell(self.x, self.y, dx, dy) # test if cell in productive direction is clear
+        productive = not self.testcell(self.x, self.y, self.x + dx, self.y + dy) # test if cell in productive direction is clear
+        print("Productive path at (%d,%d): %d" % (self.x, self.y, productive))
+        return productive
          
     def takeproductivepath(self) :
         """
@@ -196,6 +201,7 @@ class Mazegraph(object):
                 sidelr = WALLONRIGHT
         else :
             assert(False)                       # should never get here
+        print("At (%d,%d) picked side %d, direction %d for wall follow." % (self.x, self.y, sidelr, direction))
         return (sidelr, direction)
         
     def followwall(self, sidelr, direction) :
@@ -220,6 +226,7 @@ class Mazegraph(object):
         "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
 
         """
+        print("Following wall at (%d,%d) side %d direction %d" % (self.x, self.y, sidelr, direction))
         dx = EDGEFOLLOWDX[direction]
         dy = EDGEFOLLOWDY[direction]
         blockedahead = self.testcell(self.x, self.y, self.x + dx, self.y + dy)
@@ -234,7 +241,7 @@ class Mazegraph(object):
         else :
             dxsame = EDGEFOLLOWDX[(direction + sidelr) % 4] # if not blocked ahead
             dysame = EDGEFOLLOWDX[(direction + sidelr) % 4] 
-            blockedsameahead = self.testcell(self.x + dx, self.y+dy, self.x + dx + dxsame, self.dy + dysame);
+            blockedsameahead = self.testcell(self.x + dx, self.y + dy, self.x + dx + dxsame, self.y + dy + dysame);
             if blockedsameahead :                       # straight, not outside corner
                 self.x += dx                            # move ahead 1
                 self.y += dy
@@ -434,7 +441,7 @@ def solvemaze(start, end, graph ) :
 #   Test barriers. These cells are blocked.
 BARRIERDEF1 = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
 
-def checkbarriercell1(ix, iy) :
+def checkbarriercell1(prevx, prevy, ix, iy) :
     """
     Get whether a point is a barrier cell.
     
