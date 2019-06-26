@@ -36,6 +36,10 @@ EDGEFOLLOWDIRS = [(1,0), (0, 1), (-1, 0), (0, -1)]  # edge following dirs to dx 
 EDGEFOLLOWDX = [1,0,-1,0]
 EDGEFOLLOWDY = [0,1,0,-1]
 
+#   Wall follow sides
+WALLONLEFT = -1
+WALLONRIGHT = 1
+
 #
 #   md -- rectangular "Manhattan" distance
 #
@@ -89,6 +93,8 @@ class Mazegraph(object):
         """
         self.path += [self.x, self.y]
         print("(%d,%d)" % (self.x, self.y))
+        assert(not self.testcell(self.x, self.y, self.x + dx, self.y + dy)) # path must not go into an occupied cell
+
                                                      
     def testcell(self, fromx, fromy, x, y) :
         """
@@ -108,27 +114,33 @@ class Mazegraph(object):
         """
         True if a productive path exists
         """
-        dx = clipto1(self.endx - self.x)
-        dy = clipto1(self.endy - self.y)
+        dx = self.endx - self.x
+        dy = self.endy - self.y
         if abs(dx) > abs(dy) :                  # better to move in X
             dy = 0 
         else :
             dx = 0
+        dx = clipto1(dx)
+        dy = clipto1(dy)
         assert(dx != 0 or dy != 0)              # error to call this at dest
+        assert(dx == 0 or dy == 0)              # must be rectangular move
         return not self.testcell(self.x, self.y, dx, dy) # test if cell in productive direction is clear
          
     def takeproductivepath(self) :
         """
         Follow productive path or return 0
         """
-        dx = clipto1(self.endx - self.x)
-        dy = clipto1(self.endy - self.y)
+        dx = self.endx - self.x
+        dy = self.endy - self.y
         if abs(dx) > abs(dy) :                  # better to move in X
             dy = 0 
         else :
             dx = 0
+        dx = clipto1(dx)
+        dy = clipto1(dy)
         assert(dx != 0 or dy != 0)              # error to call this at dest
-        if (self.testcell(self.x, self.y, dx, dy)) :
+        assert(dx == 0 or dy == 0)              # must be rectangular move
+        if (self.testcell(self.x, self.y, self.x + dx, self.y + dy)) :
             return 0                            # hit wall, stop
         self.x += dx                            # advance in desired dir
         self.y += dy
@@ -136,9 +148,55 @@ class Mazegraph(object):
         return 1                                # success
         
     def pickside(self) :
-        pass
-        
-        
+        """
+        Which side of the wall to follow? The one that leads toward
+        the goal.
+        Where is the wall? One cell in the direction takkeproductvepath was
+        going.
+        """
+        dx = self.endx - self.x
+        dy = self.endy - self.y
+        assert(dx != 0 or dy != 0)              # error to call this at dest
+        clippeddx = clipto1(dx)
+        clippeddy = clipto1(dy)
+        if abs(dx) > abs(dy) :                  # better to move in X
+            clippeddy = 0 
+        else :
+            clippeddy = 0
+        assert(clippeddx == 0 or clippeddy == 0) # must be rectangular move
+        assert(self.testcell(self.x, self.y, self.x + clippeddx, self.y + clippeddy)) # must have hit a wall
+        #   8 cases, dumb version
+        if clippeddx == 1 :                     # obstacle is in +X dir
+            if  (dy > 0) :                      # if want to move in +Y
+                direction = 1
+                sidelr = WALLONLEFT 
+            else :
+                direction = 3
+                sidelr = WALLONRIGHT
+        elif clippeddx == -1 :
+            if (dy > 0) :
+                direction = 1
+                sidelr = WALLONRIGHT
+            else :
+                direction = 3
+                sidelr = WALLONLEFT                
+        elif clippddy == 1 :                    # obstacle is in +Y dir
+            if (dx > 0) :                       # if want to move in +X
+                direction = 0
+                sidelr = WALLONLEFT             # wall is on left
+            else :
+                direction = 2
+                sidelr = WALLONRIGHT
+        elif clippedy == -1 :                   # obstacle is in -Y dir
+            if (dx > 0) :                       # if want to move in +X
+                direction = 0
+                sidelr = WALLONLEFT             # wall is on left
+            else :
+                direction = 2
+                sidelr = WALLONRIGHT
+        else :
+            assert(False)                       # should never get here
+        return (sidelr, direction)
         
     def followwall(self, sidelr, direction) :
         """
