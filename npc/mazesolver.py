@@ -68,13 +68,17 @@ class Mazegraph(object):
         self.testdata = numpy.full((xsize, ysize), 0)
        
     def solvemaze(self, startx, starty, endx, endy, barrierfn) :
-        self.x = startx
+        self.x = startx                         # start
         self.y = starty
         self.barrierfn = barrierfn              # tests cell for blocked
-        self.endx = endx
+        self.startx = startx                    # start
+        self.starty = starty
+        self.endx = endx                        # destination
         self.endy = endy
         self.mdbest = self.xsize+self.ysize+1   # best dist to target init
         self.path = []                          # accumulated path
+        self.stuck = 0                          # not stuck yet
+        self.addtopath()                        # add initial point
         #   Outer loop - shortcuts or wall following
         while (self.x != self.endx or self.y != self.endy) : # while not at dest
             if (len(self.path) > self.xsize*self.ysize*2) :
@@ -84,9 +88,17 @@ class Mazegraph(object):
             else :
                 self.mdbest = md(self.x, self.y, self.endx, self.endy)
                 sidelr, direction = self.pickside()        # follow left or right?
+                #   Inner loop - wall following
                 while md(self.x, self.y, self.endx, self.endy) != self.mdbest or not self.existsproductivepath() :
-                    direction = self.followwall(sidelr, direction)     # follow edge, advance one cell
+                    direction = self.followwall(sidelr, direction)      # follow edge, advance one cell
                     assert(len(self.path) <= self.xsize*self.ysize*2)   # runaway check
+                    #   Termination check - if we are back at the start and going in the same direction, no solution
+                    if (self.x == self.startx and self.y == self.starty) :
+                        print("Back at start")
+                        self.stuck += 1
+                        if (self.stuck > 2) :                           # back at start more than twice, we're stuck.
+                            return []                                   # fails
+                        
         return(self.path)
                     
     def addtopath(self) :
@@ -168,8 +180,7 @@ class Mazegraph(object):
         if abs(dx) > abs(dy) :                  # better to move in X
             clippeddy = 0 
         else :
-            clippeddy = 0
-        assert(clippeddx == 0 or clippeddy == 0) # must be rectangular move
+            clippeddx = 0
         assert(self.testcell(self.x, self.y, self.x + clippeddx, self.y + clippeddy)) # must have hit a wall
         #   8 cases, dumb version
         if clippeddx == 1 :                     # obstacle is in +X dir
@@ -186,14 +197,14 @@ class Mazegraph(object):
             else :
                 direction = 3
                 sidelr = WALLONLEFT                
-        elif clippddy == 1 :                    # obstacle is in +Y dir
+        elif clippeddy == 1 :                   # obstacle is in +Y dir
             if (dx > 0) :                       # if want to move in +X
                 direction = 0
                 sidelr = WALLONLEFT             # wall is on left
             else :
                 direction = 2
                 sidelr = WALLONRIGHT
-        elif clippedy == -1 :                   # obstacle is in -Y dir
+        elif clippeddy == -1 :                  # obstacle is in -Y dir
             if (dx > 0) :                       # if want to move in +X
                 direction = 0
                 sidelr = WALLONLEFT             # wall is on left
@@ -295,7 +306,8 @@ def checkbarriercell1(prevx, prevy, ix, iy) :
     return (ix, iy) in BARRIERDEF1           # true if on barrier
     
 #   Test barriers. These cells are blocked.
-BARRIERDEF2 = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
+####BARRIERDEF2 = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
+BARRIERBLOCKER = [(0,8),(1,8),(2,8),(3,8),(4,8),(5,8),(6,8),(7,8),(8,8),(9,8),(10,8),(11,8)]
 
 def checkbarriercell2(prevx, prevy, ix, iy) :
     """
@@ -303,7 +315,7 @@ def checkbarriercell2(prevx, prevy, ix, iy) :
     
     Simulates actually probing the world for obstacles
     """
-    return (ix, iy) in BARRIERDEF2           # true if on barrier
+    return (ix, iy) in BARRIERDEF1 + BARRIERBLOCKER           # true if on barrier
     
 def runtest(xsize, ysize, barrierfn) :
     graph = Mazegraph(xsize, ysize)
@@ -316,5 +328,5 @@ def runtest(xsize, ysize, barrierfn) :
  
 if __name__=="__main__":
     runtest(8,8,checkbarriercell1)
-    ####runtest(32,32,checkbarriercell2)
+    runtest(12,12,checkbarriercell2)
 
