@@ -146,6 +146,7 @@ def solvemaze(start, end, graph ) :
         if (not obstacle) and (currdist != bestdist) and edgefollow == 0:  # can advance, and not in a loop, and not edge following
             x = x + dx                                  # advance to new point
             y = y + dy
+            print("Productive path at (%d,%d)" % (x,y)) # ***TEMP***
             path += [(x,y)]                             # add point to path
             edgefollow = 0                              # no edge follow direction
             continue                                    # and keep going
@@ -157,11 +158,11 @@ def solvemaze(start, end, graph ) :
         #   Collect data on obstacles ahead, left, and right
         aheaddx, aheaddy = EDGEFOLLOWDIRS[edgefollowdir]    # get delta for this direction
         obstacleahead = graph.testcell(x+aheaddx,y+aheaddy) # test cell ahead
-        leftdx, leftdy = EDGEFOLLOWDIRS[(edgefollowdir + 1) % 4] # on right
+        leftdx, leftdy = EDGEFOLLOWDIRS[(edgefollowdir - 1 + 4) % 4] # on right
         obstacleleft = graph.testcell(x + leftdx, y + leftdy)
-        rightdx, rightdy = EDGEFOLLOWDIRS[(edgefollowdir -1 + 4) % 4] # on left
+        rightdx, rightdy = EDGEFOLLOWDIRS[(edgefollowdir +1) % 4] # on left
         obstacleright = graph.testcell(x + rightdx, y + rightdy) 
-        print("Wall following at (%d,%d): l/r %d, heading %d, ahead %d, left %d, right %d" % (x,y,edgefollow, edgefollowdir, obstacleahead, obstacleleft, obstacleright))        
+        print("Wall following from (%d,%d): l/r %d, heading %d, ahead %d, left %d, right %d" % (x,y,edgefollow, edgefollowdir, obstacleahead, obstacleleft, obstacleright))        
         #   If no obstacle ahead, we are still wall following and there is an
         #   obstacle to left or right, so move ahead.
         #   ***WRONG***
@@ -173,15 +174,15 @@ def solvemaze(start, end, graph ) :
             #   Now decide next direction for wall following.
             #   If no obstacle on followed side, turn that way and advance
             if (not obstacleright) and edgefollow == -1 :   # if open on right and following right
-                edgefollowdir = (edgefollowdir - 1 + 4) % 4 # right turn
+                edgefollowdir = (edgefollowdir + 1) % 4 # right turn
             elif (not obstacleleft) and edgefollow == 1 :   # if open on left and following left
-                edgefollowdir = (edgefollowdir +1) % 4      # left turn
+                edgefollowdir = (edgefollowdir -1 + 4) % 4      # left turn
             continue
         #   Obstacle ahead. Must turn.        
         if (not obstacleright) and edgefollow == -1 :       # if open on right and following right
-            edgefollowdir = (edgefollowdir - 1 + 4) % 4     # right turn
+            edgefollowdir = (edgefollowdir + 1) % 4     # right turn
         elif (not obstacleleft) and edgefollow == 1 :       # if open on left and following left
-            edgefollowdir = (edgefollowdir +1) % 4          # left turn
+            edgefollowdir = (edgefollowdir -1 + 4) % 4          # left turn
         else :                                              # blocked on both sides
             edgefollowdir = (edgefollowdir + 2) % 4         # reverse direction
         dx, dy = EDGEFOLLOWDIRS[edgefollowdir]              # one step in new dir
