@@ -65,8 +65,8 @@ With a plan in place, path following can be done quickly. Both keyframed motion
 and vehicle-type motion could be used. We are trying keyframed motion first, because
 it works well under sim overload conditions. During keyframed motion, we must constantly
 check for obstacles ahead of the character, using llCastRay. If an obstacle is
-encountered, the character stops. We then repeat the planning process and try
-to follow the new plan.
+encountered, the character stops. We then repeat the planning process from the 
+current position and try to follow the new plan.
 
 ### Technical notes
 

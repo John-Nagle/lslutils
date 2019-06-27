@@ -104,6 +104,8 @@ class Mazegraph(object):
                 followstarty = self.gMazeY
                 followstartdir = direction
                 while mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY) != self.gMazeMdbest or not self.mazeexistsproductivepath() :
+                    if (self.gMazeX == self.gMazeEndX and self.gMazeY == self.gMazeEndY) : # if at end
+                        return self.gMazePath                               # done
                     direction = self.mazefollowwall(sidelr, direction)      # follow edge, advance one cell
                     if len(self.gMazePath) > self.gMazeXsize*self.gMazeYsize*2 : # runaway check
                         print("***ERROR*** runaway: " + str(self.gMazePath)) 
@@ -300,10 +302,9 @@ class Mazegraph(object):
         tens = ""
         for i in range(self.gMazeXsize) :
             units += str(i % 10)
-            tens += str((i / 10) % 10)  
-        print("    " + units)
-        print("    " + tens)                                   
-            
+            tens += str((int(i / 10)) % 10)  
+        print("     " + tens)                                   
+        print("     " + units)            
         print("    " + ("•" * (self.gMazeXsize+2)))                 # top/bottom wall
         #   Data
         for i in range(self.gMazeYsize) :
@@ -323,6 +324,8 @@ class Mazegraph(object):
             s = "•" + s + "•"   # show outer walls
             print("%4d%s" % (i,s))
         print("    " + ("•" * (self.gMazeXsize+2)))                 # top/bottom wall
+        print("     " + tens)                                   
+        print("     " + units)            
 
  
 
