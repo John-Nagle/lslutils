@@ -295,6 +295,7 @@ class Mazegraph(object):
         Debug dump
         """
         print("Graph and path.")
+        print("    " + ("•" * (self.gMazeXsize+2)))                 # top/bottom wall
         for i in range(self.gMazeYsize) :
             s = ""
             for j in range(self.gMazeXsize) :
@@ -309,7 +310,10 @@ class Mazegraph(object):
                     if (j,i) in route :                    
                         ch = "•"
                 s = s + ch
-            print(s)
+            s = "•" + s + "•"   # show outer walls
+            print("%4d%s" % (i,s))
+        print("    " + ("•" * (self.gMazeXsize+2)))                 # top/bottom wall
+
  
 
 def generaterandombarrier(xsize, ysize, cnt) :
@@ -346,8 +350,6 @@ BARRIERFAIL1 = [(11, 1), (8, 6), (3, 1), (10, 10), (6, 10), (10, 3), (9, 9), (5,
 (6, 4), (3, 10), (10, 5), (9, 2), (11, 0), (4, 6), (11, 5), (6, 7), (1, 9), (1, 6), (8, 10), (8, 5),
 (10, 4), (8, 7), (1, 5), (4, 8), (6, 8), (3, 11), (2, 4), (7, 3), (0, 9)]
 
-
- 
 def runtest(xsize, ysize, barrierpairs) :
     def barrierfn(prevx, prevy, ix, iy) :   # closure for barrier test fn
         return (ix, iy) in barrierpairs
@@ -355,12 +357,7 @@ def runtest(xsize, ysize, barrierpairs) :
     result = graph.solvemaze(0, 0, xsize-1, ysize-1, barrierfn)
     print ("route", result)
     print ("cost", len(result))
-    graph.mazedump(result)
-
-        
-    
-
-        
+    graph.mazedump(result)    
     
  
 if __name__=="__main__":
