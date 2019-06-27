@@ -38,6 +38,7 @@
 #
 import numpy
 import math
+import random
 
 MAZEBARRIER = 0x1                                   # must be low bit
 MAZEEXAMINED = 0x2
@@ -102,13 +103,16 @@ class Mazegraph(object):
                 #   Inner loop - wall following
                 while mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY) != self.gMazeMdbest or not self.mazeexistsproductivepath() :
                     direction = self.mazefollowwall(sidelr, direction)      # follow edge, advance one cell
-                    assert(len(self.gMazePath) <= self.gMazeXsize*self.gMazeYsize*2)   # runaway check
+                    if len(self.gMazePath) > self.gMazeXsize*self.gMazeYsize*2 : # runaway check
+                        print("***ERROR*** runaway: " + str(self.gMazePath)) 
+                        return []
                     #   Termination check - if we are back at the start and going in the same direction, no solution
                     if (self.gMazeX == self.gMazeStartX and self.gMazeY == self.gMazeStartY) :
                         print("Back at start")
                         self.gMazeStuck += 1
                         if (self.gMazeStuck > 2) :                           # back at start more than twice, we're stuck.
                             return []                                   # fails
+                print("Finished wall following.")
                         
         return(self.gMazePath)
                     
@@ -307,11 +311,34 @@ class Mazegraph(object):
                 s = s + ch
             print(s)
  
-    
+
+def generaterandombarrier(xsize, ysize, cnt) :
+    """
+    Generate a lame random maze. Just random dots.
+    """
+    pts = []
+    for i in range(cnt) :
+        pnt = (random.randrange(xsize), random.randrange(ysize))
+        if pnt == (0,0) or pnt == (xsize-1, ysize-1):       # start and end point must be free
+            continue
+        if not pnt in pts :
+            pts.append(pnt)
+    print("Random barrier: " + str(pts))  
+    return pts 
+             
 #   Test barriers. These cells are blocked.
 BARRIERDEF1 = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
 BARRIERBLOCKER = [(0,8),(1,8),(2,8),(3,8),(4,8),(5,8),(6,8),(7,8),(8,8),(9,8),(10,8),(11,8)]
 BARRIERCENTER = [(4,8),(5,8),(6,8),(7,8),(8,8),(9,8),(4,9),(5,9),(6,9)]
+BARRIERRANDOM = generaterandombarrier(12,12,72)
+#   This one causes trouble with the termination condition
+BARRIERSTUCK = [(1, 4), (5, 5), (10, 11), (3, 11), (0, 5), (9, 7), (4, 1), (5, 9), (3, 1), (6, 6), (11, 10), 
+   (5, 10), (4, 9), (4, 2), (10, 8), (6, 4), (1, 7), (11, 6), (11, 9), (9, 8), (3, 9), (8, 1), (10, 4), 
+   (3, 0), (2, 10), (5, 1), (7, 10), (7, 8), (6, 0), (5, 11), (2, 8), (11, 8), (6, 2), (11, 4), (10, 0), 
+   (9, 3), (3, 6), (10, 5), (0, 9), (0, 10), (5, 2), (7, 11), (7, 0), (2, 2), (0, 2), (4, 8), (2, 6), 
+   (6, 7), (7, 5), (4, 4), (3, 8), (1, 10), (10, 1), (3, 7), (6, 5), (4, 11), (1, 9), (9, 6), (4, 10),
+   (1, 0), (10, 10), (9, 2)]
+
 
 
 def checkbarriercell1(prevx, prevy, ix, iy) :
@@ -333,16 +360,35 @@ def checkbarriercell2(prevx, prevy, ix, iy) :
     """
     return (ix, iy) in BARRIERDEF1 + BARRIERBLOCKER           # true if on barrier
     
+def checkbarriercell3(prevx, prevy, ix, iy) :
+    """
+    Get whether a point is a barrier cell.
+    
+    Simulates actually probing the world for obstacles
+    """
+    return (ix, iy) in BARRIERSTUCK           # true if on barrier
+    
+def checkbarriercellrandom(prevx, prevy, ix, iy) :
+    """
+    Get whether a point is a barrier cell.
+    
+    Simulates actually probing the world for obstacles
+    """
+    return (ix, iy) in BARRIERRANDOM           # true if on barrier
+    
 def runtest(gMazeXsize, gMazeYsize, barrierfn) :
     graph = Mazegraph(gMazeXsize, gMazeYsize)
     result = graph.solvemaze(0, 0, gMazeXsize-1, gMazeYsize-1, barrierfn)
     print ("route", result)
     print ("cost", len(result))
     graph.mazedump(result)
+    
 
+        
     
  
 if __name__=="__main__":
     runtest(12,12,checkbarriercell1)
     runtest(12,12,checkbarriercell2)
+    runtest(12,12,checkbarriercell3)
 
