@@ -34,7 +34,47 @@ float distpointtoline(vector p, vector p0, vector p1)
      } else {
         pb = p0;                        // zero length line case
      }
-     return (llVecMag(p, pb));          // return distance
+     return (llVecMag(p - pb));         // return distance
+}
+//  
+//  checkcollinear -- are points on list collinear?
+//
+integer checkcollinear(list pts)
+{   integer length = llGetListLength(pts);
+    if (length < 3) { return(TRUE); }    // collinear unless at least 3
+    integer i;
+    vector p0 = llList2Vector(pts,0);
+    vector p1 = llList2Vector(pts,-1);  // last
+    for (i=1; i<length-1; i++)          // points other than endpoints
+    {   float dist = distpointtoline(llList2Vector(pts,i), p0, p1);    // dist from line between endpoints
+        if (dist > 0.001) { return(FALSE); }
+    }
+    return(TRUE);                       // collinear   
+}
+//
+//  removecollinear  -- remove collinear points from a list
+//
+list removecollinear(list pts)
+{   integer length = llGetListLength(pts);
+    integer i;
+    if (length < 3) { return(pts); }    // can't shorten unless at least 3
+    vector p0 = llList2Vector(pts,0);
+    vector p1 = llList2Vector(pts,1);
+    newpts = [pt0]
+    for (i=2; i<length; i++)
+    {   vector p = llList2Vector(pts,i); // next point
+        float dist = distpointtoline(p1, p0, p);    // distance from p1 to p0-p line
+        if (dist < 0.001)               // if collinear discard p1
+        { p1 = p
+        } else {                        // keep p1
+            p0 = p1
+            newpts += p0
+            p1 = p
+        }
+    }
+    //  At end, we still have an unstored point in p1
+    newpts += p1
+    return newpts
 }
 //
 //  rotperpenonground  -- rotation to get line on ground perpendicular to vector
@@ -123,14 +163,17 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, integ
     {   ////llOwnerSay("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
         return(FALSE);
     }
-#ifdef TEMPTURNOFF // need to check for redundant collinear points
+////#ifdef TEMPTURNOFF // need to check for redundant collinear points
     list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, CHARTYPE]);
     integer status = llList2Integer(path,-1);                   // last item is status
-    if (status != 0 || llGetListLength(path) != 3)
+    path = llList2List(path,0,-2);                              // remove last item
+    if (status != 0 || llGetListLength(path) != 2)
     {   llOwnerSay("Path static check failed for " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
+        if (checkcollinear(path))
+        {   llOwnerSay("But path is straight"); return(TRUE); }
         return(FALSE);
     }
-#endif // TEMPTURNOFF   
+////#endif // TEMPTURNOFF   
     return(TRUE);                                               // success
 }
 //
