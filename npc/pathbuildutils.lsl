@@ -14,6 +14,7 @@ float CASTRAYRETRYDELAY = 0.200;                            // if a problem, ret
 #define INFINITY ((float)"inf")                             // is there a better way?
 float GROUNDCLEARANCE = 0.05;                               // avoid false ground collisions
 float MAXAVOIDMOVE = 8.0;                                   // max distance to avoid obstacle
+float COLLINEARTOL = 0.02;                                  // allow 2cm collinearity error
 //
 //  
 //
@@ -34,7 +35,7 @@ float distpointtoline(vector p, vector p0, vector p1)
      } else {
         pb = p0;                        // zero length line case
      }
-     return (llVecMag(p - pb));         // return distance
+     return (llVecMag(p - pb));             // return distance
 }
 //  
 //  checkcollinear -- are points on list collinear?
@@ -47,7 +48,7 @@ integer checkcollinear(list pts)
     vector p1 = llList2Vector(pts,-1);  // last
     for (i=1; i<length-1; i++)          // points other than endpoints
     {   float dist = distpointtoline(llList2Vector(pts,i), p0, p1);    // dist from line between endpoints
-        if (dist > 0.001) { return(FALSE); }
+        if (dist > COLLINEARTOL) { return(FALSE); } // tolerance 1cm
     }
     return(TRUE);                       // collinear   
 }
@@ -163,7 +164,6 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, integ
     {   ////llOwnerSay("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
         return(FALSE);
     }
-////#ifdef TEMPTURNOFF // need to check for redundant collinear points
     list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, CHARTYPE]);
     integer status = llList2Integer(path,-1);                   // last item is status
     path = llList2List(path,0,-2);                              // remove last item
@@ -173,7 +173,6 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, integ
         {   llOwnerSay("But path is straight"); return(TRUE); }
         return(FALSE);
     }
-////#endif // TEMPTURNOFF   
     return(TRUE);                                               // success
 }
 //
