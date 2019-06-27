@@ -74,59 +74,59 @@ def clipto1(n) :
 class Mazegraph(object):
    
     def __init__(self, xsize, ysize) :
-        self.xsize = xsize                                          # set size of map
-        self.ysize = ysize
+        self.gMazeXsize = xsize                                          # set size of map
+        self.gMazeYsize = ysize
         self.testdata = numpy.full((xsize, ysize), 0)
        
     def solvemaze(self, startx, starty, endx, endy, barrierfn) :
-        self.x = startx                         # start
-        self.y = starty
+        self.gMazeX = startx                         # start
+        self.gMazeY = starty
         self.barrierfn = barrierfn              # tests cell for blocked
-        self.startx = startx                    # start
-        self.starty = starty
-        self.endx = endx                        # destination
-        self.endy = endy
-        self.mdbest = self.xsize+self.ysize+1   # best dist to target init
-        self.path = []                          # accumulated path
-        self.stuck = 0                          # not stuck yet
-        self.addtopath()                        # add initial point
+        self.gMazeStartX = startx                    # start
+        self.gMazeStartY = starty
+        self.gMazeEndX = endx                        # destination
+        self.gMazeEndY = endy
+        self.gMazeMdbest = self.gMazeXsize+self.gMazeYsize+1   # best dist to target init
+        self.gMazePath = []                          # accumulated path
+        self.gMazeStuck = 0                          # not stuck yet
+        self.mazeaddtopath()                        # add initial point
         #   Outer loop - shortcuts or wall following
-        while (self.x != self.endx or self.y != self.endy) : # while not at dest
-            if (len(self.path) > self.xsize*self.ysize*2) :
-                return []                       # we are in a loop
-            if (self.existsproductivepath()) :
-                self.takeproductivepath()
+        while (self.gMazeX != self.gMazeEndX or self.gMazeY != self.gMazeEndY) : # while not at dest
+            if (len(self.gMazePath) > self.gMazeXsize*self.gMazeYsize*2) :
+                return []                       # we are in an undetected loop
+            if (self.mazeexistsproductivepath()) :  # if a shortcut is available
+                self.mazetakeproductivepath()       # use it
             else :
-                self.mdbest = md(self.x, self.y, self.endx, self.endy)
-                sidelr, direction = self.pickside()        # follow left or right?
+                self.gMazeMdbest = md(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)
+                sidelr, direction = self.mazepickside()        # follow left or right?
                 #   Inner loop - wall following
-                while md(self.x, self.y, self.endx, self.endy) != self.mdbest or not self.existsproductivepath() :
-                    direction = self.followwall(sidelr, direction)      # follow edge, advance one cell
-                    assert(len(self.path) <= self.xsize*self.ysize*2)   # runaway check
+                while md(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY) != self.gMazeMdbest or not self.mazeexistsproductivepath() :
+                    direction = self.mazefollowwall(sidelr, direction)      # follow edge, advance one cell
+                    assert(len(self.gMazePath) <= self.gMazeXsize*self.gMazeYsize*2)   # runaway check
                     #   Termination check - if we are back at the start and going in the same direction, no solution
-                    if (self.x == self.startx and self.y == self.starty) :
+                    if (self.gMazeX == self.gMazeStartX and self.gMazeY == self.gMazeStartY) :
                         print("Back at start")
-                        self.stuck += 1
-                        if (self.stuck > 2) :                           # back at start more than twice, we're stuck.
+                        self.gMazeStuck += 1
+                        if (self.gMazeStuck > 2) :                           # back at start more than twice, we're stuck.
                             return []                                   # fails
                         
-        return(self.path)
+        return(self.gMazePath)
                     
-    def addtopath(self) :
+    def mazeaddtopath(self) :
         """
         Add current position to path
         """
-        self.path += [(self.x, self.y)]
-        print("(%d,%d)" % (self.x, self.y))
-        ####assert(not self.testcell(self.x, self.y, self.x + dx, self.y + dy)) # path must not go into an occupied cell
+        self.gMazePath += [(self.gMazeX, self.gMazeY)]
+        print("(%d,%d)" % (self.gMazeX, self.gMazeY))
+        ####assert(not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy)) # path must not go into an occupied cell
 
                                                      
-    def testcell(self, fromx, fromy, x, y) :
+    def mazetestcell(self, fromx, fromy, x, y) :
         """
         Returns 1 if occupied cell
         """
         print("Testcell (%d,%d)" % (x,y))       # ***TEMP***
-        if (x < 0 or x >= self.xsize or y < 0 or y >= self.ysize) : # if off grid
+        if (x < 0 or x >= self.gMazeXsize or y < 0 or y >= self.gMazeYsize) : # if off grid
             return 1                            # treat as occupied
         v = self.testdata[x][y]                 # this cell
         if (v & EXAMINED) :
@@ -137,12 +137,12 @@ class Mazegraph(object):
         self.testdata[x][y] = v                 # update sites checked
         return barrier                          # return 1 if obstacle
         
-    def existsproductivepath(self) :
+    def mazeexistsproductivepath(self) :
         """
         True if a productive path exists
         """
-        dx = self.endx - self.x
-        dy = self.endy - self.y
+        dx = self.gMazeEndX - self.gMazeX
+        dy = self.gMazeEndY - self.gMazeY
         if abs(dx) > abs(dy) :                  # better to move in X
             dy = 0 
         else :
@@ -151,19 +151,19 @@ class Mazegraph(object):
         dy = clipto1(dy)
         assert(dx != 0 or dy != 0)              # error to call this at dest
         assert(dx == 0 or dy == 0)              # must be rectangular move
-        productive = not self.testcell(self.x, self.y, self.x + dx, self.y + dy) # test if cell in productive direction is clear
-        print("Productive path at (%d,%d): %d" % (self.x, self.y, productive))
+        productive = not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy) # test if cell in productive direction is clear
+        print("Productive path at (%d,%d): %d" % (self.gMazeX, self.gMazeY, productive))
         return productive
          
-    def takeproductivepath(self) :
+    def mazetakeproductivepath(self) :
         """
         Follow productive path or return 0
         
         Consider adding check to generate diagonals to reduce path
         cleanup cost.
         """
-        dx = self.endx - self.x
-        dy = self.endy - self.y
+        dx = self.gMazeEndX - self.gMazeX
+        dy = self.gMazeEndY - self.gMazeY
         if abs(dx) > abs(dy) :                  # better to move in X
             dy = 0 
         else :
@@ -172,22 +172,22 @@ class Mazegraph(object):
         dy = clipto1(dy)
         assert(dx != 0 or dy != 0)              # error to call this at dest
         assert(dx == 0 or dy == 0)              # must be rectangular move
-        if (self.testcell(self.x, self.y, self.x + dx, self.y + dy)) :
+        if (self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy)) :
             return 0                            # hit wall, stop
-        self.x += dx                            # advance in desired dir
-        self.y += dy
-        self.addtopath()
+        self.gMazeX += dx                            # advance in desired dir
+        self.gMazeY += dy
+        self.mazeaddtopath()
         return 1                                # success
         
-    def pickside(self) :
+    def mazepickside(self) :
         """
         Which side of the wall to follow? The one that leads toward
         the goal.
         Where is the wall? One cell in the direction takkeproductvepath was
         going.
         """
-        dx = self.endx - self.x
-        dy = self.endy - self.y
+        dx = self.gMazeEndX - self.gMazeX
+        dy = self.gMazeEndY - self.gMazeY
         assert(dx != 0 or dy != 0)              # error to call this at dest
         clippeddx = clipto1(dx)
         clippeddy = clipto1(dy)
@@ -195,7 +195,7 @@ class Mazegraph(object):
             clippeddy = 0 
         else :
             clippeddx = 0
-        assert(self.testcell(self.x, self.y, self.x + clippeddx, self.y + clippeddy)) # must have hit a wall
+        assert(self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + clippeddx, self.gMazeY + clippeddy)) # must have hit a wall
         #   8 cases, dumb version
         if clippeddx == 1 :                     # obstacle is in +X dir
             if  (dy > 0) :                      # if want to move in +Y
@@ -227,10 +227,10 @@ class Mazegraph(object):
                 sidelr = WALLONRIGHT
         else :
             assert(False)                       # should never get here
-        print("At (%d,%d) picked side %d, direction %d for wall follow." % (self.x, self.y, sidelr, direction))
+        print("At (%d,%d) picked side %d, direction %d for wall follow." % (self.gMazeX, self.gMazeY, sidelr, direction))
         return (sidelr, direction)
         
-    def followwall(self, sidelr, direction) :
+    def mazefollowwall(self, sidelr, direction) :
         """
         Follow wall from current point. Single move per call
         
@@ -252,14 +252,14 @@ class Mazegraph(object):
         "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
 
         """
-        print("Following wall at (%d,%d) side %d direction %d" % (self.x, self.y, sidelr, direction))
+        print("Following wall at (%d,%d) side %d direction %d" % (self.gMazeX, self.gMazeY, sidelr, direction))
         dx = EDGEFOLLOWDX[direction]
         dy = EDGEFOLLOWDY[direction]
-        blockedahead = self.testcell(self.x, self.y, self.x + dx, self.y + dy)
+        blockedahead = self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy)
         if blockedahead :
             dxopposite = EDGEFOLLOWDX[(direction + sidelr) % 4]
             dyopposite = EDGEFOLLOWDY[(direction + sidelr) % 4]
-            blockedopposite = self.testcell(self.x, self.y, self.x + dxopposite, self.y + dyopposite)
+            blockedopposite = self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dxopposite, self.gMazeY + dyopposite)
             if blockedopposite :
                 print("Dead end")
                 direction = (direction + 2) % 4         # dead end, reverse direction
@@ -269,31 +269,31 @@ class Mazegraph(object):
         else :
             dxsame = EDGEFOLLOWDX[(direction - sidelr + 4) % 4] # if not blocked ahead
             dysame = EDGEFOLLOWDY[(direction - sidelr + 4) % 4] 
-            blockedsameahead = self.testcell(self.x + dx, self.y + dy, self.x + dx + dxsame, self.y + dy + dysame);
+            blockedsameahead = self.mazetestcell(self.gMazeX + dx, self.gMazeY + dy, self.gMazeX + dx + dxsame, self.gMazeY + dy + dysame);
             if blockedsameahead :                       # straight, not outside corner
                 print("Straight")
-                self.x += dx                            # move ahead 1
-                self.y += dy
-                self.addtopath()
+                self.gMazeX += dx                            # move ahead 1
+                self.gMazeY += dy
+                self.mazeaddtopath()
             else :                                      # outside corner
                 print("Outside corner")
-                self.x += dx                            # move ahead 1
-                self.y += dy
-                self.addtopath()
+                self.gMazeX += dx                            # move ahead 1
+                self.gMazeY += dy
+                self.mazeaddtopath()
                 direction = (direction - sidelr + 4) % 4    # turn in direction
-                self.x += dxsame                        # move around corner
-                self.y += dysame
-                self.addtopath() 
+                self.gMazeX += dxsame                        # move around corner
+                self.gMazeY += dysame
+                self.mazeaddtopath() 
         return direction                                # new direction   
         
-    def dump(self, route) :
+    def mazedump(self, route) :
         """
         Debug dump
         """
         print("Graph and path.")
-        for i in range(self.ysize) :
+        for i in range(self.gMazeYsize) :
             s = ""
-            for j in range(self.xsize) :
+            for j in range(self.gMazeXsize) :
                 barrier = self.testdata[j][i] & BARRIER
                 examined = self.testdata[j][i] & EXAMINED
                 ch = " "
@@ -333,12 +333,12 @@ def checkbarriercell2(prevx, prevy, ix, iy) :
     """
     return (ix, iy) in BARRIERDEF1 + BARRIERBLOCKER           # true if on barrier
     
-def runtest(xsize, ysize, barrierfn) :
-    graph = Mazegraph(xsize, ysize)
-    result = graph.solvemaze(0, 0, xsize-1, ysize-1, barrierfn)
+def runtest(gMazeXsize, gMazeYsize, barrierfn) :
+    graph = Mazegraph(gMazeXsize, gMazeYsize)
+    result = graph.solvemaze(0, 0, gMazeXsize-1, gMazeYsize-1, barrierfn)
     print ("route", result)
     print ("cost", len(result))
-    graph.dump(result)
+    graph.mazedump(result)
 
     
  
