@@ -42,12 +42,22 @@ Bypass paths are constructed with two algorithms. One simply tries a rectangular
 route, a 90 degree left or right turn from the original path, a forward section,
 and a turn back to the original path. This gets us past simple obstacles.
 
-If the simple approach fails, we try a classic A* algorithm, using a grid around
-the area of difficulty. This is slow, but A* is guaranteed to find a path if one
-exists.
+If the simple approach fails, we need a real maze-solving algorithm. A*
+was coded, but it's too expensive. Its breadth-first serch visits most of the
+squares on the grid. Examining a square is expensive; it costs us a lslGetStaticPath
+call (which we might skip) and about 15 llCastRay calls. 
 
-All this planning is done before character movement starts. It takes about 0.5 to 3
-seconds.
+This led to a "follow the wall" maze solver. This creates a grid, heads for the
+goal, and if it hits an obstacle, follows the edge of the obstacle until an
+open path to the destination appears. This tests relatively few irrelevant points.
+But the paths that come out are far from optimal.
+
+So we have to apply a path straightener. Remove all collinear points. Try, for
+each non-endpoint, a short-cut route which bypasses that point. Repeat until
+no improvement. 
+
+All this planning is done before character movement starts. It takes about 0.5 to 5
+seconds, depending on path length and clutter. 
 
 ### Path following
 

@@ -339,56 +339,35 @@ BARRIERSTUCK = [(1, 4), (5, 5), (10, 11), (3, 11), (0, 5), (9, 7), (4, 1), (5, 9
    (6, 7), (7, 5), (4, 4), (3, 8), (1, 10), (10, 1), (3, 7), (6, 5), (4, 11), (1, 9), (9, 6), (4, 10),
    (1, 0), (10, 10), (9, 2)]
 
+#   This one was not solved.   
+BARRIERFAIL1 = [(11, 1), (8, 6), (3, 1), (10, 10), (6, 10), (10, 3), (9, 9), (5, 7), (8, 0), (3, 8),
+(2, 2), (11, 4), (8, 4), (9, 4), (9, 5), (10, 11), (11, 3), (9, 11), (0, 5), (1, 7), (0, 1), (9, 10),
+(6, 9), (10, 7), (1, 2), (5, 10), (5, 1), (6, 0), (10, 0), (8, 1), (5, 3), (2, 10), (0, 3), (10, 9),
+(6, 4), (3, 10), (10, 5), (9, 2), (11, 0), (4, 6), (11, 5), (6, 7), (1, 9), (1, 6), (8, 10), (8, 5),
+(10, 4), (8, 7), (1, 5), (4, 8), (6, 8), (3, 11), (2, 4), (7, 3), (0, 9)]
 
 
-def checkbarriercell1(prevx, prevy, ix, iy) :
-    """
-    Get whether a point is a barrier cell.
-    
-    Simulates actually probing the world for obstacles
-    """
-    return (ix, iy) in BARRIERDEF1 + BARRIERCENTER          # true if on barrier
-    
-#   Test barriers. These cells are blocked.
-####BARRIERDEF2 = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
-
-def checkbarriercell2(prevx, prevy, ix, iy) :
-    """
-    Get whether a point is a barrier cell.
-    
-    Simulates actually probing the world for obstacles
-    """
-    return (ix, iy) in BARRIERDEF1 + BARRIERBLOCKER           # true if on barrier
-    
-def checkbarriercell3(prevx, prevy, ix, iy) :
-    """
-    Get whether a point is a barrier cell.
-    
-    Simulates actually probing the world for obstacles
-    """
-    return (ix, iy) in BARRIERSTUCK           # true if on barrier
-    
-def checkbarriercellrandom(prevx, prevy, ix, iy) :
-    """
-    Get whether a point is a barrier cell.
-    
-    Simulates actually probing the world for obstacles
-    """
-    return (ix, iy) in BARRIERRANDOM           # true if on barrier
-    
-def runtest(gMazeXsize, gMazeYsize, barrierfn) :
-    graph = Mazegraph(gMazeXsize, gMazeYsize)
-    result = graph.solvemaze(0, 0, gMazeXsize-1, gMazeYsize-1, barrierfn)
+ 
+def runtest(xsize, ysize, barrierpairs) :
+    def barrierfn(prevx, prevy, ix, iy) :   # closure for barrier test fn
+        return (ix, iy) in barrierpairs
+    graph = Mazegraph(xsize, ysize)
+    result = graph.solvemaze(0, 0, xsize-1, ysize-1, barrierfn)
     print ("route", result)
     print ("cost", len(result))
     graph.mazedump(result)
+
+        
     
 
         
     
  
 if __name__=="__main__":
-    runtest(12,12,checkbarriercell1)
-    runtest(12,12,checkbarriercell2)
-    runtest(12,12,checkbarriercell3)
+    runtest(12,12,BARRIERDEF1+BARRIERCENTER)
+    runtest(12,12,BARRIERDEF1+BARRIERBLOCKER)
+    runtest(12,12,BARRIERSTUCK)
+    randombarrier = generaterandombarrier(12,12,72)
+    runtest(12,12,randombarrier)
+    runtest(12,12,BARRIERFAIL1)
 
