@@ -39,28 +39,28 @@
 import numpy
 import math
 
-BARRIER = 0x1                                   # must be low bit
-EXAMINED = 0x2
+MAZEBARRIER = 0x1                                   # must be low bit
+MAZEEXAMINED = 0x2
 
 EDGEFOLLOWDIRS = [(1,0), (0, 1), (-1, 0), (0, -1)]  # edge following dirs to dx and dy
 
-EDGEFOLLOWDX = [1,0,-1,0]
-EDGEFOLLOWDY = [0,1,0,-1]
+MAZEEDGEFOLLOWDX = [1,0,-1,0]
+MAZEEDGEFOLLOWDY = [0,1,0,-1]
 
 #   Wall follow sides
-WALLONLEFT = -1
-WALLONRIGHT = 1
+MAZEWALLONLEFT = -1
+MAZEWALLONRIGHT = 1
 
 #
-#   md -- rectangular "Manhattan" distance
+#   mazemd -- rectangular "Manhattan" distance
 #
-def md(p0x, p0y, p1x, p1y) :
+def mazemd(p0x, p0y, p1x, p1y) :
     return abs(p1x-p0x) + abs(p1y-p0y)
     
 #
-#   clipto1 -- clip to range -1, 1
+#   mazeclipto1 -- clip to range -1, 1
 #
-def clipto1(n) :
+def mazeclipto1(n) :
     if n > 0 :
         return 1
     elif n < 0 :
@@ -97,10 +97,10 @@ class Mazegraph(object):
             if (self.mazeexistsproductivepath()) :  # if a shortcut is available
                 self.mazetakeproductivepath()       # use it
             else :
-                self.gMazeMdbest = md(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)
+                self.gMazeMdbest = mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)
                 sidelr, direction = self.mazepickside()        # follow left or right?
                 #   Inner loop - wall following
-                while md(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY) != self.gMazeMdbest or not self.mazeexistsproductivepath() :
+                while mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY) != self.gMazeMdbest or not self.mazeexistsproductivepath() :
                     direction = self.mazefollowwall(sidelr, direction)      # follow edge, advance one cell
                     assert(len(self.gMazePath) <= self.gMazeXsize*self.gMazeYsize*2)   # runaway check
                     #   Termination check - if we are back at the start and going in the same direction, no solution
@@ -129,11 +129,11 @@ class Mazegraph(object):
         if (x < 0 or x >= self.gMazeXsize or y < 0 or y >= self.gMazeYsize) : # if off grid
             return 1                            # treat as occupied
         v = self.testdata[x][y]                 # this cell
-        if (v & EXAMINED) :
+        if (v & MAZEEXAMINED) :
             print
-            return v & BARRIER                  # already have this one
+            return v & MAZEBARRIER                  # already have this one
         barrier = self.barrierfn(fromx, fromy, x,y)             # check this location
-        v = EXAMINED | barrier
+        v = MAZEEXAMINED | barrier
         self.testdata[x][y] = v                 # update sites checked
         return barrier                          # return 1 if obstacle
         
@@ -147,8 +147,8 @@ class Mazegraph(object):
             dy = 0 
         else :
             dx = 0
-        dx = clipto1(dx)
-        dy = clipto1(dy)
+        dx = mazeclipto1(dx)
+        dy = mazeclipto1(dy)
         assert(dx != 0 or dy != 0)              # error to call this at dest
         assert(dx == 0 or dy == 0)              # must be rectangular move
         productive = not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy) # test if cell in productive direction is clear
@@ -168,8 +168,8 @@ class Mazegraph(object):
             dy = 0 
         else :
             dx = 0
-        dx = clipto1(dx)
-        dy = clipto1(dy)
+        dx = mazeclipto1(dx)
+        dy = mazeclipto1(dy)
         assert(dx != 0 or dy != 0)              # error to call this at dest
         assert(dx == 0 or dy == 0)              # must be rectangular move
         if (self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy)) :
@@ -189,8 +189,8 @@ class Mazegraph(object):
         dx = self.gMazeEndX - self.gMazeX
         dy = self.gMazeEndY - self.gMazeY
         assert(dx != 0 or dy != 0)              # error to call this at dest
-        clippeddx = clipto1(dx)
-        clippeddy = clipto1(dy)
+        clippeddx = mazeclipto1(dx)
+        clippeddy = mazeclipto1(dy)
         if abs(dx) > abs(dy) :                  # better to move in X
             clippeddy = 0 
         else :
@@ -200,31 +200,31 @@ class Mazegraph(object):
         if clippeddx == 1 :                     # obstacle is in +X dir
             if  (dy > 0) :                      # if want to move in +Y
                 direction = 1
-                sidelr = WALLONLEFT 
+                sidelr = MAZEWALLONLEFT 
             else :
                 direction = 3
-                sidelr = WALLONRIGHT
+                sidelr = MAZEWALLONRIGHT
         elif clippeddx == -1 :
             if (dy > 0) :
                 direction = 1
-                sidelr = WALLONRIGHT
+                sidelr = MAZEWALLONRIGHT
             else :
                 direction = 3
-                sidelr = WALLONLEFT                
+                sidelr = MAZEWALLONLEFT                
         elif clippeddy == 1 :                   # obstacle is in +Y dir
             if (dx > 0) :                       # if want to move in +X
                 direction = 0
-                sidelr = WALLONLEFT             # wall is on left
+                sidelr = MAZEWALLONLEFT             # wall is on left
             else :
                 direction = 2
-                sidelr = WALLONRIGHT
+                sidelr = MAZEWALLONRIGHT
         elif clippeddy == -1 :                  # obstacle is in -Y dir
             if (dx > 0) :                       # if want to move in +X
                 direction = 0
-                sidelr = WALLONLEFT             # wall is on left
+                sidelr = MAZEWALLONLEFT             # wall is on left
             else :
                 direction = 2
-                sidelr = WALLONRIGHT
+                sidelr = MAZEWALLONRIGHT
         else :
             assert(False)                       # should never get here
         print("At (%d,%d) picked side %d, direction %d for wall follow." % (self.gMazeX, self.gMazeY, sidelr, direction))
@@ -253,12 +253,12 @@ class Mazegraph(object):
 
         """
         print("Following wall at (%d,%d) side %d direction %d" % (self.gMazeX, self.gMazeY, sidelr, direction))
-        dx = EDGEFOLLOWDX[direction]
-        dy = EDGEFOLLOWDY[direction]
+        dx = MAZEEDGEFOLLOWDX[direction]
+        dy = MAZEEDGEFOLLOWDY[direction]
         blockedahead = self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy)
         if blockedahead :
-            dxopposite = EDGEFOLLOWDX[(direction + sidelr) % 4]
-            dyopposite = EDGEFOLLOWDY[(direction + sidelr) % 4]
+            dxopposite = MAZEEDGEFOLLOWDX[(direction + sidelr) % 4]
+            dyopposite = MAZEEDGEFOLLOWDY[(direction + sidelr) % 4]
             blockedopposite = self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dxopposite, self.gMazeY + dyopposite)
             if blockedopposite :
                 print("Dead end")
@@ -267,8 +267,8 @@ class Mazegraph(object):
                 print("Inside corner")
                 direction = (direction -1 + 4) % 4      # inside corner, turn
         else :
-            dxsame = EDGEFOLLOWDX[(direction - sidelr + 4) % 4] # if not blocked ahead
-            dysame = EDGEFOLLOWDY[(direction - sidelr + 4) % 4] 
+            dxsame = MAZEEDGEFOLLOWDX[(direction - sidelr + 4) % 4] # if not blocked ahead
+            dysame = MAZEEDGEFOLLOWDY[(direction - sidelr + 4) % 4] 
             blockedsameahead = self.mazetestcell(self.gMazeX + dx, self.gMazeY + dy, self.gMazeX + dx + dxsame, self.gMazeY + dy + dysame);
             if blockedsameahead :                       # straight, not outside corner
                 print("Straight")
@@ -294,8 +294,8 @@ class Mazegraph(object):
         for i in range(self.gMazeYsize) :
             s = ""
             for j in range(self.gMazeXsize) :
-                barrier = self.testdata[j][i] & BARRIER
-                examined = self.testdata[j][i] & EXAMINED
+                barrier = self.testdata[j][i] & MAZEBARRIER
+                examined = self.testdata[j][i] & MAZEEXAMINED
                 ch = " "
                 if examined :
                     ch = "◦"
