@@ -89,7 +89,6 @@ class Mazegraph(object):
         self.gMazeEndY = endy
         self.gMazeMdbest = self.gMazeXsize+self.gMazeYsize+1   # best dist to target init
         self.gMazePath = []                          # accumulated path
-        self.gMazeStuck = 0                          # not stuck yet
         self.mazeaddtopath()                        # add initial point
         #   Outer loop - shortcuts or wall following
         while (self.gMazeX != self.gMazeEndX or self.gMazeY != self.gMazeEndY) : # while not at dest
@@ -101,17 +100,18 @@ class Mazegraph(object):
                 self.gMazeMdbest = mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)
                 sidelr, direction = self.mazepickside()        # follow left or right?
                 #   Inner loop - wall following
+                followstartx = self.gMazeX
+                followstarty = self.gMazeY
+                followstartdir = direction
                 while mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY) != self.gMazeMdbest or not self.mazeexistsproductivepath() :
                     direction = self.mazefollowwall(sidelr, direction)      # follow edge, advance one cell
                     if len(self.gMazePath) > self.gMazeXsize*self.gMazeYsize*2 : # runaway check
                         print("***ERROR*** runaway: " + str(self.gMazePath)) 
                         return []
-                    #   Termination check - if we are back at the start and going in the same direction, no solution
-                    if (self.gMazeX == self.gMazeStartX and self.gMazeY == self.gMazeStartY) :
-                        print("Back at start")
-                        self.gMazeStuck += 1
-                        if (self.gMazeStuck > 2) :                           # back at start more than twice, we're stuck.
-                            return []                                   # fails
+                    #   Termination check - if we are back at the start of following and going in the same direction, no solution
+                    if (self.gMazeX == followstartx and self.gMazeY == followstarty and direction == followstartdir) :
+                        print("Back at start of follow. Stuck")
+                        return []                                   # fails
                 print("Finished wall following.")
                         
         return(self.gMazePath)
