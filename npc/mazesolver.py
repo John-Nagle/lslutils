@@ -295,7 +295,17 @@ class Mazegraph(object):
         Debug dump
         """
         print("Graph and path.")
+        #   Horizontal scale
+        units = ""
+        tens = ""
+        for i in range(self.gMazeXsize) :
+            units += str(i % 10)
+            tens += str((i / 10) % 10)  
+        print("    " + units)
+        print("    " + tens)                                   
+            
         print("    " + ("•" * (self.gMazeXsize+2)))                 # top/bottom wall
+        #   Data
         for i in range(self.gMazeYsize) :
             s = ""
             for j in range(self.gMazeXsize) :
