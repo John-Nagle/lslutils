@@ -377,7 +377,7 @@ if __name__=="__main__":
     runtest(12,12,BARRIERDEF1+BARRIERCENTER)
     runtest(12,12,BARRIERDEF1+BARRIERBLOCKER)
     runtest(12,12,BARRIERSTUCK)
+    runtest(12,12,BARRIERFAIL1)
     randombarrier = generaterandombarrier(12,12,72)
     runtest(12,12,randombarrier)
-    runtest(12,12,BARRIERFAIL1)
 
