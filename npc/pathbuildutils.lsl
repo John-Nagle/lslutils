@@ -14,7 +14,7 @@ float CASTRAYRETRYDELAY = 0.200;                            // if a problem, ret
 #define INFINITY ((float)"inf")                             // is there a better way?
 float GROUNDCLEARANCE = 0.05;                               // avoid false ground collisions
 float MAXAVOIDMOVE = 8.0;                                   // max distance to avoid obstacle
-float COLLINEARTOL = 0.02;                                  // allow 2cm collinearity error
+float PATHCHECKTOL = 0.02;                                  // allow 2cm collinearity error
 //
 //  
 //
@@ -48,7 +48,7 @@ integer checkcollinear(list pts)
     vector p1 = llList2Vector(pts,-1);  // last
     for (i=1; i<length-1; i++)          // points other than endpoints
     {   float dist = distpointtoline(llList2Vector(pts,i), p0, p1);    // dist from line between endpoints
-        if (dist > COLLINEARTOL) { return(FALSE); } // tolerance 1cm
+        if (dist > PATHCHECKTOL) { return(FALSE); } // tolerance 1cm
     }
     return(TRUE);                       // collinear   
 }
@@ -167,10 +167,8 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, integ
     list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, CHARTYPE]);
     integer status = llList2Integer(path,-1);                   // last item is status
     path = llList2List(path,0,-2);                              // remove last item
-    if (status != 0 || llGetListLength(path) != 2)
+    if (status != 0 || llGetListLength(path) > 2 && !checkcollinear(path))
     {   llOwnerSay("Path static check failed for " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
-        if (checkcollinear(path))
-        {   llOwnerSay("But path is straight"); return(TRUE); }
         return(FALSE);
     }
     return(TRUE);                                               // success
