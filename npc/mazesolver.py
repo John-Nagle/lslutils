@@ -280,11 +280,11 @@ class Mazegraph(object):
             advance straight.
             
         "sidelr" is 1 for left, -1 for right
-        ****WRONG*** does not match constants.
         "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
 
         """
-        print("Following wall at (%d,%d) side %d direction %d" % (self.gMazeX, self.gMazeY, sidelr, direction))
+        print("Following wall at (%d,%d) side %d direction %d md %d" % 
+            (self.gMazeX, self.gMazeY, sidelr, direction, mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)))
         dx = MAZEEDGEFOLLOWDX[direction]
         dy = MAZEEDGEFOLLOWDY[direction]
         dxsame = MAZEEDGEFOLLOWDX[((direction + sidelr) + 4) % 4] # if not blocked ahead
@@ -320,6 +320,11 @@ class Mazegraph(object):
                 self.gMazeX += dx                            # move ahead 1
                 self.gMazeY += dy
                 self.mazeaddtopath()
+                #   Need to check for a productive path. May be time to stop wall following
+                md = mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)
+                if md < self.gMazeMdbest and self.mazeexistsproductivepath() :
+                    print("Outside corner led to a productive path halfway through")
+                    return direction
                 direction = (direction + sidelr + 4) % 4    # turn in direction
                 self.gMazeX += dxsame                        # move around corner
                 self.gMazeY += dysame
@@ -447,7 +452,8 @@ def generaterandombarrier(xsize, ysize, startx, starty, endx, endy, cnt) :
             continue
         if not pnt in pts :
             pts.append(pnt)
-    print("Random barrier: " + str(pts))  
+    print("Random barrier: " + str(pts)) 
+    print("Start, end: (%d,%d) (%d,%d) " % (startx, starty, endx, endy)) 
     return pts 
              
 #   Test barriers. These cells are blocked.
