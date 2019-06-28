@@ -103,6 +103,7 @@ class Mazegraph(object):
                 followstartx = self.gMazeX
                 followstarty = self.gMazeY
                 followstartdir = direction
+                print("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, self.gMazeMdbest))
                 while mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY) != self.gMazeMdbest or not self.mazeexistsproductivepath() :
                     if (self.gMazeX == self.gMazeEndX and self.gMazeY == self.gMazeEndY) : # if at end
                         return self.gMazePath                               # done
@@ -163,10 +164,7 @@ class Mazegraph(object):
          
     def mazetakeproductivepath(self) :
         """
-        Follow productive path or return 0
-        
-        Consider adding check to generate diagonals to reduce path
-        cleanup cost.
+        Follow productive path or return 0       
         """
         dx = self.gMazeEndX - self.gMazeX
         dy = self.gMazeEndY - self.gMazeY
@@ -180,7 +178,7 @@ class Mazegraph(object):
         assert(dx == 0 or dy == 0)              # must be rectangular move
         if (self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy)) :
             return 0                            # hit wall, stop
-        self.gMazeX += dx                            # advance in desired dir
+        self.gMazeX += dx                       # advance in desired dir
         self.gMazeY += dy
         self.mazeaddtopath()
         return 1                                # success
@@ -433,22 +431,37 @@ BARRIERFAIL1 = [(11, 1), (8, 6), (3, 1), (10, 10), (6, 10), (10, 3), (9, 9), (5,
 (6, 4), (3, 10), (10, 5), (9, 2), (11, 0), (4, 6), (11, 5), (6, 7), (1, 9), (1, 6), (8, 10), (8, 5),
 (10, 4), (8, 7), (1, 5), (4, 8), (6, 8), (3, 11), (2, 4), (7, 3), (0, 9)]
 
-def runtest(xsize, ysize, barrierpairs) :
+BARRIERFAIL2 = [(9, 1), (9, 3), (1, 8), (6, 5), (5, 8), (10, 11), (0, 6), (7, 10), (3, 4),
+(10, 5), (1, 2), (8, 10), (6, 1), (2, 7), (3, 2), (6, 11), (0, 4), (11, 5), (2, 6), (8, 7), 
+(8, 3), (2, 4), (5, 7), (4, 8), (6, 10), (1, 0), (8, 2), (5, 3), (11, 4), (5, 2), 
+(2, 0), (2, 5), (9, 11), (11, 2), (4, 2), (10, 2), (9, 9), (1, 10), (9, 0), (8, 1), 
+(7, 8), (1, 6), (0, 5), (10, 9), (8, 5), (0, 8), (4, 6), (4, 11), (11, 7), (10, 0), 
+(5, 4), (3, 9), (4, 7), (0, 11)]
+
+def runtest(xsize, ysize, barrierpairs, msg) :
     def barrierfn(prevx, prevy, ix, iy) :   # closure for barrier test fn
         return (ix, iy) in barrierpairs
+    print("Test name: " + msg)
     graph = Mazegraph(xsize, ysize)
     result = graph.solvemaze(0, 0, xsize-1, ysize-1, barrierfn)
     print ("route", result)
     print ("cost", len(result))
-    graph.mazedump(result)    
+    graph.mazedump(result)
+    reachable = checkreachability(xsize, ysize, 0, 0, xsize-1, ysize-1, barrierpairs)
+    pathfound = len(result) > 0
+    print("Reachable: %r" % (reachable,))
+    assert(reachable == pathfound)          # fail if disagree
+
+    print("End test: " + msg)    
     
  
 if __name__=="__main__":
-    runtest(12,12,BARRIERDEF1+BARRIERCENTER)
-    runtest(12,12,BARRIERDEF1+BARRIERBLOCKER)
-    runtest(12,12,BARRIERSTUCK)
-    runtest(12,12,BARRIERFAIL1)
+    runtest(12,12,BARRIERDEF1+BARRIERCENTER, "Barrier in center")
+    runtest(12,12,BARRIERDEF1+BARRIERBLOCKER, "Blocked")
+    runtest(12,12,BARRIERSTUCK, "Barrier stuck")
+    runtest(12,12,BARRIERFAIL1, "Fail 1")
+    runtest(12,12,BARRIERFAIL2, "Fail 2")
     randombarrier = generaterandombarrier(12,12,72)
-    runtest(12,12,randombarrier)
-    unittestrandom(12,12,10)
+    runtest(12,12,randombarrier, "Random barrier")
+    ####unittestrandom(12,12,1000)
 
