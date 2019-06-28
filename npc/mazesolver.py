@@ -108,7 +108,7 @@ class Mazegraph(object):
                     if (self.gMazeX == self.gMazeEndX and self.gMazeY == self.gMazeEndY) : # if at end
                         return self.gMazePath                               # done
                     direction = self.mazefollowwall(sidelr, direction)      # follow edge, advance one cell
-                    if len(self.gMazePath) > self.gMazeXsize*self.gMazeYsize*2 : # runaway check
+                    if len(self.gMazePath) > self.gMazeXsize*self.gMazeYsize*4 : # runaway check
                         print("***ERROR*** runaway: " + str(self.gMazePath)) 
                         return []
                     #   Termination check - if we are back at the start of following and going in the same direction, no solution
