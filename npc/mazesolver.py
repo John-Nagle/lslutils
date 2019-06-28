@@ -411,10 +411,6 @@ def checkreachability(xsize, ysize, xstart, ystart, xend, yend, barrierpairs) :
                       
         
 def unittestrandom1(xsize, ysize) :
-    barrierpairs = generaterandombarrier(xsize, ysize, int(xsize*ysize/2))
-    def barrierfn(prevx, prevy, ix, iy) :   # closure for barrier test fn
-        return (ix, iy) in barrierpairs
-    graph = Mazegraph(xsize, ysize)
     startx = random.randrange(xsize)
     starty = random.randrange(ysize)
     endx = random.randrange(xsize)
@@ -422,6 +418,10 @@ def unittestrandom1(xsize, ysize) :
     if (startx == endx and starty == endy) :
         print("Start and end at same place, skip")
         return
+    barrierpairs = generaterandombarrier(xsize, ysize, startx, starty, endx, endy, int(xsize*ysize/2))
+    def barrierfn(prevx, prevy, ix, iy) :   # closure for barrier test fn
+        return (ix, iy) in barrierpairs
+    graph = Mazegraph(xsize, ysize)
     result = graph.solvemaze(startx, starty, endx, endy, barrierfn)
     print ("route", result)
     print ("cost", len(result))
@@ -436,14 +436,14 @@ def unittestrandom(xsize, ysize, iters) :
         unittestrandom1(xsize,ysize)
         print("Test %d completed." % (n,))     
      
-def generaterandombarrier(xsize, ysize, cnt) :
+def generaterandombarrier(xsize, ysize, startx, starty, endx, endy, cnt) :
     """
     Generate a lame random maze. Just random dots.
     """
     pts = []
     for i in range(cnt) :
         pnt = (random.randrange(xsize), random.randrange(ysize))
-        if pnt == (0,0) or pnt == (xsize-1, ysize-1):       # start and end point must be free
+        if pnt == (startx,starty) or pnt == (endx, endy):       # start and end point must be free
             continue
         if not pnt in pts :
             pts.append(pnt)
@@ -454,7 +454,7 @@ def generaterandombarrier(xsize, ysize, cnt) :
 BARRIERDEF1 = [(2,4),(2,5),(2,6),(3,6),(4,6),(5,6),(5,5),(5,4),(5,3),(5,2),(4,2),(3,2)]
 BARRIERBLOCKER = [(0,8),(1,8),(2,8),(3,8),(4,8),(5,8),(6,8),(7,8),(8,8),(9,8),(10,8),(11,8)]
 BARRIERCENTER = [(4,8),(5,8),(6,8),(7,8),(8,8),(9,8),(4,9),(5,9),(6,9)]
-BARRIERRANDOM = generaterandombarrier(12,12,72)
+
 #   This one causes trouble with the termination condition
 BARRIERSTUCK = [(1, 4), (5, 5), (10, 11), (3, 11), (0, 5), (9, 7), (4, 1), (5, 9), (3, 1), (6, 6), (11, 10), 
    (5, 10), (4, 9), (4, 2), (10, 8), (6, 4), (1, 7), (11, 6), (11, 9), (9, 8), (3, 9), (8, 1), (10, 4), 
@@ -528,8 +528,6 @@ def test() :
     runtest(12,12,BARRIERFAIL4, "Fail 4")
     runtest(12,12,BARRIERFAIL5, "Fail 5")
 
-    randombarrier = generaterandombarrier(12,12,72)
-    runtest(12,12,randombarrier, "Random barrier")
     unittestrandom(12,12,10000)
    
     
