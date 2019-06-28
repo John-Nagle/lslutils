@@ -49,8 +49,8 @@ MAZEEDGEFOLLOWDX = [1,0,-1,0]
 MAZEEDGEFOLLOWDY = [0,1,0,-1]
 
 #   Wall follow sides
-MAZEWALLONLEFT = -1
-MAZEWALLONRIGHT = 1
+MAZEWALLONLEFT = 1
+MAZEWALLONRIGHT = -1
 
 #
 #   mazemd -- rectangular "Manhattan" distance
@@ -217,19 +217,19 @@ class Mazegraph(object):
         assert(self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + clippeddx, self.gMazeY + clippeddy)) # must have hit a wall
         #   8 cases, dumb version
         if clippeddx == 1 :                     # obstacle is in +X dir
-            if  (dy > 0) :                      # if want to move in +Y
+            if (dy > 0) :                       # if want to move in +Y
                 direction = 1
-                sidelr = MAZEWALLONLEFT 
+                sidelr = MAZEWALLONRIGHT
             else :
                 direction = 3
-                sidelr = MAZEWALLONRIGHT
+                sidelr = MAZEWALLONLEFT
         elif clippeddx == -1 :
             if (dy > 0) :
                 direction = 1
-                sidelr = MAZEWALLONRIGHT
+                sidelr = MAZEWALLONLEFT
             else :
                 direction = 3
-                sidelr = MAZEWALLONLEFT                
+                sidelr = MAZEWALLONRIGHT                
         elif clippeddy == 1 :                   # obstacle is in +Y dir
             if (dx > 0) :                       # if want to move in +X
                 direction = 0
@@ -240,10 +240,10 @@ class Mazegraph(object):
         elif clippeddy == -1 :                  # obstacle is in -Y dir
             if (dx > 0) :                       # if want to move in +X
                 direction = 0
-                sidelr = MAZEWALLONLEFT             # wall is on left
+                sidelr = MAZEWALLONRIGHT                     # wall is on left
             else :
                 direction = 2
-                sidelr = MAZEWALLONRIGHT
+                sidelr = MAZEWALLONLEFT
         else :
             assert(False)                       # should never get here
         print("At (%d,%d) picked side %d, direction %d for wall follow." % (self.gMazeX, self.gMazeY, sidelr, direction))
@@ -268,26 +268,35 @@ class Mazegraph(object):
             advance straight.
             
         "sidelr" is 1 for left, -1 for right
+        ****WRONG*** does not match constants.
         "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
 
         """
         print("Following wall at (%d,%d) side %d direction %d" % (self.gMazeX, self.gMazeY, sidelr, direction))
         dx = MAZEEDGEFOLLOWDX[direction]
         dy = MAZEEDGEFOLLOWDY[direction]
+        dxsame = MAZEEDGEFOLLOWDX[((direction + sidelr) + 4) % 4] # if not blocked ahead
+        dysame = MAZEEDGEFOLLOWDY[((direction + sidelr) + 4) % 4] 
+        followedside = self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dxsame, self.gMazeY+dysame)
+        if (not followedside) :
+            print("***ERROR*** followedside not blocked. dx,dy: (%d,%d)  dxsame,dysame: (%d,%d) sidelr %d direction %d" %
+                (dx,dy, dxsame,dysame, sidelr,direction))
+            assert(followedside)                            # must be next to obstacle
         blockedahead = self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy)
         if blockedahead :
-            dxopposite = MAZEEDGEFOLLOWDX[(direction + sidelr) % 4]
-            dyopposite = MAZEEDGEFOLLOWDY[(direction + sidelr) % 4]
+            dxopposite = MAZEEDGEFOLLOWDX[((direction - sidelr) + 4) % 4]
+            dyopposite = MAZEEDGEFOLLOWDY[((direction - sidelr) + 4) % 4]
             blockedopposite = self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dxopposite, self.gMazeY + dyopposite)
             if blockedopposite :
                 print("Dead end")
                 direction = (direction + 2) % 4         # dead end, reverse direction
             else :
                 print("Inside corner")
-                direction = (direction -1 + 4) % 4      # inside corner, turn
+                direction = (direction - sidelr + 4) % 4      # inside corner, turn
         else :
-            dxsame = MAZEEDGEFOLLOWDX[(direction - sidelr + 4) % 4] # if not blocked ahead
-            dysame = MAZEEDGEFOLLOWDY[(direction - sidelr + 4) % 4] 
+            ####dxsame = MAZEEDGEFOLLOWDX[(direction - sidelr + 4) % 4] # if not blocked ahead
+            ####dysame = MAZEEDGEFOLLOWDY[(direction - sidelr + 4) % 4] 
+            assert(dxsame == 0 or dysame == 0)
             blockedsameahead = self.mazetestcell(self.gMazeX + dx, self.gMazeY + dy, self.gMazeX + dx + dxsame, self.gMazeY + dy + dysame);
             if blockedsameahead :                       # straight, not outside corner
                 print("Straight")
@@ -325,7 +334,7 @@ class Mazegraph(object):
         #   ◦ - examined, not on path
         #   S - start
         #   E - end
-        for i in range(self.gMazeYsize) :
+        for i in range(self.gMazeYsize-1,-1,-1) :
             s = ""
             for j in range(self.gMazeXsize) :
                 barrier = self.testdata[j][i] & MAZEBARRIER
@@ -474,12 +483,12 @@ def runtest(xsize, ysize, barrierpairs, msg) :
     print("Reachable: %r" % (reachable,))
     assert(reachable == pathfound)          # fail if disagree
 
-    print("End test: " + msg)    
+    print("End test: " + msg) 
     
- 
-if __name__=="__main__":
+def test() :
     runtest(12,12,BARRIERDEF1+BARRIERCENTER, "Barrier in center")
     runtest(12,12,BARRIERDEF1+BARRIERBLOCKER, "Blocked")
+    ####return # ***TEMP***
     runtest(12,12,BARRIERSTUCK, "Barrier stuck")
     runtest(12,12,BARRIERFAIL1, "Fail 1")
     runtest(12,12,BARRIERFAIL2, "Fail 2")
@@ -487,4 +496,9 @@ if __name__=="__main__":
     randombarrier = generaterandombarrier(12,12,72)
     runtest(12,12,randombarrier, "Random barrier")
     ####unittestrandom(12,12,1000)
+   
+    
+ 
+if __name__=="__main__":
+    test()
 
