@@ -308,7 +308,7 @@ class Mazegraph(object):
                 self.gMazeX += dx                            # move ahead 1
                 self.gMazeY += dy
                 self.mazeaddtopath()
-                direction = (direction - sidelr + 4) % 4    # turn in direction
+                direction = (direction + sidelr + 4) % 4    # turn in direction
                 self.gMazeX += dxsame                        # move around corner
                 self.gMazeY += dysame
                 self.mazeaddtopath() 
@@ -495,7 +495,7 @@ def test() :
     runtest(12,12,BARRIERFAIL3, "Fail 3")
     randombarrier = generaterandombarrier(12,12,72)
     runtest(12,12,randombarrier, "Random barrier")
-    ####unittestrandom(12,12,1000)
+    unittestrandom(12,12,1000)
    
     
  
