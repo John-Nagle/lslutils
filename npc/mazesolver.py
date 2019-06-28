@@ -96,15 +96,18 @@ class Mazegraph(object):
                 return []                       # we are in an undetected loop
             if (self.mazeexistsproductivepath()) :  # if a shortcut is available
                 self.mazetakeproductivepath()       # use it
-            else :
                 self.gMazeMdbest = mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)
+                ####self.gMazeMdbest = self.gMazeMdbest -1 
+                assert(self.gMazeMdbest >= 0)
+            else :
+                ####self.gMazeMdbest = mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)
                 sidelr, direction = self.mazepickside()        # follow left or right?
                 #   Inner loop - wall following
                 followstartx = self.gMazeX
                 followstarty = self.gMazeY
                 followstartdir = direction
                 print("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, self.gMazeMdbest))
-                while mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY) != self.gMazeMdbest or not self.mazeexistsproductivepath() :
+                while mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY) >= self.gMazeMdbest or not self.mazeexistsproductivepath() :
                     if (self.gMazeX == self.gMazeEndX and self.gMazeY == self.gMazeEndY) : # if at end
                         return self.gMazePath                               # done
                     direction = self.mazefollowwall(sidelr, direction)      # follow edge, advance one cell
