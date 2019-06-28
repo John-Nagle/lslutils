@@ -92,7 +92,7 @@ class Mazegraph(object):
         self.mazeaddtopath()                        # add initial point
         #   Outer loop - shortcuts or wall following
         while (self.gMazeX != self.gMazeEndX or self.gMazeY != self.gMazeEndY) : # while not at dest
-            if (len(self.gMazePath) > self.gMazeXsize*self.gMazeYsize*2) :
+            if (len(self.gMazePath) > self.gMazeXsize*self.gMazeYsize*4) :
                 return []                       # we are in an undetected loop
             if (self.mazeexistsproductivepath()) :  # if a shortcut is available
                 self.mazetakeproductivepath()       # use it
@@ -475,6 +475,15 @@ BARRIERFAIL4 =  [(1, 9), (11, 2), (8, 1), (4, 5), (6, 7), (7, 6), (10, 3), (7, 3
 (3, 8), (4, 3), (6, 2), (10, 10), (7, 7), (5, 2), (7, 11), (0, 11), (11, 0), (2, 0),
 (7, 0), (0, 5), (1, 3), (6, 1)]
 
+BARRIERFAIL5 =  [(0, 3), (3, 11), (10, 7), (8, 7), (9, 3), (10, 8), (9, 0),
+(1, 1), (3, 3), (1, 11), (2, 10), (0, 7), (2, 11), (3, 4), (2, 0), (9, 11),
+(7, 3), (4, 1), (4, 6), (0, 4), (10, 5), (4, 10), (5, 8), (5, 11), (11, 8),
+(6, 7), (5, 3), (7, 1), (2, 3), (4, 8), (0, 6), (6, 0), (2, 9), (6, 6),
+(1, 8), (3, 2), (8, 11), (4, 0), (10, 1), (4, 2), (8, 10), (5, 1), (11, 5),
+(5, 0), (5, 10), (1, 0), (4, 5), (8, 3), (11, 4), (5, 4), (3, 5), (6, 4),
+(9, 8), (0, 10), (9, 1), (6, 3), (6, 8), (3, 10)]
+
+
 
 
 def runtest(xsize, ysize, barrierpairs, msg) :
@@ -502,9 +511,11 @@ def test() :
     runtest(12,12,BARRIERFAIL2, "Fail 2")
     runtest(12,12,BARRIERFAIL3, "Fail 3")
     runtest(12,12,BARRIERFAIL4, "Fail 4")
+    runtest(12,12,BARRIERFAIL5, "Fail 5")
+
     randombarrier = generaterandombarrier(12,12,72)
     runtest(12,12,randombarrier, "Random barrier")
-    ####unittestrandom(12,12,10000)
+    unittestrandom(12,12,10000)
    
     
  
