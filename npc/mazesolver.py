@@ -150,6 +150,20 @@ class Mazegraph(object):
         """
         dx = self.gMazeEndX - self.gMazeX
         dy = self.gMazeEndY - self.gMazeY
+        dx = mazeclipto1(dx)
+        dy = mazeclipto1(dy)
+        if (dx != 0) :
+            productive = not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY) # test if cell in productive direction is clear
+            if productive :
+                print("Productive path at (%d,%d): %d" % (self.gMazeX, self.gMazeY, productive))
+                return True
+        if (dy != 0) :
+            productive = not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX, self.gMazeY + dy) # test if cell in productive direction is clear
+            if productive :
+                print("Productive path at (%d,%d): %d" % (self.gMazeX, self.gMazeY, productive))
+                return True
+        return False
+        #    DEAD CODE    
         if abs(dx) > abs(dy) :                  # better to move in X
             dy = 0 
         else :
@@ -168,20 +182,21 @@ class Mazegraph(object):
         """
         dx = self.gMazeEndX - self.gMazeX
         dy = self.gMazeEndY - self.gMazeY
-        if abs(dx) > abs(dy) :                  # better to move in X
-            dy = 0 
-        else :
-            dx = 0
         dx = mazeclipto1(dx)
         dy = mazeclipto1(dy)
         assert(dx != 0 or dy != 0)              # error to call this at dest
-        assert(dx == 0 or dy == 0)              # must be rectangular move
-        if (self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy)) :
-            return 0                            # hit wall, stop
-        self.gMazeX += dx                       # advance in desired dir
-        self.gMazeY += dy
-        self.mazeaddtopath()
-        return 1                                # success
+        if dx :
+            if not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY) :
+                self.gMazeX += dx                       # advance in desired dir
+                self.mazeaddtopath()
+                return 1    
+        if dy :
+            if not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX, self.gMazeY + dy) :
+                self.gMazeY += dy                       # advance in desired dir
+                self.mazeaddtopath()
+                return 1                                # success
+        print("Take productive path failed")
+        return 0                                        # hit wall, stop
         
     def mazepickside(self) :
         """
@@ -463,5 +478,5 @@ if __name__=="__main__":
     runtest(12,12,BARRIERFAIL2, "Fail 2")
     randombarrier = generaterandombarrier(12,12,72)
     runtest(12,12,randombarrier, "Random barrier")
-    ####unittestrandom(12,12,1000)
+    unittestrandom(12,12,1000)
 
