@@ -453,6 +453,13 @@ BARRIERFAIL2 = [(9, 1), (9, 3), (1, 8), (6, 5), (5, 8), (10, 11), (0, 6), (7, 10
 (7, 8), (1, 6), (0, 5), (10, 9), (8, 5), (0, 8), (4, 6), (4, 11), (11, 7), (10, 0), 
 (5, 4), (3, 9), (4, 7), (0, 11)]
 
+BARRIERFAIL3 =  [(5, 3), (3, 1), (11, 7), (11, 1), (10, 6), (0, 3), (9, 9), (0, 9),
+(9, 3), (4, 5), (9, 1), (9, 11), (4, 0), (10, 0), (11, 3), (2, 5), (1, 11), (9, 4),
+(0, 6), (7, 5), (10, 3), (3, 5), (1, 10), (9, 0), (2, 3), (8, 2), (10, 7), (1, 5),
+(2, 1), (7, 7), (0, 2), (8, 1), (11, 8), (3, 9), (0, 1), (11, 4), (7, 4), (1, 4), (11, 2), (7, 2), (9, 5), (1, 7), (2, 4), (10, 9), (10, 11), (6, 7), (3, 4), (0, 5), (5, 0), (4, 7), (2, 7), (2, 11), (11, 9), (6, 4), (7, 0), (0, 10), (4, 1),
+(2, 0), (9, 8)]
+
+
 def runtest(xsize, ysize, barrierpairs, msg) :
     def barrierfn(prevx, prevy, ix, iy) :   # closure for barrier test fn
         return (ix, iy) in barrierpairs
@@ -476,7 +483,8 @@ if __name__=="__main__":
     runtest(12,12,BARRIERSTUCK, "Barrier stuck")
     runtest(12,12,BARRIERFAIL1, "Fail 1")
     runtest(12,12,BARRIERFAIL2, "Fail 2")
+    runtest(12,12,BARRIERFAIL3, "Fail 3")
     randombarrier = generaterandombarrier(12,12,72)
     runtest(12,12,randombarrier, "Random barrier")
-    unittestrandom(12,12,1000)
+    ####unittestrandom(12,12,1000)
 
