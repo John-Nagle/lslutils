@@ -415,11 +415,18 @@ def unittestrandom1(xsize, ysize) :
     def barrierfn(prevx, prevy, ix, iy) :   # closure for barrier test fn
         return (ix, iy) in barrierpairs
     graph = Mazegraph(xsize, ysize)
-    result = graph.solvemaze(0, 0, xsize-1, ysize-1, barrierfn)
+    startx = random.randrange(xsize)
+    starty = random.randrange(ysize)
+    endx = random.randrange(xsize)
+    endy = random.randrange(ysize)
+    if (startx == endx and starty == endy) :
+        print("Start and end at same place, skip")
+        return
+    result = graph.solvemaze(startx, starty, endx, endy, barrierfn)
     print ("route", result)
     print ("cost", len(result))
     graph.mazedump(result)   
-    reachable = checkreachability(xsize, ysize, 0, 0, xsize-1, ysize-1, barrierpairs)
+    reachable = checkreachability(xsize, ysize, startx, starty, endx, endy, barrierpairs)
     pathfound = len(result) > 0
     print("Reachable: %r" % (reachable,))
     assert(reachable == pathfound)          # fail if disagree
@@ -427,11 +434,7 @@ def unittestrandom1(xsize, ysize) :
 def unittestrandom(xsize, ysize, iters) :
     for n in range(iters) :
         unittestrandom1(xsize,ysize)
-        print("Test %d completed." % (n,))
-    
-       
-        
-           
+        print("Test %d completed." % (n,))     
      
 def generaterandombarrier(xsize, ysize, cnt) :
     """
