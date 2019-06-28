@@ -305,8 +305,13 @@ class Mazegraph(object):
             tens += str((int(i / 10)) % 10)  
         print("     " + tens)                                   
         print("     " + units)            
-        print("    " + ("•" * (self.gMazeXsize+2)))                 # top/bottom wall
-        #   Data
+        print("    " + ("█" * (self.gMazeXsize+2)))                 # top/bottom wall
+        #   Dump maze as a little picture
+        #   █ - barrier
+        #   • - path
+        #   ◦ - examined, not on path
+        #   S - start
+        #   E - end
         for i in range(self.gMazeYsize) :
             s = ""
             for j in range(self.gMazeXsize) :
@@ -320,15 +325,80 @@ class Mazegraph(object):
                 else :
                     if (j,i) in route :                    
                         ch = "•"
+                if i == self.gMazeStartY and j == self.gMazeStartX :
+                    ch = "S"
+                if i == self.gMazeEndY and j == self.gMazeEndX : 
+                    ch = "E"                                            
                 s = s + ch
-            s = "•" + s + "•"   # show outer walls
+            s = "█" + s + "█"   # show outer walls
             print("%4d%s" % (i,s))
-        print("    " + ("•" * (self.gMazeXsize+2)))                 # top/bottom wall
+        print("    " + ("█" * (self.gMazeXsize+2)))                 # top/bottom wall
         print("     " + tens)                                   
         print("     " + units)            
 
  
+#
+#   Test-only code
+#
 
+def checkreachability(xsize, ysize, xstart, ystart, xend, yend, barrierpairs) :
+    """
+    Check if end is reachable from start.
+    This is an inefficient flood fill. Doesn't generate a route.
+    But it's simple.  
+    """
+    barrier = numpy.full((xsize, ysize),0)                  # barrier array
+    marked = numpy.full((xsize, ysize), 0)                  # marked by flood fill
+    #   Mark barrier
+    for (x,y) in barrierpairs :
+        barrier[x][y] = 1
+    #   Flood from one pixel
+    def flood(x,y) :
+        if (x < 0 or x >= xsize or y < 0 or y >= ysize) :
+            return False                                         # off grid
+        if barrier[x][y] == 0 and marked[x][y] == 0 :       # if floodable
+            marked[x][y] = 1                                # mark it
+            return True
+    #   Flood all
+    marked[xstart, ystart] = 1                              # mark start point
+    changed = True
+    while changed :
+        changed = False                                     # something must change to continue
+        for x in range(xsize) :                             # for all cells
+            for y in range(ysize) :
+                if marked[x][y] :
+                    changed = changed or flood(x+1,y)       # flood adjacent pixels
+                    changed = changed or flood(x-1,y)   
+                    changed = changed or flood(x,y+1)   
+                    changed = changed or flood(x,y-1) 
+    #   Done flooding
+    reached = marked[xend, yend]
+    return reached    
+                      
+        
+def unittestrandom1(xsize, ysize) :
+    barrierpairs = generaterandombarrier(xsize, ysize, int(xsize*ysize/2))
+    def barrierfn(prevx, prevy, ix, iy) :   # closure for barrier test fn
+        return (ix, iy) in barrierpairs
+    graph = Mazegraph(xsize, ysize)
+    result = graph.solvemaze(0, 0, xsize-1, ysize-1, barrierfn)
+    print ("route", result)
+    print ("cost", len(result))
+    graph.mazedump(result)   
+    reachable = checkreachability(xsize, ysize, 0, 0, xsize-1, ysize-1, barrierpairs)
+    pathfound = len(result) > 0
+    print("Reachable: %r" % (reachable,))
+    assert(reachable == pathfound)          # fail if disagree
+    
+def unittestrandom(xsize, ysize, iters) :
+    for n in range(iters) :
+        unittestrandom1(xsize,ysize)
+        print("Test %d completed." % (n,))
+    
+       
+        
+           
+     
 def generaterandombarrier(xsize, ysize, cnt) :
     """
     Generate a lame random maze. Just random dots.
@@ -380,4 +450,5 @@ if __name__=="__main__":
     runtest(12,12,BARRIERFAIL1)
     randombarrier = generaterandombarrier(12,12,72)
     runtest(12,12,randombarrier)
+    unittestrandom(12,12,10)
 
