@@ -182,19 +182,28 @@ class Mazegraph(object):
         """
         dx = self.gMazeEndX - self.gMazeX
         dy = self.gMazeEndY - self.gMazeY
-        dx = mazeclipto1(dx)
-        dy = mazeclipto1(dy)
+        clippeddx = mazeclipto1(dx)
+        clippeddy = mazeclipto1(dy)
         assert(dx != 0 or dy != 0)              # error to call this at dest
-        if dx :
-            if not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY) :
-                self.gMazeX += dx                       # advance in desired dir
+        #    Try X dir first if more direct towards goal
+        if abs(dx) > abs(dy) and clippeddx :
+            if not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + clippeddx, self.gMazeY) :
+                self.gMazeX += clippeddx                       # advance in desired dir
+                self.mazeaddtopath()
+                return 1
+        #   Then try Y    
+        if clippeddy :
+            if not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX, self.gMazeY + clippeddy) :
+                self.gMazeY += clippeddy                       # advance in desired dir
+                self.mazeaddtopath()
+                return 1 
+        #   Then X, regardless of whether abs(dx) > abs(dy)
+        if clippeddx :
+            if not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + clippeddx, self.gMazeY) :
+                self.gMazeX += clippeddx                       # advance in desired dir
                 self.mazeaddtopath()
                 return 1    
-        if dy :
-            if not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX, self.gMazeY + dy) :
-                self.gMazeY += dy                       # advance in desired dir
-                self.mazeaddtopath()
-                return 1                                # success
+                               # success
         print("Take productive path failed")
         return 0                                        # hit wall, stop
         
