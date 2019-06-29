@@ -372,15 +372,16 @@ class Mazegraph(object):
         
     def mazelinebarrier(self, x0, y0, x1, y1) :
         """
-        Does the line between the two points hit a barrier?
+        Does the line between the two points, inclusive, hit a barrier?
         """
+        print("Maze test barrier: (%d,%d),(%d,%d)" % (x0,y0,x1,y1))
         if (x0 == x1) :                         # vertical line
             assert(y0 != y1)                    # must not be zero length
             if y0 > y1 :                        # sort
                 temp = y0
                 y0 = y1
                 y1 = temp
-            for y in range(y0,y1-1) :           # test each segment
+            for y in range(y0,y1) :             # test each segment
                 if self.mazetestcell(x0, y, x0, y+1) :
                     return False                # hit barrier
             return True
@@ -391,7 +392,7 @@ class Mazegraph(object):
                 temp = x0
                 x0 = x1
                 x1 = temp
-            for x in range(x0,x1-1) :
+            for x in range(x0,x1) :
                 if self.mazetestcell(x, y0, x+1, y0) :
                     return False                # hit barrier
             return True
@@ -418,30 +419,27 @@ class Mazegraph(object):
             p3x = route[n+3][0]
             p3y = route[n+3][1]
             if (p0x == p1x and p0y == p1y) :            # redundant point
-                print("Removing redundant point %d from %s" % (n+1, str(route)))
+                ####print("Removing redundant point %d from %s" % (n+1, str(route)))
                 route = listreplacelist(route, [], n+1, n+1)
                 continue
             if (p1x == p2x and p1y == p2y) :            # redundant point
-                print("Removing redundant point %d from %s" % (n+2, str(route)))
+                ####print("Removing redundant point %d from %s" % (n+2, str(route)))
                 route = listreplacelist(route, [], n+2, n+2)
                 continue
             if mazeinline(p0x,p0y,p1x,p1y,p2x,p2y) :
-                print("Removing collinear point %d from %s" % (n+1, str(route)))
+                ####print("Removing collinear point %d from %s" % (n+1, str(route)))
                 route = listreplacelist(route, [], n+1, n+1)
                 continue
             if mazeinline(p1x,p1y,p2x,p2y,p3x,p3y) :
-                print("Removing collinear point %d from %s" % (n+1, str(route)))
+                ####print("Removing collinear point %d from %s" % (n+1, str(route)))
                 route = listreplacelist(route, [], n+2, n+2)
-                continue
-
-                
-                
+                continue                
             if (p1x == p2x) :                           # if vertical middle segment
                 #   End segments must be horizontal
                 assert(p0y == p1y)
                 assert(p2y == p3y)
                 #   Is this C-shaped?
-                if not ((p0y > p1y) == (p2y < p3y)) :   # no, not C-shaped
+                if not ((p0x > p1x) == (p2x < p3x)) :   # no, not C-shaped
                     n = n + 1
                     continue
                 #   Find shorter arm of C
@@ -454,6 +452,7 @@ class Mazegraph(object):
                         continue
                     #   We can get rid of p1 and replace p2
                     route = listreplacelist(route, [(p3x,p0y)], n+1, n+2) # remove p1
+                    print("Vertical middle segment shortened at p1: %d: (%d,%d)" % (n+1,p3x,p0y))
                     if n > 0 :                          # back up 1
                         n = n - 1
                     continue
@@ -464,6 +463,7 @@ class Mazegraph(object):
                         continue
                     #   We can get rid of p2 and replace p1
                     route = listreplacelist(route, [(p0x, p3y)], n+1, n+2) # remove p2
+                    print("Vertical middle segment shortened at p2: %d: (%d,%d)" % (n+1,p0x,p3y))
                     if n > 0 :                          # back up 1
                         n = n - 1                       # to allow further optimization
                     continue                       
@@ -474,7 +474,7 @@ class Mazegraph(object):
                 assert(p0x == p1x)
                 assert(p2x == p3x)
                 #   Is this C-shaped?
-                if not ((p0x > p1x) == (p2x < p3x)) :   # no, not C-shaped
+                if not ((p0y > p1y) == (p2y < p3y)) :   # no, not C-shaped
                     n = n + 1
                     continue
                 #   Find shorter arm of C
@@ -487,6 +487,7 @@ class Mazegraph(object):
                         continue
                     #   We can get rid of p1 and p2 and replace with new point
                     route = listreplacelist(route, [(p1x, p3y)], n+1, n+2) # replace p1 and p2
+                    print("Horizontal middle segment shortened at p2: %d: (%d,%d)" % (n+1,p1x,p3y))
                     if n > 0 :                          # back up 1
                         n = n - 1
                     continue
@@ -497,6 +498,7 @@ class Mazegraph(object):
                         continue
                     #   We can get rid of p1 and p2 and replace with new point
                     route = listreplacelist(route, [(p2x,p0y)], n+1, n+2) # replace p1 and p2 with new point
+                    print("Horizontal middle segment shortened at p2: %d: (%d,%d)" % (n+1,p2x,p0y))
                     if n > 0 :                          # back up 1
                         n = n - 1                       # to allow further optimization
                     continue 
