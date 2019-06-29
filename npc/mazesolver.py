@@ -73,6 +73,12 @@ def mazeclipto1(n) :
 def mazeinline(x0,y0,x1,y1,x2,y2) :
     return ((x0 == x1 and x1 == x2) or
        (y0 == y1 and y1 == y2))
+       
+#
+#   mazepointssame
+#
+def mazepointssame(x0,y0,x1,y1) :
+    return x0 == x1 and y0 == y1
 #
 #   listreplacelist
 #
@@ -362,7 +368,9 @@ class Mazegraph(object):
         for n in range(len(route)) :
             x = route[n][0]
             y = route[n][1]
-            if prev0x >= 0 and mazeinline(prev0x, prev0y, prev1x, prev1y, x, y) :
+            if (prev0x >= 0 and (mazeinline(prev0x, prev0y, prev1x, prev1y, x, y) 
+                or mazepointssame(prev0x, prev0y, prev1x, prev1y) 
+                or mazepointssame(prev1x, prev1y, x,y))) :
                 pass
                 #   pt 1 is redundant
             else :                                  # need to keep pt 1
@@ -618,9 +626,7 @@ def unittestrandom1(xsize, ysize) :
     print("Reachable: %r" % (reachable,))
     assert(reachable == pathfound)          # fail if disagree
     result2 = graph.mazeroutecornersonly(result)
-    print("Corners only 1: " + str(result2))
-    result2 = graph.mazeroutecornersonly(result2)
-    print("Corners only 2: " + str(result2))
+    print("Corners only:" + str(result2))
     result3 = graph.mazeoptimizeroute(result2)
     print("Optimized: " + str(result3))
     graph.mazedump(result, result3)
