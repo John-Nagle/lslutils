@@ -54,7 +54,8 @@ But the paths that come out are far from optimal.
 
 So we have to apply a path straightener. Remove all collinear points. Try, for
 each non-endpoint, a short-cut route which bypasses that point. Repeat until
-no improvement. 
+no improvement. This is done first in the grid, where it's cheap, and again in
+the SL world, where it's expensive but angled paths are allowed.
 
 All this planning is done before character movement starts. It takes about 0.5 to 5
 seconds, depending on path length and clutter. 
