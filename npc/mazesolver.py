@@ -369,22 +369,23 @@ class Mazegraph(object):
                 if prev1x >= 0 :                    # if we have something to output
                     newroute.append((prev1x, prev1y))
             prev1x = x
-            prev2y = y
+            prev1y = y
         # final point.
         newroute.append((x,y)) 
+        return newroute
         
-    def mazelinebarrier(x0, y0, x1, y1) :
+    def mazelinebarrier(self, x0, y0, x1, y1) :
         """
         Does the line between the two points hit a barrier?
         """
         if (x0 == x1) :                         # horizontal line
-            assert(y0 != y1)
+            assert(y0 != y1)                    # must not be zero length
             if y0 > y1 :                        # sort
                 temp = y0
                 y0 = y1
                 y1 = temp
             for y in range(y0,y1-1) :           # test each segment
-                if mazetestcell(x0, y, x0, y+1) :
+                if self.mazetestcell(x0, y, x0, y+1) :
                     return False                # hit barrier
             return True
         else :
@@ -394,7 +395,7 @@ class Mazegraph(object):
                 x0 = x1
                 x1 = temp
             for x in range(x0,x1-1) :
-                if mazetestcell(x, y0, x+1, y0) :
+                if self.mazetestcell(x, y0, x+1, y0) :
                     return False                # hit barrier
             return True
          
@@ -407,6 +408,8 @@ class Mazegraph(object):
         The incoming route should have corners only, and represent only horizontal and vertical lines.
         Optimizing the route looks at groups of 4 points. If the two turns are both the same, then try
         to eliminate one of the points by moving the line between the two middle points.
+        
+        ***NO, ALL WRONG
         """
         n = 0;
         while n < len(route)-3 :                        # advancing through route
@@ -418,8 +421,15 @@ class Mazegraph(object):
             p2y = route[n+2][1]
             p3x = route[n+3][0]
             p3y = route[n+3][1]
-            if (p1x == p2x) :                           # if horizontal middle segment
-                #   End segments must be vertical
+            if (p0x == p1x and p0y == p1y) :            # redundant point
+                route = listreplacelist(route, [], n+1, n+1)
+                continue
+            if (p1x == p2x and p1y == p2y) :            # redundant point
+                route = listreplacelist(route, [], n+2, n+2)
+                continue
+                
+            if (p1x == p2x) :                           # if vertical middle segment
+                #   End segments must be horizontal
                 assert(p0y == p1y)
                 assert(p2y == p3y)
                 #   Is this C-shaped?
@@ -430,28 +440,28 @@ class Mazegraph(object):
                 armlena = p0y-p1y 
                 armlenb = p3y-p2y
                 if abs(armlena) > abs(armlenb) :        # second arm is shorter
-                    #   We will try to get rid of p1 and keep p2
-                    if self.mazelinebarrier(p1.x, p2.y, p2.x, p2.y) : # if blocked
+                    #   We will try to move middle segment to align with p0y, ignoring p1y
+                    if self.mazelinebarrier(p3x, p0y, p3x, p3y) : # if blocked
                         n + n + 1
                         continue
-                    #   We can get rid of p1
-                    route = listreplacelist(route, [], n+1, n+1) # remove p1
+                    #   We can get rid of p1 and replace p2
+                    route = listreplacelist(route, [(p3x,p0y)], n+1, n+2) # remove p1
                     if n > 0 :                          # back up 1
                         n = n - 1
                     continue
                 else :
-                    #   We will try to get rid of p2 and keep p1
-                    if self.mazelinebarrier(p1.x, p1.y, p2.x, p1.y) : # if blocked
+                    #   We will try to move middle segment to align with p3y, ignoring p2y
+                    if self.mazelinebarrier(p0x, p0y, p0x, p3y) : # if blocked
                         n + n + 1
                         continue
-                    #   We can get rid of p1
-                    route = listreplacelist(route, [], n+2, n+2) # remove p2
+                    #   We can get rid of p2 and replace p1
+                    route = listreplacelist(route, [(p0x, p3y)], n+1, n+2) # remove p2
                     if n > 0 :                          # back up 1
                         n = n - 1                       # to allow further optimization
                     continue                       
                     
-            else :                                      # if vertical middle segment
-                #   End segments must be horizontal
+            else :                                      # if horizontal middle segment
+                #   End segments must be vertical
                 assert(p0y == p1y)
                 assert(p2y == p3y)
                 #   Is this C-shaped?
@@ -462,22 +472,22 @@ class Mazegraph(object):
                 armlena = p0x-p1x 
                 armlenb = p3x-p2x
                 if abs(armlena) > abs(armlenb) :        # second arm is shorter
-                    #   We will try to get rid of p1 and keep p2
-                    if self.mazelinebarrier(p2.x, p1.y, p2.x, p2.y) : # if blocked
+                    #   We will try to move middle segment to align with p3y
+                    if self.mazelinebarrier(p0x, p3y, p3x, p3y) : # if blocked
                         n + n + 1
                         continue
-                    #   We can get rid of p1
-                    route = listreplacelist(route, [], n+1, n+1) # remove p1
+                    #   We can get rid of p1 and p2 and replace with new point
+                    route = listreplacelist(route, [(p1x, p3y)], n+1, n+2) # replace p1 and p2
                     if n > 0 :                          # back up 1
                         n = n - 1
                     continue
                 else :
-                    #   We will try to get rid of p2 and keep p1
-                    if self.mazelinebarrier(p1.x, p1.y, p1.x, p1.y) : # if blocked
+                    #   We will try to move middle segment to align with p0y
+                    if self.mazelinebarrier(p0x, p0y, p2x, p3y) : # if blocked
                         n + n + 1
                         continue
-                    #   We can get rid of p1
-                    route = listreplacelist(route, [], n+2, n+2) # remove p2
+                    #   We can get rid of p1 and p2 and replace with new point
+                    route = listreplacelist(route, [(p2x,p0y)], n+1, n+2) # replace p1 and p2 with new point
                     if n > 0 :                          # back up 1
                         n = n - 1                       # to allow further optimization
                     continue 
@@ -590,6 +600,10 @@ def unittestrandom1(xsize, ysize) :
     pathfound = len(result) > 0
     print("Reachable: %r" % (reachable,))
     assert(reachable == pathfound)          # fail if disagree
+    result2 = graph.mazeroutecornersonly(result)
+    print("Corners only: " + str(result2))
+    result3 = graph.mazeoptimizeroute(result2)
+    print("Optimized: " + str(result2))
     
 def unittestrandom(xsize, ysize, iters) :
     for n in range(iters) :
