@@ -82,8 +82,7 @@ def listreplacelist(src, dst, start, end) :
     """
     assert(start >= 0)                          # no funny end-relative stuff
     assert(end >= 0)
-    print("listreplacelist")                    # ***TEMP***
-    return src[0:start] + dst + src[end+1:]   # ***CHECK THIS***
+    return src[0:start] + dst + src[end+1:]   
 #
 #
 #   Mazegraph
@@ -381,7 +380,7 @@ class Mazegraph(object):
         """
         Does the line between the two points hit a barrier?
         """
-        if (x0 == x1) :                         # horizontal line
+        if (x0 == x1) :                         # vertical line
             assert(y0 != y1)                    # must not be zero length
             if y0 > y1 :                        # sort
                 temp = y0
@@ -392,6 +391,7 @@ class Mazegraph(object):
                     return False                # hit barrier
             return True
         else :
+            assert(y0 == y1)
             assert(x0 != x1)
             if x0 > x1 :                        # sort
                 temp = x0
@@ -498,7 +498,7 @@ class Mazegraph(object):
                     continue
                 else :
                     #   We will try to move middle segment to align with p0y
-                    if self.mazelinebarrier(p0x, p0y, p2x, p3y) : # if blocked
+                    if self.mazelinebarrier(p0x, p0y, p3x, p0y) : # if blocked
                         n = n + 1
                         continue
                     #   We can get rid of p1 and p2 and replace with new point
@@ -622,7 +622,7 @@ def unittestrandom1(xsize, ysize) :
     result2 = graph.mazeroutecornersonly(result2)
     print("Corners only 2: " + str(result2))
     result3 = graph.mazeoptimizeroute(result2)
-    print("Optimized: " + str(result2))
+    print("Optimized: " + str(result3))
     graph.mazedump(result, result3)
     
 def unittestrandom(xsize, ysize, iters) :
@@ -723,7 +723,7 @@ def test() :
     runtest(12,12,BARRIERFAIL4, "Fail 4")
     runtest(12,12,BARRIERFAIL5, "Fail 5")
 
-    unittestrandom(41,41,10000)
+    unittestrandom(41,41,1)
    
     
  
