@@ -351,6 +351,8 @@ class Mazegraph(object):
     def mazeroutecornersonly(self, route) :
         """
         Condense route, only keeping corners
+        
+        ***BUG: Can keep duplicate points***
         """
         newroute = []
         prev0x = -1
@@ -407,9 +409,7 @@ class Mazegraph(object):
         
         The incoming route should have corners only, and represent only horizontal and vertical lines.
         Optimizing the route looks at groups of 4 points. If the two turns are both the same, then try
-        to eliminate one of the points by moving the line between the two middle points.
-        
-        ***NO, ALL WRONG
+        to eliminate one of the points by moving the line between the two middle points.        
         """
         n = 0;
         while n < len(route)-3 :                        # advancing through route
@@ -462,8 +462,9 @@ class Mazegraph(object):
                     
             else :                                      # if horizontal middle segment
                 #   End segments must be vertical
-                assert(p0y == p1y)
-                assert(p2y == p3y)
+                print("%d: %s %s %s %s" % (n, route[n], route[n+1], route[n+2], route[n+3])) # ***TEMP***
+                assert(p0x == p1x)
+                assert(p2x == p3x)
                 #   Is this C-shaped?
                 if not ((p0x > p1x) == (p2x < p3x)) :   # no, not C-shaped
                     n = n + 1
@@ -601,7 +602,9 @@ def unittestrandom1(xsize, ysize) :
     print("Reachable: %r" % (reachable,))
     assert(reachable == pathfound)          # fail if disagree
     result2 = graph.mazeroutecornersonly(result)
-    print("Corners only: " + str(result2))
+    print("Corners only 1: " + str(result2))
+    result2 = graph.mazeroutecornersonly(result2)
+    print("Corners only 2: " + str(result2))
     result3 = graph.mazeoptimizeroute(result2)
     print("Optimized: " + str(result2))
     
