@@ -510,7 +510,7 @@ class Mazegraph(object):
 
             
         
-    def mazedump(self, route) :
+    def mazedump(self, route, finalroute) :
         """
         Debug dump
         """
@@ -543,6 +543,8 @@ class Mazegraph(object):
                 else :
                     if (j,i) in route :                    
                         ch = "•"
+                    if (j,i) in finalroute :
+                        ch = "◉"
                 if i == self.gMazeStartY and j == self.gMazeStartX :
                     ch = "S"
                 if i == self.gMazeEndY and j == self.gMazeEndX : 
@@ -610,7 +612,7 @@ def unittestrandom1(xsize, ysize) :
     result = graph.solvemaze(startx, starty, endx, endy, barrierfn)
     print ("route", result)
     print ("cost", len(result))
-    graph.mazedump(result)   
+    graph.mazedump(result,[])   
     reachable = checkreachability(xsize, ysize, startx, starty, endx, endy, barrierpairs)
     pathfound = len(result) > 0
     print("Reachable: %r" % (reachable,))
@@ -621,6 +623,7 @@ def unittestrandom1(xsize, ysize) :
     print("Corners only 2: " + str(result2))
     result3 = graph.mazeoptimizeroute(result2)
     print("Optimized: " + str(result2))
+    graph.mazedump(result, result3)
     
 def unittestrandom(xsize, ysize, iters) :
     for n in range(iters) :
@@ -701,7 +704,7 @@ def runtest(xsize, ysize, barrierpairs, msg) :
     result = graph.solvemaze(0, 0, xsize-1, ysize-1, barrierfn)
     print ("route", result)
     print ("cost", len(result))
-    graph.mazedump(result)
+    graph.mazedump(result,[])
     reachable = checkreachability(xsize, ysize, 0, 0, xsize-1, ysize-1, barrierpairs)
     pathfound = len(result) > 0
     print("Reachable: %r" % (reachable,))
