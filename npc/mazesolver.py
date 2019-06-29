@@ -80,8 +80,9 @@ def listreplacelist(src, dst, start, end) :
     """
     LSL list update function
     """
-    assert(start >= 0)              # no funny end-relative stuff
+    assert(start >= 0)                          # no funny end-relative stuff
     assert(end >= 0)
+    print("listreplacelist")                    # ***TEMP***
     return src[0:start] + dst + src[end+1:]   # ***CHECK THIS***
 #
 #
@@ -413,6 +414,7 @@ class Mazegraph(object):
         """
         n = 0;
         while n < len(route)-3 :                        # advancing through route
+            print("%d: %s %s %s %s" % (n, route[n], route[n+1], route[n+2], route[n+3])) # ***TEMP***
             p0x = route[n][0]
             p0y = route[n][1]
             p1x = route[n+1][0]
@@ -422,11 +424,23 @@ class Mazegraph(object):
             p3x = route[n+3][0]
             p3y = route[n+3][1]
             if (p0x == p1x and p0y == p1y) :            # redundant point
+                print("Removing redundant point %d from %s" % (n+1, str(route)))
                 route = listreplacelist(route, [], n+1, n+1)
                 continue
             if (p1x == p2x and p1y == p2y) :            # redundant point
+                print("Removing redundant point %d from %s" % (n+2, str(route)))
                 route = listreplacelist(route, [], n+2, n+2)
                 continue
+            if mazeinline(p0x,p0y,p1x,p1y,p2x,p2y) :
+                print("Removing collinear point %d from %s" % (n+1, str(route)))
+                route = listreplacelist(route, [], n+1, n+1)
+                continue
+            if mazeinline(p1x,p1y,p2x,p2y,p3x,p3y) :
+                print("Removing collinear point %d from %s" % (n+1, str(route)))
+                route = listreplacelist(route, [], n+2, n+2)
+                continue
+
+                
                 
             if (p1x == p2x) :                           # if vertical middle segment
                 #   End segments must be horizontal
@@ -442,7 +456,7 @@ class Mazegraph(object):
                 if abs(armlena) > abs(armlenb) :        # second arm is shorter
                     #   We will try to move middle segment to align with p0y, ignoring p1y
                     if self.mazelinebarrier(p3x, p0y, p3x, p3y) : # if blocked
-                        n + n + 1
+                        n = n + 1
                         continue
                     #   We can get rid of p1 and replace p2
                     route = listreplacelist(route, [(p3x,p0y)], n+1, n+2) # remove p1
@@ -452,7 +466,7 @@ class Mazegraph(object):
                 else :
                     #   We will try to move middle segment to align with p3y, ignoring p2y
                     if self.mazelinebarrier(p0x, p0y, p0x, p3y) : # if blocked
-                        n + n + 1
+                        n = n + 1
                         continue
                     #   We can get rid of p2 and replace p1
                     route = listreplacelist(route, [(p0x, p3y)], n+1, n+2) # remove p2
@@ -461,8 +475,8 @@ class Mazegraph(object):
                     continue                       
                     
             else :                                      # if horizontal middle segment
+                assert(p1y == p2y)
                 #   End segments must be vertical
-                print("%d: %s %s %s %s" % (n, route[n], route[n+1], route[n+2], route[n+3])) # ***TEMP***
                 assert(p0x == p1x)
                 assert(p2x == p3x)
                 #   Is this C-shaped?
@@ -475,7 +489,7 @@ class Mazegraph(object):
                 if abs(armlena) > abs(armlenb) :        # second arm is shorter
                     #   We will try to move middle segment to align with p3y
                     if self.mazelinebarrier(p0x, p3y, p3x, p3y) : # if blocked
-                        n + n + 1
+                        n = n + 1
                         continue
                     #   We can get rid of p1 and p2 and replace with new point
                     route = listreplacelist(route, [(p1x, p3y)], n+1, n+2) # replace p1 and p2
@@ -485,7 +499,7 @@ class Mazegraph(object):
                 else :
                     #   We will try to move middle segment to align with p0y
                     if self.mazelinebarrier(p0x, p0y, p2x, p3y) : # if blocked
-                        n + n + 1
+                        n = n + 1
                         continue
                     #   We can get rid of p1 and p2 and replace with new point
                     route = listreplacelist(route, [(p2x,p0y)], n+1, n+2) # replace p1 and p2 with new point
