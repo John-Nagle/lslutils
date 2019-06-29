@@ -189,18 +189,6 @@ class Mazegraph(object):
                 print("Productive path at (%d,%d): %d" % (self.gMazeX, self.gMazeY, productive))
                 return True
         return False
-        #    DEAD CODE    
-        if abs(dx) > abs(dy) :                  # better to move in X
-            dy = 0 
-        else :
-            dx = 0
-        dx = mazeclipto1(dx)
-        dy = mazeclipto1(dy)
-        assert(dx != 0 or dy != 0)              # error to call this at dest
-        assert(dx == 0 or dy == 0)              # must be rectangular move
-        productive = not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy) # test if cell in productive direction is clear
-        print("Productive path at (%d,%d): %d" % (self.gMazeX, self.gMazeY, productive))
-        return productive
          
     def mazetakeproductivepath(self) :
         """
@@ -329,8 +317,6 @@ class Mazegraph(object):
                 print("Inside corner")
                 direction = (direction - sidelr + 4) % 4      # inside corner, turn
         else :
-            ####dxsame = MAZEEDGEFOLLOWDX[(direction - sidelr + 4) % 4] # if not blocked ahead
-            ####dysame = MAZEEDGEFOLLOWDY[(direction - sidelr + 4) % 4] 
             assert(dxsame == 0 or dysame == 0)
             blockedsameahead = self.mazetestcell(self.gMazeX + dx, self.gMazeY + dy, self.gMazeX + dx + dxsame, self.gMazeY + dy + dysame);
             if blockedsameahead :                       # straight, not outside corner
