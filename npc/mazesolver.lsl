@@ -47,8 +47,10 @@ list EDGEFOLLOWDIRX = [1,0,-1,0];
 list EDGEFOLLOWDIRY = [0, 1, 0, -1];
 ///EDGEFOLLOWDIRS = [(1,0), (0, 1), (-1, 0), (0, -1)]  // edge following dirs to dx && dy
 
-list MAZEEDGEFOLLOWDX = [1,0,-1,0];
-list MAZEEDGEFOLLOWDY = [0,1,0,-1];
+list MAZEEDGEFOLLOWDXTAB = [1,0,-1,0];
+list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
+#define MAZEFOLLOWDX(n) llList2Integer(MAZEFOLLOWDXTAB,(n))
+#define MAZEFOLLOWDY(n) llList2Integer(MAZEFOLLOWDYTAB,(n))
 
 #define DEBUGPRINT(s) // Nothing for now
 #define assert(exp) // Nothing for now
@@ -339,113 +341,121 @@ list mazepickside()
     else
     {    clippeddx = 0; }
     assert(mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY + clippeddy)); // must have hit a wall
-#ifdef NOTYET   
-
     //   8 cases, dumb version
-    if clippeddx == 1 :                     // obstacle is in +X dir
-        if (dy > 0) :                       // if want to move in +Y
-            direction = 1
-            sidelr = MAZEWALLONRIGHT
-        else :
-            direction = 3
-            sidelr = MAZEWALLONLEFT
-    elif clippeddx == -1 :
-        if (dy > 0) :
-            direction = 1
-            sidelr = MAZEWALLONLEFT
-        else :
-            direction = 3
-            sidelr = MAZEWALLONRIGHT                
-    elif clippeddy == 1 :                   // obstacle is in +Y dir
-        if (dx > 0) :                       // if want to move in +X
-            direction = 0
-            sidelr = MAZEWALLONLEFT             // wall is on left
-        else :
-            direction = 2
-            sidelr = MAZEWALLONRIGHT
-    elif clippeddy == -1 :                  // obstacle is in -Y dir
-        if (dx > 0) :                       // if want to move in +X
-            direction = 0
-            sidelr = MAZEWALLONRIGHT                     // wall is on left
-        else :
-            direction = 2
-            sidelr = MAZEWALLONLEFT
-    else :
-#endif // NOTYET
+    if (clippeddx == 1)                      // obstacle is in +X dir
+    {   if (dy > 0)                        // if want to move in +Y
+        {   direction = 1;
+            sidelr = MAZEWALLONRIGHT;
+        } else {
+            direction = 3;
+            sidelr = MAZEWALLONLEFT;
+        }
+    } else if (clippeddx == -1) 
+    {   if (dy > 0)
+        {   direction = 1;
+            sidelr = MAZEWALLONLEFT;
+        } else {
+            direction = 3;
+            sidelr = MAZEWALLONRIGHT;
+        }               
+    } else if (clippeddy == 1 )                  // obstacle is in +Y dir
+    {   if (dx > 0)                       // if want to move in +X
+        {   direction = 0;
+            sidelr = MAZEWALLONLEFT;             // wall is on left            
+        } else {
+            direction = 2;
+            sidelr = MAZEWALLONRIGHT;
+        }
+    } else if (clippeddy == -1)                   // obstacle is in -Y dir
+    {    if (dx > 0)                        // if want to move in +X
+        {    direction = 0;
+            sidelr = MAZEWALLONRIGHT;                     // wall is on left
+        } else {
+            direction = 2;
+            sidelr = MAZEWALLONLEFT;
+        }
+    } else {
         assert(False);                       // should never get here
+    }
     DEBUGPRINT("At (%d,%d) picked side %d, direction %d for wall follow." % (gMazeX, gMazeY, sidelr, direction));
     return([sidelr, direction]);
 }
-#ifdef NOTYET        
-def mazefollowwall(sidelr, direction) :
-    """
-    Follow wall from current point. Single move per call
-        
-    Wall following rules:
-    Always blocked on follow side. Algorithm error if not.
-        
-    If blocked ahead && not blocked opposite follow side, inside corner
-            turn away from follow side. No move.
-    If blocked ahead && blocked opposite follow side, dead end
-            turn twice to reverse direction, no move.
-    If not blocked ahead && blocked on follow side 1 ahead, 
-            advance straight.
-    If not blocked ahead && not blocked on follow side 1 ahead, outside corner,
-            advance straight, 
-            turn towards follow side, 
-            advance straight.
-            
-    "sidelr" is 1 for left, -1 for right
-    "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
-
-    """
-    global gMazeX, gMazeY
+//
+//  mazefollowwall -- Follow wall from current point. Single move per call
+//        
+//    Wall following rules:
+//    Always blocked on follow side. Algorithm error if not.
+//        
+//    If blocked ahead && not blocked opposite follow side, inside corner
+//            turn away from follow side. No move.
+//    If blocked ahead && blocked opposite follow side, dead end
+//            turn twice to reverse direction, no move.
+//    If not blocked ahead && blocked on follow side 1 ahead, 
+//            advance straight.
+//    If not blocked ahead && not blocked on follow side 1 ahead, outside corner,
+//            advance straight, 
+//           turn towards follow side, 
+//            advance straight.
+//            
+//    "sidelr" is 1 for left, -1 for right
+//    "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
+//
+integer mazefollowwall(integer sidelr, integer direction)
+{
     DEBUGPRINT("Following wall at (%d,%d) side %d direction %d md %d" % 
-            (gMazeX, gMazeY, sidelr, direction, mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)))
-    dx = MAZEEDGEFOLLOWDX[direction]
-    dy = MAZEEDGEFOLLOWDY[direction]
-    dxsame = MAZEEDGEFOLLOWDX[((direction + sidelr) + 4) % 4] // if not blocked ahead
-    dysame = MAZEEDGEFOLLOWDY[((direction + sidelr) + 4) % 4] 
-    followedside = mazetestcell(gMazeX, gMazeY, gMazeX + dxsame, gMazeY+dysame)
-    if (not followedside) :
+            (gMazeX, gMazeY, sidelr, direction, mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)));
+    integer dx = MAZEEDGEFOLLOWDX(direction);
+    integer dy = MAZEEDGEFOLLOWDY[direction]
+    integer dxsame = MAZEEDGEFOLLOWDX(((direction + sidelr) + 4) % 4); // if not blocked ahead
+    integer dysame = MAZEEDGEFOLLOWDY(((direction + sidelr) + 4) % 4); 
+    integer followedside = mazetestcell(gMazeX, gMazeY, gMazeX + dxsame, gMazeY+dysame);
+    if (!followedside) 
+    {
         DEBUGPRINT("***ERROR*** followedside not blocked. dx,dy: (%d,%d)  dxsame,dysame: (%d,%d) sidelr %d direction %d" %
-                (dx,dy, dxsame,dysame, sidelr,direction))
-        assert(followedside)                            // must be next to obstacle
-    blockedahead = mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY + dy)
-    if blockedahead :
-        dxopposite = MAZEEDGEFOLLOWDX[((direction - sidelr) + 4) % 4]
-        dyopposite = MAZEEDGEFOLLOWDY[((direction - sidelr) + 4) % 4]
-        blockedopposite = mazetestcell(gMazeX, gMazeY, gMazeX + dxopposite, gMazeY + dyopposite)
-        if blockedopposite :
-            DEBUGPRINT("Dead end")
-            direction = (direction + 2) % 4         // dead end, reverse direction
-        else :
-            DEBUGPRINT("Inside corner")
-            direction = (direction - sidelr + 4) % 4      // inside corner, turn
-    else :
-        assert(dxsame == 0 || dysame == 0)
+                (dx,dy, dxsame,dysame, sidelr,direction));
+        assert(followedside);                            // must be next to obstacle
+    }
+    integer blockedahead = mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY + dy);
+    if (blockedahead)
+    {   dxopposite = MAZEEDGEFOLLOWDX(((direction - sidelr) + 4) % 4]);
+        dyopposite = MAZEEDGEFOLLOWDY(((direction - sidelr) + 4) % 4]);
+        blockedopposite = mazetestcell(gMazeX, gMazeY, gMazeX + dxopposite, gMazeY + dyopposite);
+        if (blockedopposite) 
+        {   DEBUGPRINT("Dead end");
+            direction = (direction + 2) % 4;         // dead end, reverse direction
+        } else {
+            DEBUGPRINT("Inside corner");
+            direction = (direction - sidelr + 4) % 4;      // inside corner, turn
+        }
+    } else {
+        assert(dxsame == 0 || dysame == 0);
         blockedsameahead = mazetestcell(gMazeX + dx, gMazeY + dy, gMazeX + dx + dxsame, gMazeY + dy + dysame);
-        if blockedsameahead :                       // straight, not outside corner
-            DEBUGPRINT("Straight")
-            gMazeX += dx                            // move ahead 1
-            gMazeY += dy
-            mazeaddtopath()
-        else :                                      // outside corner
-            DEBUGPRINT("Outside corner")
-            gMazeX += dx                            // move ahead 1
-            gMazeY += dy
-            mazeaddtopath()
+        if (blockedsameahead)                       // straight, not outside corner
+        {   DEBUGPRINT("Straight");
+            gMazeX += dx;                            // move ahead 1
+            gMazeY += dy;
+            mazeaddtopath();
+        } else {                                     // outside corner
+            DEBUGPRINT("Outside corner");
+            gMazeX += dx;                            // move ahead 1
+            gMazeY += dy;
+            mazeaddtopath();
             //   Need to check for a productive path. May be time to stop wall following
-            md = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)
-            if md < gMazeMdbest && mazeexistsproductivepath() :
+            md = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
+            if (md < gMazeMdbest && mazeexistsproductivepath())
+            {
                 DEBUGPRINT("Outside corner led to a productive path halfway through")
-                return direction
-            direction = (direction + sidelr + 4) % 4    // turn in direction
-            gMazeX += dxsame                        // move around corner
-            gMazeY += dysame
-            mazeaddtopath() 
-    return direction                                // new direction
-        
+                return(direction);
+            }
+            direction = (direction + sidelr + 4) % 4;    // turn in direction
+            gMazeX += dxsame;                        // move around corner
+            gMazeY += dysame;
+            mazeaddtopath();
+        }
+    }
+    return(direction);                                // new direction
+}     
+#ifdef NOTYET   
 def mazeroutecornersonly(route) :
     """
     Condense route, only keeping corners
