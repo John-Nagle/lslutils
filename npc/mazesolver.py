@@ -93,466 +93,478 @@ def listreplacelist(src, dst, start, end) :
 #
 #   Mazegraph
 #
-#   This will have to be done with globals in LSL
+#   Globals for LSL
 #
-class Mazegraph(object):
-   
-    def __init__(self, xsize, ysize) :
-        self.gMazeXsize = xsize                                          # set size of map
-        self.gMazeYsize = ysize
-        self.testdata = numpy.full((xsize, ysize), 0)
+
+####integer gMazeXsize = -1                                         # set size of map
+####integer gMazeYsize = -1       
+####integer gMazeX;
+####integer gMazeY;
+####integer gMazeStartX;                # start
+####integer gMazeStartY;
+####integer gMazeEndX;                  # destination
+####integer gMazeEndY;
+####integer gMazeMdbest;
+####list gMazePath;                     # accumulated path
+
+#
+#   Maze graph functions
+#   
+def mazeinit(xsize, ysize) :
+    gMazeXsize = xsize                                          # set size of map
+    gMazeYsize = ysize
+    testdata = numpy.full((xsize, ysize), 0)
        
-    def solvemaze(self, startx, starty, endx, endy, barrierfn) :
-        self.gMazeX = startx                         # start
-        self.gMazeY = starty
-        self.barrierfn = barrierfn              # tests cell for blocked
-        self.gMazeStartX = startx                    # start
-        self.gMazeStartY = starty
-        self.gMazeEndX = endx                        # destination
-        self.gMazeEndY = endy
-        self.gMazeMdbest = self.gMazeXsize+self.gMazeYsize+1   # best dist to target init
-        self.gMazePath = []                          # accumulated path
-        self.mazeaddtopath()                        # add initial point
-        #   Outer loop - shortcuts or wall following
-        while (self.gMazeX != self.gMazeEndX or self.gMazeY != self.gMazeEndY) : # while not at dest
-            if (len(self.gMazePath) > self.gMazeXsize*self.gMazeYsize*4) :
-                return []                       # we are in an undetected loop
-            if (self.mazeexistsproductivepath()) :  # if a shortcut is available
-                self.mazetakeproductivepath()       # use it
-                self.gMazeMdbest = mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)
-                ####self.gMazeMdbest = self.gMazeMdbest -1 
-                assert(self.gMazeMdbest >= 0)
-            else :
-                ####self.gMazeMdbest = mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)
-                sidelr, direction = self.mazepickside()        # follow left or right?
-                #   Inner loop - wall following
-                followstartx = self.gMazeX
-                followstarty = self.gMazeY
-                followstartdir = direction
-                print("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, self.gMazeMdbest))
-                while mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY) >= self.gMazeMdbest or not self.mazeexistsproductivepath() :
-                    if (self.gMazeX == self.gMazeEndX and self.gMazeY == self.gMazeEndY) : # if at end
-                        return self.gMazePath                               # done
-                    direction = self.mazefollowwall(sidelr, direction)      # follow edge, advance one cell
-                    if len(self.gMazePath) > self.gMazeXsize*self.gMazeYsize*4 : # runaway check
-                        print("***ERROR*** runaway: " + str(self.gMazePath)) 
-                        return []
-                    #   Termination check - if we are back at the start of following and going in the same direction, no solution
-                    if (self.gMazeX == followstartx and self.gMazeY == followstarty and direction == followstartdir) :
-                        print("Back at start of follow. Stuck")
-                        return []                                   # fails
-                print("Finished wall following.")
+def mazesolve(startx, starty, endx, endy, barrierfn) :
+    gMazeX = startx                         # start
+    gMazeY = starty
+    barrierfn = barrierfn              # tests cell for blocked
+    gMazeStartX = startx                    # start
+    gMazeStartY = starty
+    gMazeEndX = endx                        # destination
+    gMazeEndY = endy
+    gMazeMdbest = gMazeXsize+gMazeYsize+1   # best dist to target init
+    gMazePath = []                          # accumulated path
+    mazeaddtopath()                        # add initial point
+    #   Outer loop - shortcuts or wall following
+    while (gMazeX != gMazeEndX or gMazeY != gMazeEndY) : # while not at dest
+        if (len(gMazePath) > gMazeXsize*gMazeYsize*4) :
+            return []                       # we are in an undetected loop
+        if (mazeexistsproductivepath()) :  # if a shortcut is available
+            mazetakeproductivepath()       # use it
+            gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)
+            ####gMazeMdbest = gMazeMdbest -1 
+            assert(gMazeMdbest >= 0)
+        else :
+            ####gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)
+            sidelr, direction = mazepickside()        # follow left or right?
+            #   Inner loop - wall following
+            followstartx = gMazeX
+            followstarty = gMazeY
+            followstartdir = direction
+            print("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, gMazeMdbest))
+            while mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest or not mazeexistsproductivepath() :
+                if (gMazeX == gMazeEndX and gMazeY == gMazeEndY) : # if at end
+                    return gMazePath                               # done
+                direction = mazefollowwall(sidelr, direction)      # follow edge, advance one cell
+                if len(gMazePath) > gMazeXsize*gMazeYsize*4 : # runaway check
+                    print("***ERROR*** runaway: " + str(gMazePath)) 
+                    return []
+                #   Termination check - if we are back at the start of following and going in the same direction, no solution
+                if (gMazeX == followstartx and gMazeY == followstarty and direction == followstartdir) :
+                    print("Back at start of follow. Stuck")
+                    return []                                   # fails
+            print("Finished wall following.")
                         
-        return(self.gMazePath)
+        return(gMazePath)
                     
-    def mazeaddtopath(self) :
-        """
-        Add current position to path
-        """
-        self.gMazePath += [(self.gMazeX, self.gMazeY)]
-        print("(%d,%d)" % (self.gMazeX, self.gMazeY))
-        ####assert(not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy)) # path must not go into an occupied cell
+def mazeaddtopath() :
+    """
+    Add current position to path
+    """
+    gMazePath += [(gMazeX, gMazeY)]
+    print("(%d,%d)" % (gMazeX, gMazeY))
+    ####assert(not mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY + dy)) # path must not go into an occupied cell
 
                                                      
-    def mazetestcell(self, fromx, fromy, x, y) :
-        """
-        Returns 1 if occupied cell
-        """
-        print("Testcell (%d,%d)" % (x,y))       # ***TEMP***
-        if (x < 0 or x >= self.gMazeXsize or y < 0 or y >= self.gMazeYsize) : # if off grid
-            return 1                            # treat as occupied
-        v = self.testdata[x][y]                 # this cell
-        if (v & MAZEEXAMINED) :
-            print
-            return v & MAZEBARRIER                  # already have this one
-        barrier = self.barrierfn(fromx, fromy, x,y)             # check this location
-        v = MAZEEXAMINED | barrier
-        self.testdata[x][y] = v                 # update sites checked
-        return barrier                          # return 1 if obstacle
+def mazetestcell(fromx, fromy, x, y) :
+    """
+    Returns 1 if occupied cell
+    """
+    print("Testcell (%d,%d)" % (x,y))       # ***TEMP***
+    if (x < 0 or x >= gMazeXsize or y < 0 or y >= gMazeYsize) : # if off grid
+        return 1                            # treat as occupied
+    v = testdata[x][y]                 # this cell
+    if (v & MAZEEXAMINED) :
+        return v & MAZEBARRIER                  # already have this one
+    barrier = barrierfn(fromx, fromy, x,y)             # check this location
+    v = MAZEEXAMINED | barrier
+    testdata[x][y] = v                 # update sites checked
+    return barrier                          # return 1 if obstacle
         
-    def mazeexistsproductivepath(self) :
-        """
-        True if a productive path exists
-        """
-        dx = self.gMazeEndX - self.gMazeX
-        dy = self.gMazeEndY - self.gMazeY
-        dx = mazeclipto1(dx)
-        dy = mazeclipto1(dy)
-        if (dx != 0) :
-            productive = not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY) # test if cell in productive direction is clear
-            if productive :
-                print("Productive path at (%d,%d): %d" % (self.gMazeX, self.gMazeY, productive))
-                return True
-        if (dy != 0) :
-            productive = not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX, self.gMazeY + dy) # test if cell in productive direction is clear
-            if productive :
-                print("Productive path at (%d,%d): %d" % (self.gMazeX, self.gMazeY, productive))
-                return True
-        return False
+def mazeexistsproductivepath() :
+    """
+    True if a productive path exists
+    """
+    dx = gMazeEndX - gMazeX
+    dy = gMazeEndY - gMazeY
+    dx = mazeclipto1(dx)
+    dy = mazeclipto1(dy)
+    if (dx != 0) :
+        productive = not mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY) # test if cell in productive direction is clear
+        if productive :
+            print("Productive path at (%d,%d): %d" % (gMazeX, gMazeY, productive))
+            return True
+    if (dy != 0) :
+        productive = not mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + dy) # test if cell in productive direction is clear
+        if productive :
+            print("Productive path at (%d,%d): %d" % (gMazeX, gMazeY, productive))
+            return True
+    return False
          
-    def mazetakeproductivepath(self) :
-        """
-        Follow productive path or return 0       
-        """
-        dx = self.gMazeEndX - self.gMazeX
-        dy = self.gMazeEndY - self.gMazeY
-        clippeddx = mazeclipto1(dx)
-        clippeddy = mazeclipto1(dy)
-        assert(dx != 0 or dy != 0)              # error to call this at dest
-        #    Try X dir first if more direct towards goal
-        if abs(dx) > abs(dy) and clippeddx :
-            if not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + clippeddx, self.gMazeY) :
-                self.gMazeX += clippeddx                       # advance in desired dir
-                self.mazeaddtopath()
-                return 1
-        #   Then try Y    
-        if clippeddy :
-            if not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX, self.gMazeY + clippeddy) :
-                self.gMazeY += clippeddy                       # advance in desired dir
-                self.mazeaddtopath()
-                return 1 
-        #   Then X, regardless of whether abs(dx) > abs(dy)
-        if clippeddx :
-            if not self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + clippeddx, self.gMazeY) :
-                self.gMazeX += clippeddx                       # advance in desired dir
-                self.mazeaddtopath()
-                return 1    
+def mazetakeproductivepath() :
+    """
+    Follow productive path or return 0       
+    """
+    dx = gMazeEndX - gMazeX
+    dy = gMazeEndY - gMazeY
+    clippeddx = mazeclipto1(dx)
+    clippeddy = mazeclipto1(dy)
+    assert(dx != 0 or dy != 0)              # error to call this at dest
+    #    Try X dir first if more direct towards goal
+    if abs(dx) > abs(dy) and clippeddx :
+        if not mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY) :
+            gMazeX += clippeddx                       # advance in desired dir
+            mazeaddtopath()
+            return 1
+    #   Then try Y    
+    if clippeddy :
+        if not mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + clippeddy) :
+            gMazeY += clippeddy                       # advance in desired dir
+            mazeaddtopath()
+            return 1 
+    #   Then X, regardless of whether abs(dx) > abs(dy)
+    if clippeddx :
+        if not mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY) :
+            gMazeX += clippeddx                       # advance in desired dir
+            mazeaddtopath()
+            return 1    
                                # success
-        print("Take productive path failed")
-        return 0                                        # hit wall, stop
+    print("Take productive path failed")
+    return 0                                        # hit wall, stop
         
-    def mazepickside(self) :
-        """
-        Which side of the wall to follow? The one that leads toward
-        the goal.
-        Where is the wall? One cell in the direction takkeproductvepath was
-        going.
-        """
-        dx = self.gMazeEndX - self.gMazeX
-        dy = self.gMazeEndY - self.gMazeY
-        assert(dx != 0 or dy != 0)              # error to call this at dest
-        clippeddx = mazeclipto1(dx)
-        clippeddy = mazeclipto1(dy)
-        if abs(dx) > abs(dy) :                  # better to move in X
-            clippeddy = 0 
+def mazepickside() :
+    """
+    Which side of the wall to follow? The one that leads toward
+    the goal.
+    Where is the wall? One cell in the direction takkeproductvepath was
+    going.
+    """
+    dx = gMazeEndX - gMazeX
+    dy = gMazeEndY - gMazeY
+    assert(dx != 0 or dy != 0)              # error to call this at dest
+    clippeddx = mazeclipto1(dx)
+    clippeddy = mazeclipto1(dy)
+    if abs(dx) > abs(dy) :                  # better to move in X
+        clippeddy = 0 
+    else :
+        clippeddx = 0
+    assert(mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY + clippeddy)) # must have hit a wall
+    #   8 cases, dumb version
+    if clippeddx == 1 :                     # obstacle is in +X dir
+        if (dy > 0) :                       # if want to move in +Y
+            direction = 1
+            sidelr = MAZEWALLONRIGHT
         else :
-            clippeddx = 0
-        assert(self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + clippeddx, self.gMazeY + clippeddy)) # must have hit a wall
-        #   8 cases, dumb version
-        if clippeddx == 1 :                     # obstacle is in +X dir
-            if (dy > 0) :                       # if want to move in +Y
-                direction = 1
-                sidelr = MAZEWALLONRIGHT
-            else :
-                direction = 3
-                sidelr = MAZEWALLONLEFT
-        elif clippeddx == -1 :
-            if (dy > 0) :
-                direction = 1
-                sidelr = MAZEWALLONLEFT
-            else :
-                direction = 3
-                sidelr = MAZEWALLONRIGHT                
-        elif clippeddy == 1 :                   # obstacle is in +Y dir
-            if (dx > 0) :                       # if want to move in +X
-                direction = 0
-                sidelr = MAZEWALLONLEFT             # wall is on left
-            else :
-                direction = 2
-                sidelr = MAZEWALLONRIGHT
-        elif clippeddy == -1 :                  # obstacle is in -Y dir
-            if (dx > 0) :                       # if want to move in +X
-                direction = 0
-                sidelr = MAZEWALLONRIGHT                     # wall is on left
-            else :
-                direction = 2
-                sidelr = MAZEWALLONLEFT
+            direction = 3
+            sidelr = MAZEWALLONLEFT
+    elif clippeddx == -1 :
+        if (dy > 0) :
+            direction = 1
+            sidelr = MAZEWALLONLEFT
         else :
-            assert(False)                       # should never get here
-        print("At (%d,%d) picked side %d, direction %d for wall follow." % (self.gMazeX, self.gMazeY, sidelr, direction))
-        return (sidelr, direction)
+            direction = 3
+            sidelr = MAZEWALLONRIGHT                
+    elif clippeddy == 1 :                   # obstacle is in +Y dir
+        if (dx > 0) :                       # if want to move in +X
+            direction = 0
+            sidelr = MAZEWALLONLEFT             # wall is on left
+        else :
+            direction = 2
+            sidelr = MAZEWALLONRIGHT
+    elif clippeddy == -1 :                  # obstacle is in -Y dir
+        if (dx > 0) :                       # if want to move in +X
+            direction = 0
+            sidelr = MAZEWALLONRIGHT                     # wall is on left
+        else :
+            direction = 2
+            sidelr = MAZEWALLONLEFT
+    else :
+        assert(False)                       # should never get here
+    print("At (%d,%d) picked side %d, direction %d for wall follow." % (gMazeX, gMazeY, sidelr, direction))
+    return (sidelr, direction)
         
-    def mazefollowwall(self, sidelr, direction) :
-        """
-        Follow wall from current point. Single move per call
+def mazefollowwall(sidelr, direction) :
+    """
+    Follow wall from current point. Single move per call
         
-        Wall following rules:
-        Always blocked on follow side. Algorithm error if not.
+    Wall following rules:
+    Always blocked on follow side. Algorithm error if not.
         
-       If blocked ahead and not blocked opposite follow side, inside corner
+    If blocked ahead and not blocked opposite follow side, inside corner
             turn away from follow side. No move.
-       If blocked ahead and blocked opposite follow side, dead end
+    If blocked ahead and blocked opposite follow side, dead end
             turn twice to reverse direction, no move.
-       If not blocked ahead and blocked on follow side 1 ahead, 
+    If not blocked ahead and blocked on follow side 1 ahead, 
             advance straight.
-       If not blocked ahead and not blocked on follow side 1 ahead, outside corner,
+    If not blocked ahead and not blocked on follow side 1 ahead, outside corner,
             advance straight, 
             turn towards follow side, 
             advance straight.
             
-        "sidelr" is 1 for left, -1 for right
-        "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
+    "sidelr" is 1 for left, -1 for right
+    "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
 
-        """
-        print("Following wall at (%d,%d) side %d direction %d md %d" % 
-            (self.gMazeX, self.gMazeY, sidelr, direction, mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)))
-        dx = MAZEEDGEFOLLOWDX[direction]
-        dy = MAZEEDGEFOLLOWDY[direction]
-        dxsame = MAZEEDGEFOLLOWDX[((direction + sidelr) + 4) % 4] # if not blocked ahead
-        dysame = MAZEEDGEFOLLOWDY[((direction + sidelr) + 4) % 4] 
-        followedside = self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dxsame, self.gMazeY+dysame)
-        if (not followedside) :
-            print("***ERROR*** followedside not blocked. dx,dy: (%d,%d)  dxsame,dysame: (%d,%d) sidelr %d direction %d" %
+    """
+    print("Following wall at (%d,%d) side %d direction %d md %d" % 
+            (gMazeX, gMazeY, sidelr, direction, mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)))
+    dx = MAZEEDGEFOLLOWDX[direction]
+    dy = MAZEEDGEFOLLOWDY[direction]
+    dxsame = MAZEEDGEFOLLOWDX[((direction + sidelr) + 4) % 4] # if not blocked ahead
+    dysame = MAZEEDGEFOLLOWDY[((direction + sidelr) + 4) % 4] 
+    followedside = mazetestcell(gMazeX, gMazeY, gMazeX + dxsame, gMazeY+dysame)
+    if (not followedside) :
+        print("***ERROR*** followedside not blocked. dx,dy: (%d,%d)  dxsame,dysame: (%d,%d) sidelr %d direction %d" %
                 (dx,dy, dxsame,dysame, sidelr,direction))
-            assert(followedside)                            # must be next to obstacle
-        blockedahead = self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dx, self.gMazeY + dy)
-        if blockedahead :
-            dxopposite = MAZEEDGEFOLLOWDX[((direction - sidelr) + 4) % 4]
-            dyopposite = MAZEEDGEFOLLOWDY[((direction - sidelr) + 4) % 4]
-            blockedopposite = self.mazetestcell(self.gMazeX, self.gMazeY, self.gMazeX + dxopposite, self.gMazeY + dyopposite)
-            if blockedopposite :
-                print("Dead end")
-                direction = (direction + 2) % 4         # dead end, reverse direction
-            else :
-                print("Inside corner")
-                direction = (direction - sidelr + 4) % 4      # inside corner, turn
+        assert(followedside)                            # must be next to obstacle
+    blockedahead = mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY + dy)
+    if blockedahead :
+        dxopposite = MAZEEDGEFOLLOWDX[((direction - sidelr) + 4) % 4]
+        dyopposite = MAZEEDGEFOLLOWDY[((direction - sidelr) + 4) % 4]
+        blockedopposite = mazetestcell(gMazeX, gMazeY, gMazeX + dxopposite, gMazeY + dyopposite)
+        if blockedopposite :
+            print("Dead end")
+            direction = (direction + 2) % 4         # dead end, reverse direction
         else :
-            assert(dxsame == 0 or dysame == 0)
-            blockedsameahead = self.mazetestcell(self.gMazeX + dx, self.gMazeY + dy, self.gMazeX + dx + dxsame, self.gMazeY + dy + dysame);
-            if blockedsameahead :                       # straight, not outside corner
-                print("Straight")
-                self.gMazeX += dx                            # move ahead 1
-                self.gMazeY += dy
-                self.mazeaddtopath()
-            else :                                      # outside corner
-                print("Outside corner")
-                self.gMazeX += dx                            # move ahead 1
-                self.gMazeY += dy
-                self.mazeaddtopath()
-                #   Need to check for a productive path. May be time to stop wall following
-                md = mazemd(self.gMazeX, self.gMazeY, self.gMazeEndX, self.gMazeEndY)
-                if md < self.gMazeMdbest and self.mazeexistsproductivepath() :
-                    print("Outside corner led to a productive path halfway through")
-                    return direction
-                direction = (direction + sidelr + 4) % 4    # turn in direction
-                self.gMazeX += dxsame                        # move around corner
-                self.gMazeY += dysame
-                self.mazeaddtopath() 
-        return direction                                # new direction
+            print("Inside corner")
+            direction = (direction - sidelr + 4) % 4      # inside corner, turn
+    else :
+        assert(dxsame == 0 or dysame == 0)
+        blockedsameahead = mazetestcell(gMazeX + dx, gMazeY + dy, gMazeX + dx + dxsame, gMazeY + dy + dysame);
+        if blockedsameahead :                       # straight, not outside corner
+            print("Straight")
+            gMazeX += dx                            # move ahead 1
+            gMazeY += dy
+            mazeaddtopath()
+        else :                                      # outside corner
+            print("Outside corner")
+            gMazeX += dx                            # move ahead 1
+            gMazeY += dy
+            mazeaddtopath()
+            #   Need to check for a productive path. May be time to stop wall following
+            md = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)
+            if md < gMazeMdbest and mazeexistsproductivepath() :
+                print("Outside corner led to a productive path halfway through")
+                return direction
+            direction = (direction + sidelr + 4) % 4    # turn in direction
+            gMazeX += dxsame                        # move around corner
+            gMazeY += dysame
+            mazeaddtopath() 
+    return direction                                # new direction
         
-    def mazeroutecornersonly(self, route) :
-        """
-        Condense route, only keeping corners
-        """
-        newroute = []
-        prev0x = -1
-        prev0y = -1
-        prev1x = -1
-        prev1y = -1
-        x = -1
-        y = -1
-        for n in range(len(route)) :
-            x = route[n][0]
-            y = route[n][1]
-            if (prev0x >= 0 and (mazeinline(prev0x, prev0y, prev1x, prev1y, x, y) 
-                or mazepointssame(prev0x, prev0y, prev1x, prev1y) 
-                or mazepointssame(prev1x, prev1y, x,y))) :
-                pass
+def mazeroutecornersonly(route) :
+    """
+    Condense route, only keeping corners
+    """
+    newroute = []
+    prev0x = -1
+    prev0y = -1
+    prev1x = -1
+    prev1y = -1
+    x = -1
+    y = -1
+    for n in range(len(route)) :
+        x = route[n][0]
+        y = route[n][1]
+        if (prev0x >= 0 and (mazeinline(prev0x, prev0y, prev1x, prev1y, x, y) 
+            or mazepointssame(prev0x, prev0y, prev1x, prev1y) 
+            or mazepointssame(prev1x, prev1y, x,y))) :
+            pass
                 #   pt 1 is redundant
-            else :                                  # need to keep pt 1
-                prev0x = prev1x
-                prev0y = prev1y
-                if prev1x >= 0 :                    # if we have something to output
-                    newroute.append((prev1x, prev1y))
-            prev1x = x
-            prev1y = y
-        # final point.
-        newroute.append((x,y)) 
-        return newroute
+        else :                                  # need to keep pt 1
+            prev0x = prev1x
+            prev0y = prev1y
+            if prev1x >= 0 :                    # if we have something to output
+                newroute.append((prev1x, prev1y))
+        prev1x = x
+        prev1y = y
+    # final point.
+    newroute.append((x,y)) 
+    return newroute
         
-    def mazelinebarrier(self, x0, y0, x1, y1) :
-        """
-        Does the line between the two points, inclusive, hit a barrier?
-        """
-        print("Maze test barrier: (%d,%d),(%d,%d)" % (x0,y0,x1,y1))
-        if (x0 == x1) :                         # vertical line
-            assert(y0 != y1)                    # must not be zero length
-            if y0 > y1 :                        # sort
-                temp = y0
-                y0 = y1
-                y1 = temp
-            assert(y1 > y0)
-            for y in range(y0,y1) :             # test each segment
-                if self.mazetestcell(x0, y, x0, y+1) :
-                    return True                # hit barrier
-            return False
-        else :
-            assert(y0 == y1)
-            assert(x0 != x1)
-            if x0 > x1 :                        # sort
-                temp = x0
-                x0 = x1
-                x1 = temp
-            assert(x1 > x0)
-            for x in range(x0,x1) :
-                if self.mazetestcell(x, y0, x+1, y0) :
-                    return True                # hit barrier
-            return False
+def mazelinebarrier(x0, y0, x1, y1) :
+    """
+    Does the line between the two points, inclusive, hit a barrier?
+    """
+    print("Maze test barrier: (%d,%d),(%d,%d)" % (x0,y0,x1,y1))
+    if (x0 == x1) :                         # vertical line
+        assert(y0 != y1)                    # must not be zero length
+        if y0 > y1 :                        # sort
+            temp = y0
+            y0 = y1
+            y1 = temp
+        assert(y1 > y0)
+        for y in range(y0,y1) :             # test each segment
+            if mazetestcell(x0, y, x0, y+1) :
+                return True                # hit barrier
+        return False
+    else :
+        assert(y0 == y1)
+        assert(x0 != x1)
+        if x0 > x1 :                        # sort
+            temp = x0
+            x0 = x1
+            x1 = temp
+        assert(x1 > x0)
+        for x in range(x0,x1) :
+            if mazetestcell(x, y0, x+1, y0) :
+                return True                # hit barrier
+        return False
          
            
         
-    def mazeoptimizeroute(self, route) :
-        """
-        Optimize route.
+def mazeoptimizeroute(route) :
+    """
+    Optimize route.
         
-        The incoming route should have corners only, and represent only horizontal and vertical lines.
-        Optimizing the route looks at groups of 4 points. If the two turns are both the same, then try
-        to eliminate one of the points by moving the line between the two middle points.        
-        """
-        n = 0;
-        while n < len(route)-3 :                        # advancing through route
-            print("%d: %s %s %s %s" % (n, route[n], route[n+1], route[n+2], route[n+3])) # ***TEMP***
-            p0x = route[n][0]
-            p0y = route[n][1]
-            p1x = route[n+1][0]
-            p1y = route[n+1][1]
-            p2x = route[n+2][0]
-            p2y = route[n+2][1]
-            p3x = route[n+3][0]
-            p3y = route[n+3][1]
-            if (p0x == p1x and p0y == p1y) :            # redundant point
-                ####print("Removing redundant point %d from %s" % (n+1, str(route)))
-                route = listreplacelist(route, [], n+1, n+1)
+    The incoming route should have corners only, and represent only horizontal and vertical lines.
+    Optimizing the route looks at groups of 4 points. If the two turns are both the same, then try
+    to eliminate one of the points by moving the line between the two middle points.        
+    """
+    n = 0;
+    while n < len(route)-3 :                        # advancing through route
+        print("%d: %s %s %s %s" % (n, route[n], route[n+1], route[n+2], route[n+3])) # ***TEMP***
+        p0x = route[n][0]
+        p0y = route[n][1]
+        p1x = route[n+1][0]
+        p1y = route[n+1][1]
+        p2x = route[n+2][0]
+        p2y = route[n+2][1]
+        p3x = route[n+3][0]
+        p3y = route[n+3][1]
+        if (p0x == p1x and p0y == p1y) :            # redundant point
+            ####print("Removing redundant point %d from %s" % (n+1, str(route)))
+            route = listreplacelist(route, [], n+1, n+1)
+            continue
+        if (p1x == p2x and p1y == p2y) :            # redundant point
+            ####print("Removing redundant point %d from %s" % (n+2, str(route)))
+            route = listreplacelist(route, [], n+2, n+2)
+            continue
+        if mazeinline(p0x,p0y,p1x,p1y,p2x,p2y) :
+            ####print("Removing collinear point %d from %s" % (n+1, str(route)))
+            route = listreplacelist(route, [], n+1, n+1)
+            continue
+        if mazeinline(p1x,p1y,p2x,p2y,p3x,p3y) :
+            ####print("Removing collinear point %d from %s" % (n+1, str(route)))
+            route = listreplacelist(route, [], n+2, n+2)
+            continue                
+        if (p1x == p2x) :                           # if vertical middle segment
+            #   End segments must be horizontal
+            assert(p0y == p1y)
+            assert(p2y == p3y)
+            #   Is this C-shaped?
+            if not ((p0x > p1x) == (p2x < p3x)) :   # no, not C-shaped
+                n = n + 1
                 continue
-            if (p1x == p2x and p1y == p2y) :            # redundant point
-                ####print("Removing redundant point %d from %s" % (n+2, str(route)))
-                route = listreplacelist(route, [], n+2, n+2)
-                continue
-            if mazeinline(p0x,p0y,p1x,p1y,p2x,p2y) :
-                ####print("Removing collinear point %d from %s" % (n+1, str(route)))
-                route = listreplacelist(route, [], n+1, n+1)
-                continue
-            if mazeinline(p1x,p1y,p2x,p2y,p3x,p3y) :
-                ####print("Removing collinear point %d from %s" % (n+1, str(route)))
-                route = listreplacelist(route, [], n+2, n+2)
-                continue                
-            if (p1x == p2x) :                           # if vertical middle segment
-                #   End segments must be horizontal
-                assert(p0y == p1y)
-                assert(p2y == p3y)
-                #   Is this C-shaped?
-                if not ((p0x > p1x) == (p2x < p3x)) :   # no, not C-shaped
+            #   Find shorter arm of C
+            armlena = p0x-p1x 
+            armlenb = p3x-p2x
+            if abs(armlena) > abs(armlenb) :        # second arm is shorter
+                #   We will try to move middle segment to align with p0y, ignoring p1y
+                if mazelinebarrier(p3x, p0y, p3x, p3y) : # if blocked
                     n = n + 1
                     continue
-                #   Find shorter arm of C
-                armlena = p0x-p1x 
-                armlenb = p3x-p2x
-                if abs(armlena) > abs(armlenb) :        # second arm is shorter
-                    #   We will try to move middle segment to align with p0y, ignoring p1y
-                    if self.mazelinebarrier(p3x, p0y, p3x, p3y) : # if blocked
-                        n = n + 1
-                        continue
-                    #   We can get rid of p1 and replace p2
-                    route = listreplacelist(route, [(p3x,p0y)], n+1, n+2) # remove p1
-                    print("Vertical middle segment shortened at p1: %d: (%d,%d)" % (n+1,p3x,p0y))
-                    if n > 0 :                          # back up 1
-                        n = n - 1
+                #   We can get rid of p1 and replace p2
+                route = listreplacelist(route, [(p3x,p0y)], n+1, n+2) # remove p1
+                print("Vertical middle segment shortened at p1: %d: (%d,%d)" % (n+1,p3x,p0y))
+                if n > 0 :                          # back up 1
+                    n = n - 1
+                continue
+            else :
+                #   We will try to move middle segment to align with p3y, ignoring p2y
+                if mazelinebarrier(p0x, p0y, p0x, p3y) : # if blocked
+                    n = n + 1
                     continue
-                else :
-                    #   We will try to move middle segment to align with p3y, ignoring p2y
-                    if self.mazelinebarrier(p0x, p0y, p0x, p3y) : # if blocked
-                        n = n + 1
-                        continue
-                    #   We can get rid of p2 and replace p1
-                    route = listreplacelist(route, [(p0x, p3y)], n+1, n+2) # remove p2
-                    print("Vertical middle segment shortened at p2: %d: (%d,%d)" % (n+1,p0x,p3y))
-                    if n > 0 :                          # back up 1
-                        n = n - 1                       # to allow further optimization
-                    continue                       
+                #   We can get rid of p2 and replace p1
+                route = listreplacelist(route, [(p0x, p3y)], n+1, n+2) # remove p2
+                print("Vertical middle segment shortened at p2: %d: (%d,%d)" % (n+1,p0x,p3y))
+                if n > 0 :                          # back up 1
+                    n = n - 1                       # to allow further optimization
+                continue                       
                     
-            else :                                      # if horizontal middle segment
-                assert(p1y == p2y)
-                #   End segments must be vertical
-                assert(p0x == p1x)
-                assert(p2x == p3x)
-                #   Is this C-shaped?
-                if not ((p0y > p1y) == (p2y < p3y)) :   # no, not C-shaped
+        else :                                      # if horizontal middle segment
+            assert(p1y == p2y)
+            #   End segments must be vertical
+            assert(p0x == p1x)
+            assert(p2x == p3x)
+            #   Is this C-shaped?
+            if not ((p0y > p1y) == (p2y < p3y)) :   # no, not C-shaped
+                n = n + 1
+                continue
+            #   Find shorter arm of C
+            armlena = p0y-p1y 
+            armlenb = p3y-p2y
+            if abs(armlena) > abs(armlenb) :        # second arm is shorter
+                #   We will try to move middle segment to align with p3y
+                if mazelinebarrier(p0x, p3y, p3x, p3y) : # if blocked
                     n = n + 1
                     continue
-                #   Find shorter arm of C
-                armlena = p0y-p1y 
-                armlenb = p3y-p2y
-                if abs(armlena) > abs(armlenb) :        # second arm is shorter
-                    #   We will try to move middle segment to align with p3y
-                    if self.mazelinebarrier(p0x, p3y, p3x, p3y) : # if blocked
-                        n = n + 1
-                        continue
-                    #   We can get rid of p1 and p2 and replace with new point
-                    route = listreplacelist(route, [(p1x, p3y)], n+1, n+2) # replace p1 and p2
-                    print("Horizontal middle segment shortened at p1: %d: (%d,%d)" % (n+1,p1x,p3y))
-                    if n > 0 :                          # back up 1
-                        n = n - 1
+                #   We can get rid of p1 and p2 and replace with new point
+                route = listreplacelist(route, [(p1x, p3y)], n+1, n+2) # replace p1 and p2
+                print("Horizontal middle segment shortened at p1: %d: (%d,%d)" % (n+1,p1x,p3y))
+                if n > 0 :                          # back up 1
+                    n = n - 1
+                continue
+            else :
+                #   We will try to move middle segment to align with p0y
+                if mazelinebarrier(p0x, p0y, p3x, p0y) : # if blocked
+                    n = n + 1
                     continue
-                else :
-                    #   We will try to move middle segment to align with p0y
-                    if self.mazelinebarrier(p0x, p0y, p3x, p0y) : # if blocked
-                        n = n + 1
-                        continue
-                    #   We can get rid of p1 and p2 and replace with new point
-                    route = listreplacelist(route, [(p2x,p0y)], n+1, n+2) # replace p1 and p2 with new point
-                    print("Horizontal middle segment shortened at p2: %d: (%d,%d)" % (n+1,p2x,p0y))
-                    if n > 0 :                          # back up 1
-                        n = n - 1                       # to allow further optimization
-                    continue 
-        return route                                    # condensed route                      
+                #   We can get rid of p1 and p2 and replace with new point
+                route = listreplacelist(route, [(p2x,p0y)], n+1, n+2) # replace p1 and p2 with new point
+                print("Horizontal middle segment shortened at p2: %d: (%d,%d)" % (n+1,p2x,p0y))
+                if n > 0 :                          # back up 1
+                    n = n - 1                       # to allow further optimization
+                continue 
+    return route                                    # condensed route                      
 
             
         
-    def mazedump(self, route, finalroute) :
-        """
-        Debug dump
-        """
-        print("Graph and path.")
-        #   Horizontal scale
-        units = ""
-        tens = ""
-        for i in range(self.gMazeXsize) :
-            units += str(i % 10)
-            tens += str((int(i / 10)) % 10)  
-        print("     " + tens)                                   
-        print("     " + units)            
-        print("    " + ("█" * (self.gMazeXsize+2)))                 # top/bottom wall
-        #   Dump maze as a little picture
-        #   █ - barrier
-        #   • - path
-        #   ◦ - examined, not on path
-        #   S - start
-        #   E - end
-        for i in range(self.gMazeYsize-1,-1,-1) :
-            s = ""
-            for j in range(self.gMazeXsize) :
-                barrier = self.testdata[j][i] & MAZEBARRIER
-                examined = self.testdata[j][i] & MAZEEXAMINED
-                ch = " "
-                if examined :
-                    ch = "◦"
-                if barrier > 0 :
-                    ch = "█"
-                else :
-                    if (j,i) in route :                    
-                        ch = "•"
-                    if (j,i) in finalroute :
-                        ch = "◉"
-                if i == self.gMazeStartY and j == self.gMazeStartX :
-                    ch = "S"
-                if i == self.gMazeEndY and j == self.gMazeEndX : 
-                    ch = "E"                                            
-                s = s + ch
-            s = "█" + s + "█"   # show outer walls
-            print("%4d%s" % (i,s))
-        print("    " + ("█" * (self.gMazeXsize+2)))                 # top/bottom wall
-        print("     " + tens)                                   
-        print("     " + units)            
+def mazedump(route, finalroute) :
+    """
+    Debug dump
+    """
+    print("Graph and path.")
+    #   Horizontal scale
+    units = ""
+    tens = ""
+    for i in range(gMazeXsize) :
+        units += str(i % 10)
+        tens += str((int(i / 10)) % 10)  
+    print("     " + tens)                                   
+    print("     " + units)            
+    print("    " + ("█" * (gMazeXsize+2)))                 # top/bottom wall
+    #   Dump maze as a little picture
+    #   █ - barrier
+    #   • - path
+    #   ◦ - examined, not on path
+    #   S - start
+    #   E - end
+    for i in range(gMazeYsize-1,-1,-1) :
+        s = ""
+        for j in range(gMazeXsize) :
+            barrier = testdata[j][i] & MAZEBARRIER
+            examined = testdata[j][i] & MAZEEXAMINED
+            ch = " "
+            if examined :
+                ch = "◦"
+            if barrier > 0 :
+                ch = "█"
+            else :
+                if (j,i) in route :                    
+                    ch = "•"
+                if (j,i) in finalroute :
+                    ch = "◉"
+            if i == gMazeStartY and j == gMazeStartX :
+                ch = "S"
+            if i == gMazeEndY and j == gMazeEndX : 
+                ch = "E"                                            
+            s = s + ch
+        s = "█" + s + "█"   # show outer walls
+        print("%4d%s" % (i,s))
+    print("    " + ("█" * (gMazeXsize+2)))                 # top/bottom wall
+    print("     " + tens)                                   
+    print("     " + units)            
 
  
 #
@@ -606,20 +618,20 @@ def unittestrandom1(xsize, ysize) :
     barrierpairs = generaterandombarrier(xsize, ysize, startx, starty, endx, endy, int(xsize*ysize*DENSITY))
     def barrierfn(prevx, prevy, ix, iy) :   # closure for barrier test fn
         return (ix, iy) in barrierpairs
-    graph = Mazegraph(xsize, ysize)
-    result = graph.solvemaze(startx, starty, endx, endy, barrierfn)
+    mazeinit(xsize, ysize)
+    result = mazesolve(startx, starty, endx, endy, barrierfn)
     print ("route", result)
     print ("cost", len(result))
-    graph.mazedump(result,[])   
+    mazedump(result,[])   
     reachable = checkreachability(xsize, ysize, startx, starty, endx, endy, barrierpairs)
     pathfound = len(result) > 0
     print("Reachable: %r" % (reachable,))
     assert(reachable == pathfound)          # fail if disagree
-    result2 = graph.mazeroutecornersonly(result)
+    result2 = mazeroutecornersonly(result)
     print("Corners only:" + str(result2))
-    result3 = graph.mazeoptimizeroute(result2)
+    result3 = mazeoptimizeroute(result2)
     print("Optimized: " + str(result3))
-    graph.mazedump(result, result3)
+    mazedump(result, result3)
     
 def unittestrandom(xsize, ysize, iters) :
     for n in range(iters) :
@@ -696,21 +708,21 @@ def runtest(xsize, ysize, barrierpairs, msg) :
     def barrierfn(prevx, prevy, ix, iy) :   # closure for barrier test fn
         return (ix, iy) in barrierpairs
     print("Test name: " + msg)
-    graph = Mazegraph(xsize, ysize)
-    result = graph.solvemaze(0, 0, xsize-1, ysize-1, barrierfn)
+    mazeinit(xsize, ysize)
+    result = mazesolve(0, 0, xsize-1, ysize-1, barrierfn)
     print ("route", result)
     print ("cost", len(result))
-    graph.mazedump(result,[])
+    mazedump(result,[])
     reachable = checkreachability(xsize, ysize, 0, 0, xsize-1, ysize-1, barrierpairs)
     pathfound = len(result) > 0
     print("Reachable: %r" % (reachable,))
     assert(reachable == pathfound)          # fail if disagree
     assert(reachable == pathfound)          # fail if disagree
-    result2 = graph.mazeroutecornersonly(result)
+    result2 = mazeroutecornersonly(result)
     print("Corners only:" + str(result2))
-    result3 = graph.mazeoptimizeroute(result2)
+    result3 = mazeoptimizeroute(result2)
     print("Optimized: " + str(result3))
-    graph.mazedump(result, result3)
+    mazedump(result, result3)
 
     print("End test: " + msg) 
     
