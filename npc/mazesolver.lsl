@@ -229,8 +229,6 @@ mazeaddtopath()
     DEBUGPRINT("(%d,%d)" % (gMazeX, gMazeY));
 }
 
- 
-
 //
 //  mazetestcell
 //
@@ -254,59 +252,71 @@ integer mazetestcell(integer fromx, integer fromy, integer x, integer y)
     return(barrier);                            // return 1 if obstacle
 }
  
-#ifdef NOTYET        
-def mazeexistsproductivepath() :
-    """
-    True if a productive path exists
-    """
-    dx = gMazeEndX - gMazeX
-    dy = gMazeEndY - gMazeY
-    dx = mazeclipto1(dx)
-    dy = mazeclipto1(dy)
-    if (dx != 0) :
-        productive = not mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY) // test if cell in productive direction is clear
+//
+//  mazeexistsproductivepath -- true if a productive path exists
+//
+//  A productive path is one that leads to the goal and isn't blocked
+//     
+integer mazeexistsproductivepath()
+{
+    integer dx = gMazeEndX - gMazeX;
+    integer dy = gMazeEndY - gMazeY;
+    integer dx = mazeclipto1(dx);
+    integer dy = mazeclipto1(dy);
+    if (dx != 0) 
+    {    integer productive = not mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY) // test if cell in productive direction is clear
+         if productive :
+            DEBUGPRINT("Productive path at (%d,%d): %d" % (gMazeX, gMazeY, productive))
+            return True
+    }
+    if (dy != 0) 
+    {   integer productive = not mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + dy) // test if cell in productive direction is clear
         if productive :
             DEBUGPRINT("Productive path at (%d,%d): %d" % (gMazeX, gMazeY, productive))
             return True
-    if (dy != 0) :
-        productive = not mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + dy) // test if cell in productive direction is clear
-        if productive :
-            DEBUGPRINT("Productive path at (%d,%d): %d" % (gMazeX, gMazeY, productive))
-            return True
+    }
     return False
-         
-def mazetakeproductivepath() :
-    """
-    Follow productive path || return 0       
-    """
-    global gMazeX, gMazeY
+}
 
-    dx = gMazeEndX - gMazeX
-    dy = gMazeEndY - gMazeY
-    clippeddx = mazeclipto1(dx)
-    clippeddy = mazeclipto1(dy)
-    assert(dx != 0 || dy != 0)              // error to call this at dest
+//
+//  mazetakeproductive path -- follow productive path one cell, or return 0
+//
+mazetakeproductivepath()
+{
+    integer dx = gMazeEndX - gMazeX;
+    integer dy = gMazeEndY - gMazeY;
+    integer clippeddx = mazeclipto1(dx);
+    integer clippeddy = mazeclipto1(dy);
+    assert(dx != 0 || dy != 0);              // error to call this at dest
     //    Try X dir first if more direct towards goal
-    if abs(dx) > abs(dy) && clippeddx :
-        if not mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY) :
-            gMazeX += clippeddx                       // advance in desired dir
-            mazeaddtopath()
-            return 1
+    if (abs(dx) > abs(dy) && clippeddx) 
+    {
+        if (not mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY)) 
+        {   gMazeX += clippeddx;                      // advance in desired dir
+            mazeaddtopath();
+            return(1);
+        }
+    }
     //   Then try Y    
-    if clippeddy :
-        if not mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + clippeddy) :
-            gMazeY += clippeddy                       // advance in desired dir
-            mazeaddtopath()
-            return 1 
+    if (clippeddy) 
+    {   if not mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + clippeddy) 
+        {   gMazeY += clippeddy;                       // advance in desired dir
+            mazeaddtopath();
+            return(1); 
+        }
+    }
     //   Then X, regardless of whether abs(dx) > abs(dy)
-    if clippeddx :
-        if not mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY) :
-            gMazeX += clippeddx                       // advance in desired dir
+    if (clippeddx)
+    {   if not mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY) 
+        {   gMazeX += clippeddx                       // advance in desired dir
             mazeaddtopath()
-            return 1    
-                               // success
-    DEBUGPRINT("Take productive path failed")
-    return 0                                        // hit wall, stop
+            return(1);
+        } 
+    }                           // success
+    DEBUGPRINT("Take productive path failed");
+    return(0);
+}                                               // hit wall, stop
+#ifdef NOTYET   
         
 def mazepickside() :
     """
