@@ -383,10 +383,11 @@ class Mazegraph(object):
                 temp = y0
                 y0 = y1
                 y1 = temp
+            assert(y1 > y0)
             for y in range(y0,y1) :             # test each segment
                 if self.mazetestcell(x0, y, x0, y+1) :
-                    return False                # hit barrier
-            return True
+                    return True                # hit barrier
+            return False
         else :
             assert(y0 == y1)
             assert(x0 != x1)
@@ -394,10 +395,11 @@ class Mazegraph(object):
                 temp = x0
                 x0 = x1
                 x1 = temp
+            assert(x1 > x0)
             for x in range(x0,x1) :
                 if self.mazetestcell(x, y0, x+1, y0) :
-                    return False                # hit barrier
-            return True
+                    return True                # hit barrier
+            return False
          
            
         
@@ -485,6 +487,7 @@ class Mazegraph(object):
                 if abs(armlena) > abs(armlenb) :        # second arm is shorter
                     #   We will try to move middle segment to align with p3y
                     if self.mazelinebarrier(p0x, p3y, p3x, p3y) : # if blocked
+                        print("Mazelinebarrier returned true")
                         n = n + 1
                         continue
                     #   We can get rid of p1 and p2 and replace with new point
