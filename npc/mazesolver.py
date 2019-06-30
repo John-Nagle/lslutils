@@ -351,6 +351,8 @@ class Mazegraph(object):
         prev0y = -1
         prev1x = -1
         prev1y = -1
+        x = -1
+        y = -1
         for n in range(len(route)) :
             x = route[n][0]
             y = route[n][1]
@@ -443,8 +445,8 @@ class Mazegraph(object):
                     n = n + 1
                     continue
                 #   Find shorter arm of C
-                armlena = p0y-p1y 
-                armlenb = p3y-p2y
+                armlena = p0x-p1x 
+                armlenb = p3x-p2x
                 if abs(armlena) > abs(armlenb) :        # second arm is shorter
                     #   We will try to move middle segment to align with p0y, ignoring p1y
                     if self.mazelinebarrier(p3x, p0y, p3x, p3y) : # if blocked
@@ -478,8 +480,8 @@ class Mazegraph(object):
                     n = n + 1
                     continue
                 #   Find shorter arm of C
-                armlena = p0x-p1x 
-                armlenb = p3x-p2x
+                armlena = p0y-p1y 
+                armlenb = p3y-p2y
                 if abs(armlena) > abs(armlenb) :        # second arm is shorter
                     #   We will try to move middle segment to align with p3y
                     if self.mazelinebarrier(p0x, p3y, p3x, p3y) : # if blocked
@@ -487,7 +489,7 @@ class Mazegraph(object):
                         continue
                     #   We can get rid of p1 and p2 and replace with new point
                     route = listreplacelist(route, [(p1x, p3y)], n+1, n+2) # replace p1 and p2
-                    print("Horizontal middle segment shortened at p2: %d: (%d,%d)" % (n+1,p1x,p3y))
+                    print("Horizontal middle segment shortened at p1: %d: (%d,%d)" % (n+1,p1x,p3y))
                     if n > 0 :                          # back up 1
                         n = n - 1
                     continue
@@ -703,6 +705,12 @@ def runtest(xsize, ysize, barrierpairs, msg) :
     pathfound = len(result) > 0
     print("Reachable: %r" % (reachable,))
     assert(reachable == pathfound)          # fail if disagree
+    assert(reachable == pathfound)          # fail if disagree
+    result2 = graph.mazeroutecornersonly(result)
+    print("Corners only:" + str(result2))
+    result3 = graph.mazeoptimizeroute(result2)
+    print("Optimized: " + str(result3))
+    graph.mazedump(result, result3)
 
     print("End test: " + msg) 
     
