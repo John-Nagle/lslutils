@@ -54,7 +54,7 @@ list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
 
 #define DEBUGPRINT(s) // Nothing for now
 #define DEBUGPRINT1(s) llOwnerSay(s)
-#define assert(exp) // Nothing for now
+////#define assert(exp) // Nothing for now
 #define assert(exp) { if (!(exp)) { llOwnerSay("Assertion failed at __LINE__"); panic(); }}
 
 //
@@ -205,7 +205,7 @@ list mazesolve(integer startx, integer starty, integer endx, integer endy)
             integer followstarty = gMazeY;
             integer followstartdir = direction;
             ////DEBUGPRINT("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, gMazeMdbest))
-            DEBUGPRINT1("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdBest));
+            DEBUGPRINT1("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdbest);
             while (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath())
             {
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
@@ -236,7 +236,7 @@ list mazesolve(integer startx, integer starty, integer endx, integer endy)
 //                    
 mazeaddtopath() 
 {   gMazePath = gMazePath + [mazepathval(gMazeX, gMazeY)];
-    DEBUGPRINT("(%d,%d)" % (gMazeX, gMazeY));
+    DEBUGPRINT1("(" + (string)gMazeX + "," + (string)gMazeY + ")");
 }
 
 //
@@ -253,7 +253,6 @@ integer mazetestcell(integer fromx, integer fromy, integer x, integer y)
     if (x < 0 || x >= gMazeXsize || y < 0 || y >= gMazeYsize)  // if off grid
     {    return(1);      }                      // treat as occupied
     integer v = mazecellget(x,y);
-    assert(v == testdata[x][y]);                // this cell
     if (v & MAZEEXAMINED) 
     {   return(v & MAZEBARRIER); }              // already have this one
     integer barrier = gBarrierFn(fromx, fromy, x,y); // check this location
@@ -378,7 +377,7 @@ list mazepickside()
             sidelr = MAZEWALLONLEFT;
         }
     } else {
-        assert(False);                       // should never get here
+        assert(FALSE);                       // should never get here
     }
     DEBUGPRINT("At (%d,%d) picked side %d, direction %d for wall follow." % (gMazeX, gMazeY, sidelr, direction));
     return([sidelr, direction]);
