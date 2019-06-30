@@ -39,7 +39,7 @@
 import numpy
 import math
 import random
-
+#   Constants
 MAZEBARRIER = 0x1                                   # must be low bit
 MAZEEXAMINED = 0x2
 
@@ -88,7 +88,7 @@ def listreplacelist(src, dst, start, end) :
     """
     assert(start >= 0)                          # no funny end-relative stuff
     assert(end >= 0)
-    return src[0:start] + dst + src[end+1:]   
+    return src[0:start] + dst + src[end+1:]     # LSL compatibility
 #
 #
 #   Mazegraph
@@ -97,6 +97,7 @@ def listreplacelist(src, dst, start, end) :
 #
 
 gMazePath = []
+gMazeCells = []                     # maze cell bits, see mazecellget
 gMazeX = -1
 gMazeY = -1
 gMazeMdbest = -1
@@ -118,11 +119,46 @@ testdata = None
 
 #
 #   Maze graph functions
-#   
+#
+
+#
+#   Maze cell storage - 2 bits per cell
+#
+def mazecellget(x,y) :
+    """
+    Get from 2D maze array
+    """
+    assert(x >= 0 and x < gMazeXsize)           # subscript check
+    assert(y >= 0 and y < gMazeYsize)
+    cellix = y*gMazeYsize + x                   # index into cells
+    listix = int(cellix / 16)
+    bitix = (cellix % 16) * 2
+    return (gMazeCells[listix] >> bitix) & 0x3  # 2 bits only
+    
+def mazecellset(x,y, newval) :
+    """
+    Store into 2D maze array
+    """
+    global gMazeCells
+    assert(x >= 0 and x < gMazeXsize)           # subscript check
+    assert(y >= 0 and y < gMazeYsize)
+    assert(newval <= 0x3)                       # only 2 bits
+    cellix = y*gMazeYsize + x                   # index into cells
+    listix = int(cellix / 16)                   # word index
+    bitix = (cellix % 16) * 2                   # bit index within word
+    w = gMazeCells[listix]
+    w = (w & (~(0x3<<bitix)))| (newval<<bitix)  # insert into word
+    gMazeCells[listix] = w                      # insert word
+    while len(gMazeCells) < listix :            # fill out list as needed
+        gMazeCells.append(0)
+   
 def mazeinit(xsize, ysize) :
-    global gMazeXsize, gMazeYsize
-    gMazeXsize = xsize                                          # set size of map
+    global gMazeXsize, gMazeYsize, gMazeCells
+    gMazeXsize = xsize                      # set size of map
     gMazeYsize = ysize
+    gMazeCells = []
+    while len(gMazeCells) < xsize*ysize :   # allocate list
+        gMazeCells.append(0)
     global testdata                         # Python only
     testdata = numpy.full((xsize, ysize), 0)
        
@@ -183,17 +219,20 @@ def mazeaddtopath() :
                                                      
 def mazetestcell(fromx, fromy, x, y) :
     """
-    Returns 1 if occupied cell
+    Returns 1 if occupied cell.
+    Makes expensive cast ray tests the first time a cell is checked.
     """
     print("Testcell (%d,%d)" % (x,y))       # ***TEMP***
     if (x < 0 or x >= gMazeXsize or y < 0 or y >= gMazeYsize) : # if off grid
         return 1                            # treat as occupied
-    v = testdata[x][y]                 # this cell
+    v = mazecellget(x,y)
+    assert(v == testdata[x][y])             # this cell
     if (v & MAZEEXAMINED) :
-        return v & MAZEBARRIER                  # already have this one
-    barrier = gBarrierFn(fromx, fromy, x,y)             # check this location
+        return v & MAZEBARRIER              # already have this one
+    barrier = gBarrierFn(fromx, fromy, x,y) # check this location
     v = MAZEEXAMINED | barrier
-    testdata[x][y] = v                 # update sites checked
+    mazecellset(x,y,v)                      # update cells checked
+    testdata[x][y] = v                      # update sites checked
     return barrier                          # return 1 if obstacle
         
 def mazeexistsproductivepath() :
@@ -543,7 +582,9 @@ def mazeoptimizeroute(route) :
     return route                                    # condensed route                      
 
             
-        
+#
+#   Test-only code
+#        
 def mazedump(route, finalroute) :
     """
     Debug dump
@@ -591,9 +632,7 @@ def mazedump(route, finalroute) :
     print("     " + units)            
 
  
-#
-#   Test-only code
-#
+
 
 def checkreachability(xsize, ysize, xstart, ystart, xend, yend, barrierpairs) :
     """
