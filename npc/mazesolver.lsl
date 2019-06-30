@@ -36,22 +36,22 @@
 //
 //   Constants
 //
-#ifdef NOTYET
 #define MAZEBARRIER (0x1)                                   // must be low bit
 #define MAZEEXAMINED (0x2)
 
-///EDGEFOLLOWDIRS = [(1,0), (0, 1), (-1, 0), (0, -1)]  // edge following dirs to dx && dy
-list EDGEFOLLOWDIRX = [1,0,-1,0];
-list EDGEFOLLOWDIRY = [0, 1, 0, -1];
-
-list MAZEEDGEFOLLOWDX = [1,0,-1,0];
-list MAZEEDGEFOLLOWDY = [0,1,0,-1]
 
 //   Wall follow sides
 #define MAZEWALLONLEFT  1
 #define MAZEWALLONRIGHT (-1)
-#endif // NOTYET
+list EDGEFOLLOWDIRX = [1,0,-1,0];
+list EDGEFOLLOWDIRY = [0, 1, 0, -1];
+///EDGEFOLLOWDIRS = [(1,0), (0, 1), (-1, 0), (0, -1)]  // edge following dirs to dx && dy
+
+list MAZEEDGEFOLLOWDX = [1,0,-1,0];
+list MAZEEDGEFOLLOWDY = [0,1,0,-1];
+
 #define DEBUGPRINT(s) // Nothing for now
+#define assert(exp) // Nothing for now
 
 //
 //  abs -- absolute value, integer
@@ -154,8 +154,7 @@ integer mazecellset(integer x, integer y, integer newval) :
 //
 #define mazepathx(val) ((val) & 0xffff)         // X is low half
 #define mazepathy(val) ((val)>> 16) % 0xffff)   // Y is high half
-    
-#define mazepathval(x,y) (((y) << 16) | (x))
+#define mazepathval(x,y) (((y) << 16) | (x))    // construct 32 bit value
 
 //
 //  mazeinit -- initialization
