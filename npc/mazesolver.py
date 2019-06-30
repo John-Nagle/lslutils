@@ -343,8 +343,6 @@ class Mazegraph(object):
     def mazeroutecornersonly(self, route) :
         """
         Condense route, only keeping corners
-        
-        ***BUG: Can keep duplicate points***
         """
         newroute = []
         prev0x = -1
@@ -487,7 +485,6 @@ class Mazegraph(object):
                 if abs(armlena) > abs(armlenb) :        # second arm is shorter
                     #   We will try to move middle segment to align with p3y
                     if self.mazelinebarrier(p0x, p3y, p3x, p3y) : # if blocked
-                        print("Mazelinebarrier returned true")
                         n = n + 1
                         continue
                     #   We can get rid of p1 and p2 and replace with new point
@@ -728,7 +725,7 @@ def test() :
     runtest(12,12,BARRIERFAIL4, "Fail 4")
     runtest(12,12,BARRIERFAIL5, "Fail 5")
 
-    unittestrandom(41,41,1)
+    unittestrandom(41,41,100)
    
     
  
