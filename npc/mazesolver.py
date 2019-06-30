@@ -99,6 +99,8 @@ def listreplacelist(src, dst, start, end) :
 gMazePath = []
 gMazeX = -1
 gMazeY = -1
+gMazeMdbest = -1
+
 
 gMazeXsize = -1
 gMazeYsize = -1
@@ -106,7 +108,6 @@ gMazeStartX = -1
 gMazeStartY = -1 
 gMazeEndX = -1 
 gMazeEndY = -1
-gMazeMdbest = -1
 #
 #   Python only
 gBarrierFn = None
@@ -128,7 +129,6 @@ def mazeinit(xsize, ysize) :
 def mazesolve(startx, starty, endx, endy, barrierfn) :
     global gMazeX, gMazeY, gMazeStartX, gMazeStartY, gMazeEndX, gMazeEndY, gMazeMdbest, gMazePath
     global gBarrierFn                       # Python only
-    print("GMazeX = " + str(gMazeX))        # ***TEMP***
     gMazeX = startx                         # start
     gMazeY = starty
     gBarrierFn = barrierfn                   # tests cell for blocked
@@ -168,8 +168,8 @@ def mazesolve(startx, starty, endx, endy, barrierfn) :
                     print("Back at start of follow. Stuck")
                     return []                                   # fails
             print("Finished wall following.")
-                        
-        return(gMazePath)
+    print("Solved maze")                
+    return(gMazePath)
                     
 def mazeaddtopath() :
     """
