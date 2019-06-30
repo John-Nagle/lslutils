@@ -86,12 +86,12 @@ integer mazeinline(integer x0, integer y0,integer x1,integer y1, integer x2, int
 //
 //   mazepointssame  -- true if points are identical
 //
-def mazepointssame(integer x0, integer y0, integer x1, integer y1) 
+integer mazepointssame(integer x0, integer y0, integer x1, integer y1) 
 {   return(x0 == x1 && y0 == y1); }
 //
 //   listreplacelist -- a builtin in LSL
 //
-list listreplacelist(list src, list dst, list start, list end) :
+list listreplacelist(list src, list dst, list start, list end) 
 {   assert(start >= 0);                          // no funny end-relative stuff
     assert(end >= 0);
     return(llListReplaceList(src, dst, start, end));
@@ -147,7 +147,8 @@ mazecellset(integer x, integer y, integer newval)
     integer bitix = (cellix % 16) * 2;          // bit index within word
     integer w = llList2Integer(gMazeCells,listix);             // word to update
     w = (w & (~(0x3<<bitix)))| (newval<<bitix); // insert into word
-    gMazeCells[listix] = w;                     // insert word
+    gMazeCells = llListReplaceList(gMazeCells,[w],listix, listix); // replace word
+    ////gMazeCells[listix] = w;                     // insert word
 }        
 //
 //   Maze path storage - X && Y in one 32-bit value
@@ -169,7 +170,7 @@ mazeinit(integer xsize, integer ysize)
 }
     
        
-integer mazesolve(integer startx, integer starty, integer endx, integer endy)
+list mazesolve(integer startx, integer starty, integer endx, integer endy)
 {
     gMazeX = startx;                        // start
     gMazeY = starty;
@@ -316,25 +317,30 @@ integer mazetakeproductivepath()
     DEBUGPRINT("Take productive path failed");
     return(0);
 }                                               // hit wall, stop
+//
+//  mazepickside
+//
+//    Which side of the wall to follow? The one that leads toward the goal.
+//    Where is the wall? One cell in the direction takkeproductvepath was going.
+//
+//       
+list mazepickside()
+{
+    ////integer sidelr, direction;
+    integer sidelr;
+    integer direction;
+    integer dx = gMazeEndX - gMazeX;
+    integer dy = gMazeEndY - gMazeY;
+    assert(dx != 0 || dy != 0);              // error to call this at dest
+    integer clippeddx = mazeclipto1(dx);
+    integer clippeddy = mazeclipto1(dy);
+    if (abs(dx) > abs(dy))                    // better to move in X
+    {    clippeddy = 0; } 
+    else
+    {    clippeddx = 0; }
+    assert(mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY + clippeddy)); // must have hit a wall
 #ifdef NOTYET   
-        
-def mazepickside() :
-    """
-    Which side of the wall to follow? The one that leads toward
-    the goal.
-    Where is the wall? One cell in the direction takkeproductvepath was
-    going.
-    """
-    dx = gMazeEndX - gMazeX
-    dy = gMazeEndY - gMazeY
-    assert(dx != 0 || dy != 0)              // error to call this at dest
-    clippeddx = mazeclipto1(dx)
-    clippeddy = mazeclipto1(dy)
-    if abs(dx) > abs(dy) :                  // better to move in X
-        clippeddy = 0 
-    else :
-        clippeddx = 0
-    assert(mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY + clippeddy)) // must have hit a wall
+
     //   8 cases, dumb version
     if clippeddx == 1 :                     // obstacle is in +X dir
         if (dy > 0) :                       // if want to move in +Y
@@ -365,10 +371,12 @@ def mazepickside() :
             direction = 2
             sidelr = MAZEWALLONLEFT
     else :
-        assert(False)                       // should never get here
-    DEBUGPRINT("At (%d,%d) picked side %d, direction %d for wall follow." % (gMazeX, gMazeY, sidelr, direction))
-    return (sidelr, direction)
-        
+#endif // NOTYET
+        assert(False);                       // should never get here
+    DEBUGPRINT("At (%d,%d) picked side %d, direction %d for wall follow." % (gMazeX, gMazeY, sidelr, direction));
+    return([sidelr, direction]);
+}
+#ifdef NOTYET        
 def mazefollowwall(sidelr, direction) :
     """
     Follow wall from current point. Single move per call
