@@ -404,8 +404,7 @@ list mazepickside()
 //
 integer mazefollowwall(integer sidelr, integer direction)
 {
-    DEBUGPRINT("Following wall at (%d,%d) side %d direction %d md %d" % 
-            (gMazeX, gMazeY, sidelr, direction, mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)));
+    DEBUGPRINT1("Following wall at (" + (string)gMazeX + "," + (string)gMazeY + ")" + " side " + (string)sidelr + " direction " + (string) direction + " md " + (string)mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY));
     integer dx = MAZEEDGEFOLLOWDX(direction);
     integer dy = MAZEEDGEFOLLOWDY[direction]
     integer dxsame = MAZEEDGEFOLLOWDX(((direction + sidelr) + 4) % 4); // if not blocked ahead
