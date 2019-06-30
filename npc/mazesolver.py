@@ -726,15 +726,16 @@ def unittestrandom1(xsize, ysize) :
     print ("route", routeasstring(result))
     print ("cost", len(result))
     mazedump(result,[])   
-    reachable = checkreachability(xsize, ysize, startx, starty, endx, endy, barrierpairs)
-    pathfound = len(result) > 0
-    print("Reachable: %r" % (reachable,))
-    assert(reachable == pathfound)          # fail if disagree
     result2 = mazeroutecornersonly(result)
     print("Corners only:" + routeasstring(result2))
     result3 = mazeoptimizeroute(result2)
     print("Optimized: " + routeasstring(result3))
     mazedump(result, result3)
+    reachable = checkreachability(xsize, ysize, startx, starty, endx, endy, barrierpairs)
+    pathfound = len(result) > 0
+    print("Reachable: %r" % (reachable,))
+    assert(reachable == pathfound)          # fail if disagree
+
     
 def unittestrandom(xsize, ysize, iters) :
     for n in range(iters) :
@@ -840,7 +841,7 @@ def test() :
     runtest(12,12,BARRIERFAIL4, "Fail 4")
     runtest(12,12,BARRIERFAIL5, "Fail 5")
 
-    unittestrandom(41,41,1)
+    unittestrandom(41,41,1000)
    
     
  
