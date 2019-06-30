@@ -151,30 +151,46 @@ def mazecellset(x,y, newval) :
     gMazeCells[listix] = w                      # insert word
     while len(gMazeCells) < listix :            # fill out list as needed
         gMazeCells.append(0)
+        
+#
+#   Maze path storage - X and Y in one 32-bit value
+#
+def mazepathx(val) :
+    return val & 0xffff
+    
+def mazepathy(val) :
+    return (val>> 16) % 0xffff                  # Y is high half
+    
+def mazepathval(x,y) :
+    assert(x >= 0 and x < 65536)
+    assert(y >= 0 and y < 65536)
+    return (y << 16) | x
+
+    
    
 def mazeinit(xsize, ysize) :
     global gMazeXsize, gMazeYsize, gMazeCells
-    gMazeXsize = xsize                      # set size of map
+    gMazeXsize = xsize                          # set size of map
     gMazeYsize = ysize
     gMazeCells = []
-    while len(gMazeCells) < xsize*ysize :   # allocate list
+    while len(gMazeCells) < xsize*ysize :       # allocate list
         gMazeCells.append(0)
-    global testdata                         # Python only
-    testdata = numpy.full((xsize, ysize), 0)
+    global testdata                             # Python only
+    testdata = numpy.full((xsize, ysize), 0)    # only used as check on maze cell get/set
        
 def mazesolve(startx, starty, endx, endy, barrierfn) :
     global gMazeX, gMazeY, gMazeStartX, gMazeStartY, gMazeEndX, gMazeEndY, gMazeMdbest, gMazePath
     global gBarrierFn                       # Python only
     gMazeX = startx                         # start
     gMazeY = starty
-    gBarrierFn = barrierfn                   # tests cell for blocked
+    gBarrierFn = barrierfn                  # tests cell for blocked
     gMazeStartX = startx                    # start
     gMazeStartY = starty
     gMazeEndX = endx                        # destination
     gMazeEndY = endy
     gMazeMdbest = gMazeXsize+gMazeYsize+1   # best dist to target init
     gMazePath = []                          # accumulated path
-    mazeaddtopath()                        # add initial point
+    mazeaddtopath()                         # add initial point
     #   Outer loop - shortcuts or wall following
     while (gMazeX != gMazeEndX or gMazeY != gMazeEndY) : # while not at dest
         if (len(gMazePath) > gMazeXsize*gMazeYsize*4) :
@@ -212,7 +228,8 @@ def mazeaddtopath() :
     Add current position to path
     """
     global gMazePath
-    gMazePath += [(gMazeX, gMazeY)]
+    ####gMazePath += [(gMazeX, gMazeY)]
+    gMazePath.append(mazepathval(gMazeX, gMazeY))
     print("(%d,%d)" % (gMazeX, gMazeY))
     ####assert(not mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY + dy)) # path must not go into an occupied cell
 
@@ -412,6 +429,8 @@ def mazeroutecornersonly(route) :
     """
     Condense route, only keeping corners
     """
+    if (len(route) == 0) :                          # empty
+        return(route)
     newroute = []
     prev0x = -1
     prev0y = -1
@@ -420,8 +439,11 @@ def mazeroutecornersonly(route) :
     x = -1
     y = -1
     for n in range(len(route)) :
-        x = route[n][0]
-        y = route[n][1]
+        val = route[n]
+        x = mazepathx(val)
+        y = mazepathy(val)
+        ####x = route[n][0]
+        ####y = route[n][1]
         if (prev0x >= 0 and (mazeinline(prev0x, prev0y, prev1x, prev1y, x, y) 
             or mazepointssame(prev0x, prev0y, prev1x, prev1y) 
             or mazepointssame(prev1x, prev1y, x,y))) :
@@ -431,11 +453,11 @@ def mazeroutecornersonly(route) :
             prev0x = prev1x
             prev0y = prev1y
             if prev1x >= 0 :                    # if we have something to output
-                newroute.append((prev1x, prev1y))
+                newroute.append(mazepathval(prev1x, prev1y))
         prev1x = x
         prev1y = y
     # final point.
-    newroute.append((x,y)) 
+    newroute.append(mazepathval(x,y)) 
     return newroute
         
 def mazelinebarrier(x0, y0, x1, y1) :
@@ -483,15 +505,20 @@ def mazeoptimizeroute(route) :
     #   Advance throug route. On each iteration, either the route gets shorter, or n gets
     #   larger, so this should always terminate.
     while n < len(route)-3 :                        # advancing through route
-        print("%d: %s %s %s %s" % (n, route[n], route[n+1], route[n+2], route[n+3])) # ***TEMP***
-        p0x = route[n][0]
-        p0y = route[n][1]
-        p1x = route[n+1][0]
-        p1y = route[n+1][1]
-        p2x = route[n+2][0]
-        p2y = route[n+2][1]
-        p3x = route[n+3][0]
-        p3y = route[n+3][1]
+        p0val = route[n+0]                            # get next four points
+        p1val = route[n+1]
+        p2val = route[n+2]
+        p3val = route[n+3]
+        p0x = mazepathx(p0val)
+        p0y = mazepathy(p0val)
+        p1x = mazepathx(p1val)
+        p1y = mazepathy(p1val)
+        p2x = mazepathx(p2val)
+        p2y = mazepathy(p2val)
+        p3x = mazepathx(p3val)
+        p3y = mazepathy(p3val)
+        print("%d: (%d,%d) (%d,%d) (%d,%d) (%d,%d)" % (n, p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y)) # ***TEMP***
+
         #   Remove collinear redundant points. The redundant point may not be
         #   between the endpoints, but that's OK. It's just removing a move to
         #   a dead end and back.
@@ -536,7 +563,7 @@ def mazeoptimizeroute(route) :
                     n = n + 1
                     continue
                 #   We can get rid of p1 and replace p2
-                route = listreplacelist(route, [(p3x,p0y)], n+1, n+2) # remove p1
+                route = listreplacelist(route, [mazepathval(p3x,p0y)], n+1, n+2) # remove p1
                 print("Vertical middle segment shortened at p1: %d: (%d,%d)" % (n+1,p3x,p0y))
                 continue
             else :
@@ -545,7 +572,7 @@ def mazeoptimizeroute(route) :
                     n = n + 1
                     continue
                 #   We can get rid of p2 and replace p1
-                route = listreplacelist(route, [(p0x, p3y)], n+1, n+2) # remove p2
+                route = listreplacelist(route, [mazepathval(p0x, p3y)], n+1, n+2) # remove p2
                 print("Vertical middle segment shortened at p2: %d: (%d,%d)" % (n+1,p0x,p3y))
                 continue                       
                     
@@ -567,7 +594,7 @@ def mazeoptimizeroute(route) :
                     n = n + 1
                     continue
                 #   We can get rid of p1 and p2 and replace with new point
-                route = listreplacelist(route, [(p1x, p3y)], n+1, n+2) # replace p1 and p2
+                route = listreplacelist(route, [mazepathval(p1x, p3y)], n+1, n+2) # replace p1 and p2
                 print("Horizontal middle segment shortened at p1: %d: (%d,%d)" % (n+1,p1x,p3y))
                 continue
             else :
@@ -576,7 +603,7 @@ def mazeoptimizeroute(route) :
                     n = n + 1
                     continue
                 #   We can get rid of p1 and p2 and replace with new point
-                route = listreplacelist(route, [(p2x,p0y)], n+1, n+2) # replace p1 and p2 with new point
+                route = listreplacelist(route, [mazepathval(p2x,p0y)], n+1, n+2) # replace p1 and p2 with new point
                 print("Horizontal middle segment shortened at p2: %d: (%d,%d)" % (n+1,p2x,p0y))
                 continue 
     return route                                    # condensed route                      
@@ -584,7 +611,20 @@ def mazeoptimizeroute(route) :
             
 #
 #   Test-only code
-#        
+#     
+
+#   
+def routeasstring(route) :
+    """
+    Dump a route, which has X and Y encoded into one value
+    """
+    s = ""
+    for val in route :
+        x = mazepathx(val)
+        y = mazepathy(val)
+        s = s + ("(%d,%d) " % (x,y))
+    return(s)
+   
 def mazedump(route, finalroute) :
     """
     Debug dump
@@ -616,9 +656,9 @@ def mazedump(route, finalroute) :
             if barrier > 0 :
                 ch = "█"
             else :
-                if (j,i) in route :                    
+                if mazepathval(j,i) in route :                    
                     ch = "•"
-                if (j,i) in finalroute :
+                if mazepathval(j,i) in finalroute :
                     ch = "◉"
             if i == gMazeStartY and j == gMazeStartX :
                 ch = "S"
@@ -683,7 +723,7 @@ def unittestrandom1(xsize, ysize) :
         return (ix, iy) in barrierpairs
     mazeinit(xsize, ysize)
     result = mazesolve(startx, starty, endx, endy, barrierfn)
-    print ("route", result)
+    print ("route", routeasstring(result))
     print ("cost", len(result))
     mazedump(result,[])   
     reachable = checkreachability(xsize, ysize, startx, starty, endx, endy, barrierpairs)
@@ -691,9 +731,9 @@ def unittestrandom1(xsize, ysize) :
     print("Reachable: %r" % (reachable,))
     assert(reachable == pathfound)          # fail if disagree
     result2 = mazeroutecornersonly(result)
-    print("Corners only:" + str(result2))
+    print("Corners only:" + routeasstring(result2))
     result3 = mazeoptimizeroute(result2)
-    print("Optimized: " + str(result3))
+    print("Optimized: " + routeasstring(result3))
     mazedump(result, result3)
     
 def unittestrandom(xsize, ysize, iters) :
@@ -782,9 +822,9 @@ def runtest(xsize, ysize, barrierpairs, msg) :
     assert(reachable == pathfound)          # fail if disagree
     assert(reachable == pathfound)          # fail if disagree
     result2 = mazeroutecornersonly(result)
-    print("Corners only:" + str(result2))
+    print("Corners only:" + routeasstring(result2))
     result3 = mazeoptimizeroute(result2)
-    print("Optimized: " + str(result3))
+    print("Optimized: " + routeasstring(result3))
     mazedump(result, result3)
 
     print("End test: " + msg) 
