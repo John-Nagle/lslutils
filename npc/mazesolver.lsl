@@ -35,6 +35,8 @@
 //   to 45x45 cells. 
 //
 //   Constants
+//
+#ifdef NOTYET
 #define MAZEBARRIER (0x1)                                   // must be low bit
 #define MAZEEXAMINED (0x2)
 
@@ -43,11 +45,13 @@ list EDGEFOLLOWDIRX = [1,0,-1,0];
 list EDGEFOLLOWDIRY = [0, 1, 0, -1];
 
 list MAZEEDGEFOLLOWDX = [1,0,-1,0];
-list 'MAZEEDGEFOLLOWDY = [0,1,0,-1]
+list MAZEEDGEFOLLOWDY = [0,1,0,-1]
 
 //   Wall follow sides
 #define MAZEWALLONLEFT  1
 #define MAZEWALLONRIGHT (-1)
+#endif // NOTYET
+#define DEBUGPRINT(s) // Nothing for now
 
 //
 //  abs -- absolute value, integer
@@ -88,8 +92,8 @@ def mazepointssame(integer x0, integer y0, integer x1, integer y1)
 //   listreplacelist -- a builtin in LSL
 //
 list listreplacelist(list src, list dst, list start, list end) :
-{   assert(start >= 0)                          // no funny end-relative stuff
-    assert(end >= 0)
+{   assert(start >= 0);                          // no funny end-relative stuff
+    assert(end >= 0);
     return(llListReplaceList(src, dst, start, end));
     ////return src[0:start] + dst + src[end+1:]     // LSL compatibility
 }
@@ -151,7 +155,7 @@ integer mazecellset(integer x, integer y, integer newval) :
 #define mazepathx(val) ((val) & 0xffff)         // X is low half
 #define mazepathy(val) ((val)>> 16) % 0xffff)   // Y is high half
     
-#define mazepathval(x,y) ((y) << 16) | (x))
+#define mazepathval(x,y) (((y) << 16) | (x))
 
 //
 //  mazeinit -- initialization
@@ -160,86 +164,98 @@ mazeinit(integer xsize, integer ysize)
 {   
     gMazeXsize = xsize;                          // set size of map
     gMazeYsize = ysize;
-    gMazeCells = []
-    while llGetListLength(gMazeCells) < xsize*ysize        // allocate cell list
+    gMazeCells = [];
+    while (llGetListLength(gMazeCells) < xsize*ysize)        // allocate cell list
     {    gMazeCells = gMazeCells + [0]; }   // fill list with zeroes 
+}
     
-#ifdef NOTYET     
        
-def mazesolve(startx, starty, endx, endy, barrierfn) :
-    global gMazeX, gMazeY, gMazeStartX, gMazeStartY, gMazeEndX, gMazeEndY, gMazeMdbest, gMazePath
-    global gBarrierFn                       // Python only
-    gMazeX = startx                         // start
-    gMazeY = starty
-    gBarrierFn = barrierfn                  // tests cell for blocked
-    gMazeStartX = startx                    // start
-    gMazeStartY = starty
-    gMazeEndX = endx                        // destination
-    gMazeEndY = endy
-    gMazeMdbest = gMazeXsize+gMazeYsize+1   // best dist to target init
-    gMazePath = []                          // accumulated path
-    mazeaddtopath()                         // add initial point
+integer mazesolve(integer startx, integer starty, integer endx, integer endy) :
+    gMazeX = startx;                        // start
+    gMazeY = starty;
+    gMazeStartX = startx;                   // start
+    gMazeStartY = starty;
+    gMazeEndX = endx;                       // destination
+    gMazeEndY = endy;
+    gMazeMdbest = gMazeXsize+gMazeYsize+1;  // best dist to target init
+    gMazePath = [];                         // accumulated path
+    mazeaddtopath();                        // add initial point
     //   Outer loop - shortcuts || wall following
     while (gMazeX != gMazeEndX || gMazeY != gMazeEndY) : // while not at dest
-        if (len(gMazePath) > gMazeXsize*gMazeYsize*4) :
-            return []                       // we are in an undetected loop
-        if (mazeexistsproductivepath()) :  // if a shortcut is available
-            mazetakeproductivepath()       // use it
-            gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)
+    {   if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) 
+        {   return([]);  }                  // we are in an undetected loop
+        if (mazeexistsproductivepath())     // if a shortcut is available
+        {   mazetakeproductivepath();       // use it
+            gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
             ////////gMazeMdbest = gMazeMdbest -1 
-            assert(gMazeMdbest >= 0)
-        else :
+            assert(gMazeMdbest >= 0);
+        } else {
             ////////gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)
-            sidelr, direction = mazepickside()        // follow left || right?
+            ////sidelr, direction = mazepickside()        // follow left || right?
+            list picksideinfo = mazepickside();
+            integer sidelr = llList2Integer(picksideinfo,0);
+            integer direction= llList2Integer(picksideinfo,1);
             //   Inner loop - wall following
-            followstartx = gMazeX
-            followstarty = gMazeY
-            followstartdir = direction
+            integer followstartx = gMazeX;
+            integer followstarty = gMazeY;
+            integer followstartdir = direction;
             DEBUGPRINT("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, gMazeMdbest))
-            while mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || not mazeexistsproductivepath() :
+            while (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath())
+            {
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY) : // if at end
                     return gMazePath                               // done
                 direction = mazefollowwall(sidelr, direction)      // follow edge, advance one cell
-                if len(gMazePath) > gMazeXsize*gMazeYsize*4 : // runaway check
+                if llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4 : // runaway check
                     DEBUGPRINT("***ERROR*** runaway: " + str(gMazePath)) 
                     return []
                 //   Termination check - if we are back at the start of following && going in the same direction, no solution
                 if (gMazeX == followstartx && gMazeY == followstarty && direction == followstartdir) :
                     DEBUGPRINT("Back at start of follow. Stuck")
                     return []                                   // fails
+            }
             DEBUGPRINT("Finished wall following.")
+        }
+    }
     DEBUGPRINT("Solved maze")                
-    return(gMazePath)
-                    
-def mazeaddtopath() :
-    """
-    Add current position to path
-    """
-    global gMazePath
-    ////////gMazePath += [(gMazeX, gMazeY)]
-    gMazePath.append(mazepathval(gMazeX, gMazeY))
-    DEBUGPRINT("(%d,%d)" % (gMazeX, gMazeY))
-    ////////assert(not mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY + dy)) // path must not go into an occupied cell
+    return(gMazePath);
+}
 
-                                                     
-def mazetestcell(fromx, fromy, x, y) :
-    """
-    Returns 1 if occupied cell.
-    Makes expensive cast ray tests the first time a cell is checked.
-    """
-    DEBUGPRINT("Testcell (%d,%d)" % (x,y))       // ***TEMP***
-    if (x < 0 || x >= gMazeXsize || y < 0 || y >= gMazeYsize) : // if off grid
-        return 1                            // treat as occupied
-    v = mazecellget(x,y)
-    assert(v == testdata[x][y])             // this cell
-    if (v & MAZEEXAMINED) :
-        return v & MAZEBARRIER              // already have this one
-    barrier = gBarrierFn(fromx, fromy, x,y) // check this location
-    v = MAZEEXAMINED | barrier
-    mazecellset(x,y,v)                      // update cells checked
-    testdata[x][y] = v                      // update sites checked
-    return barrier                          // return 1 if obstacle
-        
+//
+//  mazeaddtopath -- add current position to path
+//
+//  ***NEEDS COLLINEAR OPTIMIZATION***
+//                    
+mazeaddtopath() 
+{   gMazePath = gMazePath + [mazepathval(gMazeX, gMazeY)];
+    DEBUGPRINT("(%d,%d)" % (gMazeX, gMazeY));
+}
+
+ 
+
+//
+//  mazetestcell
+//
+//  Returns 1 if occupied cell.
+//
+//  We have to test from a known-empty cell, because cast ray won't detect
+//  an obstacle it is inside.
+//                                                       
+integer mazetestcell(integer fromx, integer fromy, integer x, integer y)
+{
+    DEBUGPRINT("Testcell (%d,%d)" % (x,y));       // ***TEMP***
+    if (x < 0 || x >= gMazeXsize || y < 0 || y >= gMazeYsize)  // if off grid
+    {    return(1);      }                      // treat as occupied
+    integer v = mazecellget(x,y);
+    assert(v == testdata[x][y]);                // this cell
+    if (v & MAZEEXAMINED) 
+    {   return(v & MAZEBARRIER); }              // already have this one
+    integer barrier = gBarrierFn(fromx, fromy, x,y) // check this location
+    v = MAZEEXAMINED | barrier;
+    mazecellset(x,y,v);                         // update cells checked
+    return(barrier);                            // return 1 if obstacle
+}
+ 
+#ifdef NOTYET        
 def mazeexistsproductivepath() :
     """
     True if a productive path exists
@@ -417,7 +433,7 @@ def mazeroutecornersonly(route) :
     """
     Condense route, only keeping corners
     """
-    if (len(route) == 0) :                          // empty
+    if (llGetListLength(route) == 0) :                          // empty
         return(route)
     newroute = []
     prev0x = -1
@@ -426,7 +442,7 @@ def mazeroutecornersonly(route) :
     prev1y = -1
     x = -1
     y = -1
-    for n in range(len(route)) :
+    for n in range(llGetListLength(route)) :
         val = route[n]
         x = mazepathx(val)
         y = mazepathy(val)
@@ -492,7 +508,7 @@ def mazeoptimizeroute(route) :
     n = 0;
     //   Advance throug route. On each iteration, either the route gets shorter, || n gets
     //   larger, so this should always terminate.
-    while n < len(route)-3 :                        // advancing through route
+    while n < llGetListLength(route)-3 :                        // advancing through route
         p0val = route[n+0]                            // get next four points
         p1val = route[n+1]
         p2val = route[n+2]
@@ -712,7 +728,7 @@ def unittestrandom1(xsize, ysize) :
     mazeinit(xsize, ysize)
     result = mazesolve(startx, starty, endx, endy, barrierfn)
     DEBUGPRINT ("route", routeasstring(result))
-    DEBUGPRINT ("cost", len(result))
+    DEBUGPRINT ("cost", llGetListLength(result))
     mazedump(result,[])   
     result2 = mazeroutecornersonly(result)
     DEBUGPRINT("Corners only:" + routeasstring(result2))
@@ -720,7 +736,7 @@ def unittestrandom1(xsize, ysize) :
     DEBUGPRINT("Optimized: " + routeasstring(result3))
     mazedump(result, result3)
     reachable = checkreachability(xsize, ysize, startx, starty, endx, endy, barrierpairs)
-    pathfound = len(result) > 0
+    pathfound = llGetListLength(result) > 0
     DEBUGPRINT("Reachable: %r" % (reachable,))
     assert(reachable == pathfound)          // fail if disagree
 
@@ -803,10 +819,10 @@ def runtest(xsize, ysize, barrierpairs, msg) :
     mazeinit(xsize, ysize)
     result = mazesolve(0, 0, xsize-1, ysize-1, barrierfn)
     DEBUGPRINT ("route", result)
-    DEBUGPRINT ("cost", len(result))
+    DEBUGPRINT ("cost", llGetListLength(result))
     mazedump(result,[])
     reachable = checkreachability(xsize, ysize, 0, 0, xsize-1, ysize-1, barrierpairs)
-    pathfound = len(result) > 0
+    pathfound = llGetListLength(result) > 0
     DEBUGPRINT("Reachable: %r" % (reachable,))
     assert(reachable == pathfound)          // fail if disagree
     assert(reachable == pathfound)          // fail if disagree
