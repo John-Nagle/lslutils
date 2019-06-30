@@ -432,13 +432,17 @@ def mazelinebarrier(x0, y0, x1, y1) :
         
 def mazeoptimizeroute(route) :
     """
-    Optimize route.
+    Locally optimize route.
         
     The incoming route should have corners only, and represent only horizontal and vertical lines.
     Optimizing the route looks at groups of 4 points. If the two turns are both the same, then try
-    to eliminate one of the points by moving the line between the two middle points.        
+    to eliminate one of the points by moving the line between the two middle points.
+    
+    O(n)        
     """
     n = 0;
+    #   Advance throug route. On each iteration, either the route gets shorter, or n gets
+    #   larger, so this should always terminate.
     while n < len(route)-3 :                        # advancing through route
         print("%d: %s %s %s %s" % (n, route[n], route[n+1], route[n+2], route[n+3])) # ***TEMP***
         p0x = route[n][0]
@@ -449,21 +453,32 @@ def mazeoptimizeroute(route) :
         p2y = route[n+2][1]
         p3x = route[n+3][0]
         p3y = route[n+3][1]
+        #   Remove collinear redundant points. The redundant point may not be
+        #   between the endpoints, but that's OK. It's just removing a move to
+        #   a dead end and back.
         if (p0x == p1x and p0y == p1y) :            # redundant point
             ####print("Removing redundant point %d from %s" % (n+1, str(route)))
             route = listreplacelist(route, [], n+1, n+1)
+            if n > 0 :                              # back up 1, may have created new redundant group
+                n = n - 1
             continue
         if (p1x == p2x and p1y == p2y) :            # redundant point
             ####print("Removing redundant point %d from %s" % (n+2, str(route)))
             route = listreplacelist(route, [], n+2, n+2)
+            if n > 0 :
+                n = n - 1
             continue
         if mazeinline(p0x,p0y,p1x,p1y,p2x,p2y) :
             ####print("Removing collinear point %d from %s" % (n+1, str(route)))
             route = listreplacelist(route, [], n+1, n+1)
+            if n > 0 :
+                n = n - 1
             continue
         if mazeinline(p1x,p1y,p2x,p2y,p3x,p3y) :
             ####print("Removing collinear point %d from %s" % (n+1, str(route)))
             route = listreplacelist(route, [], n+2, n+2)
+            if n > 0 :
+                n = n - 1
             continue                
         if (p1x == p2x) :                           # if vertical middle segment
             #   End segments must be horizontal
@@ -484,8 +499,6 @@ def mazeoptimizeroute(route) :
                 #   We can get rid of p1 and replace p2
                 route = listreplacelist(route, [(p3x,p0y)], n+1, n+2) # remove p1
                 print("Vertical middle segment shortened at p1: %d: (%d,%d)" % (n+1,p3x,p0y))
-                if n > 0 :                          # back up 1
-                    n = n - 1
                 continue
             else :
                 #   We will try to move middle segment to align with p3y, ignoring p2y
@@ -495,8 +508,6 @@ def mazeoptimizeroute(route) :
                 #   We can get rid of p2 and replace p1
                 route = listreplacelist(route, [(p0x, p3y)], n+1, n+2) # remove p2
                 print("Vertical middle segment shortened at p2: %d: (%d,%d)" % (n+1,p0x,p3y))
-                if n > 0 :                          # back up 1
-                    n = n - 1                       # to allow further optimization
                 continue                       
                     
         else :                                      # if horizontal middle segment
@@ -519,8 +530,6 @@ def mazeoptimizeroute(route) :
                 #   We can get rid of p1 and p2 and replace with new point
                 route = listreplacelist(route, [(p1x, p3y)], n+1, n+2) # replace p1 and p2
                 print("Horizontal middle segment shortened at p1: %d: (%d,%d)" % (n+1,p1x,p3y))
-                if n > 0 :                          # back up 1
-                    n = n - 1
                 continue
             else :
                 #   We will try to move middle segment to align with p0y
@@ -530,8 +539,6 @@ def mazeoptimizeroute(route) :
                 #   We can get rid of p1 and p2 and replace with new point
                 route = listreplacelist(route, [(p2x,p0y)], n+1, n+2) # replace p1 and p2 with new point
                 print("Horizontal middle segment shortened at p2: %d: (%d,%d)" % (n+1,p2x,p0y))
-                if n > 0 :                          # back up 1
-                    n = n - 1                       # to allow further optimization
                 continue 
     return route                                    # condensed route                      
 
@@ -754,7 +761,7 @@ def test() :
     runtest(12,12,BARRIERFAIL4, "Fail 4")
     runtest(12,12,BARRIERFAIL5, "Fail 5")
 
-    unittestrandom(41,41,100)
+    unittestrandom(41,41,1)
    
     
  
