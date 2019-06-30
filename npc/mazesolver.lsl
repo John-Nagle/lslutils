@@ -53,7 +53,9 @@ list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
 #define MAZEFOLLOWDY(n) llList2Integer(MAZEFOLLOWDYTAB,(n))
 
 #define DEBUGPRINT(s) // Nothing for now
+#define DEBUGPRINT1(s) llOwnerSay(s)
 #define assert(exp) // Nothing for now
+#define assert(exp) { if (!(exp)) { llOwnerSay("Assertion failed at __LINE__"); panic(); }}
 
 //
 //  abs -- absolute value, integer
@@ -202,20 +204,21 @@ list mazesolve(integer startx, integer starty, integer endx, integer endy)
             integer followstartx = gMazeX;
             integer followstarty = gMazeY;
             integer followstartdir = direction;
-            DEBUGPRINT("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, gMazeMdbest))
+            ////DEBUGPRINT("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, gMazeMdbest))
+            DEBUGPRINT1("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdBest));
             while (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath())
             {
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
                 {    return(gMazePath); }                               // done
                 direction = mazefollowwall(sidelr, direction);      // follow edge, advance one cell
                 if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) // runaway check
-                {    DEBUGPRINT("***ERROR*** runaway: " + str(gMazePath)); 
+                {   DEBUGPRINT("***ERROR*** runaway: " + str(gMazePath)); 
                     return([]);
                 }
                 //   Termination check - if we are back at the start of following && going in the same direction, no solution
                 if (gMazeX == followstartx && gMazeY == followstarty && direction == followstartdir) 
                 {
-                    DEBUGPRINT("Back at start of follow. No solution");
+                    DEBUGPRINT1("Back at start of follow. No solution");
                     return([]);                                  // fails
                 }
             }
