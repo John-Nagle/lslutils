@@ -125,27 +125,27 @@ integer gMazeEndY = -1;
 //
 //   Maze cell storage - 2 bits per cell from 2D maze array
 //
-integer mazecellget(integer x, integer y) :
+integer mazecellget(integer x, integer y)   
 {
     assert(x >= 0 && x < gMazeXsize);           // subscript check
     assert(y >= 0 && y < gMazeYsize);
     integer cellix = y*gMazeYsize + x;                   // index into cells
-    integer listix = int(cellix / 16);
+    integer listix = (integer)(cellix / 16);
     integer bitix = (cellix % 16) * 2;
-    return ((gMazeCells[listix] >> bitix) & 0x3);  // 2 bits only
+    return ((llList2Integer(gMazeCells,listix) >> bitix) & 0x3);  // 2 bits only
 }
 
 //
 //  mazecellset -- store into 2D maze array
 //    
-integer mazecellset(integer x, integer y, integer newval) :
+mazecellset(integer x, integer y, integer newval) 
 {   assert(x >= 0 && x < gMazeXsize);           // subscript check
     assert(y >= 0 && y < gMazeYsize);
     assert(newval <= 0x3);                      // only 2 bits
     integer cellix = y*gMazeYsize + x;          // index into cells
-    integer listix = int(cellix / 16);          // word index
+    integer listix = (integer)(cellix / 16);          // word index
     integer bitix = (cellix % 16) * 2;          // bit index within word
-    integer w = gMazeCells[listix];             // word to update
+    integer w = llList2Integer(gMazeCells,listix);             // word to update
     w = (w & (~(0x3<<bitix)))| (newval<<bitix); // insert into word
     gMazeCells[listix] = w;                     // insert word
 }        
@@ -169,7 +169,8 @@ mazeinit(integer xsize, integer ysize)
 }
     
        
-integer mazesolve(integer startx, integer starty, integer endx, integer endy) :
+integer mazesolve(integer startx, integer starty, integer endx, integer endy)
+{
     gMazeX = startx;                        // start
     gMazeY = starty;
     gMazeStartX = startx;                   // start
@@ -180,7 +181,7 @@ integer mazesolve(integer startx, integer starty, integer endx, integer endy) :
     gMazePath = [];                         // accumulated path
     mazeaddtopath();                        // add initial point
     //   Outer loop - shortcuts || wall following
-    while (gMazeX != gMazeEndX || gMazeY != gMazeEndY) : // while not at dest
+    while (gMazeX != gMazeEndX || gMazeY != gMazeEndY)  // while not at dest
     {   if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) 
         {   return([]);  }                  // we are in an undetected loop
         if (mazeexistsproductivepath())     // if a shortcut is available
@@ -201,21 +202,24 @@ integer mazesolve(integer startx, integer starty, integer endx, integer endy) :
             DEBUGPRINT("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, gMazeMdbest))
             while (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath())
             {
-                if (gMazeX == gMazeEndX && gMazeY == gMazeEndY) : // if at end
-                    return gMazePath                               // done
-                direction = mazefollowwall(sidelr, direction)      // follow edge, advance one cell
-                if llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4 : // runaway check
-                    DEBUGPRINT("***ERROR*** runaway: " + str(gMazePath)) 
-                    return []
+                if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
+                {    return(gMazePath); }                               // done
+                direction = mazefollowwall(sidelr, direction);      // follow edge, advance one cell
+                if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) // runaway check
+                {    DEBUGPRINT("***ERROR*** runaway: " + str(gMazePath)); 
+                    return([]);
+                }
                 //   Termination check - if we are back at the start of following && going in the same direction, no solution
-                if (gMazeX == followstartx && gMazeY == followstarty && direction == followstartdir) :
-                    DEBUGPRINT("Back at start of follow. Stuck")
-                    return []                                   // fails
+                if (gMazeX == followstartx && gMazeY == followstarty && direction == followstartdir) 
+                {
+                    DEBUGPRINT("Back at start of follow. No solution");
+                    return([]);                                  // fails
+                }
             }
-            DEBUGPRINT("Finished wall following.")
+            DEBUGPRINT("Finished wall following.");
         }
     }
-    DEBUGPRINT("Solved maze")                
+    DEBUGPRINT("Solved maze");                
     return(gMazePath);
 }
 
@@ -246,7 +250,7 @@ integer mazetestcell(integer fromx, integer fromy, integer x, integer y)
     assert(v == testdata[x][y]);                // this cell
     if (v & MAZEEXAMINED) 
     {   return(v & MAZEBARRIER); }              // already have this one
-    integer barrier = gBarrierFn(fromx, fromy, x,y) // check this location
+    integer barrier = gBarrierFn(fromx, fromy, x,y); // check this location
     v = MAZEEXAMINED | barrier;
     mazecellset(x,y,v);                         // update cells checked
     return(barrier);                            // return 1 if obstacle
@@ -261,27 +265,23 @@ integer mazeexistsproductivepath()
 {
     integer dx = gMazeEndX - gMazeX;
     integer dy = gMazeEndY - gMazeY;
-    integer dx = mazeclipto1(dx);
-    integer dy = mazeclipto1(dy);
+    dx = mazeclipto1(dx);
+    dy = mazeclipto1(dy);
     if (dx != 0) 
-    {    integer productive = not mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY) // test if cell in productive direction is clear
-         if productive :
-            DEBUGPRINT("Productive path at (%d,%d): %d" % (gMazeX, gMazeY, productive))
-            return True
+    {    integer productive = !mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY); // test if cell in productive direction is clear
+         if (productive) { return(TRUE); }
     }
     if (dy != 0) 
-    {   integer productive = not mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + dy) // test if cell in productive direction is clear
-        if productive :
-            DEBUGPRINT("Productive path at (%d,%d): %d" % (gMazeX, gMazeY, productive))
-            return True
+    {    integer productive = !mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + dy); // test if cell in productive direction is clear
+         if (productive) { return(TRUE); }
     }
-    return False
+    return(FALSE);
 }
 
 //
 //  mazetakeproductive path -- follow productive path one cell, or return 0
 //
-mazetakeproductivepath()
+integer mazetakeproductivepath()
 {
     integer dx = gMazeEndX - gMazeX;
     integer dy = gMazeEndY - gMazeY;
@@ -291,7 +291,7 @@ mazetakeproductivepath()
     //    Try X dir first if more direct towards goal
     if (abs(dx) > abs(dy) && clippeddx) 
     {
-        if (not mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY)) 
+        if (!mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY)) 
         {   gMazeX += clippeddx;                      // advance in desired dir
             mazeaddtopath();
             return(1);
@@ -299,7 +299,7 @@ mazetakeproductivepath()
     }
     //   Then try Y    
     if (clippeddy) 
-    {   if not mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + clippeddy) 
+    {   if (!mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + clippeddy))
         {   gMazeY += clippeddy;                       // advance in desired dir
             mazeaddtopath();
             return(1); 
@@ -307,9 +307,9 @@ mazetakeproductivepath()
     }
     //   Then X, regardless of whether abs(dx) > abs(dy)
     if (clippeddx)
-    {   if not mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY) 
-        {   gMazeX += clippeddx                       // advance in desired dir
-            mazeaddtopath()
+    {   if (!mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY)) 
+        {   gMazeX += clippeddx;                       // advance in desired dir
+            mazeaddtopath();
             return(1);
         } 
     }                           // success
