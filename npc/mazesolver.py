@@ -96,29 +96,42 @@ def listreplacelist(src, dst, start, end) :
 #   Globals for LSL
 #
 
-####integer gMazeXsize = -1                                         # set size of map
-####integer gMazeYsize = -1       
-####integer gMazeX;
-####integer gMazeY;
-####integer gMazeStartX;                # start
-####integer gMazeStartY;
-####integer gMazeEndX;                  # destination
-####integer gMazeEndY;
-####integer gMazeMdbest;
-####list gMazePath;                     # accumulated path
+gMazePath = []
+gMazeX = -1
+gMazeY = -1
+
+gMazeXsize = -1
+gMazeYsize = -1
+gMazeStartX = -1 
+gMazeStartY = -1 
+gMazeEndX = -1 
+gMazeEndY = -1
+gMazeMdbest = -1
+#
+#   Python only
+gBarrierFn = None
+testdata = None
+
+
+
 
 #
 #   Maze graph functions
 #   
 def mazeinit(xsize, ysize) :
+    global gMazeXsize, gMazeYsize
     gMazeXsize = xsize                                          # set size of map
     gMazeYsize = ysize
+    global testdata                         # Python only
     testdata = numpy.full((xsize, ysize), 0)
        
 def mazesolve(startx, starty, endx, endy, barrierfn) :
+    global gMazeX, gMazeY, gMazeStartX, gMazeStartY, gMazeEndX, gMazeEndY, gMazeMdbest, gMazePath
+    global gBarrierFn                       # Python only
+    print("GMazeX = " + str(gMazeX))        # ***TEMP***
     gMazeX = startx                         # start
     gMazeY = starty
-    barrierfn = barrierfn              # tests cell for blocked
+    gBarrierFn = barrierfn                   # tests cell for blocked
     gMazeStartX = startx                    # start
     gMazeStartY = starty
     gMazeEndX = endx                        # destination
@@ -162,6 +175,7 @@ def mazeaddtopath() :
     """
     Add current position to path
     """
+    global gMazePath
     gMazePath += [(gMazeX, gMazeY)]
     print("(%d,%d)" % (gMazeX, gMazeY))
     ####assert(not mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY + dy)) # path must not go into an occupied cell
@@ -177,7 +191,7 @@ def mazetestcell(fromx, fromy, x, y) :
     v = testdata[x][y]                 # this cell
     if (v & MAZEEXAMINED) :
         return v & MAZEBARRIER                  # already have this one
-    barrier = barrierfn(fromx, fromy, x,y)             # check this location
+    barrier = gBarrierFn(fromx, fromy, x,y)             # check this location
     v = MAZEEXAMINED | barrier
     testdata[x][y] = v                 # update sites checked
     return barrier                          # return 1 if obstacle
@@ -206,6 +220,8 @@ def mazetakeproductivepath() :
     """
     Follow productive path or return 0       
     """
+    global gMazeX, gMazeY
+
     dx = gMazeEndX - gMazeX
     dy = gMazeEndY - gMazeY
     clippeddx = mazeclipto1(dx)
@@ -306,6 +322,7 @@ def mazefollowwall(sidelr, direction) :
     "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
 
     """
+    global gMazeX, gMazeY
     print("Following wall at (%d,%d) side %d direction %d md %d" % 
             (gMazeX, gMazeY, sidelr, direction, mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)))
     dx = MAZEEDGEFOLLOWDX[direction]
