@@ -175,7 +175,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
     gMazeXsize = xsize;                          // set size of map
     gMazeYsize = ysize;
     gMazeCells = [];
-    while (llGetListLength(gMazeCells) < xsize*ysize)        // allocate cell list
+    while (llGetListLength(gMazeCells) < (xsize*ysize+15)/16)        // allocate cell list
     {    gMazeCells = gMazeCells + [0]; }   // fill list with zeroes 
     gMazeX = startx;                        // start
     gMazeY = starty;
