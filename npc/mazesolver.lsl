@@ -158,7 +158,7 @@ mazecellset(integer x, integer y, integer newval)
 //   Maze path storage - X && Y in one 32-bit value
 //
 #define mazepathx(val) ((val) & 0xffff)         // X is low half
-#define mazepathy(val) ((val)>> 16) % 0xffff)   // Y is high half
+#define mazepathy(val) (((val)>> 16) & 0xffff)  // Y is high half
 #define mazepathval(x,y) (((y) << 16) | (x))    // construct 32 bit value
 
 //
@@ -207,10 +207,10 @@ list mazesolve(integer startx, integer starty, integer endx, integer endy)
             ////DEBUGPRINT("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, gMazeMdbest))
             DEBUGPRINT1("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdbest);
             while (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath())
-            {   DEBUGPRINT1("Wall follow loop");    // ***TEMP***
+            {   ////DEBUGPRINT1("Wall follow loop");    // ***TEMP***
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
                 {    return(gMazePath); }                               // done
-                DEBUGPRINT1("Calling mazefollowwall");              // ***TEMP***
+                ////DEBUGPRINT1("Calling mazefollowwall");              // ***TEMP***
                 direction = mazefollowwall(sidelr, direction);      // follow edge, advance one cell
                 if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) // runaway check
                 {   DEBUGPRINT1("***ERROR*** runaway"); 
@@ -644,20 +644,29 @@ def mazeoptimizeroute(route) :
             
 //
 //   Test-only code
-//     
+//
+#endif // NOTYET    
 
-//   
-def routeasstring(route) :
-    """
-    Dump a route, which has X && Y encoded into one value
-    """
-    s = ""
-    for val in route :
-        x = mazepathx(val)
-        y = mazepathy(val)
-        s = s + ("(%d,%d) " % (x,y))
-    return(s)
-   
+//
+//  mazerouteasstring -- display route a string
+//
+//  Dump a route, which has X && Y encoded into one value
+// 
+string mazerouteasstring(list route)
+{
+    string s = "";
+    integer length = llGetListLength(route);
+    integer i;
+    for (i=0; i<length; i++)
+    {   integer val = llList2Integer(route,i);
+        integer x = mazepathx(val);
+        integer y = mazepathy(val);
+        ////s = s + ("(%d,%d) " % (x,y))
+        s = s + "(" + (string)x + "," + (string)y + ") ";
+    }
+    return(s);
+}
+#ifdef NOTYET   
 def mazedump(route, finalroute) :
     """
     Debug dump
