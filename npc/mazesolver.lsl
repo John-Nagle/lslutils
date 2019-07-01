@@ -218,7 +218,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             while (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath())
             {   ////DEBUGPRINT1("Wall follow loop");    // ***TEMP***
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
-                {   if (gMazePrev1 != MAZEINVALIDPT) { gMazeCells += [gMazePrev1]; }
+                {   if (gMazePrev1 != MAZEINVALIDPT) { gMazePath += [gMazePrev1]; }
                     gMazeCells = [];                        // release memory, we need it
                     list path = gMazePath;
                     gMazePath = [];
@@ -245,7 +245,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
         }
     }
     DEBUGPRINT1("Solved maze");
-    if (gMazePrev1 != MAZEINVALIDPT) { gMazeCells += [gMazePrev1]; }
+    if (gMazePrev1 != MAZEINVALIDPT) { gMazePath += [gMazePrev1]; }
     list path = gMazePath;
     gMazeCells = [];                        // release memory, we need it
     gMazePath = [];
@@ -255,24 +255,24 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
 //
 //  mazeaddtopath -- add current position to path
 //
-//  Optimizes out collinear points.
+//  Optimizes out most collinear points. This is just to reduce storage. We're tight on memory here.
 //                    
 mazeaddtopath() 
 {   
 #define MAZECOLLINEAROPT
-#ifdef MAZECOLLINEAROPT
+#ifdef  MAZECOLLINEAROPT
+    DEBUGPRINT1("(" + (string)gMazeX + "," + (string)gMazeY + ")");
     integer val = mazepathval(gMazeX, gMazeY);  // current point as one integer
     //  Should we keep pt 1?
     //  Yes, if it's not a duplicate or collinear.
-    if (!(gMazePrev0 != MAZEINVALIDPT && 
-            (mazeinline(mazepathx(gMazePrev0), mazepathy(gMazePrev0),
+    if ((gMazePrev1 != MAZEINVALIDPT &&                 // must have pt1 stored to keep
+            ((!mazeinline(mazepathx(gMazePrev0), mazepathy(gMazePrev0),
                 mazepathx(gMazePrev1), mazepathy(gMazePrev1),
-                gMazeX, gMazeY)
-                || (gMazePrev0 == gMazePrev1)
-                || (gMazePrev1 == val))))
-    {   gMazePath = gMazePath + [val];              // save point
-        DEBUGPRINT1("(" + (string)gMazeX + "," + (string)gMazeY + ")");
-    }
+                gMazeX, gMazeY)                         // not inline
+                && (gMazePrev0 != gMazePrev1)           // prev1 not duplicate point
+                && (gMazePrev1 != val)))))              // prev1 not duplicate point
+    {   gMazePath = gMazePath + [gMazePrev1];     }     // save useful point
+    gMazePrev0 = gMazePrev1;                // we keep two old points
     gMazePrev1 = val;                       // new point always becomes prev point
 #else
     gMazePath = gMazePath + [mazepathval(gMazeX, gMazeY)];
