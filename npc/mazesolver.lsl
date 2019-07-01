@@ -669,6 +669,22 @@ list mazeoptimizeroute(list route)
     }
     return(route);                                   // condensed route                      
 }
+
+//
+//  mazereplyjson -- construct result as JSON
+//
+//  Format:
+//  { "reply" : "mazesolve" , "status" : INTEGER, "serial", INTEGER", points: [pt,pt,...]}
+//
+//  Points are packed with x and y in one integer.
+//
+//  "status" is 0 if successful, other values if a problem.
+//  "serial" is the serial number from the query, to match reply with request.
+//
+string mazereplyjson(integer status, integer serial, list path)
+{   return (llList2Json(JSON_OBJECT, ["reply", "mazesolve", "status", (string)status, "serial", (string)serial,
+        "points", llList2Json(JSON_ARRAY, path)]));
+}
             
 //
 //   Test-only code
