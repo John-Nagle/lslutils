@@ -52,8 +52,11 @@ integer checkcollinear(list pts)
     }
     return(TRUE);                       // collinear   
 }
+#ifdef UNUSED
 //
 //  removecollinear  -- remove collinear points from a list
+//
+//  ***UNTESTED***
 //
 list removecollinear(list pts)
 {   integer length = llGetListLength(pts);
@@ -61,7 +64,7 @@ list removecollinear(list pts)
     if (length < 3) { return(pts); }    // can't shorten unless at least 3
     vector p0 = llList2Vector(pts,0);
     vector p1 = llList2Vector(pts,1);
-    newpts = [pt0]
+    newpts = [p0];
     for (i=2; i<length; i++)
     {   vector p = llList2Vector(pts,i); // next point
         float dist = distpointtoline(p1, p0, p);    // distance from p1 to p0-p line
@@ -77,6 +80,7 @@ list removecollinear(list pts)
     newpts += p1
     return newpts
 }
+#endif // UNUSED
 //
 //  rotperpenonground  -- rotation to get line on ground perpendicular to vector
 //
