@@ -52,10 +52,16 @@ list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
 #define MAZEEDGEFOLLOWDX(n) llList2Integer(MAZEEDGEFOLLOWDXTAB,(n))
 #define MAZEEDGEFOLLOWDY(n) llList2Integer(MAZEEDGEFOLLOWDYTAB,(n))
 
+#ifdef DEBUG
 #define DEBUGPRINT(s) // Nothing for now
 #define DEBUGPRINT1(s) llOwnerSay(s)
 ////#define assert(exp) // Nothing for now
 #define assert(exp) { if (!(exp)) { llOwnerSay("Assertion failed at __LINE__"); panic(); }}
+#else // not debugging
+#define DEBUGPRINT(s) {}
+#define DEBUGPRINT1(s) {}
+#define assert(exp) {}
+#endif // DEBUG
 
 //
 //  abs -- absolute value, integer
