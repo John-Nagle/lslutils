@@ -49,8 +49,8 @@ list EDGEFOLLOWDIRY = [0, 1, 0, -1];
 
 list MAZEEDGEFOLLOWDXTAB = [1,0,-1,0];
 list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
-#define MAZEFOLLOWDX(n) llList2Integer(MAZEFOLLOWDXTAB,(n))
-#define MAZEFOLLOWDY(n) llList2Integer(MAZEFOLLOWDYTAB,(n))
+#define MAZEEDGEFOLLOWDX(n) llList2Integer(MAZEEDGEFOLLOWDXTAB,(n))
+#define MAZEEDGEFOLLOWDY(n) llList2Integer(MAZEEDGEFOLLOWDYTAB,(n))
 
 #define DEBUGPRINT(s) // Nothing for now
 #define DEBUGPRINT1(s) llOwnerSay(s)
@@ -207,12 +207,13 @@ list mazesolve(integer startx, integer starty, integer endx, integer endy)
             ////DEBUGPRINT("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, gMazeMdbest))
             DEBUGPRINT1("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdbest);
             while (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath())
-            {
+            {   DEBUGPRINT1("Wall follow loop");    // ***TEMP***
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
                 {    return(gMazePath); }                               // done
+                DEBUGPRINT1("Calling mazefollowwall");              // ***TEMP***
                 direction = mazefollowwall(sidelr, direction);      // follow edge, advance one cell
                 if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) // runaway check
-                {   DEBUGPRINT("***ERROR*** runaway: " + str(gMazePath)); 
+                {   DEBUGPRINT1("***ERROR*** runaway"); 
                     return([]);
                 }
                 //   Termination check - if we are back at the start of following && going in the same direction, no solution
@@ -222,10 +223,10 @@ list mazesolve(integer startx, integer starty, integer endx, integer endy)
                     return([]);                                  // fails
                 }
             }
-            DEBUGPRINT("Finished wall following.");
+            DEBUGPRINT1("Finished wall following.");
         }
     }
-    DEBUGPRINT("Solved maze");                
+    DEBUGPRINT1("Solved maze");                
     return(gMazePath);
 }
 
@@ -318,7 +319,7 @@ integer mazetakeproductivepath()
             return(1);
         } 
     }                           // success
-    DEBUGPRINT("Take productive path failed");
+    DEBUGPRINT1("Take productive path failed");
     return(0);
 }                                               // hit wall, stop
 //
@@ -406,7 +407,7 @@ integer mazefollowwall(integer sidelr, integer direction)
 {
     DEBUGPRINT1("Following wall at (" + (string)gMazeX + "," + (string)gMazeY + ")" + " side " + (string)sidelr + " direction " + (string) direction + " md " + (string)mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY));
     integer dx = MAZEEDGEFOLLOWDX(direction);
-    integer dy = MAZEEDGEFOLLOWDY[direction]
+    integer dy = MAZEEDGEFOLLOWDY(direction);
     integer dxsame = MAZEEDGEFOLLOWDX(((direction + sidelr) + 4) % 4); // if not blocked ahead
     integer dysame = MAZEEDGEFOLLOWDY(((direction + sidelr) + 4) % 4); 
     integer followedside = mazetestcell(gMazeX, gMazeY, gMazeX + dxsame, gMazeY+dysame);
@@ -418,9 +419,9 @@ integer mazefollowwall(integer sidelr, integer direction)
     }
     integer blockedahead = mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY + dy);
     if (blockedahead)
-    {   dxopposite = MAZEEDGEFOLLOWDX(((direction - sidelr) + 4) % 4]);
-        dyopposite = MAZEEDGEFOLLOWDY(((direction - sidelr) + 4) % 4]);
-        blockedopposite = mazetestcell(gMazeX, gMazeY, gMazeX + dxopposite, gMazeY + dyopposite);
+    {   integer dxopposite = MAZEEDGEFOLLOWDX(((direction - sidelr) + 4) % 4);
+        integer dyopposite = MAZEEDGEFOLLOWDY(((direction - sidelr) + 4) % 4);
+        integer blockedopposite = mazetestcell(gMazeX, gMazeY, gMazeX + dxopposite, gMazeY + dyopposite);
         if (blockedopposite) 
         {   DEBUGPRINT("Dead end");
             direction = (direction + 2) % 4;         // dead end, reverse direction
@@ -430,7 +431,7 @@ integer mazefollowwall(integer sidelr, integer direction)
         }
     } else {
         assert(dxsame == 0 || dysame == 0);
-        blockedsameahead = mazetestcell(gMazeX + dx, gMazeY + dy, gMazeX + dx + dxsame, gMazeY + dy + dysame);
+        integer blockedsameahead = mazetestcell(gMazeX + dx, gMazeY + dy, gMazeX + dx + dxsame, gMazeY + dy + dysame);
         if (blockedsameahead)                       // straight, not outside corner
         {   DEBUGPRINT("Straight");
             gMazeX += dx;                            // move ahead 1
@@ -442,7 +443,7 @@ integer mazefollowwall(integer sidelr, integer direction)
             gMazeY += dy;
             mazeaddtopath();
             //   Need to check for a productive path. May be time to stop wall following
-            md = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
+            integer md = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
             if (md < gMazeMdbest && mazeexistsproductivepath())
             {
                 DEBUGPRINT("Outside corner led to a productive path halfway through")
