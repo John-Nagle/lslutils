@@ -101,7 +101,7 @@ integer mazepointssame(integer x0, integer y0, integer x1, integer y1)
 //
 //   listreplacelist -- a builtin in LSL
 //
-list listreplacelist(list src, list dst, list start, list end) 
+list listreplacelist(list src, list dst, integer start, integer end) 
 {   assert(start >= 0);                          // no funny end-relative stuff
     assert(end >= 0);
     return(llListReplaceList(src, dst, start, end));
@@ -471,8 +471,10 @@ integer mazefollowwall(integer sidelr, integer direction)
         }
     }
     return(direction);                                // new direction
-}     
+} 
+
 #ifdef NOTYET   
+    
 def mazeroutecornersonly(route) :
     """
     Condense route, only keeping corners
@@ -507,160 +509,182 @@ def mazeroutecornersonly(route) :
     // final point.
     newroute.append(mazepathval(x,y)) 
     return newroute
-        
-def mazelinebarrier(x0, y0, x1, y1) :
-    """
-    Does the line between the two points, inclusive, hit a barrier?
-    """
-    DEBUGPRINT("Maze test barrier: (%d,%d),(%d,%d)" % (x0,y0,x1,y1))
-    if (x0 == x1) :                         // vertical line
-        assert(y0 != y1)                    // must not be zero length
-        if y0 > y1 :                        // sort
-            temp = y0
-            y0 = y1
-            y1 = temp
-        assert(y1 > y0)
-        for y in range(y0,y1) :             // test each segment
-            if mazetestcell(x0, y, x0, y+1) :
-                return True                // hit barrier
-        return False
-    else :
-        assert(y0 == y1)
-        assert(x0 != x1)
-        if x0 > x1 :                        // sort
-            temp = x0
-            x0 = x1
-            x1 = temp
-        assert(x1 > x0)
-        for x in range(x0,x1) :
-            if mazetestcell(x, y0, x+1, y0) :
-                return True                // hit barrier
-        return False
-         
+#endif // NOTYET    
+//
+//  mazelinebarrier -- Does the line between the two points, inclusive, hit a barrier?
+//
+//  Assumes the start point is not on a barrier cell.
+//  Because we have to work forward from an empty cell so that llCastRay will work.
+//        
+integer mazelinebarrier(integer x0, integer y0, integer x1, integer y1) 
+{   DEBUGPRINT("Maze test barrier: (%d,%d),(%d,%d)" % (x0,y0,x1,y1))
+    if (x0 == x1)                          // vertical line
+    {   assert(y0 != y1);                  // must not be zero length
+        if (y0 > y1)                       // sort
+        {   integer temp = y0;
+            y0 = y1;
+            y1 = temp;
+        }
+        assert(y1 > y0);
+        integer y;
+        for (y=y0; y<y1; y++)
+        ////for y in range(y0,y1) :            // test each segment
+        {   if (mazetestcell(x0, y, x0, y+1)) { return(TRUE); }}              // hit barrier
+        ////return(FALSE);
+    } else {
+        assert(y0 == y1);
+        assert(x0 != x1);
+        if (x0 > x1)                       // sort
+        {   integer temp = x0;
+            x0 = x1;
+            x1 = temp;
+        }
+        assert(x1 > x0);
+        ////for x in range(x0,x1) :
+        integer x;
+        for (x=x0; x<x1; x++)
+        {   if (mazetestcell(x, y0, x+1, y0)) { return(TRUE); }}               // hit barrier
+        ////return(FALSE);
+    }
+    return(FALSE);                          // no obstacle found
+}         
            
-        
-def mazeoptimizeroute(route) :
-    """
-    Locally optimize route.
-        
-    The incoming route should have corners only, && represent only horizontal && vertical lines.
-    Optimizing the route looks at groups of 4 points. If the two turns are both the same, then try
-    to eliminate one of the points by moving the line between the two middle points.
-    
-    O(n)        
-    """
-    n = 0;
-    //   Advance throug route. On each iteration, either the route gets shorter, || n gets
+//
+//    Locally optimize route.
+//        
+//    The incoming route should have corners only, && represent only horizontal && vertical lines.
+//    Optimizing the route looks at groups of 4 points. If the two turns are both the same, then try
+//    to eliminate one of the points by moving the line between the two middle points.
+//    
+//    O(n)        
+//
+//       
+list mazeoptimizeroute(list route) 
+{
+    integer n = 0;
+    //   Advance through route. On each iteration, either the route gets shorter, or n gets
     //   larger, so this should always terminate.
-    while n < llGetListLength(route)-3 :                        // advancing through route
-        p0val = route[n+0]                            // get next four points
-        p1val = route[n+1]
-        p2val = route[n+2]
-        p3val = route[n+3]
-        p0x = mazepathx(p0val)
-        p0y = mazepathy(p0val)
-        p1x = mazepathx(p1val)
-        p1y = mazepathy(p1val)
-        p2x = mazepathx(p2val)
-        p2y = mazepathy(p2val)
-        p3x = mazepathx(p3val)
-        p3y = mazepathy(p3val)
-        DEBUGPRINT("%d: (%d,%d) (%d,%d) (%d,%d) (%d,%d)" % (n, p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y)) // ***TEMP***
+    while (n < llGetListLength(route)-3)                         // advancing through route
+    {   integer p0val = llList2Integer(route,n);                            // get next four points
+        integer p1val = llList2Integer(route,n+1);                            // get next four points
+        integer p2val = llList2Integer(route,n+2);                            // get next four points
+        integer p3val = llList2Integer(route,n+3);                            // get next four points
+        integer p0x = mazepathx(p0val);
+        integer p0y = mazepathy(p0val);
+        integer p1x = mazepathx(p1val);
+        integer p1y = mazepathy(p1val);
+        integer p2x = mazepathx(p2val);
+        integer p2y = mazepathy(p2val);
+        integer p3x = mazepathx(p3val);
+        integer p3y = mazepathy(p3val);
+        ////DEBUGPRINT("%d: (%d,%d) (%d,%d) (%d,%d) (%d,%d)" % (n, p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y)) // ***TEMP***
 
         //   Remove collinear redundant points. The redundant point may not be
         //   between the endpoints, but that's OK. It's just removing a move to
         //   a dead end && back.
-        if (p0x == p1x && p0y == p1y) :            // redundant point
+        if (p0x == p1x && p0y == p1y)             // redundant point
+        {
             ////////DEBUGPRINT("Removing redundant point %d from %s" % (n+1, str(route)))
-            route = listreplacelist(route, [], n+1, n+1)
-            if n > 0 :                              // back up 1, may have created new redundant group
-                n = n - 1
-            continue
-        if (p1x == p2x && p1y == p2y) :            // redundant point
-            ////////DEBUGPRINT("Removing redundant point %d from %s" % (n+2, str(route)))
-            route = listreplacelist(route, [], n+2, n+2)
-            if n > 0 :
-                n = n - 1
-            continue
-        if mazeinline(p0x,p0y,p1x,p1y,p2x,p2y) :
-            ////////DEBUGPRINT("Removing collinear point %d from %s" % (n+1, str(route)))
-            route = listreplacelist(route, [], n+1, n+1)
-            if n > 0 :
-                n = n - 1
-            continue
-        if mazeinline(p1x,p1y,p2x,p2y,p3x,p3y) :
-            ////////DEBUGPRINT("Removing collinear point %d from %s" % (n+1, str(route)))
-            route = listreplacelist(route, [], n+2, n+2)
-            if n > 0 :
-                n = n - 1
-            continue                
-        if (p1x == p2x) :                           // if vertical middle segment
-            //   End segments must be horizontal
-            assert(p0y == p1y)
-            assert(p2y == p3y)
+            route = listreplacelist(route, [], n+1, n+1);
+            if (n > 0) { n = n - 1; }               // back up 1, may have created new redundant group                
+            jump continue;
+        }
+        if (p1x == p2x && p1y == p2y)              // redundant point
+        {   ////////DEBUGPRINT("Removing redundant point %d from %s" % (n+2, str(route)))
+            route = listreplacelist(route, [], n+2, n+2);
+            if (n > 0) { n = n - 1; }               // back up 1, may have created new redundant group                
+            jump continue;
+        }
+        if (mazeinline(p0x,p0y,p1x,p1y,p2x,p2y)) 
+        {   ////////DEBUGPRINT("Removing collinear point %d from %s" % (n+1, str(route)))
+            route = listreplacelist(route, [], n+1, n+1);
+            if (n > 0) { n = n - 1; }               // back up 1, may have created new redundant group                
+            jump continue;
+        }
+        if (mazeinline(p1x,p1y,p2x,p2y,p3x,p3y))
+        {   ////////DEBUGPRINT("Removing collinear point %d from %s" % (n+1, str(route)))
+            route = listreplacelist(route, [], n+2, n+2);
+            if (n > 0) { n = n - 1; }               // back up 1, may have created new redundant group                
+            jump continue;
+        }                
+        if (p1x == p2x)                             // if vertical middle segment
+        {   //   End segments must be horizontal
+            assert(p0y == p1y);
+            assert(p2y == p3y);
             //   Is this C-shaped?
-            if not ((p0x > p1x) == (p2x < p3x)) :   // no, not C-shaped
-                n = n + 1
-                continue
+            if (!((p0x > p1x) == (p2x < p3x)))   // no, not C-shaped
+            {   n = n + 1;
+                jump continue;
+            }
             //   Find shorter arm of C
-            armlena = p0x-p1x 
-            armlenb = p3x-p2x
-            if abs(armlena) > abs(armlenb) :        // second arm is shorter
+            integer armlena = p0x-p1x;
+            integer armlenb = p3x-p2x;
+            if (abs(armlena) > abs(armlenb))         // second arm is shorter
+            {
                 //   We will try to move middle segment to align with p0y, ignoring p1y
-                if mazelinebarrier(p3x, p0y, p3x, p3y) : // if blocked
-                    n = n + 1
-                    continue
+                if (mazelinebarrier(p3x, p0y, p3x, p3y))  // if blocked
+                {   n = n + 1;
+                    jump continue;
+                }
                 //   We can get rid of p1 && replace p2
-                route = listreplacelist(route, [mazepathval(p3x,p0y)], n+1, n+2) // remove p1
+                route = listreplacelist(route, [mazepathval(p3x,p0y)], n+1, n+2); // remove p1
                 DEBUGPRINT("Vertical middle segment shortened at p1: %d: (%d,%d)" % (n+1,p3x,p0y))
-                continue
-            else :
+                jump continue;
+            } else {
                 //   We will try to move middle segment to align with p3y, ignoring p2y
-                if mazelinebarrier(p0x, p0y, p0x, p3y) : // if blocked
-                    n = n + 1
-                    continue
+                if (mazelinebarrier(p0x, p0y, p0x, p3y))  // if blocked
+                {   n = n + 1;
+                    jump continue;
+                }
                 //   We can get rid of p2 && replace p1
-                route = listreplacelist(route, [mazepathval(p0x, p3y)], n+1, n+2) // remove p2
+                route = listreplacelist(route, [mazepathval(p0x, p3y)], n+1, n+2); // remove p2
                 DEBUGPRINT("Vertical middle segment shortened at p2: %d: (%d,%d)" % (n+1,p0x,p3y))
-                continue                       
-                    
-        else :                                      // if horizontal middle segment
-            assert(p1y == p2y)
+                jump continue;                       
+            }     
+        } else {                                     // if horizontal middle segment
+            assert(p1y == p2y);
             //   End segments must be vertical
-            assert(p0x == p1x)
-            assert(p2x == p3x)
+            assert(p0x == p1x);
+            assert(p2x == p3x);
             //   Is this C-shaped?
-            if not ((p0y > p1y) == (p2y < p3y)) :   // no, not C-shaped
-                n = n + 1
-                continue
+            if (! ((p0y > p1y) == (p2y < p3y)))    // no, not C-shaped
+            {   n = n + 1;
+                jump continue;
+            }
             //   Find shorter arm of C
-            armlena = p0y-p1y 
-            armlenb = p3y-p2y
-            if abs(armlena) > abs(armlenb) :        // second arm is shorter
+            integer armlena = p0y-p1y; 
+            integer armlenb = p3y-p2y;
+            if (abs(armlena) > abs(armlenb))         // second arm is shorter
+            {
                 //   We will try to move middle segment to align with p3y
-                if mazelinebarrier(p0x, p3y, p3x, p3y) : // if blocked
-                    n = n + 1
-                    continue
+                if (mazelinebarrier(p0x, p3y, p3x, p3y))  // if blocked
+                {   n = n + 1;
+                    jump continue;
+                }
                 //   We can get rid of p1 && p2 && replace with new point
-                route = listreplacelist(route, [mazepathval(p1x, p3y)], n+1, n+2) // replace p1 && p2
+                route = listreplacelist(route, [mazepathval(p1x, p3y)], n+1, n+2); // replace p1 && p2
                 DEBUGPRINT("Horizontal middle segment shortened at p1: %d: (%d,%d)" % (n+1,p1x,p3y))
-                continue
-            else :
+                jump continue;
+            } else {
                 //   We will try to move middle segment to align with p0y
-                if mazelinebarrier(p0x, p0y, p3x, p0y) : // if blocked
-                    n = n + 1
-                    continue
+                if (mazelinebarrier(p0x, p0y, p3x, p0y))  // if blocked
+                {   n = n + 1;
+                    jump continue;
+                }
                 //   We can get rid of p1 && p2 && replace with new point
-                route = listreplacelist(route, [mazepathval(p2x,p0y)], n+1, n+2) // replace p1 && p2 with new point
+                route = listreplacelist(route, [mazepathval(p2x,p0y)], n+1, n+2); // replace p1 && p2 with new point
                 DEBUGPRINT("Horizontal middle segment shortened at p2: %d: (%d,%d)" % (n+1,p2x,p0y))
-                continue 
-    return route                                    // condensed route                      
-
+                jump continue;
+            } 
+        }
+    @continue;                                          // the first "jump" I have had to code in decades
+    }
+    return(route);                                   // condensed route                      
+}
             
 //
 //   Test-only code
 //
-#endif // NOTYET    
 
 //
 //  mazerouteasstring -- display route a string
