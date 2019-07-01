@@ -39,13 +39,14 @@
 #define MAZEBARRIER (0x1)                                   // must be low bit
 #define MAZEEXAMINED (0x2)
 
+#define MAZEINVALIDPT (0xffffffff)                          // invalid point value in old point storage
+
 
 //   Wall follow sides
 #define MAZEWALLONLEFT  1
 #define MAZEWALLONRIGHT (-1)
 list EDGEFOLLOWDIRX = [1,0,-1,0];
 list EDGEFOLLOWDIRY = [0, 1, 0, -1];
-///EDGEFOLLOWDIRS = [(1,0), (0, 1), (-1, 0), (0, -1)]  // edge following dirs to dx && dy
 
 list MAZEEDGEFOLLOWDXTAB = [1,0,-1,0];
 list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
@@ -113,20 +114,22 @@ list listreplacelist(list src, list dst, integer start, integer end)
 //
 //   Globals for LSL
 //
-
+//  All these are initialized at the beginning of mazesolve.
+//
 list gMazePath = [];                // the path being generated
 list gMazeCells = [];               // maze cell bits, see mazecellget
-integer gMazeX = -1;                // current working point
-integer gMazeY = -1;                // current working point
-integer gMazeMdbest = -1;           // best point found
-
-
-integer gMazeXsize = -1;            // maze dimensions
-integer gMazeYsize = -1;
-integer gMazeStartX = -1;           // start position 
-integer gMazeStartY = -1;           
-integer gMazeEndX = -1;             // end position 
-integer gMazeEndY = -1;        
+integer gMazeX;                     // current working point
+integer gMazeY;                     // current working point
+integer gMazeMdbest;                // best point found
+integer gMazeXsize;                 // maze dimensions
+integer gMazeYsize;
+integer gMazeStartX;                // start position 
+integer gMazeStartY;           
+integer gMazeEndX;                  // end position 
+integer gMazeEndY; 
+integer gMazePrev0;                 // previous point, invalid value
+integer gMazePrev1;                 // previous point, invalid value
+       
 
 //
 //   Maze graph functions
@@ -185,6 +188,8 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
     gMazeEndY = endy;
     gMazeMdbest = gMazeXsize+gMazeYsize+1;  // best dist to target init
     gMazePath = [];                         // accumulated path
+    gMazePrev0 = MAZEINVALIDPT;             // previous point, invalid value
+    gMazePrev1 = MAZEINVALIDPT;             // previous point out, invalid value
     mazeaddtopath();                        // add initial point
     //   Outer loop - shortcuts || wall following
     while (gMazeX != gMazeEndX || gMazeY != gMazeEndY)  // while not at dest
@@ -213,7 +218,8 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             while (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath())
             {   ////DEBUGPRINT1("Wall follow loop");    // ***TEMP***
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
-                {   gMazeCells = [];                        // release memory, we need it
+                {   if (gMazePrev1 != MAZEINVALIDPT) { gMazeCells += [gMazePrev1]; }
+                    gMazeCells = [];                        // release memory, we need it
                     list path = gMazePath;
                     gMazePath = [];
                     return(path); 
@@ -239,8 +245,9 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
         }
     }
     DEBUGPRINT1("Solved maze");
-    gMazeCells = [];                        // release memory, we need it
+    if (gMazePrev1 != MAZEINVALIDPT) { gMazeCells += [gMazePrev1]; }
     list path = gMazePath;
+    gMazeCells = [];                        // release memory, we need it
     gMazePath = [];
     return(path); 
 }
@@ -248,11 +255,29 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
 //
 //  mazeaddtopath -- add current position to path
 //
-//  ***NEEDS COLLINEAR OPTIMIZATION***
+//  Optimizes out collinear points.
 //                    
 mazeaddtopath() 
-{   gMazePath = gMazePath + [mazepathval(gMazeX, gMazeY)];
+{   
+#define MAZECOLLINEAROPT
+#ifdef MAZECOLLINEAROPT
+    integer val = mazepathval(gMazeX, gMazeY);  // current point as one integer
+    //  Should we keep pt 1?
+    //  Yes, if it's not a duplicate or collinear.
+    if (!(gMazePrev0 != MAZEINVALIDPT && 
+            (mazeinline(mazepathx(gMazePrev0), mazepathy(gMazePrev0),
+                mazepathx(gMazePrev1), mazepathy(gMazePrev1),
+                gMazeX, gMazeY)
+                || (gMazePrev0 == gMazePrev1)
+                || (gMazePrev1 == val))))
+    {   gMazePath = gMazePath + [val];              // save point
+        DEBUGPRINT1("(" + (string)gMazeX + "," + (string)gMazeY + ")");
+    }
+    gMazePrev1 = val;                       // new point always becomes prev point
+#else
+    gMazePath = gMazePath + [mazepathval(gMazeX, gMazeY)];
     DEBUGPRINT1("(" + (string)gMazeX + "," + (string)gMazeY + ")");
+#endif // MAZECOLLINEAROPT
 }
 
 //
