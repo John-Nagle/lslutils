@@ -498,43 +498,6 @@ integer mazefollowwall(integer sidelr, integer direction)
     return(direction);                                // new direction
 } 
 
-#ifdef OBSOLETE   // mazeoptimizeroute now does this
-    
-def mazeroutecornersonly(route) :
-    """
-    Condense route, only keeping corners
-    """
-    if (llGetListLength(route) == 0) :                          // empty
-        return(route)
-    newroute = []
-    prev0x = -1
-    prev0y = -1
-    prev1x = -1
-    prev1y = -1
-    x = -1
-    y = -1
-    for n in range(llGetListLength(route)) :
-        val = route[n]
-        x = mazepathx(val)
-        y = mazepathy(val)
-        ////////x = route[n][0]
-        ////////y = route[n][1]
-        if (prev0x >= 0 && (mazeinline(prev0x, prev0y, prev1x, prev1y, x, y) 
-            || mazepointssame(prev0x, prev0y, prev1x, prev1y) 
-            || mazepointssame(prev1x, prev1y, x,y))) :
-            pass
-                //   pt 1 is redundant
-        else :                                  // need to keep pt 1
-            prev0x = prev1x
-            prev0y = prev1y
-            if prev1x >= 0 :                    // if we have something to output
-                newroute.append(mazepathval(prev1x, prev1y))
-        prev1x = x
-        prev1y = y
-    // final point.
-    newroute.append(mazepathval(x,y)) 
-    return newroute
-#endif // OBSOLETE    
 //
 //  mazelinebarrier -- Does the line between the two points, inclusive, hit a barrier?
 //
