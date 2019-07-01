@@ -1,40 +1,46 @@
 //
-//   mazesolver.lsl
+//  mazesolver.lsl
 //
-//   Finds reasonable path through a grid of squares with obstacles.
+//  Finds reasonable path through a grid of squares with obstacles.
 //
-//   Intermediate step to an implementation in LSL.
+//  Animats
+//  June, 2019
 //
+//  The algorithm is based on one from Wikipedia:
 //
-//   Animats
-//   June, 2019
+//  https://en.wikipedia.org/wiki/Maze_solving_algorithm//Maze-routing_algorithm
 //
-//   The algorithm is from Wikipedia:
+//  That doesn't work as published; see the Wikipedia talk page.
 //
-//   https://en.wikipedia.org/wiki/Maze_solving_algorithm//Maze-routing_algorithm
+//  This is guaranteed to produce a path if one exists, but it may be non-optimal.
+//  All paths in this module are rectangular - horizontal and vertical only.
 //
-//   This is guaranteed to produce a path if one exists, but it may be non-optimal.
+//  The basic approach is to head for the goal, and if there's an obstacle, follow
+//  the edge of the obstacle until there's a good route to the goal.
 //
-//   The basic approach is to head for the goal, && if there's an obstacle, follow
-//   the edge of the obstacle until there's a good route to the goal.
+//  Paths from this need tightening up afterwards.
+//  "mazeoptimizeroute" does the first stage of that.
+//  A polishing pass will be required outside this module so that the
+//  paths are not so rectangular. 
 //
-//   The main problem is keeping this from looping endlessly. If it hits the
-//   start point 3 times, from all possible directions, there's no solution.
+//  Memory consumption is a problem. This code needs to be in a script of its own,
+//  communicating by messages, to avoid stack/heap collisions in this 64K world.
 //
-//   Paths from this need tightening up afterwards.
-// 
+//  The data for each cell is:
+//  - barrier - 1 bit, obstacle present
+//  - examined - 1 bit, obstacle presence tested
 //
-//   The data for each cell is:
-//   - barrier - 1 bit, obstacle present
-//   - examined - 1 bit, obstacle presence tested
+//  These are packed into 2 bits, which are packed 16 per 32 bit word
+//  (LSL being a 32-bit system), which are stored in a LSL list.
+//  Timing tests indicate that the cost of updating an LSL list is constant up to size 128;
+//  then it starts to increase linearly.  So a single list is good enough for anything up
+//  to 45x45 cells. 
 //
-//   These are packed into 2 bits, which are packed 16 per 32 bit word
-//   (LSL being a 32-bit system), which are stored in a LSL list.
-//   Timing tests indicate that the cost of updating an LSL list is constant up to size 128;
-//   then it starts to increase linearly.  So a single list is good enough for anything up
-//   to 45x45 cells. 
+//  TODO:
+//  1. Add checking for getting close to space limits, and return failure before a stack/heap collision.
+//  2. Add backup counter to detect runaways now that collinear point optimization is in.
 //
-//   Constants
+//  Constants
 //
 #define MAZEBARRIER (0x1)                                   // must be low bit
 #define MAZEEXAMINED (0x2)
