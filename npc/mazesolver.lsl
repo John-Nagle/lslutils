@@ -473,7 +473,7 @@ integer mazefollowwall(integer sidelr, integer direction)
     return(direction);                                // new direction
 } 
 
-#ifdef NOTYET   
+#ifdef OBSOLETE   // mazeoptimizeroute now does this
     
 def mazeroutecornersonly(route) :
     """
@@ -509,7 +509,7 @@ def mazeroutecornersonly(route) :
     // final point.
     newroute.append(mazepathval(x,y)) 
     return newroute
-#endif // NOTYET    
+#endif // OBSOLETE    
 //
 //  mazelinebarrier -- Does the line between the two points, inclusive, hit a barrier?
 //
