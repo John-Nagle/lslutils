@@ -48,7 +48,7 @@
 #define MAZEINVALIDPT (0xffffffff)                          // invalid point value in old point storage
 
 #define MAZEMAXSIZE (41)                                    // maximum size of maze
-
+#define MAZEMINMEM (4096)                                   // make sure we have this much memory left
 //   Wall follow sides
 #define MAZEWALLONLEFT  1
 #define MAZEWALLONRIGHT (-1)
@@ -734,6 +734,8 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     integer starty = (integer)llJsonGetValue(jsn,["starty"]);
     integer endx = (integer)llJsonGetValue(jsn,["endx"]);
     integer endy = (integer)llJsonGetValue(jsn,["endy"]);
+    if (verbose) 
+    {   llOwnerSay("Maze solver: " + jsn); }            // verbose mode
     if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = 2; } // too big
     list path = [];
     if (status == 0)                                    // if params sane enough to start
@@ -743,8 +745,10 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
             status = 1;
         }  
     }
+    if (verbose) 
+    {   llOwnerSay("Maze solver done."); } 
     //  Send reply                  
-     llMessageLinked(LINK_THIS, status, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "serial", serial,
+    llMessageLinked(LINK_THIS, status, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "serial", serial,
         "points", llList2Json(JSON_ARRAY, path)]),"");
 }
 
@@ -758,14 +762,14 @@ integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
     vector direction = llVecNorm(p1-p0);                // direction
     p1 = p1 + direction*(gMazeCellSize*0.5);            // extend to edge of cell
     p0 = p0 - direction*(gMazeCellSize*0.5);            // extend to edge of cell
-    float dist = castbeam(p0, p1, float gMazeWidth, gMazeHeight, gMazeProbeSpacing, FALSE);
+    float dist = castbeam(p0, p1, gMazeWidth, gMazeHeight, gMazeProbeSpacing, FALSE);
     return(dist != INFINITY);                           // returns true if obstacle
 }
 //
 //  mazecelltopoint -- convert maze coordinates to point in world space
 //
 vector mazecelltopoint(integer x, integer y)
-{      return(gMazepos + (<x,y,0>*gMazeCellSize) * gMazeRot);  }
+{      return(gMazePos + (<x,y,0>*gMazeCellSize) * gMazeRot);  }
                 
 //
 //   Test-only code
