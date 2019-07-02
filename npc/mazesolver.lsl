@@ -47,6 +47,7 @@
 
 #define MAZEINVALIDPT (0xffffffff)                          // invalid point value in old point storage
 
+#define MAZEMAXSIZE (41)                                    // maximum size of maze
 
 //   Wall follow sides
 #define MAZEWALLONLEFT  1
@@ -691,7 +692,68 @@ string mazereplyjson(integer status, integer serial, list path)
 {   return (llList2Json(JSON_OBJECT, ["reply", "mazesolve", "status", status, "serial", serial,
         "points", llList2Json(JSON_ARRAY, path)]));
 }
-            
+
+vector gMazePos;                                // location of maze in SL world space
+rotation gMazeRot;
+float gMazeCellSize;                            // size of cell in world
+float gMazeProbeSpacing;                        // probe spacing for llCastRay
+float gMazeHeight;                              // character height
+float gMazeRadius;                              // character radius
+//
+//  mazerequestjson -- request a maze solve via JSON
+//
+//  Format:
+//  { "request" : "mazesolve",  "verbose" : INTEGER, 
+//      "regioncorner" : VECTOR, "pos": VECTOR, "rot" : QUATERNION, "cellsize": FLOAT, "probespacing" : FLOAT, 
+//      "width" : FLOAT, "radius" : FLOAT, 
+//      "sizex", INTEGER, "sizey", INTEGER, 
+//      "startx" : INTEGER, "starty" : INTEGER, "endx" : INTEGER, "endy" : INTEGER }
+//      
+//  "regioncorner", "pos" and "rot" identify the coordinates of the CENTER of the (0,0) cell of the maze grid.
+//  Ray casts are calculated accordingly.
+//  "cellsize" is the edge length of each square cell.
+//  "probespacing" is the spacing between llCastRay probes.
+//  "height" and "radius" define the avatar's capsule. 
+//  
+mazerequestjson(integer sender_num, integer num, string jsn, key id) 
+{   integer status = 0;                                     // so far, so good
+    string requesttype = llJsonGetValue(jsn,["request"]);   // request type
+    if (requesttype != "mazesolve") { return; }              // ignore, not our msg
+    string serial = llJsonGetValue(jsn, ["serial"]); 
+    integer verbose = (integer)llJsonGetValue(jsn,["verbose"]);
+    vector regioncorner = (vector)llJsonGetValue(jsn,["regioncorner"]);
+    gMazePos = (vector)llJsonGetValue(jsn,["pos"]);
+    gMazeRot = (rotation)llJsonGetValue(jsn,["rot"]);
+    gMazeCellSize = (float)llJsonGetValue(jsn,["cellsize"]);
+    gMazeProbeSpacing = (float)llJsonGetValue(jsn,["probespacing"]);
+    gMazeHeight = (float)llJsonGetValue(jsn,["height"]);
+    gMazeRadius = (float)llJsonGetValue(jsn,["radius"]);
+    integer sizex = (integer)llJsonGetValue(jsn,["sizex"]);
+    integer sizey = (integer)llJsonGetValue(jsn,["sizey"]);
+    integer startx = (integer)llJsonGetValue(jsn,["startx"]);
+    integer starty = (integer)llJsonGetValue(jsn,["starty"]);
+    integer endx = (integer)llJsonGetValue(jsn,["endx"]);
+    integer endy = (integer)llJsonGetValue(jsn,["endy"]);
+    if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = 2; } // too big
+    list path = [];
+    if (status == 0)                                    // if params sane enough to start
+    {   path = mazesolve(sizex, sizey, startx, starty, endx, endy); // solve the maze
+        if (llGetListLength(path) == 0)                 // failed to find a path
+        {   path = [];                                  // clear path
+            status = 1;
+        }  
+    }
+    //  Send reply                  
+     llMessageLinked(LINK_THIS, status, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "serial", serial,
+        "points", llList2Json(JSON_ARRAY, path)]),"");
+}
+
+//
+//  mazecelltopoint -- convert maze coordinates to point in world space
+//
+vector mazecelltopoint(integer x, integer y)
+{      return(gMazepos + (<x,y,0>*gMazeCellSize) * gMazeRot);  }
+                
 //
 //   Test-only code
 //
