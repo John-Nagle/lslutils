@@ -746,7 +746,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
         }  
     }
     if (verbose) 
-    {   llOwnerSay("Maze solver done."); } 
+    {   llOwnerSay("Maze solver done. Free memory " + (string)llGetFreeMemory()); } 
     //  Send reply                  
     llMessageLinked(LINK_THIS, status, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "serial", serial,
         "points", llList2Json(JSON_ARRAY, path)]),"");

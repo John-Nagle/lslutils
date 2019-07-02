@@ -163,9 +163,9 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 //
 //  Does both a ray check and a llGetStaticPath check.
 //
-integer obstaclecheckpath(vector p0, vector p1, float width, float height, integer chartype)
+integer obstaclecheckpath(vector p0, vector p1, float width, float height, float probespacing, integer chartype)
 {
-    float disttohit = castbeam(p0, p1, width, height, TESTPOINTS, FALSE);
+    float disttohit = castbeam(p0, p1, width, height, probespacing, FALSE);
     if (disttohit != INFINITY)
     {   ////llOwnerSay("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
         return(FALSE);
@@ -182,15 +182,15 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, integ
 //
 //  simpleobstacletrypath -- try one path for simple obstacle avoidance
 //
-list simpleobstacletrypath(vector p0, vector p1, float width, float height, integer chartype, float offset)
+list simpleobstacletrypath(vector p0, vector p1, float width, float height, float probespacing, integer chartype, float offset)
 {
     vector sidewaysdir = <0,1,0>*rotperpenonground(p0,p1);      // offset for horizontal part of scan
     vector interp0 = p0 + sidewaysdir*offset;                   // first intermediate point, sideways move
     vector interp1 = p1 + sidewaysdir*offset;                   // second intermediate point
     ////llOwnerSay("try path, offset: " + (string) offset + "  " + (string) interp0 + " " + (string)interp1);
-    if (!obstaclecheckpath(p0, interp0, width, height, chartype)) { return([]);} // fail
-    if (!obstaclecheckpath(interp0, interp1, width, height, chartype)) { return([]);} // fail
-    if (!obstaclecheckpath(interp1, p1, width, height, chartype)) { return([]);} // fail
+    if (!obstaclecheckpath(p0, interp0, width, height, probespacing, chartype)) { return([]);} // fail
+    if (!obstaclecheckpath(interp0, interp1, width, height, probespacing, chartype)) { return([]);} // fail
+    if (!obstaclecheckpath(interp1, p1, width, height, probespacing, chartype)) { return([]);} // fail
     return([p0, interp0, interp1, p1]);                         // success, return new path
 }
 
@@ -203,11 +203,11 @@ list simpleobstacletrypath(vector p0, vector p1, float width, float height, inte
 //
 //  p0 must be in clear space and clear for a "width" circle around p0.
 //
-list simpleobstacleavoid(vector p0, vector p1, float width, float height, integer chartype)
+list simpleobstacleavoid(vector p0, vector p1, float width, float height, float probespacing, integer chartype)
 {
     vector sidewaysdir = <0,1,0>*rotperpenonground(p0,p1);      // offset for horizontal part of scan
-    float rightmax = castbeam(p0, p0+sidewaysdir*MAXAVOIDMOVE, width, height, TESTPOINTS, TRUE); // max dist to scan to right 
-    float leftmax = castbeam(p0, p0-sidewaysdir*MAXAVOIDMOVE, width, height, TESTPOINTS, TRUE);  // max dist to scan to right 
+    float rightmax = castbeam(p0, p0+sidewaysdir*MAXAVOIDMOVE, width, height, probespacing, TRUE); // max dist to scan to right 
+    float leftmax = castbeam(p0, p0-sidewaysdir*MAXAVOIDMOVE, width, height, probespacing, TRUE);  // max dist to scan to right 
     float offsetlim = MAXAVOIDMOVE;
     float maxoffset = rightmax;
     if (leftmax > maxoffset) { maxoffset = leftmax; }
@@ -217,11 +217,11 @@ list simpleobstacleavoid(vector p0, vector p1, float width, float height, intege
     for (offset = 0.0; offset <= maxoffset + 0.001; offset += width)   // all offsets to try
     {   
         if (offset <= rightmax)
-        {   list avoidpath = simpleobstacletrypath(p0, p1, width, height, chartype, offset); // try avoiding obstacle by going right
+        {   list avoidpath = simpleobstacletrypath(p0, p1, width, height, probespacing, chartype, offset); // try avoiding obstacle by going right
             if (llGetListLength(avoidpath) > 0) { return(avoidpath); }  // alternate route found
         }
         if (offset <= leftmax)
-        {   list avoidpath = simpleobstacletrypath(p0, p1, width, height, chartype, -offset); // try avoiding obstacle by going right
+        {   list avoidpath = simpleobstacletrypath(p0, p1, width, height, probespacing, chartype, -offset); // try avoiding obstacle by going right
             if (llGetListLength(avoidpath) > 0) { return(avoidpath); }  // alternate route found
         }
     }
