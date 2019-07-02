@@ -125,7 +125,7 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 {   float yoffset;                                          // cast ray offset, Y dir in coords of vector
     float zoffset;                                          // cast ray offset, Z dir in coords of vector
     float nearestdist = INFINITY;                           // closest hit 
-    probespacing = ((integer)(height/probespacing))*probespacing; // adjust to match height
+    probespacing = (height-GROUNDCLEARANCE)/((integer)((height-GROUNDCLEARANCE)/probespacing)); // adjust to match height
     if (probespacing < 0.10) { return(-4); }                // Bad call
     vector dir = llVecNorm(p1-p0);                          // direction of raycast                     
     vector endoffsetdir = <0,1,0>*rotperpenonground(p0,p1);    // offset for horizontal part of scan
@@ -133,7 +133,7 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
     //  Always do 3 scans across width - left edge, middle, right edge.
     for (yoffset = -width * 0.5; yoffset <= width * 0.5 + 0.001; yoffset += (width*0.5))
     {   for (zoffset = GROUNDCLEARANCE; zoffset <= height  + 0.001; zoffset += probespacing)
-        {   ////llOwnerSay("p0: " + (string)p0 + "  p1: " + (string)p1 + "  zoffset: " + (string)zoffset); // ***TEMP***
+        {   llOwnerSay("p0: " + (string)p0 + "  p1: " + (string)p1 + "  zoffset: " + (string)zoffset); // ***TEMP***
             vector yadjust = yoffset*endoffsetdir;          // offset for scan crosswise to path
             list castresult = castray(<p0.x, p0.y, p0.z+zoffset>+yadjust, <p1.x, p1.y, p1.z + zoffset>+yadjust, []);
             integer status = llList2Integer(castresult, -1);// status is last element in list
