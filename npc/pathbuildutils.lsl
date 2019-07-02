@@ -148,6 +148,7 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
                 integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
                 if (pathfindingtype != OPT_WALKABLE)        // if it's not a walkable
                 {   float dist = (hitpt-p0) * dir;          // distance to hit
+                    if (dist < 0) { dist = 0; }             // can potentially be small and negative, from geometry. Treat as zero.
                     if (!wantnearest)                       // if don't need nearest
                     {   return(dist); }                     // just return first
                     if (dist < nearestdist)                 // save closest hit point
