@@ -698,14 +698,14 @@ rotation gMazeRot;
 float gMazeCellSize;                            // size of cell in world
 float gMazeProbeSpacing;                        // probe spacing for llCastRay
 float gMazeHeight;                              // character height
-float gMazeRadius;                              // character radius
+float gMazeWidth;                               // character diameter
 //
 //  mazerequestjson -- request a maze solve via JSON
 //
 //  Format:
 //  { "request" : "mazesolve",  "verbose" : INTEGER, 
 //      "regioncorner" : VECTOR, "pos": VECTOR, "rot" : QUATERNION, "cellsize": FLOAT, "probespacing" : FLOAT, 
-//      "width" : FLOAT, "radius" : FLOAT, 
+//      "width" : FLOAT, "height" : FLOAT, 
 //      "sizex", INTEGER, "sizey", INTEGER, 
 //      "startx" : INTEGER, "starty" : INTEGER, "endx" : INTEGER, "endy" : INTEGER }
 //      
@@ -727,7 +727,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     gMazeCellSize = (float)llJsonGetValue(jsn,["cellsize"]);
     gMazeProbeSpacing = (float)llJsonGetValue(jsn,["probespacing"]);
     gMazeHeight = (float)llJsonGetValue(jsn,["height"]);
-    gMazeRadius = (float)llJsonGetValue(jsn,["radius"]);
+    gMazeWidth = (float)llJsonGetValue(jsn,["width"]);
     integer sizex = (integer)llJsonGetValue(jsn,["sizex"]);
     integer sizey = (integer)llJsonGetValue(jsn,["sizey"]);
     integer startx = (integer)llJsonGetValue(jsn,["startx"]);
@@ -748,6 +748,19 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
         "points", llList2Json(JSON_ARRAY, path)]),"");
 }
 
+//
+//  mazebarrierfn -- barrier test in 3D space
+//
+integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
+{   
+    vector p0 = mazecelltopoint(prevx, prevy);          // centers of the start and end test cells
+    vector p1 = mazecelltopoint(x,y);
+    vector direction = llVecNorm(p1-p0);                // direction
+    p1 = p1 + direction*(gMazeCellSize*0.5);            // extend to edge of cell
+    p0 = p0 - direction*(gMazeCellSize*0.5);            // extend to edge of cell
+    float dist = castbeam(p0, p1, float gMazeWidth, gMazeHeight, gMazeProbeSpacing, FALSE);
+    return(dist != INFINITY);                           // returns true if obstacle
+}
 //
 //  mazecelltopoint -- convert maze coordinates to point in world space
 //
