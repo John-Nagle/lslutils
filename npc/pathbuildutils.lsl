@@ -121,7 +121,7 @@ list castray(vector p0, vector p1, list params)
 //
 //  Minimum value of probecnt is 2.
 //
-float castbeam(vector p0, vector p1, float width, float height, float probespacing, integer wantnearest)
+float castbeam(vector p0, vector p1, float width, float height, float probespacing, integer wantnearest, list castparams)
 {   float yoffset;                                          // cast ray offset, Y dir in coords of vector
     float zoffset;                                          // cast ray offset, Z dir in coords of vector
     float nearestdist = INFINITY;                           // closest hit 
@@ -135,7 +135,7 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
     {   for (zoffset = GROUNDCLEARANCE; zoffset <= height  + 0.001; zoffset += probespacing)
         {   ////llOwnerSay("p0: " + (string)p0 + "  p1: " + (string)p1 + "  zoffset: " + (string)zoffset); // ***TEMP***
             vector yadjust = yoffset*endoffsetdir;          // offset for scan crosswise to path
-            list castresult = castray(<p0.x, p0.y, p0.z+zoffset>+yadjust, <p1.x, p1.y, p1.z + zoffset>+yadjust, []);
+            list castresult = castray(<p0.x, p0.y, p0.z+zoffset>+yadjust, <p1.x, p1.y, p1.z + zoffset>+yadjust, castparams);
             integer status = llList2Integer(castresult, -1);// status is last element in list
             if (status < 0)
             {   llOwnerSay("Cast ray status: " + (string)status);
@@ -165,16 +165,17 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 //
 integer obstaclecheckpath(vector p0, vector p1, float width, float height, float probespacing, integer chartype)
 {
-    float disttohit = castbeam(p0, p1, width, height, probespacing, FALSE);
-    if (disttohit != INFINITY)
-    {   ////llOwnerSay("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
-        return(FALSE);
-    }
     list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, CHARTYPE]);
     integer status = llList2Integer(path,-1);                   // last item is status
     path = llList2List(path,0,-2);                              // remove last item
     if (status != 0 || llGetListLength(path) > 2 && !checkcollinear(path))
     {   llOwnerSay("Path static check failed for " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
+        return(FALSE);
+    }
+    //  Don't test against land, because the static path check did that already.
+    float disttohit = castbeam(p0, p1, width, height, probespacing, FALSE, [RC_REJECT_TYPES,RC_REJECT_LAND]);
+    if (disttohit != INFINITY)
+    {   ////llOwnerSay("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
         return(FALSE);
     }
     return(TRUE);                                               // success
@@ -206,8 +207,8 @@ list simpleobstacletrypath(vector p0, vector p1, float width, float height, floa
 list simpleobstacleavoid(vector p0, vector p1, float width, float height, float probespacing, integer chartype)
 {
     vector sidewaysdir = <0,1,0>*rotperpenonground(p0,p1);      // offset for horizontal part of scan
-    float rightmax = castbeam(p0, p0+sidewaysdir*MAXAVOIDMOVE, width, height, probespacing, TRUE); // max dist to scan to right 
-    float leftmax = castbeam(p0, p0-sidewaysdir*MAXAVOIDMOVE, width, height, probespacing, TRUE);  // max dist to scan to right 
+    float rightmax = castbeam(p0, p0+sidewaysdir*MAXAVOIDMOVE, width, height, probespacing, TRUE, []); // max dist to scan to right 
+    float leftmax = castbeam(p0, p0-sidewaysdir*MAXAVOIDMOVE, width, height, probespacing, TRUE, []);  // max dist to scan to right 
     float offsetlim = MAXAVOIDMOVE;
     float maxoffset = rightmax;
     if (leftmax > maxoffset) { maxoffset = leftmax; }
