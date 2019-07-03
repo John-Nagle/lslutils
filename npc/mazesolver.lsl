@@ -62,6 +62,7 @@ list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
 #define MAZEEDGEFOLLOWDX(n) llList2Integer(MAZEEDGEFOLLOWDXTAB,(n))
 #define MAZEEDGEFOLLOWDY(n) llList2Integer(MAZEEDGEFOLLOWDYTAB,(n))
 
+#define MAZEPRINTVERBOSE(s) { if (verbose) { llOwnerSay((s)); } }
 #ifdef DEBUG
 #define DEBUGPRINT(s) // Nothing for now
 #define DEBUGPRINT1(s) llOwnerSay(s)
@@ -184,7 +185,7 @@ mazecellset(integer x, integer y, integer newval)
 //
 //  mazesolve  -- find a path through a maze
 //         
-list mazesolve(integer xsize, integer ysize, integer startx, integer starty, integer endx, integer endy)
+list mazesolve(integer xsize, integer ysize, integer startx, integer starty, integer endx, integer endy, integer verbose)
 {
     gMazeXsize = xsize;                          // set size of map
     gMazeYsize = ysize;
@@ -203,14 +204,17 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
     gMazePrev1 = MAZEINVALIDPT;             // previous point out, invalid value
     mazeaddtopath();                        // add initial point
     //   Outer loop - shortcuts || wall following
+    MAZEPRINTVERBOSE("Start maze solve.");
     while (gMazeX != gMazeEndX || gMazeY != gMazeEndY)  // while not at dest
-    {   if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) 
+    {   MAZEPRINTVERBOSE("Maze solve at (" + (string)gMazeX + "," + (string)gMazeY + ")");
+        if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) 
         {   gMazeCells = [];
             gMazePath = [];
             return([]);                    // we are in an undetected loop
         }
         if (mazeexistsproductivepath())     // if a shortcut is available
-        {   mazetakeproductivepath();       // use it
+        {   MAZEPRINTVERBOSE("Maze productive path at (" + (string)gMazeX + "," + (string)gMazeY + ")");
+            mazetakeproductivepath();       // use it
             gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
             ////////gMazeMdbest = gMazeMdbest -1 
             assert(gMazeMdbest >= 0);
@@ -224,8 +228,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             integer followstartx = gMazeX;
             integer followstarty = gMazeY;
             integer followstartdir = direction;
-            ////DEBUGPRINT("Starting wall follow at (%d,%d), direction %d, m.dist = %d" % (followstartx, followstarty, direction, gMazeMdbest))
-            DEBUGPRINT1("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdbest);
+            MAZEPRINTVERBOSE("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdbest);
             while (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath())
             {   ////DEBUGPRINT1("Wall follow loop");    // ***TEMP***
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
@@ -238,7 +241,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 ////DEBUGPRINT1("Calling mazefollowwall");              // ***TEMP***
                 direction = mazefollowwall(sidelr, direction);      // follow edge, advance one cell
                 if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) // runaway check
-                {   DEBUGPRINT1("***ERROR*** runaway"); 
+                {   MAZEPRINTVERBOSE("***ERROR*** runaway"); 
                     gMazeCells = [];
                     gMazePath = [];
                     return([]);
@@ -246,7 +249,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 //   Termination check - if we are back at the start of following && going in the same direction, no solution
                 if (gMazeX == followstartx && gMazeY == followstarty && direction == followstartdir) 
                 {
-                    DEBUGPRINT1("Back at start of follow. No solution");
+                    MAZEPRINTVERBOSE("Back at start of follow. No solution");
                     gMazeCells = [];
                     gMazePath = [];
                     return([]);                                  // fails
@@ -255,7 +258,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             DEBUGPRINT1("Finished wall following.");
         }
     }
-    DEBUGPRINT1("Solved maze");
+    MAZEPRINTVERBOSE("Solved maze");
     if (gMazePrev1 != MAZEINVALIDPT) { gMazePath += [gMazePrev1]; }
     list path = gMazePath;
     gMazeCells = [];                        // release memory, we need it
@@ -497,7 +500,7 @@ integer mazefollowwall(integer sidelr, integer direction)
             integer md = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
             if (md < gMazeMdbest && mazeexistsproductivepath())
             {
-                DEBUGPRINT("Outside corner led to a productive path halfway through")
+                DEBUGPRINT("Outside corner led to a productive path halfway through");
                 return(direction);
             }
             direction = (direction + sidelr + 4) % 4;    // turn in direction
@@ -746,7 +749,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = 2; } // too big
     list path = [];
     if (status == 0)                                    // if params sane enough to start
-    {   path = mazesolve(sizex, sizey, startx, starty, endx, endy); // solve the maze
+    {   path = mazesolve(sizex, sizey, startx, starty, endx, endy, verbose); // solve the maze
         if (llGetListLength(path) == 0)                 // failed to find a path
         {   path = [];                                  // clear path
             status = 1;
@@ -769,7 +772,9 @@ integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
     vector direction = llVecNorm(p1-p0);                // direction
     p1 = p1 + direction*(gMazeCellSize*0.5);            // extend to edge of cell
     p0 = p0 - direction*(gMazeCellSize*0.5);            // extend to edge of cell
+    llOwnerSay("Call castbeam");    // ***TEMP***
     float dist = castbeam(p0, p1, gMazeWidth, gMazeHeight, gMazeProbeSpacing, FALSE, [RC_REJECT_TYPES,RC_REJECT_LAND]);
+    llOwnerSay("Return from castbeam"); // ***TEMP***
     return(dist != INFINITY);                           // returns true if obstacle
 }
 //

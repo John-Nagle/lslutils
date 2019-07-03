@@ -1,5 +1,3 @@
-#ifndef PATHBUILDUTILS                                       // include guard, like C/C++
-#define PATHBUILDUTILS
 //
 //   pathbuildutils.lsl -- components of a path building system
 //
@@ -8,6 +6,8 @@
 //   Animats
 //   June, 2019
 //
+#ifndef PATHBUILDUTILS                                       // include guard, like C/C++
+#define PATHBUILDUTILS
 //
 //  Constants
 //
