@@ -741,7 +741,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     integer endx = (integer)llJsonGetValue(jsn,["endx"]);
     integer endy = (integer)llJsonGetValue(jsn,["endy"]);
     if (verbose) 
-    {   llOwnerSay("Maze solver: " + jsn); }            // verbose mode
+    {   llOwnerSay("Request to maze solver: " + jsn); }            // verbose mode
     if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = 2; } // too big
     list path = [];
     if (status == 0)                                    // if params sane enough to start

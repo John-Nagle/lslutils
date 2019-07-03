@@ -39,16 +39,16 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     vector v = p1 - p0;                             // from start to goal
     float vdist = llVecMag(v);                      // distance from start to goal
     vector pmid = (p0 + p1)*0.5;                    // center of maze area
-    rotation gMazePos = rotperpenonground(p0, p1);       // rotation of center of maze
+    rotation gMazeRot = rotperpenonground(p0, p1);       // rotation of center of maze
     //  "pos" is the center of cell (0,0) of the maze.
     //  "cellsize" is the size of a maze cell. This must be larger than "width".
-    float cellsize = 1.5*width;                     // initial cell size
-    float celldistfromstarttoend = vdist / cellsize;   // number of cells between start and end
+    gMazeCellSize = 1.5*width;                     // initial cell size
+    float celldistfromstarttoend = vdist / gMazeCellSize;   // number of cells between start and end
     if (celldistfromstarttoend < 2) { return(FALSE); } // start too close to end. Need to back off start and end points.
     integer cellsfromstarttoend = (integer)celldistfromstarttoend; // at least 2
     if (cellsfromstarttoend >= MAXMAZESIZE*0.75)    // too big
-    {   return(FALSE); }
-    cellsize = vdist / cellsfromstarttoend;         // size of a cell so that start and end line up
+    {   return(-1); }
+    gMazeCellSize = vdist / cellsfromstarttoend;         // size of a cell so that start and end line up
     //  For now, we always build a maze of MAXMAZESIZE*MAXMAZESIZE.
     //  The maze is aligned so that the X direction of the maze is from xstart to xend, the midpoint
     //  between xstart and xend is the center of the maze (roughly), and ystart and yend are halfway
@@ -57,8 +57,8 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     integer starty = (integer)MAXMAZESIZE/2;
     integer endx = starty + cellsfromstarttoend;    // 
     integer endy = (integer)MAXMAZESIZE/2;
-    vector startrel = <startx*cellsize,starty*cellsize,0>; // vector from maze (0,0) to p0
-    vector pos = p1 - startrel;                    // position of cell (0,0)
+    vector startrel = <startx*gMazeCellSize,starty*gMazeCellSize,0>; // vector from maze (0,0) to p0
+    gMazePos = p1 - startrel;                       // position of cell (0,0)
     gMazeSerial++;                                  // next maze number
     llMessageLinked(LINK_THIS, 0, llList2Json(JSON_OBJECT, [
         "request", "mazesolve",                     // type of request
@@ -76,7 +76,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
         "starty", starty,
         "endx", endx,                               // goal, cell coords
         "endy", endy]),"");
-    return(TRUE);
+    return(0);
 }
 
 //
@@ -86,7 +86,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
 //
 list mazesolveranswer(string jsn, integer status) 
 {
-    string requesttype = llJsonGetValue(jsn,["request"]);   // request type
+    string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
     if (requesttype != "mazesolve") { return([-1]); }              // ignore, not our msg
     string serial = llJsonGetValue(jsn, ["serial"]);
     if ((integer)serial != gMazeSerial) { return([-2]); }            // out of sequence 
