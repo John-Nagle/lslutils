@@ -688,12 +688,12 @@ list mazeoptimizeroute(list route)
 //  "status" is 0 if successful, nonzero if a problem.
 //  "serial" is the serial number from the query, to match reply with request.
 //
-#ifdef OBSOLETE
+//  Only used for testing.
+//
 string mazereplyjson(integer status, integer serial, list path)
 {   return (llList2Json(JSON_OBJECT, ["reply", "mazesolve", "status", status, "serial", serial,
         "points", llList2Json(JSON_ARRAY, path)]));
 }
-#endif // OBSOLETE
 
 vector gMazePos;                                // location of maze in SL world space
 rotation gMazeRot;
@@ -705,7 +705,7 @@ float gMazeWidth;                               // character diameter
 //  mazerequestjson -- request a maze solve via JSON
 //
 //  Format:
-//  { "request" : "mazesolve",  "verbose" : INTEGER, 
+//  { "request" : "mazesolve",  "verbose" : INTEGER, "serial": INTEGER,
 //      "regioncorner" : VECTOR, "pos": VECTOR, "rot" : QUATERNION, "cellsize": FLOAT, "probespacing" : FLOAT, 
 //      "width" : FLOAT, "height" : FLOAT, 
 //      "sizex", INTEGER, "sizey", INTEGER, 
@@ -764,7 +764,7 @@ integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
     vector direction = llVecNorm(p1-p0);                // direction
     p1 = p1 + direction*(gMazeCellSize*0.5);            // extend to edge of cell
     p0 = p0 - direction*(gMazeCellSize*0.5);            // extend to edge of cell
-    float dist = castbeam(p0, p1, gMazeWidth, gMazeHeight, gMazeProbeSpacing, FALSE);
+    float dist = castbeam(p0, p1, gMazeWidth, gMazeHeight, gMazeProbeSpacing, FALSE, [RC_REJECT_TYPES,RC_REJECT_LAND]);
     return(dist != INFINITY);                           // returns true if obstacle
 }
 //
