@@ -1,3 +1,5 @@
+#ifndef PATHBUILDUTILS                                       // include guard, like C/C++
+#define PATHBUILDUTILS
 //
 //   pathbuildutils.lsl -- components of a path building system
 //
@@ -231,4 +233,5 @@ list simpleobstacleavoid(vector p0, vector p1, float width, float height, float 
     }
     return([]);                                                         // no route found
 }
+#endif // PATHBUILDUTILS
 

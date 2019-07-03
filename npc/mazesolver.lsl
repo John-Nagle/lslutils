@@ -40,6 +40,9 @@
 //  1. Add checking for getting close to space limits, and return failure before a stack/heap collision.
 //  2. Add backup counter to detect runaways now that collinear point optimization is in. 
 //
+//
+#include "npc/mazedefs.lsl"
+
 //  Constants
 //
 #define MAZEBARRIER (0x1)                                   // must be low bit
@@ -47,7 +50,6 @@
 
 #define MAZEINVALIDPT (0xffffffff)                          // invalid point value in old point storage
 
-#define MAZEMAXSIZE (41)                                    // maximum size of maze
 #define MAZEMINMEM (4096)                                   // make sure we have this much memory left
 //   Wall follow sides
 #define MAZEWALLONLEFT  1
@@ -169,13 +171,15 @@ mazecellset(integer x, integer y, integer newval)
     w = (w & (~(0x3<<bitix)))| (newval<<bitix); // insert into word
     gMazeCells = llListReplaceList(gMazeCells,[w],listix, listix); // replace word
     ////gMazeCells[listix] = w;                     // insert word
-}        
+}
+#ifndef mazepathx        
 //
 //   Maze path storage - X && Y in one 32-bit value
 //
 #define mazepathx(val) ((val) & 0xffff)         // X is low half
 #define mazepathy(val) (((val)>> 16) & 0xffff)  // Y is high half
 #define mazepathval(x,y) (((y) << 16) | (x))    // construct 32 bit value
+#endif // mazepathx
 
 //
 //  mazesolve  -- find a path through a maze
