@@ -109,7 +109,9 @@ list castray(vector p0, vector p1, list params)
     integer tries = CASTRAYRETRIES;                         // number of retries
     list castresult = [];
     while (tries-- > 0)
-    {   castresult = llCastRay(p0, p1, params);             // try cast ray
+    {   llOwnerSay("Cast ray: p0: " + (string)p0 + "  p1: " + (string)p1);  // ***TEMP*** 
+        castresult = llCastRay(p0, p1, params);             // try cast ray
+        llOwnerSay("Cast result: " + llDumpList2String(castresult,","));    // ***TEMP***
         if (llList2Integer(castresult,-1) >= 0)             // if good status
         {   return(castresult); }                           // non-error, return
         llOwnerSay("Cast delayed: " + (string) llList2Integer(castresult,-1));  // ***TEMP***
@@ -129,12 +131,18 @@ list castray(vector p0, vector p1, list params)
 float castbeam(vector p0, vector p1, float width, float height, float probespacing, integer wantnearest, list castparams)
 {   float yoffset;                                          // cast ray offset, Y dir in coords of vector
     float zoffset;                                          // cast ray offset, Z dir in coords of vector
-    float nearestdist = INFINITY;                           // closest hit 
-    probespacing = (height-GROUNDCLEARANCE)/((integer)((height-GROUNDCLEARANCE)/probespacing)); // adjust to match height
+    float nearestdist = INFINITY;                           // closest hit
+    llOwnerSay("p0: " + (string)p0 + "  p1: " + (string)p1 + " probespacing: " + (string) probespacing);  // ***TEMP***
+    integer probecount = (integer)((height-GROUNDCLEARANCE)/probespacing); // number of probes
+    llOwnerSay("probecount: " + (string) probecount);       // number of probes (must be > 0) 
+    if (probecount < 1) { probecount = 1; }                 // minimum is one probe
+    probespacing = (height-GROUNDCLEARANCE)/probecount;     // adjust to match height
     if (probespacing < 0.10) { return(-4); }                // Bad call
-    vector dir = llVecNorm(p1-p0);                          // direction of raycast                     
+    llOwnerSay("Calling llVecNorm"); // ***TEMP***
+    vector dir = llVecNorm(p1-p0);                          // direction of raycast 
+    llOwnerSay("llVecNorm returned " + (string)dir);    // ***TEMP***                   
     vector endoffsetdir = <0,1,0>*rotperpenonground(p0,p1);    // offset for horizontal part of scan
-    ////llOwnerSay("End offset dir: " + (string)endoffsetdir);  // ***TEMP***
+    llOwnerSay("End offset dir: " + (string)endoffsetdir);  // ***TEMP***
     //  Always do 3 scans across width - left edge, middle, right edge.
     for (yoffset = -width * 0.5; yoffset <= width * 0.5 + 0.001; yoffset += (width*0.5))
     {   for (zoffset = GROUNDCLEARANCE; zoffset <= height  + 0.001; zoffset += probespacing)

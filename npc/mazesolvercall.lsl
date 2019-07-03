@@ -69,7 +69,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
         "pos", gMazePos,                            // corner of maze in world space
         "rot", gMazeRot,                            // rotation of maze in world space
         "width", width,                             // avatar dimension
-        "heigth", height,
+        "height", height,
         "sizex", MAXMAZESIZE,                       // maze dimensions in cells
         "sizey", MAXMAZESIZE,
         "startx", startx,                           // start, cell coords
