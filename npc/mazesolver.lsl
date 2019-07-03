@@ -41,7 +41,7 @@
 //  2. Add backup counter to detect runaways now that collinear point optimization is in. 
 //
 //
-#include "npc/mazedefs.lsl"
+#include "npc/pathbuildutils.lsl"
 
 //  Constants
 //

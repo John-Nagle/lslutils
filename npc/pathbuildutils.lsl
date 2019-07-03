@@ -13,10 +13,13 @@
 //
 integer CASTRAYRETRIES = 10;                                // retry up to 10 times
 float CASTRAYRETRYDELAY = 0.200;                            // if a problem, retry slowly
-#define INFINITY ((float)"inf")                             // is there a better way?
 float GROUNDCLEARANCE = 0.05;                               // avoid false ground collisions
 float MAXAVOIDMOVE = 8.0;                                   // max distance to avoid obstacle
 float PATHCHECKTOL = 0.02;                                  // allow 2cm collinearity error
+#ifndef INFINITY                                            // should be an LSL builtin
+#define INFINITY ((float)"inf")                             // is there a better way?
+#endif // INFINITY
+
 //
 //  
 //

@@ -14,6 +14,11 @@
 #define mazepathy(val) (((val)>> 16) & 0xffff)  // Y is high half
 #define mazepathval(x,y) (((y) << 16) | (x))    // construct 32 bit value
 
+#ifndef INFINITY                                // should be an LSL builtin
+#define INFINITY ((float)"inf")                             // is there a better way?
+#endif // INFINITY
+
+
 #define MAZEMAXSIZE (41)                                    // maximum size of maze
 
 #endif // MAZEDEFS
