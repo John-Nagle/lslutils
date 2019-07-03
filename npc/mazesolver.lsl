@@ -38,7 +38,7 @@
 //
 //  TODO:
 //  1. Add checking for getting close to space limits, and return failure before a stack/heap collision.
-//  2. Add backup counter to detect runaways now that collinear point optimization is in.
+//  2. Add backup counter to detect runaways now that collinear point optimization is in. 
 //
 //  Constants
 //
@@ -688,10 +688,12 @@ list mazeoptimizeroute(list route)
 //  "status" is 0 if successful, nonzero if a problem.
 //  "serial" is the serial number from the query, to match reply with request.
 //
+#ifdef OBSOLETE
 string mazereplyjson(integer status, integer serial, list path)
 {   return (llList2Json(JSON_OBJECT, ["reply", "mazesolve", "status", status, "serial", serial,
         "points", llList2Json(JSON_ARRAY, path)]));
 }
+#endif // OBSOLETE
 
 vector gMazePos;                                // location of maze in SL world space
 rotation gMazeRot;

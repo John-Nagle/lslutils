@@ -164,6 +164,8 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 //
 //  Does both a ray check and a llGetStaticPath check.
 //
+//  NEEDS WORK to be usable from the maze solver on irregular terrain.
+//
 integer obstaclecheckpath(vector p0, vector p1, float width, float height, float probespacing, integer chartype)
 {
     list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, CHARTYPE]);
