@@ -703,7 +703,7 @@ string mazereplyjson(integer status, integer serial, list path)
 }
 
 vector gMazePos;                                // location of maze in SL world space
-rotation gMazeRot;
+rotation gMazeRot;                              // rotation of maze in SL world space
 float gMazeCellSize;                            // size of cell in world
 float gMazeProbeSpacing;                        // probe spacing for llCastRay
 float gMazeHeight;                              // character height
@@ -765,6 +765,8 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
 //
 //  mazebarrierfn -- barrier test in 3D space
 //
+//  ***NEED TO ADD A STRAIGHT DOWN RAYCAST TO CHECK FOR WALKABLE UNDERNEATH***
+//
 integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
 {   
     vector p0 = mazecelltopoint(prevx, prevy);          // centers of the start and end test cells
@@ -772,9 +774,7 @@ integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
     vector direction = llVecNorm(p1-p0);                // direction
     p1 = p1 + direction*(gMazeCellSize*0.5);            // extend to edge of cell
     p0 = p0 - direction*(gMazeCellSize*0.5);            // extend to edge of cell
-    llOwnerSay("Call castbeam");    // ***TEMP***
     float dist = castbeam(p0, p1, gMazeWidth, gMazeHeight, gMazeProbeSpacing, FALSE, [RC_REJECT_TYPES,RC_REJECT_LAND]);
-    llOwnerSay("Return from castbeam"); // ***TEMP***
     return(dist != INFINITY);                           // returns true if obstacle
 }
 //

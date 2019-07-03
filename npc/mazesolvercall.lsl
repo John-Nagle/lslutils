@@ -58,7 +58,18 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     integer endx = starty + cellsfromstarttoend;    // 
     integer endy = (integer)MAXMAZESIZE/2;
     vector startrel = <startx*gMazeCellSize,starty*gMazeCellSize,0>; // vector from maze (0,0) to p0
-    gMazePos = p1 - startrel;                       // position of cell (0,0)
+    gMazePos = p0 - startrel;                       // position of cell (0,0)
+#define GEOMCHECK
+#ifdef GEOMCHECK
+    vector p0chk = gMazePos + (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
+    vector p1chk = gMazePos + (<endx,endy,0>*gMazeCellSize) * gMazeRot; 
+    if ((llVecMag(p0chk-p0) > 0.01) || (llVecMag(p1chk-p1) > 0.01))
+    {   llSay(DEBUG_CHANNEL, "Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
+        + (string)p1 + " differs from p1chk: " + (string) p1chk);
+        return(-2);                                 // fails
+    }
+#endif // GEOMCHECK
+
     gMazeSerial++;                                  // next maze number
     llMessageLinked(LINK_THIS, MAZESOLVEREQUEST, llList2Json(JSON_OBJECT, [
         "request", "mazesolve",                     // type of request
