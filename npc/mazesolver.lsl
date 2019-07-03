@@ -722,7 +722,8 @@ float gMazeWidth;                               // character diameter
 //  "height" and "radius" define the avatar's capsule. 
 //  
 mazerequestjson(integer sender_num, integer num, string jsn, key id) 
-{   integer status = 0;                                     // so far, so good
+{   if (num != MAZESOLVEREQUEST) { return; }                // message not for us
+    integer status = 0;                                     // so far, so good
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type
     if (requesttype != "mazesolve") { return; }              // ignore, not our msg
     string serial = llJsonGetValue(jsn, ["serial"]); 
@@ -754,7 +755,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     if (verbose) 
     {   llOwnerSay("Maze solver done. Free memory " + (string)llGetFreeMemory()); } 
     //  Send reply                  
-    llMessageLinked(LINK_THIS, status, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "serial", serial,
+    llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "serial", serial, "status", status,
         "points", llList2Json(JSON_ARRAY, path)]),"");
 }
 

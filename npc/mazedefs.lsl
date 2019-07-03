@@ -18,6 +18,10 @@
 #define INFINITY ((float)"inf")                             // is there a better way?
 #endif // INFINITY
 
+//  Message types
+//
+#define MAZESOLVEREQUEST 201                    // to maze solver
+#define MAZESOLVERREPLY 202                     // from maze solver
 
 #define MAZEMAXSIZE (41)                                    // maximum size of maze
 

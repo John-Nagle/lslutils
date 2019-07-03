@@ -60,7 +60,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     vector startrel = <startx*gMazeCellSize,starty*gMazeCellSize,0>; // vector from maze (0,0) to p0
     gMazePos = p1 - startrel;                       // position of cell (0,0)
     gMazeSerial++;                                  // next maze number
-    llMessageLinked(LINK_THIS, 0, llList2Json(JSON_OBJECT, [
+    llMessageLinked(LINK_THIS, MAZESOLVEREQUEST, llList2Json(JSON_OBJECT, [
         "request", "mazesolve",                     // type of request
         "verbose", verbose,                         // debug use - maze solver will print messages
         "probespacing", probespacing,               // distance between ray casts in height dir
@@ -90,6 +90,7 @@ list mazesolveranswer(string jsn, integer status)
     if (requesttype != "mazesolve") { return([-1]); }              // ignore, not our msg
     string serial = llJsonGetValue(jsn, ["serial"]);
     if ((integer)serial != gMazeSerial) { return([-2]); }            // out of sequence 
+    integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) { return([status]); }                  // error status from other side
     list ptsmaze = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
     list ptsworld = [];
