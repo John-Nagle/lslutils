@@ -40,18 +40,19 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     float vdist = llVecMag(v);                      // distance from start to goal
     if (vdist < 0.01) { return(-1); }               // too close, error
     vector pmid = (p0 + p1)*0.5;                    // center of maze area
-    rotation gMazeRot = rotperpenonground(p0, p1);  // rotation of center of maze
     //  "pos" is the center of cell (0,0) of the maze.
     //  "cellsize" is the size of a maze cell. This must be larger than "width".
     //  We enlarge cell size so that there is an integer number of cells from p0 to p1.
     //  This works better if something upstream ensures a reasonable minimum distance between p0 and p1, like a meter.
-    gMazeCellSize = 1.5*width;                     // initial cell size
-    float celldistfromstarttoend = vdist / gMazeCellSize;   // number of cells between start and end
+    float cellsize = 1.5*width;                     // initial cell size
+    float celldistfromstarttoend = vdist / cellsize;   // number of cells between start and end
     if (celldistfromstarttoend < 2) { return(-2); } // start too close to end. Need to back off start and end points.
     integer cellsfromstarttoend = (integer)celldistfromstarttoend; // at least 2
     if (cellsfromstarttoend >= MAXMAZESIZE*0.75)    // too big
     {   return(-1); }
+    //  OK, good to go.
     gMazeCellSize = vdist / cellsfromstarttoend;         // size of a cell so that start and end line up
+    gMazeRot = rotperpenonground(p0, p1);           // rotation of center of maze
     //  For now, we always build a maze of MAXMAZESIZE*MAXMAZESIZE.
     //  The maze is aligned so that the X direction of the maze is from xstart to xend, the midpoint
     //  between xstart and xend is the center of the maze (roughly), and ystart and yend are halfway
@@ -126,6 +127,7 @@ list mazesolveranswer(string jsn, integer status)
     integer length = llGetListLength(ptsmaze);              // number of points
     for (i=0; i<length; i++)
     {   integer val = llList2Integer(ptsmaze,i);            // X and Y encoded into one integer
+        llOwnerSay("Maze solve pt: (" + (string)mazepathx(val) + "," + (string)mazepathy(val) + ")");
         vector cellpos = gMazePos + (<mazepathx(val), mazepathy(val), 0>*gMazeCellSize)*gMazeRot;  // center of cell in world space
         ptsworld += [cellpos];                              // accum list of waypoints
     }
