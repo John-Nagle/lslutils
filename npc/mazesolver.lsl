@@ -139,6 +139,7 @@ integer gMazeEndX;                  // end position
 integer gMazeEndY; 
 integer gMazePrev0;                 // previous point, invalid value
 integer gMazePrev1;                 // previous point, invalid value
+integer gMazeVerbose;               // verbose mode
        
 
 //
@@ -186,7 +187,7 @@ mazecellset(integer x, integer y, integer newval)
 //  mazesolve  -- find a path through a maze
 //         
 list mazesolve(integer xsize, integer ysize, integer startx, integer starty, integer endx, integer endy, integer verbose)
-{
+{   gMazeVerbose = verbose;
     gMazeXsize = xsize;                          // set size of map
     gMazeYsize = ysize;
     gMazeCells = [];
@@ -285,7 +286,9 @@ mazeaddtopath()
                 gMazeX, gMazeY)                         // not inline
                 && (gMazePrev0 != gMazePrev1)           // prev1 not duplicate point
                 && (gMazePrev1 != val)))))              // prev1 not duplicate point
-    {   gMazePath = gMazePath + [gMazePrev1];     }     // save useful point
+    {   if (gMazeVerbose) { llOwnerSay("Maze pt: (" + (string)gMazeX + "," + (string)gMazeY + ")"); }
+        gMazePath = gMazePath + [gMazePrev1];           // save useful point
+    }
     gMazePrev0 = gMazePrev1;                // we keep two old points
     gMazePrev1 = val;                       // new point always becomes prev point
 #else

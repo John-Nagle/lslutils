@@ -132,7 +132,7 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 {   float yoffset;                                          // cast ray offset, Y dir in coords of vector
     float zoffset;                                          // cast ray offset, Z dir in coords of vector
     float nearestdist = INFINITY;                           // closest hit
-    llOwnerSay("p0: " + (string)p0 + "  p1: " + (string)p1 + " probespacing: " + (string) probespacing);  // ***TEMP***
+    ////llOwnerSay("p0: " + (string)p0 + "  p1: " + (string)p1 + " probespacing: " + (string) probespacing);  // ***TEMP***
     integer probecount = (integer)((height-GROUNDCLEARANCE)/probespacing); // number of probes
     if (probecount < 1) { probecount = 1; }                 // minimum is one probe
     probespacing = (height-GROUNDCLEARANCE)/probecount;     // adjust to match height
