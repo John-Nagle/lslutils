@@ -25,4 +25,28 @@
 
 #define MAZEMAXSIZE (41)                                    // maximum size of maze
 
+//
+//  Error codes from maze solving
+//
+#define MAZESTATUSOK        0                   // solved
+#define MAZESTATUSNOFIND    -1                  // no solution found, normal
+                                                // bad calls
+#define MAZESTATUSFORMAT    -101                // not valid message
+#define MAZESTATUSCOMMSEQ   -102                // communications out of sequence
+#define MAZESTATUSCOMMTIMEOUT -103              // communications failure
+
+                                                // bad mazes
+#define MAZESTATUSTOOSHORT  -201                // end too close to start
+#define MAZESTATUSTOOLONG   -202                // end too far from start                                           
+#define MAZESTATUSBADEND    -203                // end cell of maze is occupied
+
+                                                // internal errors
+#define MAZESTATUSTIMEOUT   -501                // took too long
+#define MAZESTATUSNOMEM     -502                // out of memory
+#define MAZESTATUSLOOPING   -503                // runaway, didn't terminate
+#define MAZESTATUSCASTFAIL  -506                // cast ray hard failure
+                                                // bug traps
+#define MAZESTATUSGEOMBUG   -1001               // Geometry setup failed
+
+
 #endif // MAZEDEFS

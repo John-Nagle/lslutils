@@ -38,7 +38,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     integer MAXMAZESIZE = 41;                       // ***TEMP*** belongs elsewhere
     vector v = p1 - p0;                             // from start to goal
     float vdist = llVecMag(v);                      // distance from start to goal
-    if (vdist < 0.01) { return(-1); }               // too close, error
+    if (vdist < 0.01) { return(MAZESTATUSTOOSHORT); }              // too close, error
     vector pmid = (p0 + p1)*0.5;                    // center of maze area
     //  "pos" is the center of cell (0,0) of the maze.
     //  "cellsize" is the size of a maze cell. This must be larger than "width".
@@ -46,10 +46,10 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     //  This works better if something upstream ensures a reasonable minimum distance between p0 and p1, like a meter.
     float cellsize = 1.5*width;                     // initial cell size
     float celldistfromstarttoend = vdist / cellsize;   // number of cells between start and end
-    if (celldistfromstarttoend < 2) { return(-2); } // start too close to end. Need to back off start and end points.
+    if (celldistfromstarttoend < 2) { return(MAZESTATUSTOOSHORT); } // start too close to end. Need to back off start and end points.
     integer cellsfromstarttoend = (integer)celldistfromstarttoend; // at least 2
     if (cellsfromstarttoend >= MAXMAZESIZE*0.75)    // too big
-    {   return(-1); }
+    {   return(MAZESTATUSTOOLONG); }
     //  OK, good to go.
     gMazeCellSize = vdist / cellsfromstarttoend;         // size of a cell so that start and end line up
     gMazeRot = rotperpenonground(p0, p1);           // rotation of center of maze
@@ -72,19 +72,19 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     {   
         llSay(DEBUG_CHANNEL, "Maze geometry incorrect. Direction between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
-        return(-3);                                 // fails
+        return(MAZESTATUSGEOMBUG);                                 // fails
     }
 
     if (llFabs(llVecMag(p1chk-p0chk) - llVecMag(p1-p0)) > 0.01)
     {   
         llSay(DEBUG_CHANNEL, "Maze geometry incorrect. Distance between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
-        return(-3);                                 // fails
+        return(MAZESTATUSGEOMBUG);                                 // fails
     }
     if ((llVecMag(p0chk-p0) > 0.01) || (llVecMag(p1chk-p1) > 0.01))
     {   llSay(DEBUG_CHANNEL, "Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
-        return(-3);                                 // fails
+        return(MAZESTATUSGEOMBUG);                                 // fails
     }
 #endif // GEOMCHECK
 
@@ -116,9 +116,9 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
 list mazesolveranswer(string jsn, integer status) 
 {
     string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
-    if (requesttype != "mazesolve") { return([-1]); }              // ignore, not our msg
+    if (requesttype != "mazesolve") { return([MAZESTATUSFORMAT]); }              // ignore, not our msg
     string serial = llJsonGetValue(jsn, ["serial"]);
-    if ((integer)serial != gMazeSerial) { return([-2]); }            // out of sequence 
+    if ((integer)serial != gMazeSerial) { return([MAZESTATUSCOMMSEQ]); }            // out of sequence 
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) { return([status]); }                  // error status from other side
     list ptsmaze = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word

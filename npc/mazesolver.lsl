@@ -139,6 +139,7 @@ integer gMazeEndX;                  // end position
 integer gMazeEndY; 
 integer gMazePrev0;                 // previous point, invalid value
 integer gMazePrev1;                 // previous point, invalid value
+integer gMazeStatus;                // status code - MAZESTATUS...
 integer gMazeVerbose;               // verbose mode
        
 
@@ -188,7 +189,8 @@ mazecellset(integer x, integer y, integer newval)
 //         
 list mazesolve(integer xsize, integer ysize, integer startx, integer starty, integer endx, integer endy, integer verbose)
 {   gMazeVerbose = verbose;
-    gMazeXsize = xsize;                          // set size of map
+    gMazeStatus = 0;                        // OK so far
+    gMazeXsize = xsize;                     // set size of map
     gMazeYsize = ysize;
     gMazeCells = [];
     while (llGetListLength(gMazeCells) < (xsize*ysize+15)/16)        // allocate cell list
@@ -208,6 +210,16 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
     MAZEPRINTVERBOSE("Start maze solve.");
     while (gMazeX != gMazeEndX || gMazeY != gMazeEndY)  // while not at dest
     {   MAZEPRINTVERBOSE("Maze solve at (" + (string)gMazeX + "," + (string)gMazeY + ")");
+        if (gMazeStatus)                                    // if something went wrong
+        {   if (verbose)
+            {   llOwnerSay("Maze solver failed: status " + (string)gMazeStatus + " at (" 
+                + (string)gMazeX + "," + (string)gMazeY + ")");
+            }
+            gMazeCells = [];                                // release memory
+            gMazePath = [];
+            return([]);
+        }
+        //  Overlong list check
         if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) 
         {   gMazeCells = [];
             gMazePath = [];
@@ -230,7 +242,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             integer followstarty = gMazeY;
             integer followstartdir = direction;
             MAZEPRINTVERBOSE("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdbest);
-            while (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath())
+            while ((gMazeStatus == 0) && (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath()))
             {   ////DEBUGPRINT1("Wall follow loop");    // ***TEMP***
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
                 {   if (gMazePrev1 != MAZEINVALIDPT) { gMazePath += [gMazePrev1]; }
@@ -241,12 +253,6 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 }                               // done
                 ////DEBUGPRINT1("Calling mazefollowwall");              // ***TEMP***
                 direction = mazefollowwall(sidelr, direction);      // follow edge, advance one cell
-                if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) // runaway check
-                {   MAZEPRINTVERBOSE("***ERROR*** runaway"); 
-                    gMazeCells = [];
-                    gMazePath = [];
-                    return([]);
-                }
                 //   Termination check - if we are back at the start of following && going in the same direction, no solution
                 if (gMazeX == followstartx && gMazeY == followstarty && direction == followstartdir) 
                 {
@@ -274,8 +280,6 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
 //                    
 mazeaddtopath() 
 {   
-#define MAZECOLLINEAROPT
-#ifdef  MAZECOLLINEAROPT
     DEBUGPRINT1("(" + (string)gMazeX + "," + (string)gMazeY + ")");
     integer val = mazepathval(gMazeX, gMazeY);  // current point as one integer
     //  Should we keep pt 1?
@@ -288,13 +292,14 @@ mazeaddtopath()
                 && (gMazePrev1 != val)))))              // prev1 not duplicate point
     {   if (gMazeVerbose) { llOwnerSay("Maze pt: (" + (string)mazepathx(gMazePrev1) + "," + (string)mazepathy(gMazePrev1) + ")"); }
         gMazePath = gMazePath + [gMazePrev1];           // save useful point
+        //  Error checks
+        if (llGetListLength(gMazePath) > gMazeXsize*gMazeYsize*4) // runaway check
+        {   gMazeStatus = MAZESTATUSLOOPING; }          // far too many points stored, will abort
+        if (llGetFreeMemory() < MAZEMINMEM)             // if in danger of stack/heap collision crash
+        {   gMazeStatus = MAZESTATUSNOMEM; }            // out of memory, will abort
     }
     gMazePrev0 = gMazePrev1;                // we keep two old points
     gMazePrev1 = val;                       // new point always becomes prev point
-#else
-    gMazePath = gMazePath + [mazepathval(gMazeX, gMazeY)];
-    DEBUGPRINT1("(" + (string)gMazeX + "," + (string)gMazeY + ")");
-#endif // MAZECOLLINEAROPT
 }
 
 //
@@ -316,6 +321,8 @@ integer mazetestcell(integer fromx, integer fromy, integer x, integer y)
     integer barrier = gBarrierFn(fromx, fromy, x,y); // check this location
     v = MAZEEXAMINED | barrier;
     mazecellset(x,y,v);                         // update cells checked
+    if (barrier && (x == gMazeEndX) && (y == gMazeEndY))    // if the end cell is blocked
+    {   gMazeStatus = MAZESTATUSBADEND; }       // force abort, maze is unsolveable
     return(barrier);                            // return 1 if obstacle
 }
  
