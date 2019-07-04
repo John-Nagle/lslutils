@@ -286,7 +286,7 @@ mazeaddtopath()
                 gMazeX, gMazeY)                         // not inline
                 && (gMazePrev0 != gMazePrev1)           // prev1 not duplicate point
                 && (gMazePrev1 != val)))))              // prev1 not duplicate point
-    {   if (gMazeVerbose) { llOwnerSay("Maze pt: (" + (string)gMazeX + "," + (string)gMazeY + ")"); }
+    {   if (gMazeVerbose) { llOwnerSay("Maze pt: (" + (string)mazepathx(gMazePrev1) + "," + (string)mazepathy(gMazePrev1) + ")"); }
         gMazePath = gMazePath + [gMazePrev1];           // save useful point
     }
     gMazePrev0 = gMazePrev1;                // we keep two old points
