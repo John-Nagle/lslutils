@@ -38,13 +38,16 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     integer MAXMAZESIZE = 41;                       // ***TEMP*** belongs elsewhere
     vector v = p1 - p0;                             // from start to goal
     float vdist = llVecMag(v);                      // distance from start to goal
+    if (vdist < 0.01) { return(-1); }               // too close, error
     vector pmid = (p0 + p1)*0.5;                    // center of maze area
-    rotation gMazeRot = rotperpenonground(p0, p1);       // rotation of center of maze
+    rotation gMazeRot = rotperpenonground(p0, p1);  // rotation of center of maze
     //  "pos" is the center of cell (0,0) of the maze.
     //  "cellsize" is the size of a maze cell. This must be larger than "width".
+    //  We enlarge cell size so that there is an integer number of cells from p0 to p1.
+    //  This works better if something upstream ensures a reasonable minimum distance between p0 and p1, like a meter.
     gMazeCellSize = 1.5*width;                     // initial cell size
     float celldistfromstarttoend = vdist / gMazeCellSize;   // number of cells between start and end
-    if (celldistfromstarttoend < 2) { return(FALSE); } // start too close to end. Need to back off start and end points.
+    if (celldistfromstarttoend < 2) { return(-2); } // start too close to end. Need to back off start and end points.
     integer cellsfromstarttoend = (integer)celldistfromstarttoend; // at least 2
     if (cellsfromstarttoend >= MAXMAZESIZE*0.75)    // too big
     {   return(-1); }
@@ -55,18 +58,32 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     //  across the maze. 
     integer startx = (integer)(MAXMAZESIZE/2) - (integer)(cellsfromstarttoend / 2);
     integer starty = (integer)MAXMAZESIZE/2;
-    integer endx = starty + cellsfromstarttoend;    // 
+    integer endx = startx + cellsfromstarttoend;    // 
     integer endy = (integer)MAXMAZESIZE/2;
-    vector startrel = <startx*gMazeCellSize,starty*gMazeCellSize,0>; // vector from maze (0,0) to p0
-    gMazePos = p0 - startrel;                       // position of cell (0,0)
+    vector p0inmaze = (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
+    ////vector startrel = <startx*gMazeCellSize,starty*gMazeCellSize,0>; // vector from maze (0,0) to p0
+    gMazePos = p0 - p0inmaze;                       // position of cell (0,0)
 #define GEOMCHECK
 #ifdef GEOMCHECK
     vector p0chk = gMazePos + (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
     vector p1chk = gMazePos + (<endx,endy,0>*gMazeCellSize) * gMazeRot; 
+    if (llVecNorm(p1chk -p0chk) * llVecNorm(p1-p0) < 0.99)
+    {   
+        llSay(DEBUG_CHANNEL, "Maze geometry incorrect. Direction between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
+        + (string)p1 + " differs from p1chk: " + (string) p1chk);
+        return(-3);                                 // fails
+    }
+
+    if (llFabs(llVecMag(p1chk-p0chk) - llVecMag(p1-p0)) > 0.01)
+    {   
+        llSay(DEBUG_CHANNEL, "Maze geometry incorrect. Distance between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
+        + (string)p1 + " differs from p1chk: " + (string) p1chk);
+        return(-3);                                 // fails
+    }
     if ((llVecMag(p0chk-p0) > 0.01) || (llVecMag(p1chk-p1) > 0.01))
     {   llSay(DEBUG_CHANNEL, "Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
-        return(-2);                                 // fails
+        return(-3);                                 // fails
     }
 #endif // GEOMCHECK
 
