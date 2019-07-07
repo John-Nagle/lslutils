@@ -225,7 +225,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             gMazePath = [];
             return([]);                    // we are in an undetected loop
         }
-        if (mazeexistsproductivepath())     // if a shortcut is available
+        if (mazeexistsproductivepath(gMazeX, gMazeY))     // if a shortcut is available
         {   MAZEPRINTVERBOSE("Maze productive path at (" + (string)gMazeX + "," + (string)gMazeY + ")");
             mazetakeproductivepath();       // use it
             gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
@@ -242,7 +242,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             integer followstarty = gMazeY;
             integer followstartdir = direction;
             MAZEPRINTVERBOSE("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdbest);
-            while ((gMazeStatus == 0) && (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath()))
+            while ((gMazeStatus == 0) && (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath(gMazeX, gMazeY)))
             {   ////DEBUGPRINT1("Wall follow loop");    // ***TEMP***
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
                 {   if (gMazePrev1 != MAZEINVALIDPT) { gMazePath += [gMazePrev1]; }
@@ -367,18 +367,18 @@ integer mazetestcell(integer fromx, integer fromy, integer x, integer y)
 //
 //  A productive path is one that leads to the goal and isn't blocked
 //     
-integer mazeexistsproductivepath()
+integer mazeexistsproductivepath(integer x, integer y)
 {
-    integer dx = gMazeEndX - gMazeX;
-    integer dy = gMazeEndY - gMazeY;
+    integer dx = gMazeEndX - x;
+    integer dy = gMazeEndY - y;
     dx = mazeclipto1(dx);
     dy = mazeclipto1(dy);
     if (dx != 0) 
-    {    integer productive = !mazetestcell(gMazeX, gMazeY, gMazeX + dx, gMazeY); // test if cell in productive direction is clear
+    {    integer productive = !mazetestcell(x, y, x + dx, y); // test if cell in productive direction is clear
          if (productive) { return(TRUE); }
     }
     if (dy != 0) 
-    {    integer productive = !mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + dy); // test if cell in productive direction is clear
+    {    integer productive = !mazetestcell(x, y, x, y + dy); // test if cell in productive direction is clear
          if (productive) { return(TRUE); }
     }
     return(FALSE);
@@ -545,7 +545,7 @@ integer mazefollowwall(integer sidelr, integer direction)
             mazeaddtopath();
             //   Need to check for a productive path. May be time to stop wall following
             integer md = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
-            if (md < gMazeMdbest && mazeexistsproductivepath())
+            if (md < gMazeMdbest && mazeexistsproductivepath(gMazeX, gMazeY))
             {
                 DEBUGPRINT("Outside corner led to a productive path halfway through");
                 return(direction);
@@ -639,7 +639,7 @@ list mazewallfollow(list params, integer sidelr)
             path = mazeaddpttolist(path,x,y);
             //   Need to check for a productive path. May be time to stop wall following
             integer md = mazemd(x, y, gMazeEndX, gMazeEndY);
-            if (md < gMazeMdbest && mazeexistsproductivepath())
+            if (md < gMazeMdbest && mazeexistsproductivepath(x,y))
             {
                 DEBUGPRINT("Outside corner led to a productive path halfway through");
                 return(path + [direction]);
