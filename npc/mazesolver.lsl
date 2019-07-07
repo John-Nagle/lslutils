@@ -558,7 +558,7 @@ integer mazefollowwall(integer sidelr, integer direction)
     }
     return(direction);                                // new direction
 #endif // OBSOLETE
-    list result = mazewallfollow(gMazePath, sidelr, direction, gMazeX, gMazeY); // use common fn
+    list result = mazewallfollow(gMazePath + [gMazeX, gMazeY, direction], sidelr); // use common fn
     //  Result is pt, pt, pt, x, y, direction]
     gMazeX = llList2Integer(result,-3);
     gMazeY = llList2Integer(result,-2);
@@ -591,9 +591,16 @@ integer mazefollowwall(integer sidelr, integer direction)
 //  No use of global variables. Returns
 //  [pt, pt, ... , x, y, direction]   
 //
-list mazewallfollow(list path, integer sidelr, integer direction, integer x, integer y)
+//  and "params" uses the same format
+//
+list mazewallfollow(list params, integer sidelr)
 {
     DEBUGPRINT1("Following wall at (" + (string)x + "," + (string)x + ")" + " side " + (string)sidelr + " direction " + (string) direction + " md " + (string)mazemd(x, y, gMazeEndX, gMazeEndY));
+    integer x = llList2Integer(params,-3);
+    integer y = llList2Integer(params,-2);
+    integer direction = llList2Integer(params,-1);
+    list path = llListReplaceList(params,[],-3,-1); // remove non-path items.
+
     integer dx = MAZEEDGEFOLLOWDX(direction);
     integer dy = MAZEEDGEFOLLOWDY(direction);
     integer dxsame = MAZEEDGEFOLLOWDX(((direction + sidelr) + 4) % 4); // if not blocked ahead
