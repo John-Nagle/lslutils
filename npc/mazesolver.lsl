@@ -280,6 +280,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
 //                    
 mazeaddtopath() 
 {   
+#ifdef OBSOLETE
     DEBUGPRINT1("(" + (string)gMazeX + "," + (string)gMazeY + ")");
     integer val = mazepathval(gMazeX, gMazeY);  // current point as one integer
     //  Should we keep pt 1?
@@ -300,6 +301,41 @@ mazeaddtopath()
     }
     gMazePrev0 = gMazePrev1;                // we keep two old points
     gMazePrev1 = val;                       // new point always becomes prev point
+#endif // OBSOLETE
+    gMazePath = mazeaddpttolist(gMazePath, gMazeX, gMazeY);        // use common fn
+}
+
+//
+//  mazeaddpttolist -- add a point to a path. Returns list.
+//
+//  Collinear and duplicate points are removed to save memory.
+//  A final cleanup takes place later.
+//
+//  No use of global variables, to allow use on multiple paths in parallel.
+//  Path is one integer per x,y format.
+//
+list mazeaddpttolist(list path, integer x, integer y)
+{
+    DEBUGPRINT1("(" + (string)gMazeX + "," + (string)gMazeY + ")");
+    //  Memory check
+    if (llGetFreeMemory() < MAZEMINMEM)             // if in danger of stack/heap collision crash
+    {   gMazeStatus = MAZESTATUSNOMEM; }            // out of memory, will abort
+    //  Short list check
+    integer val = mazepathval(gMazeX, gMazeY);      // current point as one integer
+    integer length = llGetListLength(path);
+    if (length > 0) 
+    {   if (llList2Integer(path,-1) == val) { return(path); }}   // new point is dup, ignore.
+    if (length >= 3)                            // if at least 3 points
+    {   integer gMazePrev0 = llList2Integer(path,-2);
+        integer gMazePrev1 = llList2Integer(path,-1);
+        //  Check for collinear points.
+        if (mazeinline(mazepathx(gMazePrev0), mazepathy(gMazePrev0),
+                mazepathx(gMazePrev1), mazepathy(gMazePrev1),
+                x, y))  
+        {   return(llListReplaceList(path,[val],-1,-1)); } // new point replaces prev point 
+    } 
+    //  No optimizations, just add new point
+    {   return(path + [val]); }                 // no optimization
 }
 
 //

@@ -68,14 +68,14 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
 #ifdef GEOMCHECK
     vector p0chk = gMazePos + (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
     vector p1chk = gMazePos + (<endx,endy,0>*gMazeCellSize) * gMazeRot; 
-    if (llVecNorm(p1chk -p0chk) * llVecNorm(p1-p0) < 0.99)
+    if (llVecNorm(p1chk -p0chk) * llVecNorm(p1-p0) < 0.999)
     {   
         llSay(DEBUG_CHANNEL, "Maze geometry incorrect. Direction between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
         return(MAZESTATUSGEOMBUG);                                 // fails
     }
 
-    if (llFabs(llVecMag(p1chk-p0chk) - llVecMag(p1-p0)) > 0.01)
+    if (llFabs(llVecMag(p1chk-p0chk) - llVecMag(p1-p0)) > 0.001)
     {   
         llSay(DEBUG_CHANNEL, "Maze geometry incorrect. Distance between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
