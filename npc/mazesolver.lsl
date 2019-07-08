@@ -242,6 +242,62 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             integer followstarty = gMazeY;
             integer followstartdir = direction;
             MAZEPRINTVERBOSE("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdbest);
+#define MAZEBOTHWAYS // if on, wall follow both ways
+#ifdef MAZEBOTHWAYS // use new approach
+            integer livea = TRUE;                                               // more to do on path a
+            integer liveb = TRUE;                                               // more to do on path b
+            integer founduseful = FALSE;                                        // found a useful path
+            list patha = [followstartx, followstarty, followstartdir];          // start conditions, follow one side
+            list pathb = [followstartx, followstarty, (followstartdir + 2) % 4];    // the other way
+            while (gMazeStatus == 0 && (!founduseful) && (livea || liveb))           // if more following required
+            {   
+                // Advance each path one cell
+                if (livea)                                                      // if path A still live
+                {   patha = mazewallfollow(patha, sidelr);                      // follow one wall
+                    integer x = llList2Integer(patha,-3);                       // get X and Y from path list
+                    integer y = llList2Integer(patha,-2);
+                    integer dir = llList2Integer(patha,-1);                     // direction
+                    if (gMazeStatus == 0 && (x == gMazeEndX) && (y == gMazeEndY))    // reached final goal
+                    {   list goodpath = gMazePath + llListReplaceList(patha, [], -3,-1);   // get good path
+                        gMazeCells = [];
+                        gMazePath = [];
+                        return(goodpath);
+                    }
+                    if (mazeexistusefulpath(x,y))                               // if useful shortcut, time to stop wall following
+                    {   list goodpath = gMazePath + llListReplaceList(patha, [], -3,-1);   // get good path
+                        gMazePath += goodpath;                                  // add to accmulated path
+                        founduseful = TRUE;                           // force exit
+                    }
+                    if (x == followstartx && y = followstarty && direction == followstartdir) { livea = FALSE; } // in a loop wall following, stuck
+                }
+                if (liveb)                                                      // if path B still live
+                {   pathb = mazewallfollow(pathb, sidelr);                      // follow one wall
+                    integer x = llList2Integer(pathb,-3);                       // get X and Y from path list
+                    integer y = llList2Integer(pathb,-2);
+                    integer dir = llList2Integer(pathb,-1);                     // direction
+                    if (gMazeStatus == 0 && (x == gMazeEndX) && (y == gMazeEndY))    // reached final goal
+                    {   list goodpath = gMazePath + llListReplaceList(pathb, [], -3,-1);   // get good path
+                        gMazeCells = [];
+                        gMazePath = [];
+                        return(goodpath);
+                    }
+                    if (mazeexistusefulpath(x,y))                               // if useful shortcut, time to stop wall following
+                    {   list goodpath = gMazePath + llListReplaceList(pathb, [], -3,-1);   // get good path
+                        gMazePath += goodpath;                                  // add to accmulated path
+                        founduseful = TRUE;                                 // force exit
+                    }
+                    if (x == followstartx && y = followstarty && direction == followstartdir) { livea = FALSE; } // in a loop wall following, stuck
+                }           
+                //  Termination conditions
+                //  Consider adding check for paths collided from opposite directions. This is just a speedup, though.
+            }
+            if (!founduseful)                                                       // stopped following, but no result
+            {   gMazePath = [];                                                     // failed, release memory and return
+                gMazeCells = [];
+                return([]);                                                         // no path possible
+            }
+
+#else                   // use old approach
             while ((gMazeStatus == 0) && (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath(gMazeX, gMazeY)))
             {   ////DEBUGPRINT1("Wall follow loop");    // ***TEMP***
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
@@ -262,6 +318,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                     return([]);                                  // fails
                 }
             }
+#endif // MAZEBOTHWAYS
             DEBUGPRINT1("Finished wall following.");
         }
     }
@@ -382,6 +439,14 @@ integer mazeexistsproductivepath(integer x, integer y)
          if (productive) { return(TRUE); }
     }
     return(FALSE);
+}
+//
+//  mazeexistusefulpath -- path is both productive and better than best existing distance
+//
+integer mazeexistusefulpath(integer x, integer y)
+{
+    if (mazemd(x, y, gMazeEndX, gMazeEndY) < gMazeMdbest) { return(FALSE); }
+    return(mazeexistsproductivepath(x,y)); 
 }
 
 //
