@@ -271,7 +271,8 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                         gMazeY = y;
                         founduseful = TRUE;                                     // force exit
                     }
-                    if (x == followstartx && y = followstarty && direction == followstartdir) { livea = FALSE; } // in a loop wall following, stuck
+                    if (x == followstartx && y = followstarty && dir == followstartdir) 
+                    {   DEBUGPRINT1("Path A stuck."); livea = FALSE; } // in a loop wall following, stuck
                 }
                 if (liveb && !founduseful)                                      // if path B still live and no solution found
                 {   pathb = mazewallfollow(pathb, -sidelr);                     // follow other wall
@@ -291,7 +292,8 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                         gMazeY = y;
                         founduseful = TRUE;                                     // force exit
                     }
-                    if (x == followstartx && y = followstarty && direction == followstartdir) { liveb = FALSE; } // in a loop wall following, stuck
+                    if (x == followstartx && y = followstarty && dir == followstartdir)
+                    {   DEBUGPRINT1("Path B stuck"); liveb = FALSE; } // in a loop wall following, stuck
                 }           
                 //  Termination conditions
                 //  Consider adding check for paths collided from opposite directions. This is just a speedup, though.
