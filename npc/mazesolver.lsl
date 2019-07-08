@@ -274,7 +274,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                     if (x == followstartx && y = followstarty && direction == followstartdir) { livea = FALSE; } // in a loop wall following, stuck
                 }
                 if (liveb && !founduseful)                                      // if path B still live and no solution found
-                {   pathb = mazewallfollow(pathb, sidelr);                      // follow one wall
+                {   pathb = mazewallfollow(pathb, -sidelr);                     // follow other wall
                     integer x = llList2Integer(pathb,-3);                       // get X and Y from path list
                     integer y = llList2Integer(pathb,-2);
                     integer dir = llList2Integer(pathb,-1);                     // direction
