@@ -234,13 +234,8 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             ////////gMazeMdbest = gMazeMdbest -1 
             assert(gMazeMdbest >= 0);
         } else {
-            ////////gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)
-            ////sidelr, direction = mazepickside()        // follow left || right?
-            ////list picksideinfo = mazepickside();
-            ////integer sidelr = llList2Integer(picksideinfo,0);
-            ////integer direction= llList2Integer(picksideinfo,1);
             integer direction = mazepickside();                                 // direction for following right wall
-            integer sidelr = MAZEWALLONRIGHT;                                   // always returns dir for following right wall
+            ////integer sidelr = MAZEWALLONRIGHT;                                   // always returns dir for following right wall
             //   Inner loop - wall following
             integer followstartx = gMazeX;
             integer followstarty = gMazeY;
@@ -255,7 +250,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             {   
                 // Advance each path one cell
                 if (livea)                                                      // if path A still live
-                {   patha = mazewallfollow(patha, sidelr);                      // follow one wall
+                {   patha = mazewallfollow(patha, MAZEWALLONRIGHT);                      // follow one wall
                     DEBUGPRINT1("Path A: " + llDumpList2String(patha,","));
                     DEBUGPRINT1("Path A in: " + mazerouteasstring(llListReplaceList(patha, [], -3,-1))); // ***TEMP***
                     integer x = llList2Integer(patha,-3);                       // get X and Y from path list
@@ -280,7 +275,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                     {   DEBUGPRINT1("Path A stuck."); livea = FALSE; }          // in a loop wall following, stuck ***MAY FAIL - CHECK***
                 }
                 if (liveb && !founduseful)                                      // if path B still live and no solution found
-                {   pathb = mazewallfollow(pathb, -sidelr);                     // follow other wall
+                {   pathb = mazewallfollow(pathb, -MAZEWALLONRIGHT);                     // follow other wall
                     DEBUGPRINT1("Path B: " + llDumpList2String(pathb,","));
                     DEBUGPRINT1("Path B in: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1))); // ***TEMP***
                     integer x = llList2Integer(pathb,-3);                       // get X and Y from path list
@@ -470,7 +465,6 @@ integer mazetakeproductivepath()
 //       
 integer mazepickside()
 {
-    ////integer sidelr;
     integer direction;
     integer dx = gMazeEndX - gMazeX;
     integer dy = gMazeEndY - gMazeY;
@@ -498,10 +492,8 @@ integer mazepickside()
     } else {
         assert(FALSE);                       // should never get here
     }
-    ////sidelr = MAZEWALLONRIGHT;
     DEBUGPRINT("At (%d,%d) picked side %d, direction %d for wall follow." % (gMazeX, gMazeY, MAZEWALLONRIGHT, direction));
     return(direction);
-    ////return([sidelr, direction]);
 }
 
 
