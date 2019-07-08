@@ -138,8 +138,6 @@ integer gMazeStartX;                // start position
 integer gMazeStartY;           
 integer gMazeEndX;                  // end position 
 integer gMazeEndY; 
-integer gMazePrev0;                 // previous point, invalid value
-integer gMazePrev1;                 // previous point, invalid value
 integer gMazeStatus;                // status code - MAZESTATUS...
 integer gMazeVerbose;               // verbose mode
        
@@ -205,8 +203,6 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
     gMazeEndY = endy;
     gMazeMdbest = gMazeXsize+gMazeYsize+1;  // best dist to target init
     gMazePath = [];                         // accumulated path
-    gMazePrev0 = MAZEINVALIDPT;             // previous point, invalid value
-    gMazePrev1 = MAZEINVALIDPT;             // previous point out, invalid value
     mazeaddtopath();                        // add initial point
     //   Outer loop - shortcuts || wall following
     MAZEPRINTVERBOSE("Start maze solve.");
@@ -313,7 +309,6 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
         }
     }
     MAZEPRINTVERBOSE("Solved maze");
-    if (gMazePrev1 != MAZEINVALIDPT) { gMazePath += [gMazePrev1]; } // ***OBSOLETE***
     list path = gMazePath;
     gMazeCells = [];                        // release memory, we need it
     gMazePath = [];
@@ -351,11 +346,11 @@ list mazeaddpttolist(list path, integer x, integer y)
     if (length > 0) 
     {   if (llList2Integer(path,-1) == val) { DEBUGPRINT1("Dup pt."); return(path); }}   // new point is dup, ignore.
     if (length >= 3)                            // if at least 3 points
-    {   integer gMazePrev0 = llList2Integer(path,-2);
-        integer gMazePrev1 = llList2Integer(path,-1);
+    {   integer prev0 = llList2Integer(path,-2);
+        integer prev1 = llList2Integer(path,-1);
         //  Check for collinear points.
-        if (mazeinline(mazepathx(gMazePrev0), mazepathy(gMazePrev0),
-                mazepathx(gMazePrev1), mazepathy(gMazePrev1),
+        if (mazeinline(mazepathx(prev0), mazepathy(prev0),
+                mazepathx(prev1), mazepathy(prev1),
                 x, y))  
         {   DEBUGPRINT1("Collinear pt"); return(llListReplaceList(path,[val],-1,-1)); } // new point replaces prev point 
     } 
