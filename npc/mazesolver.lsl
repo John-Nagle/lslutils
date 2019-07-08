@@ -63,7 +63,7 @@ list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
 #define MAZEEDGEFOLLOWDY(n) llList2Integer(MAZEEDGEFOLLOWDYTAB,(n))
 
 #define MAZEPRINTVERBOSE(s) { if (verbose) { llOwnerSay((s)); } }
-#define DEBUG
+////#define DEBUG
 #ifdef DEBUG
 #define DEBUGPRINT(s) // Nothing for now
 #define DEBUGPRINT1(s) llOwnerSay(s)
@@ -185,6 +185,7 @@ mazecellset(integer x, integer y, integer newval)
 #define mazepathval(x,y) (((y) << 16) | (x))    // construct 32 bit value
 #endif // mazepathx
 
+
 //
 //  mazesolve  -- find a path through a maze
 //         
@@ -255,6 +256,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 // Advance each path one cell
                 if (livea)                                                      // if path A still live
                 {   patha = mazewallfollow(patha, sidelr);                      // follow one wall
+                    DEBUGPRINT1("Path A: " + llDumpList2String(patha,","));
                     integer x = llList2Integer(patha,-3);                       // get X and Y from path list
                     integer y = llList2Integer(patha,-2);
                     integer dir = llList2Integer(patha,-1);                     // direction
@@ -264,18 +266,20 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                         gMazePath = [];
                         return(goodpath);
                     }
-                    if (mazeexistusefulpath(x,y))                               // if useful shortcut, time to stop wall following
+                    if ((x != followstartx || y != followstarty) && mazeexistusefulpath(x,y))                               // if useful shortcut, time to stop wall following
                     {   list goodpath = gMazePath + llListReplaceList(patha, [], -3,-1);   // get good path
                         gMazePath = goodpath;                                   // add to accumulated path
                         gMazeX = x;                                             // update position
                         gMazeY = y;
                         founduseful = TRUE;                                     // force exit
+                        DEBUGPRINT1("Path A useful: " + mazerouteasstring(llListReplaceList(patha, [], -3,-1)));
                     }
                     if (x == followstartx && y = followstarty && dir == followstartdir) 
-                    {   DEBUGPRINT1("Path A stuck."); livea = FALSE; } // in a loop wall following, stuck
+                    {   DEBUGPRINT1("Path A stuck."); livea = FALSE; }          // in a loop wall following, stuck ***MAY FAIL - CHECK***
                 }
                 if (liveb && !founduseful)                                      // if path B still live and no solution found
                 {   pathb = mazewallfollow(pathb, -sidelr);                     // follow other wall
+                    DEBUGPRINT1("Path B: " + llDumpList2String(patha,","));
                     integer x = llList2Integer(pathb,-3);                       // get X and Y from path list
                     integer y = llList2Integer(pathb,-2);
                     integer dir = llList2Integer(pathb,-1);                     // direction
@@ -285,12 +289,13 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                         gMazePath = [];
                         return(goodpath);
                     }
-                    if (mazeexistusefulpath(x,y))                               // if useful shortcut, time to stop wall following
+                    if ((x != followstartx || y != followstarty) && mazeexistusefulpath(x,y))    // if useful shortcut, time to stop wall following
                     {   list goodpath = gMazePath + llListReplaceList(pathb, [], -3,-1);   // get good path
                         gMazePath = goodpath;                                   // add to accmulated path
                         gMazeX = x;                                             // update position
                         gMazeY = y;
                         founduseful = TRUE;                                     // force exit
+                        DEBUGPRINT1("Path B useful: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1)));
                     }
                     if (x == followstartx && y = followstarty && dir == followstartdir)
                     {   DEBUGPRINT1("Path B stuck"); liveb = FALSE; } // in a loop wall following, stuck
@@ -308,7 +313,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             while ((gMazeStatus == 0) && (mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY) >= gMazeMdbest || !mazeexistsproductivepath(gMazeX, gMazeY)))
             {   ////DEBUGPRINT1("Wall follow loop");    // ***TEMP***
                 if (gMazeX == gMazeEndX && gMazeY == gMazeEndY)  // if at end
-                {   if (gMazePrev1 != MAZEINVALIDPT) { gMazePath += [gMazePrev1]; }
+                {   if (gMazePrev1 != MAZEINVALIDPT) { gMazePath += [gMazePrev1]; } 
                     gMazeCells = [];                        // release memory, we need it
                     list path = gMazePath;
                     gMazePath = [];
@@ -330,7 +335,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
         }
     }
     MAZEPRINTVERBOSE("Solved maze");
-    if (gMazePrev1 != MAZEINVALIDPT) { gMazePath += [gMazePrev1]; }
+    if (gMazePrev1 != MAZEINVALIDPT) { gMazePath += [gMazePrev1]; } // ***OBSOLETE***
     list path = gMazePath;
     gMazeCells = [];                        // release memory, we need it
     gMazePath = [];
@@ -380,15 +385,15 @@ mazeaddtopath()
 //
 list mazeaddpttolist(list path, integer x, integer y)
 {
-    DEBUGPRINT1("(" + (string)gMazeX + "," + (string)gMazeY + ")");
+    DEBUGPRINT1("(" + (string)x + "," + (string)y + ")");
     //  Memory check
     if (llGetFreeMemory() < MAZEMINMEM)             // if in danger of stack/heap collision crash
     {   gMazeStatus = MAZESTATUSNOMEM; }            // out of memory, will abort
     //  Short list check
-    integer val = mazepathval(gMazeX, gMazeY);      // current point as one integer
+    integer val = mazepathval(x, y);                // current point as one integer
     integer length = llGetListLength(path);
     if (length > 0) 
-    {   if (llList2Integer(path,-1) == val) { return(path); }}   // new point is dup, ignore.
+    {   if (llList2Integer(path,-1) == val) { DEBUGPRINT1("Dup pt."); return(path); }}   // new point is dup, ignore.
     if (length >= 3)                            // if at least 3 points
     {   integer gMazePrev0 = llList2Integer(path,-2);
         integer gMazePrev1 = llList2Integer(path,-1);
@@ -396,7 +401,7 @@ list mazeaddpttolist(list path, integer x, integer y)
         if (mazeinline(mazepathx(gMazePrev0), mazepathy(gMazePrev0),
                 mazepathx(gMazePrev1), mazepathy(gMazePrev1),
                 x, y))  
-        {   return(llListReplaceList(path,[val],-1,-1)); } // new point replaces prev point 
+        {   DEBUGPRINT1("Collinear pt"); return(llListReplaceList(path,[val],-1,-1)); } // new point replaces prev point 
     } 
     //  No optimizations, just add new point
     {   return(path + [val]); }                 // no optimization
@@ -690,22 +695,22 @@ list mazewallfollow(list params, integer sidelr)
         integer dyopposite = MAZEEDGEFOLLOWDY(((direction - sidelr) + 4) % 4);
         integer blockedopposite = mazetestcell(x, y, x + dxopposite, y + dyopposite);
         if (blockedopposite) 
-        {   DEBUGPRINT("Dead end");
+        {   DEBUGPRINT1("Dead end");
             direction = (direction + 2) % 4;         // dead end, reverse direction
         } else {
-            DEBUGPRINT("Inside corner");
+            DEBUGPRINT1("Inside corner");
             direction = (direction - sidelr + 4) % 4;      // inside corner, turn
         }
     } else {
         assert(dxsame == 0 || dysame == 0);
         integer blockedsameahead = mazetestcell(x + dx, y + dy, x + dx + dxsame, y + dy + dysame);
         if (blockedsameahead)                       // straight, not outside corner
-        {   DEBUGPRINT("Straight");
+        {   DEBUGPRINT1("Straight");
             x += dx;                            // move ahead 1
             y += dy;
             path = mazeaddpttolist(path,x,y);
         } else {                                     // outside corner
-            DEBUGPRINT("Outside corner");
+            DEBUGPRINT1("Outside corner");
             x += dx;                            // move ahead 1
             y += dy;
             path = mazeaddpttolist(path,x,y);
@@ -713,7 +718,7 @@ list mazewallfollow(list params, integer sidelr)
             integer md = mazemd(x, y, gMazeEndX, gMazeEndY);
             if (md < gMazeMdbest && mazeexistsproductivepath(x,y))
             {
-                DEBUGPRINT("Outside corner led to a productive path halfway through");
+                DEBUGPRINT1("Outside corner led to a productive path halfway through");
                 return(path + [x, y, direction]);
             }
             direction = (direction + sidelr + 4) % 4;    // turn in direction
