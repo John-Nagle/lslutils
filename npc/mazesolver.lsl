@@ -236,9 +236,11 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
         } else {
             ////////gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY)
             ////sidelr, direction = mazepickside()        // follow left || right?
-            list picksideinfo = mazepickside();
-            integer sidelr = llList2Integer(picksideinfo,0);
-            integer direction= llList2Integer(picksideinfo,1);
+            ////list picksideinfo = mazepickside();
+            ////integer sidelr = llList2Integer(picksideinfo,0);
+            ////integer direction= llList2Integer(picksideinfo,1);
+            integer direction = mazepickside();                                 // direction for following right wall
+            integer sidelr = MAZEWALLONRIGHT;                                   // always returns dir for following right wall
             //   Inner loop - wall following
             integer followstartx = gMazeX;
             integer followstarty = gMazeY;
@@ -463,11 +465,12 @@ integer mazetakeproductivepath()
 //
 //    Which side of the wall to follow?  Doesn't matter. We will follow both.
 //
+//  Always returns direction for following the right wall.
+//
 //       
-list mazepickside()
+integer mazepickside()
 {
-    ////integer sidelr, direction;
-    integer sidelr;
+    ////integer sidelr;
     integer direction;
     integer dx = gMazeEndX - gMazeX;
     integer dy = gMazeEndY - gMazeY;
@@ -479,32 +482,26 @@ list mazepickside()
     else
     {    clippeddx = 0; }
     assert(mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY + clippeddy)); // must have hit a wall
-    //   8 cases, dumb version
+    //   4 cases
     if (clippeddx == 1)                      // obstacle is in +X dir
     {   
         direction = 1;
-        sidelr = MAZEWALLONRIGHT;
-
     } else if (clippeddx == -1) 
     {  
-        direction = 3;
-        sidelr = MAZEWALLONRIGHT;
-              
+        direction = 3;              
     } else if (clippeddy == 1 )                  // obstacle is in +Y dir
     {  
         direction = 2;
-        sidelr = MAZEWALLONRIGHT;
-
     } else if (clippeddy == -1)                   // obstacle is in -Y dir
     {  
         direction = 0;
-        sidelr = MAZEWALLONRIGHT;
-
     } else {
         assert(FALSE);                       // should never get here
     }
-    DEBUGPRINT("At (%d,%d) picked side %d, direction %d for wall follow." % (gMazeX, gMazeY, sidelr, direction));
-    return([sidelr, direction]);
+    ////sidelr = MAZEWALLONRIGHT;
+    DEBUGPRINT("At (%d,%d) picked side %d, direction %d for wall follow." % (gMazeX, gMazeY, MAZEWALLONRIGHT, direction));
+    return(direction);
+    ////return([sidelr, direction]);
 }
 
 
