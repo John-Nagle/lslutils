@@ -822,8 +822,10 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     {   path = mazesolve(sizex, sizey, startx, starty, endx, endy, verbose); // solve the maze
         if (llGetListLength(path) == 0)                 // failed to find a path
         {   path = [];                                  // clear path
-            status = 1;
-        }  
+            if (status == 0) { status = 1; }            // failed for unknown reason
+        } else {
+            path = mazeoptimizeroute(path);             // do simple optimizations
+        } 
     }
     if (verbose) 
     {   llOwnerSay("Maze solver done. Free memory " + (string)llGetFreeMemory()); } 
