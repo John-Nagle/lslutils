@@ -68,7 +68,7 @@ list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
 #define DEBUGPRINT(s) // Nothing for now
 #define DEBUGPRINT1(s) llOwnerSay(s)
 ////#define assert(exp) // Nothing for now
-#define assert(exp) { if (!(exp)) { llOwnerSay("Assertion failed at " + __FILE__ + " line " + (string) __LINE__); panic(); }}
+#define assert(exp) { if (!(exp)) { llOwnerSay("Assertion failed at " + __SHORTFILE__ + " line " + (string) __LINE__); panic(); }}
 #else // not debugging
 #define DEBUGPRINT(s) {}
 #define DEBUGPRINT1(s) {}
@@ -250,7 +250,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             integer founduseful = FALSE;                                        // found a useful path
             list patha = [followstartx, followstarty, followstartdir];          // start conditions, follow one side
             list pathb = [followstartx, followstarty, (followstartdir + 2) % 4];    // the other way
-            while (gMazeStatus == 0 && (!founduseful) && (livea || liveb))           // if more following required
+            while (gMazeStatus == 0 && (!founduseful) && (livea || liveb))      // if more following required
             {   
                 // Advance each path one cell
                 if (livea)                                                      // if path A still live
@@ -324,7 +324,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 }
             }
 #endif // MAZEBOTHWAYS
-            DEBUGPRINT1("Finished wall following.");
+            DEBUGPRINT1("Finished wall following at (" + (string)gMazeX + "," + (string)gMazeY + ")");
         }
     }
     MAZEPRINTVERBOSE("Solved maze");
@@ -450,7 +450,7 @@ integer mazeexistsproductivepath(integer x, integer y)
 //
 integer mazeexistusefulpath(integer x, integer y)
 {
-    if (mazemd(x, y, gMazeEndX, gMazeEndY) < gMazeMdbest) { return(FALSE); }
+    if (mazemd(x, y, gMazeEndX, gMazeEndY) >= gMazeMdbest) { return(FALSE); }
     return(mazeexistsproductivepath(x,y)); 
 }
 
@@ -669,7 +669,7 @@ list mazewallfollow(list params, integer sidelr)
     integer y = llList2Integer(params,-2);
     integer direction = llList2Integer(params,-1);
     list path = llListReplaceList(params,[],-3,-1); // remove non-path items.
-    DEBUGPRINT1("Following wall at (" + (string)x + "," + (string)x + ")" + " side " + (string)sidelr + " direction " + (string) direction + " md " + (string)mazemd(x, y, 
+    DEBUGPRINT1("Following wall at (" + (string)x + "," + (string)y + ")" + " side " + (string)sidelr + " direction " + (string) direction + " md " + (string)mazemd(x, y, 
             gMazeEndX, gMazeEndY));
     integer dx = MAZEEDGEFOLLOWDX(direction);
     integer dy = MAZEEDGEFOLLOWDY(direction);
@@ -712,7 +712,7 @@ list mazewallfollow(list params, integer sidelr)
             if (md < gMazeMdbest && mazeexistsproductivepath(x,y))
             {
                 DEBUGPRINT("Outside corner led to a productive path halfway through");
-                return(path + [direction]);
+                return(path + [x, y, direction]);
             }
             direction = (direction + sidelr + 4) % 4;    // turn in direction
             x += dxsame;                        // move around corner
