@@ -265,6 +265,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                     {   list goodpath = gMazePath + llListReplaceList(patha, [], -3,-1);   // get good path
                         gMazeCells = [];
                         gMazePath = [];
+                        DEBUGPRINT1("Path A reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1)));
                         return(goodpath);
                     }
                     if ((x != followstartx || y != followstarty) && mazeexistusefulpath(x,y))  // if useful shortcut, time to stop wall following
@@ -289,6 +290,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                     {   list goodpath = gMazePath + llListReplaceList(pathb, [], -3,-1);   // get good path
                         gMazeCells = [];
                         gMazePath = [];
+                        DEBUGPRINT1("Path B reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1)));
                         return(goodpath);
                     }
                     if ((x != followstartx || y != followstarty) && mazeexistusefulpath(x,y))    // if useful shortcut, time to stop wall following
@@ -308,6 +310,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             if (!founduseful)                                                       // stopped following, but no result
             {   gMazePath = [];                                                     // failed, release memory and return
                 gMazeCells = [];
+                DEBUGPRINT1("No solution. Status: " + (string)gMazeStatus);
                 return([]);                                                         // no path possible
             }
 
