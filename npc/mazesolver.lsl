@@ -275,7 +275,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                         founduseful = TRUE;                                     // force exit
                         DEBUGPRINT1("Path A useful: " + mazerouteasstring(llListReplaceList(patha, [], -3,-1)));
                     }
-                    if (x == followstartx && y = followstarty && dir == followstartdir) 
+                    if (x == followstartx && y == followstarty && dir == followstartdir) 
                     {   DEBUGPRINT1("Path A stuck."); livea = FALSE; }          // in a loop wall following, stuck ***MAY FAIL - CHECK***
                 }
                 if (liveb && !founduseful)                                      // if path B still live and no solution found
@@ -299,7 +299,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                         founduseful = TRUE;                                     // force exit
                         DEBUGPRINT1("Path B useful: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1)));
                     }
-                    if (x == followstartx && y = followstarty && dir == followstartdir)
+                    if (x == followstartx && y == followstarty && dir == followstartdir)
                     {   DEBUGPRINT1("Path B stuck"); liveb = FALSE; } // in a loop wall following, stuck
                 }           
                 //  Termination conditions
