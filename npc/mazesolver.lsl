@@ -63,11 +63,12 @@ list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
 #define MAZEEDGEFOLLOWDY(n) llList2Integer(MAZEEDGEFOLLOWDYTAB,(n))
 
 #define MAZEPRINTVERBOSE(s) { if (verbose) { llOwnerSay((s)); } }
+#define DEBUG
 #ifdef DEBUG
 #define DEBUGPRINT(s) // Nothing for now
 #define DEBUGPRINT1(s) llOwnerSay(s)
 ////#define assert(exp) // Nothing for now
-#define assert(exp) { if (!(exp)) { llOwnerSay("Assertion failed at __LINE__"); panic(); }}
+#define assert(exp) { if (!(exp)) { llOwnerSay("Assertion failed at " + __FILE__ + " line " + (string) __LINE__); panic(); }}
 #else // not debugging
 #define DEBUGPRINT(s) {}
 #define DEBUGPRINT1(s) {}
@@ -265,12 +266,14 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                     }
                     if (mazeexistusefulpath(x,y))                               // if useful shortcut, time to stop wall following
                     {   list goodpath = gMazePath + llListReplaceList(patha, [], -3,-1);   // get good path
-                        gMazePath += goodpath;                                  // add to accmulated path
-                        founduseful = TRUE;                           // force exit
+                        gMazePath += goodpath;                                  // add to accumulated path
+                        gMazeX = x;                                             // update position
+                        gMazeY = y;
+                        founduseful = TRUE;                                     // force exit
                     }
                     if (x == followstartx && y = followstarty && direction == followstartdir) { livea = FALSE; } // in a loop wall following, stuck
                 }
-                if (liveb)                                                      // if path B still live
+                if (liveb && !founduseful)                                      // if path B still live and no solution found
                 {   pathb = mazewallfollow(pathb, sidelr);                      // follow one wall
                     integer x = llList2Integer(pathb,-3);                       // get X and Y from path list
                     integer y = llList2Integer(pathb,-2);
@@ -284,9 +287,11 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                     if (mazeexistusefulpath(x,y))                               // if useful shortcut, time to stop wall following
                     {   list goodpath = gMazePath + llListReplaceList(pathb, [], -3,-1);   // get good path
                         gMazePath += goodpath;                                  // add to accmulated path
-                        founduseful = TRUE;                                 // force exit
+                        gMazeX = x;                                             // update position
+                        gMazeY = y;
+                        founduseful = TRUE;                                     // force exit
                     }
-                    if (x == followstartx && y = followstarty && direction == followstartdir) { livea = FALSE; } // in a loop wall following, stuck
+                    if (x == followstartx && y = followstarty && direction == followstartdir) { liveb = FALSE; } // in a loop wall following, stuck
                 }           
                 //  Termination conditions
                 //  Consider adding check for paths collided from opposite directions. This is just a speedup, though.
@@ -660,12 +665,12 @@ integer mazefollowwall(integer sidelr, integer direction)
 //
 list mazewallfollow(list params, integer sidelr)
 {
-    DEBUGPRINT1("Following wall at (" + (string)x + "," + (string)x + ")" + " side " + (string)sidelr + " direction " + (string) direction + " md " + (string)mazemd(x, y, gMazeEndX, gMazeEndY));
     integer x = llList2Integer(params,-3);
     integer y = llList2Integer(params,-2);
     integer direction = llList2Integer(params,-1);
     list path = llListReplaceList(params,[],-3,-1); // remove non-path items.
-
+    DEBUGPRINT1("Following wall at (" + (string)x + "," + (string)x + ")" + " side " + (string)sidelr + " direction " + (string) direction + " md " + (string)mazemd(x, y, 
+            gMazeEndX, gMazeEndY));
     integer dx = MAZEEDGEFOLLOWDX(direction);
     integer dy = MAZEEDGEFOLLOWDY(direction);
     integer dxsame = MAZEEDGEFOLLOWDX(((direction + sidelr) + 4) % 4); // if not blocked ahead
