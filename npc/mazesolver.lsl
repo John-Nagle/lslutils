@@ -461,8 +461,7 @@ integer mazetakeproductivepath()
 //
 //  mazepickside
 //
-//    Which side of the wall to follow? The one that leads toward the goal.
-//    Where is the wall? One cell in the direction takkeproductvepath was going.
+//    Which side of the wall to follow?  Doesn't matter. We will follow both.
 //
 //       
 list mazepickside()
@@ -482,75 +481,31 @@ list mazepickside()
     assert(mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY + clippeddy)); // must have hit a wall
     //   8 cases, dumb version
     if (clippeddx == 1)                      // obstacle is in +X dir
-    {   if (dy > 0)                        // if want to move in +Y
-        {   direction = 1;
-            sidelr = MAZEWALLONRIGHT;
-        } else {
-            direction = 3;
-            sidelr = MAZEWALLONLEFT;
-        }
+    {   
+        direction = 1;
+        sidelr = MAZEWALLONRIGHT;
+
     } else if (clippeddx == -1) 
-    {   if (dy > 0)
-        {   direction = 1;
-            sidelr = MAZEWALLONLEFT;
-        } else {
-            direction = 3;
-            sidelr = MAZEWALLONRIGHT;
-        }               
+    {  
+        direction = 3;
+        sidelr = MAZEWALLONRIGHT;
+              
     } else if (clippeddy == 1 )                  // obstacle is in +Y dir
-    {   if (dx > 0)                       // if want to move in +X
-        {   direction = 0;
-            sidelr = MAZEWALLONLEFT;             // wall is on left            
-        } else {
-            direction = 2;
-            sidelr = MAZEWALLONRIGHT;
-        }
+    {  
+        direction = 2;
+        sidelr = MAZEWALLONRIGHT;
+
     } else if (clippeddy == -1)                   // obstacle is in -Y dir
-    {    if (dx > 0)                        // if want to move in +X
-        {    direction = 0;
-            sidelr = MAZEWALLONRIGHT;                     // wall is on left
-        } else {
-            direction = 2;
-            sidelr = MAZEWALLONLEFT;
-        }
+    {  
+        direction = 0;
+        sidelr = MAZEWALLONRIGHT;
+
     } else {
         assert(FALSE);                       // should never get here
     }
     DEBUGPRINT("At (%d,%d) picked side %d, direction %d for wall follow." % (gMazeX, gMazeY, sidelr, direction));
     return([sidelr, direction]);
 }
-#ifdef OBSOLETE
-//
-//  mazefollowwall -- Follow wall from current point. Single move per call
-//        
-//    Wall following rules:
-//    Always blocked on follow side. Algorithm error if not.
-//        
-//    If blocked ahead && not blocked opposite follow side, inside corner
-//            turn away from follow side. No move.
-//    If blocked ahead && blocked opposite follow side, dead end
-//            turn twice to reverse direction, no move.
-//    If not blocked ahead && blocked on follow side 1 ahead, 
-//            advance straight.
-//    If not blocked ahead && not blocked on follow side 1 ahead, outside corner,
-//            advance straight, 
-//           turn towards follow side, 
-//            advance straight.
-//            
-//    "sidelr" is 1 for left, -1 for right
-//    "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
-//
-integer mazefollowwall(integer sidelr, integer direction)
-{
-    list result = mazewallfollow(gMazePath + [gMazeX, gMazeY, direction], sidelr); // use common fn
-    //  Result is pt, pt, pt, x, y, direction]
-    gMazeX = llList2Integer(result,-3);
-    gMazeY = llList2Integer(result,-2);
-    direction = llList2Integer(result,-1);
-    gMazePath = llListReplaceList(result,[],-3,-1); // remove non-path items.
-    return(direction);
-}
-#endif // OBSOLETE
 
 
 //
