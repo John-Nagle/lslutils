@@ -81,7 +81,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
         return(MAZESTATUSGEOMBUG);                                 // fails
     }
-    if ((llVecMag(p0chk-p0) > 0.01) || (llVecMag(p1chk-p1) > 0.01))
+    if ((llVecMag(p0chk-p0) > 0.05) || (llVecMag(p1chk-p1) > 0.05))         // allow 5cm error. Rounding problem?
     {   llSay(DEBUG_CHANNEL, "Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
         return(MAZESTATUSGEOMBUG);                                 // fails

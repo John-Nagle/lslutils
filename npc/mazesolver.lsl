@@ -817,7 +817,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
             status = gMazeStatus;                       // failed for known reason, report
             if (status == 0) { status = MAZESTATUSNOFIND; }  // generic no-find status
         } else {
-            path = mazeoptimizeroute(path);             // do simple optimizations
+            ////path = mazeoptimizeroute(path);             // do simple optimizations
         } 
     }
     if (verbose) 
