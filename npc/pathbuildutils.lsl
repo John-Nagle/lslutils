@@ -57,6 +57,30 @@ integer checkcollinear(list pts)
     }
     return(TRUE);                       // collinear   
 }
+//
+//  pathstraighten -- straighten a path if possible.
+//
+//  Works in 3D world, not maze cell space.
+//
+list pathstraighten(list pts, float width, float height, float probespacing, integer chartype)
+{
+    integer n = 0;
+    //   Advance through route. On each iteration, either the route gets shorter, or n gets
+    //   larger, so this should always terminate.
+    while (n < llGetListLength(pts)-3)                          // advancing through route
+    {   vector  p0 = llList2Vector(pts,n);                      // get next three points
+        vector  p1 = llList2Vector(pts,n+1);                    // get next three points
+        vector  p2 = llList2Vector(pts,n+2);                    // get next three points
+        //  Try to take a short cut, bypassing p1
+        if (obstaclecheckpath(p0, p2, width, height,probespacing, chartype))
+        {   pts = llListReplaceList(pts,[],n+1,n+1);            // success, we can delete p2
+        } else {                                                // can't delete, so advance
+            n = n + 1;
+        }
+    }
+    return(pts);                                                // shortened route
+}
+
 #ifdef UNUSED
 //
 //  removecollinear  -- remove collinear points from a list
@@ -193,6 +217,7 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
     }
     return(TRUE);                                               // success
 }
+#ifdef OBSOLETE
 //
 //  simpleobstacletrypath -- try one path for simple obstacle avoidance
 //
@@ -241,5 +266,6 @@ list simpleobstacleavoid(vector p0, vector p1, float width, float height, float 
     }
     return([]);                                                         // no route found
 }
+#endif // OBSOLETE
 #endif // PATHBUILDUTILS
 
