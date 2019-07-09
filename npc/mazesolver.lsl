@@ -209,10 +209,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
     while (gMazeX != gMazeEndX || gMazeY != gMazeEndY)  // while not at dest
     {   MAZEPRINTVERBOSE("Maze solve at (" + (string)gMazeX + "," + (string)gMazeY + ")");
         if (gMazeStatus)                                    // if something went wrong
-        {   if (verbose)
-            {   llOwnerSay("Maze solver failed: status " + (string)gMazeStatus + " at (" 
-                + (string)gMazeX + "," + (string)gMazeY + ")");
-            }
+        {   MAZEPRINTVERBOSE("Maze solver failed: status " + (string)gMazeStatus + " at (" + (string)gMazeX + "," + (string)gMazeY + ")");
             gMazeCells = [];                                // release memory
             gMazePath = [];
             return([]);
@@ -301,7 +298,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             if (!founduseful)                                                       // stopped following, but no result
             {   gMazePath = [];                                                     // failed, release memory and return
                 gMazeCells = [];
-                DEBUGPRINT1("No solution. Status: " + (string)gMazeStatus);
+                MAZEPRINTVERBOSE("No solution. Status: " + (string)gMazeStatus);
                 return([]);                                                         // no path possible
             }
 
@@ -811,13 +808,14 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     integer endy = (integer)llJsonGetValue(jsn,["endy"]);
     if (verbose) 
     {   llOwnerSay("Request to maze solver: " + jsn); }            // verbose mode
-    if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = 2; } // too big
+    if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = MAZESTATUSBADSIZE; } // too big
     list path = [];
     if (status == 0)                                    // if params sane enough to start
     {   path = mazesolve(sizex, sizey, startx, starty, endx, endy, verbose); // solve the maze
-        if (llGetListLength(path) == 0)                 // failed to find a path
+        if (llGetListLength(path) == 0 || gMazeStatus != 0)       // failed to find a path
         {   path = [];                                  // clear path
-            if (status == 0) { status = 1; }            // failed for unknown reason
+            status = gMazeStatus;                       // failed for known reason, report
+            if (status == 0) { status = MAZESTATUSNOFIND; }  // generic no-find status
         } else {
             path = mazeoptimizeroute(path);             // do simple optimizations
         } 

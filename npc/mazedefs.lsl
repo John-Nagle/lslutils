@@ -39,6 +39,7 @@
 #define MAZESTATUSTOOSHORT  -201                // end too close to start
 #define MAZESTATUSTOOLONG   -202                // end too far from start                                           
 #define MAZESTATUSBADEND    -203                // end cell of maze is occupied
+#define MAZESTATUSBADSIZE   -204                // maze is too big
 
                                                 // internal errors
 #define MAZESTATUSTIMEOUT   -501                // took too long
