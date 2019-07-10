@@ -263,6 +263,8 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
         }
     }
     //  Center of cell is clear and walkable. Now check upwards at leading corners.
+    //  ***TROUBLE on thin tilted walkables.  Upward scan hits walkable from bottom.***
+    //  ***FIX***
     vector dir = llVecNorm(p1-p0);                          // forward direction
     vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
     vector pa = p1 + (dir*(width*0.5)) + (crossdir*(width*0.5));  // one test corner at ground level
