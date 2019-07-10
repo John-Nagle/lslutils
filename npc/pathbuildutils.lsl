@@ -269,11 +269,39 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
     vector pa = p1 + (dir*(width*0.5)) + (crossdir*(width*0.5));  // one test corner at ground level
     vector pb = p1 + (dir*(width*0.5)) - (crossdir*(width*0.5));  // other test corner at ground level
-    castresult = castray(pa-<0,0,MAZEBELOWGNDTOL>,pa+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND]); // cast upwards, no land check
-    if (llList2Integer(castresult, -1) != 0) { return(TRUE); }                     // hit object   
-    castresult = castray(pb-<0,0,MAZEBELOWGNDTOL>,pb+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND]); // cast upwards
-    if (llList2Integer(castresult, -1) != 0) { return(TRUE); }                     // hit object
+    castresult = castray(pa-<0,0,MAZEBELOWGNDTOL>,pa+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,2]); // cast upwards, no land check
+    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
+    castresult = castray(pb-<0,0,MAZEBELOWGNDTOL>,pb+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,2]); // cast upwards
+    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
     return(FALSE);                                               // success
+}
+//
+//  mazecasthitnonwalkable --  true if any cast ray hit is not a walkable
+//
+integer mazecasthitnonwalkable(list castresult)
+{
+    integer status = llList2Integer(castresult, -1);        // status is last element in list
+    if (status == 0) { return(FALSE); }                     // hit nothing, fast case
+    if (status < 0)
+    {   ////llOwnerSay("Cast ray status: " + (string)status);
+        return(TRUE);                                       // fails, unlikely       
+    }
+    integer n;
+    //  Scan all hits for non-walkables.
+    for (n=0; n<status; n++)
+    {
+        vector hitpt = llList2Vector(castresult, n*2+1);        // get point of hit
+        key hitobj = llList2Key(castresult, n*2+0);             // get object hit
+        if (hitobj != NULL_KEY)                              // null key is land, that's OK
+        {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
+            integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+            if (pathfindingtype != OPT_WALKABLE)                // if it's not a walkable
+            {   ////llOwnerSay("Hit."); // ***TEMP***
+                return(TRUE);  
+            }                                               // fails, can't walk here   
+        }
+    }
+    return(FALSE);
 }
 #ifdef OBSOLETE
 //
