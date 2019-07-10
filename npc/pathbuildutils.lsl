@@ -193,7 +193,6 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
     }
     return(nearestdist);   // no obstacles
 }
-#ifdef OBSOLETE
 //
 //  obstaclecheckpath  -- is path obstacle-free?
 //
@@ -218,7 +217,6 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
     }
     return(TRUE);                                               // success
 }
-#endif // OBSOLETE
 //
 //  obstaclecheckcelloccupied  -- is there an obstacle in this cell?
 //

@@ -237,8 +237,16 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             integer livea = TRUE;                                               // more to do on path a
             integer liveb = TRUE;                                               // more to do on path b
             integer founduseful = FALSE;                                        // found a useful path
+            ///integer initialdira = -1;
+            ///integer initialdirb = -1;
             list patha = [followstartx, followstarty, followstartdir];          // start conditions, follow one side
             list pathb = [followstartx, followstarty, (followstartdir + 2) % 4];    // the other way
+            integer xa = -1;                                                    // x,y,dir for follower A
+            integer ya = -1;
+            integer dira = -1;
+            integer xb = -1;                                                    // x,y,dir for follower B
+            integer yb = -1;
+            integer dirb = -1;
             while (gMazeStatus == 0 && (!founduseful) && (livea || liveb))      // if more following required
             {   
                 // Advance each path one cell
@@ -246,51 +254,57 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 {   patha = mazewallfollow(patha, MAZEWALLONRIGHT);                      // follow one wall
                     DEBUGPRINT1("Path A: " + llDumpList2String(patha,","));
                     MAZEPRINTVERBOSE("Path A in: " + mazerouteasstring(llListReplaceList(patha, [], -3,-1))); // ***TEMP***
-                    integer x = llList2Integer(patha,-3);                       // get X and Y from path list
-                    integer y = llList2Integer(patha,-2);
-                    integer dir = llList2Integer(patha,-1);                     // direction
-                    if (gMazeStatus == 0 && (x == gMazeEndX) && (y == gMazeEndY))    // reached final goal
+                    xa = llList2Integer(patha,-3);                       // get X and Y from path list
+                    ya = llList2Integer(patha,-2);
+                    dira = llList2Integer(patha,-1);                     // direction
+                    if (gMazeStatus == 0 && (xa == gMazeEndX) && (ya == gMazeEndY))    // reached final goal
                     {   list goodpath = gMazePath + llListReplaceList(patha, [], -3,-1);   // get good path
                         gMazeCells = [];
                         gMazePath = [];
                         DEBUGPRINT1("Path A reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1)));
                         return(goodpath);
                     }
-                    if ((x != followstartx || y != followstarty) && mazeexistusefulpath(x,y))  // if useful shortcut, time to stop wall following
+                    if ((xa != followstartx || ya != followstarty) && mazeexistusefulpath(xa,ya))  // if useful shortcut, time to stop wall following
                     {   list goodpath = gMazePath + llListReplaceList(patha, [], -3,-1);   // get good path
                         gMazePath = goodpath;                                   // add to accumulated path
-                        gMazeX = x;                                             // update position
-                        gMazeY = y;
+                        gMazeX = xa;                                             // update position
+                        gMazeY = ya;
                         founduseful = TRUE;                                     // force exit
                         DEBUGPRINT1("Path A useful: " + mazerouteasstring(llListReplaceList(patha, [], -3,-1)));
                     }
-                    if (x == followstartx && y == followstarty && dir == followstartdir) 
+                    if (xa == followstartx && ya == followstarty && dira == followstartdir) 
                     {   DEBUGPRINT1("Path A stuck."); livea = FALSE; }          // in a loop wall following, stuck ***MAY FAIL - CHECK***
+                    if (liveb && xa == xb && ya == yb && dira == (dirb + 2) % 4) // followers have met head on
+                    {   DEBUGPRINT1("Path A hit path B"); livea = FALSE; liveb = FALSE; }      // force quit
                 }
                 if (liveb && !founduseful)                                      // if path B still live and no solution found
                 {   pathb = mazewallfollow(pathb, -MAZEWALLONRIGHT);                     // follow other wall
                     DEBUGPRINT1("Path B: " + llDumpList2String(pathb,","));
                     MAZEPRINTVERBOSE("Path B in: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1))); // ***TEMP***
-                    integer x = llList2Integer(pathb,-3);                       // get X and Y from path list
-                    integer y = llList2Integer(pathb,-2);
-                    integer dir = llList2Integer(pathb,-1);                     // direction
-                    if (gMazeStatus == 0 && (x == gMazeEndX) && (y == gMazeEndY))    // reached final goal
+                    xb = llList2Integer(pathb,-3);                       // get X and Y from path list
+                    yb = llList2Integer(pathb,-2);
+                    dirb = llList2Integer(pathb,-1);                     // direction
+                    if (gMazeStatus == 0 && (xb == gMazeEndX) && (yb == gMazeEndY))    // reached final goal
                     {   list goodpath = gMazePath + llListReplaceList(pathb, [], -3,-1);   // get good path
                         gMazeCells = [];
                         gMazePath = [];
                         DEBUGPRINT1("Path B reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1)));
                         return(goodpath);
                     }
-                    if ((x != followstartx || y != followstarty) && mazeexistusefulpath(x,y))    // if useful shortcut, time to stop wall following
+                    if ((xb != followstartx || yb != followstarty) && mazeexistusefulpath(xb,yb))    // if useful shortcut, time to stop wall following
                     {   list goodpath = gMazePath + llListReplaceList(pathb, [], -3,-1);   // get good path
                         gMazePath = goodpath;                                   // add to accmulated path
-                        gMazeX = x;                                             // update position
-                        gMazeY = y;
+                        gMazeX = xb;                                             // update position
+                        gMazeY = yb;
                         founduseful = TRUE;                                     // force exit
                         DEBUGPRINT1("Path B useful: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1)));
                     }
-                    if (x == followstartx && y == followstarty && dir == (followstartdir + 2) % 4)
+                    if (xb == followstartx && yb == followstarty && dirb == (followstartdir + 2) % 4)
                     {   DEBUGPRINT1("Path B stuck"); liveb = FALSE; } // in a loop wall following, stuck
+                    if (xa == followstartx && ya == followstarty && dira == followstartdir) 
+                    {   DEBUGPRINT1("Path A stuck."); livea = FALSE; }          // in a loop wall following, stuck ***MAY FAIL - CHECK***
+                    if (livea && xa == xb && ya == yb && dira == (dirb + 2) % 4) // followers have met head on
+                    {   DEBUGPRINT1("Path A hit path B"); livea = FALSE; liveb = FALSE; }      // force quit
                 }           
                 //  Termination conditions
                 //  Consider adding check for paths collided from opposite directions. This is just a speedup, though.
