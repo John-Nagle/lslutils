@@ -245,7 +245,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 if (livea)                                                      // if path A still live
                 {   patha = mazewallfollow(patha, MAZEWALLONRIGHT);                      // follow one wall
                     DEBUGPRINT1("Path A: " + llDumpList2String(patha,","));
-                    DEBUGPRINT1("Path A in: " + mazerouteasstring(llListReplaceList(patha, [], -3,-1))); // ***TEMP***
+                    MAZEPRINTVERBOSE("Path A in: " + mazerouteasstring(llListReplaceList(patha, [], -3,-1))); // ***TEMP***
                     integer x = llList2Integer(patha,-3);                       // get X and Y from path list
                     integer y = llList2Integer(patha,-2);
                     integer dir = llList2Integer(patha,-1);                     // direction
@@ -270,7 +270,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 if (liveb && !founduseful)                                      // if path B still live and no solution found
                 {   pathb = mazewallfollow(pathb, -MAZEWALLONRIGHT);                     // follow other wall
                     DEBUGPRINT1("Path B: " + llDumpList2String(pathb,","));
-                    DEBUGPRINT1("Path B in: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1))); // ***TEMP***
+                    MAZEPRINTVERBOSE("Path B in: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1))); // ***TEMP***
                     integer x = llList2Integer(pathb,-3);                       // get X and Y from path list
                     integer y = llList2Integer(pathb,-2);
                     integer dir = llList2Integer(pathb,-1);                     // direction

@@ -193,6 +193,7 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
     }
     return(nearestdist);   // no obstacles
 }
+#ifdef OBSOLETE
 //
 //  obstaclecheckpath  -- is path obstacle-free?
 //
@@ -217,6 +218,7 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
     }
     return(TRUE);                                               // success
 }
+#endif // OBSOLETE
 //
 //  obstaclecheckcelloccupied  -- is there an obstacle in this cell?
 //
@@ -240,14 +242,14 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     float MAZEBELOWGNDTOL = 0.20;                           // cast upwards from just below ground
     float mazedepthmargin = llFabs(p1.z - p0.z)+MAZEBELOWGNDTOL;            // allow for sloped area
     list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
-    llOwnerSay("Probe: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
+    ////llOwnerSay("Probe: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
     integer status = llList2Integer(castresult, -1);        // status is last element in list
     if (status < 0)
-    {   llOwnerSay("Cast ray status: " + (string)status);
+    {   ////llOwnerSay("Cast ray status: " + (string)status);
         return(TRUE);                                       // fails, unlikely       
     }
     if (status == 0)
-    {   llOwnerSay("No ground:" + llDumpList2String(castresult, ", ")); // ***TEMP***
+    {   ////llOwnerSay("No ground:" + llDumpList2String(castresult, ", ")); // ***TEMP***
         return(TRUE);                                       // where's the ground? Cliff?  Fails.
     }
     if (status > 0)                                         // found something
@@ -257,7 +259,7 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
         {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                // if it's not a walkable
-            {   llOwnerSay("Hit."); // ***TEMP***
+            {   ////llOwnerSay("Hit."); // ***TEMP***
                 return(TRUE);  
             }                                               // fails, can't walk here   
         }
