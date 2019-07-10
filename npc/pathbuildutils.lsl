@@ -217,6 +217,62 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
     }
     return(TRUE);                                               // success
 }
+//
+//  obstaclecheckcelloccupied  -- is there an obstacle in this cell?
+//
+//  Checks a cell centered on p1. Assumes the cell centered on p0 is clear. Alignment of cell is p1-p2.
+//
+//  This works by doing one ray cast straight down, and two straight up. The downward cast must hit a
+//  wallkable. The upward casts must hit nothing. This catches big objects sitting on the walkable
+//  surface.
+//
+//  We don't have to check the trailing edge of the cell, because we are coming from a clear cell at p0,
+//  so that was already cheked.
+//
+//  No static path check, but it has to hit a walkable.
+//
+//  p0 and p1 must be one width apart. 
+//
+//  Only three cast ray calls per cell.
+//
+integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float height)
+{
+    float MAZEBELOWGNDTOL = 0.20;                           // cast upwards from just below ground
+    float mazedepthmargin = llFabs(p1.z - p0.z)+MAZEBELOWGNDTOL;            // allow for sloped area
+    list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
+    llOwnerSay("Probe: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
+    integer status = llList2Integer(castresult, -1);        // status is last element in list
+    if (status < 0)
+    {   llOwnerSay("Cast ray status: " + (string)status);
+        return(TRUE);                                       // fails, unlikely       
+    }
+    if (status == 0)
+    {   llOwnerSay("No ground:" + llDumpList2String(castresult, ", ")); // ***TEMP***
+        return(TRUE);                                       // where's the ground? Cliff?  Fails.
+    }
+    if (status > 0)                                         // found something
+    {   vector hitpt = llList2Vector(castresult, 1);        // get point of hit
+        key hitobj = llList2Key(castresult, 0);             // get object hit
+        if (hitobj != NULL_KEY)                             // null key is land, that's OK
+        {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
+            integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+            if (pathfindingtype != OPT_WALKABLE)                // if it's not a walkable
+            {   llOwnerSay("Hit."); // ***TEMP***
+                return(TRUE);  
+            }                                               // fails, can't walk here   
+        }
+    }
+    //  Center of cell is clear and walkable. Now check upwards at leading corners.
+    vector dir = llVecNorm(p1-p0);                          // forward direction
+    vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
+    vector pa = p1 + (dir*(width*0.5)) + (crossdir*(width*0.5));  // one test corner at ground level
+    vector pb = p1 + (dir*(width*0.5)) - (crossdir*(width*0.5));  // other test corner at ground level
+    castresult = castray(pa-<0,0,MAZEBELOWGNDTOL>,pa+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND]); // cast upwards, no land check
+    if (llList2Integer(castresult, -1) != 0) { return(TRUE); }                     // hit object   
+    castresult = castray(pb-<0,0,MAZEBELOWGNDTOL>,pb+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND]); // cast upwards
+    if (llList2Integer(castresult, -1) != 0) { return(TRUE); }                     // hit object
+    return(FALSE);                                               // success
+}
 #ifdef OBSOLETE
 //
 //  simpleobstacletrypath -- try one path for simple obstacle avoidance
