@@ -221,7 +221,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             return([]);                    // we are in an undetected loop
         }
         if (mazeexistsproductivepath(gMazeX, gMazeY))     // if a shortcut is available
-        {   MAZEPRINTVERBOSE("Maze productive path at (" + (string)gMazeX + "," + (string)gMazeY + ")");
+        {   DEBUGPRINT1("Maze productive path at (" + (string)gMazeX + "," + (string)gMazeY + ")");
             mazetakeproductivepath();       // use it
             gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
             ////////gMazeMdbest = gMazeMdbest -1 
@@ -253,7 +253,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 if (livea)                                                      // if path A still live
                 {   patha = mazewallfollow(patha, MAZEWALLONRIGHT);                      // follow one wall
                     DEBUGPRINT1("Path A: " + llDumpList2String(patha,","));
-                    MAZEPRINTVERBOSE("Path A in: " + mazerouteasstring(llListReplaceList(patha, [], -3,-1))); // ***TEMP***
+                    DEBUGPRINT1("Path A in: " + mazerouteasstring(llListReplaceList(patha, [], -3,-1))); // ***TEMP***
                     xa = llList2Integer(patha,-3);                       // get X and Y from path list
                     ya = llList2Integer(patha,-2);
                     dira = llList2Integer(patha,-1);                     // direction
@@ -280,7 +280,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 if (liveb && !founduseful)                                      // if path B still live and no solution found
                 {   pathb = mazewallfollow(pathb, -MAZEWALLONRIGHT);                     // follow other wall
                     DEBUGPRINT1("Path B: " + llDumpList2String(pathb,","));
-                    MAZEPRINTVERBOSE("Path B in: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1))); // ***TEMP***
+                    DEBUGPRINT1("Path B in: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1))); // ***TEMP***
                     xb = llList2Integer(pathb,-3);                       // get X and Y from path list
                     yb = llList2Integer(pathb,-2);
                     dirb = llList2Integer(pathb,-1);                     // direction
