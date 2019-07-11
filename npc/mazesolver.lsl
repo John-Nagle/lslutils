@@ -844,20 +844,11 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
 //
 //  mazebarrierfn -- barrier test in 3D space
 //
-//  ***NEED TO ADD A STRAIGHT DOWN RAYCAST TO CHECK FOR WALKABLE UNDERNEATH***
-//
 integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
 {   
     vector p0 = mazecelltopoint(prevx, prevy);          // centers of the start and end test cells
     vector p1 = mazecelltopoint(x,y);
-#ifdef OBSOLETE
-    vector direction = llVecNorm(p1-p0);                // direction
-    p1 = p1 + direction*(gMazeCellSize*0.5);            // extend to edge of cell
-    p0 = p0 - direction*(gMazeCellSize*0.5);            // extend to edge of cell
-    float dist = castbeam(p0, p1, gMazeWidth, gMazeHeight, gMazeProbeSpacing, FALSE, [RC_REJECT_TYPES,RC_REJECT_LAND]);
-    return(dist != INFINITY);                           // returns true if obstacle
-#endif // OBSOLETE
-    return(obstaclecheckcelloccupied(p0, p1, gMazeWidth, gMazeHeight));    // test whether cell occupied
+    return(obstaclecheckcelloccupied(p0, p1, gMazeWidth, gMazeHeight, FALSE));    // test whether cell occupied, assuming prev cell was OK
 }
 //
 //  mazecelltopoint -- convert maze coordinates to point in world space

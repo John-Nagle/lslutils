@@ -81,35 +81,6 @@ list pathstraighten(list pts, float width, float height, float probespacing, int
     return(pts);                                                // shortened route
 }
 
-#ifdef UNUSED
-//
-//  removecollinear  -- remove collinear points from a list
-//
-//  ***UNTESTED***
-//
-list removecollinear(list pts)
-{   integer length = llGetListLength(pts);
-    integer i;
-    if (length < 3) { return(pts); }    // can't shorten unless at least 3
-    vector p0 = llList2Vector(pts,0);
-    vector p1 = llList2Vector(pts,1);
-    newpts = [p0];
-    for (i=2; i<length; i++)
-    {   vector p = llList2Vector(pts,i); // next point
-        float dist = distpointtoline(p1, p0, p);    // distance from p1 to p0-p line
-        if (dist < 0.001)               // if collinear discard p1
-        { p1 = p
-        } else {                        // keep p1
-            p0 = p1
-            newpts += p0
-            p1 = p
-        }
-    }
-    //  At end, we still have an unstored point in p1
-    newpts += p1
-    return newpts
-}
-#endif // UNUSED
 //
 //  rotperpenonground  -- rotation to get line on ground perpendicular to vector
 //
@@ -235,7 +206,7 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 //
 //  Only three cast ray calls per cell.
 //
-integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float height)
+integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float height, integer dobackcorners)
 {
     float MAZEBELOWGNDTOL = 0.20;                           // cast upwards from just below ground
     float mazedepthmargin = llFabs(p1.z - p0.z)+MAZEBELOWGNDTOL;            // allow for sloped area
@@ -263,8 +234,6 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
         }
     }
     //  Center of cell is clear and walkable. Now check upwards at leading corners.
-    //  ***TROUBLE on thin tilted walkables.  Upward scan hits walkable from bottom.***
-    //  ***FIX***
     vector dir = llVecNorm(p1-p0);                          // forward direction
     vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
     vector pa = p1 + (dir*(width*0.5)) + (crossdir*(width*0.5));  // one test corner at ground level
@@ -273,7 +242,15 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
     castresult = castray(pb-<0,0,MAZEBELOWGNDTOL>,pb+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,2]); // cast upwards
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
-    return(FALSE);                                               // success
+    if (!dobackcorners) { return(FALSE); }
+    //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
+    vector pc = p1 - (dir*(width*0.5)) + (crossdir*(width*0.5));  // one test corner at ground level
+    vector pd = p1 - (dir*(width*0.5)) - (crossdir*(width*0.5));  // other test corner at ground level
+    castresult = castray(pc-<0,0,MAZEBELOWGNDTOL>,pc+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,2]); // cast upwards, no land check
+    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
+    castresult = castray(pd-<0,0,MAZEBELOWGNDTOL>,pd+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,2]); // cast upwards
+    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail    
+    return(FALSE);                                               // success, no obstacle
 }
 //
 //  mazecasthitnonwalkable --  true if any cast ray hit is not a walkable
@@ -303,55 +280,5 @@ integer mazecasthitnonwalkable(list castresult)
     }
     return(FALSE);
 }
-#ifdef OBSOLETE
-//
-//  simpleobstacletrypath -- try one path for simple obstacle avoidance
-//
-list simpleobstacletrypath(vector p0, vector p1, float width, float height, float probespacing, integer chartype, float offset)
-{
-    vector sidewaysdir = <0,1,0>*rotperpenonground(p0,p1);      // offset for horizontal part of scan
-    vector interp0 = p0 + sidewaysdir*offset;                   // first intermediate point, sideways move
-    vector interp1 = p1 + sidewaysdir*offset;                   // second intermediate point
-    ////llOwnerSay("try path, offset: " + (string) offset + "  " + (string) interp0 + " " + (string)interp1);
-    if (!obstaclecheckpath(p0, interp0, width, height, probespacing, chartype)) { return([]);} // fail
-    if (!obstaclecheckpath(interp0, interp1, width, height, probespacing, chartype)) { return([]);} // fail
-    if (!obstaclecheckpath(interp1, p1, width, height, probespacing, chartype)) { return([]);} // fail
-    return([p0, interp0, interp1, p1]);                         // success, return new path
-}
-
-//
-//  simpleobstacleavoid  -- simple planner to get around simple obstacles
-//
-//  This just tries a sideways move, then a forward move, then a sideways move back to the end point.
-//
-//  Worth trying before bringing up the heavy machinery of A*
-//
-//  p0 must be in clear space and clear for a "width" circle around p0.
-//
-list simpleobstacleavoid(vector p0, vector p1, float width, float height, float probespacing, integer chartype)
-{
-    vector sidewaysdir = <0,1,0>*rotperpenonground(p0,p1);      // offset for horizontal part of scan
-    float rightmax = castbeam(p0, p0+sidewaysdir*MAXAVOIDMOVE, width, height, probespacing, TRUE, []); // max dist to scan to right 
-    float leftmax = castbeam(p0, p0-sidewaysdir*MAXAVOIDMOVE, width, height, probespacing, TRUE, []);  // max dist to scan to right 
-    float offsetlim = MAXAVOIDMOVE;
-    float maxoffset = rightmax;
-    if (leftmax > maxoffset) { maxoffset = leftmax; }
-    if (maxoffset > MAXAVOIDMOVE) { maxoffset = MAXAVOIDMOVE; } // bound range to search
-    float offset;
-    //  Linear search. Expensive. Consider making bigger moves, then smaller ones.
-    for (offset = 0.0; offset <= maxoffset + 0.001; offset += width)   // all offsets to try
-    {   
-        if (offset <= rightmax)
-        {   list avoidpath = simpleobstacletrypath(p0, p1, width, height, probespacing, chartype, offset); // try avoiding obstacle by going right
-            if (llGetListLength(avoidpath) > 0) { return(avoidpath); }  // alternate route found
-        }
-        if (offset <= leftmax)
-        {   list avoidpath = simpleobstacletrypath(p0, p1, width, height, probespacing, chartype, -offset); // try avoiding obstacle by going right
-            if (llGetListLength(avoidpath) > 0) { return(avoidpath); }  // alternate route found
-        }
-    }
-    return([]);                                                         // no route found
-}
-#endif // OBSOLETE
 #endif // PATHBUILDUTILS
 
