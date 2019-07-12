@@ -327,9 +327,8 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float height, float
 list pathendpointadjust(list pts, float width, float height)
 {
     integer n;
-    integer length  = llGetListLength(pts);
-    if (length == 0) { return(pts); } // empty
-    for (n=1; n<length; n++)          // check all points except start
+    if (llGetListLength(pts) == 0) { return(pts); } // empty
+    for (n=1; n<llGetListLength(pts); n++)          // check all points except start
     {   vector pos = llList2Vector(pts,n);
         vector prevpos = llList2Vector(pts,n-1);                                // previous point
         if (obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))       // if obstacle at endpoint
@@ -340,7 +339,7 @@ list pathendpointadjust(list pts, float width, float height)
             list revresult = pathfindunobstructed(pts,n,-1, height, width);     // search backwards
             vector revpt = llList2Vector(revresult,0);                          // new clear point in reverse dir
             integer revix = llList2Integer(revresult,1);                        // index of point after find pt
-            if (n == length-1)                                                  // if last point, special case
+            if (n == llGetListLength(pts)-1)                                                  // if last point, special case
             {   if (revix <= 0)
                 {   llOwnerSay("Cannot find unobstructed end point anywhere near " + (string)pos); // ***TEMP***
                     return([]);                                                     // fails
