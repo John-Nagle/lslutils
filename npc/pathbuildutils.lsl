@@ -367,5 +367,26 @@ list pathendpointadjust(list pts, float width, float height)
     }
     return(pts);
 }
+//
+//  pathclean - remove very short segments from path. llGetStaticPath has a problem with this.
+//
+list pathclean(list path)
+{   
+    integer len = llGetListLength(path);                    // number of points on path
+    if (len == 0)  { return([]); }                          // empty list
+    vector prevpt = llList2Vector(path,0);                  // previous point
+    list newpath = [];                                      // which is the first output point
+    integer i;
+    for (i=1; i<len; i++)                                   // for all points after first
+    {   vector pt = llList2Vector(path,i);                  // get next pont
+        float dist = llVecMag(pt - prevpt);                 // segment length
+        if (dist > MINSEGMENTLENGTH)                        // if long enough to keep
+        {   newpath += prevpt;
+            prevpt = pt;
+        }
+    }
+    newpath += llList2Vector(path,-1);                      // always include final point
+    return(newpath);                                        // cleaned up path
+}
 #endif // PATHBUILDUTILS
 
