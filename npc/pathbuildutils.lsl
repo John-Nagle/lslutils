@@ -8,6 +8,7 @@
 //
 #ifndef PATHBUILDUTILS                                       // include guard, like C/C++
 #define PATHBUILDUTILS
+#include "npc/mazedefs.lsl"
 //
 //  Constants
 //
@@ -279,6 +280,93 @@ integer mazecasthitnonwalkable(list castresult)
         }
     }
     return(FALSE);
+}
+//
+//  pathfindunobstructed -- find an unobstructed point near a path segment end.
+//
+//  Returns [pnt,ix], where ix is the point index previous, in the direction of scan, to the
+//  scan, of the point found.
+//
+//  This is inefficient but seldom used.
+//
+list pathfindunobstructed(list pts, integer ix, integer fwd, float height, float width)
+{
+    ////assert(fwd == 1 || fwd == -1);
+    integer length = llGetListLength(pts);
+    float distalongseg = 0.0;                   // distance along segment starting at ix.
+    while (TRUE)                                // until return
+    {   integer ix2 = ix + fwd;                 // next index in desired direction
+        vector p0 = llList2Vector(pts,ix);      // index of previous point
+        vector p1 = llList2Vector(pts,ix2);     // index of next point
+        vector pos = p0 + llVecNorm(p1-p0) * distalongseg; // next point to try
+        float vlen = llVecMag(p1-p0);           // length of vector
+        if (distalongseg > vlen)                // if hit end of segment
+        {   ix = ix + fwd;                      // advance one seg in desired dir
+            if (ix + fwd >= length || ix + fwd < 0) // end of entire path without find
+            {   return([ZERO_VECTOR,-1]);  }        // hit end of path without find, fails
+            distalongseg = 0.0;                     // start working next segment
+        } else {
+            if (!obstaclecheckcelloccupied(p0, p1, width, height, TRUE))
+            {   return([pos,ix]); }                 // found an open spot
+            distalongseg += width;              // advance to next spot to try
+        }
+    }
+    //  Unreachable
+    return([ZERO_VECTOR,-1]);                   // no way
+}
+//
+//  pathendpointadjust -- make sure the endpoint of each path segment is clear.
+//
+//  The next phase of processing requires this. We can only do a maze solve if
+//  we have clear start and end points.
+//
+//  As a special case, it's OK if we can't reach the endpoint. We will shorten the last
+//  segment if necessary. That's so we can send multiple NPCs to the same destination
+//  and have them end up as a crowd, rather than all but one failing.
+//
+list pathendpointadjust(list pts, float width, float height)
+{
+    integer n;
+    integer length  = llGetListLength(pts);
+    if (length == 0) { return(pts); } // empty
+    for (n=1; n<length; n++)          // check all points except start
+    {   vector pos = llList2Vector(pts,n);
+        vector prevpos = llList2Vector(pts,n-1);                                // previous point
+        if (obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))       // if obstacle at endpoint
+        {   llOwnerSay("Path segment endpoint #" + (string)n + " obstructed at " + (string)pos);   // ***TEMP***
+            //  We are going to have to move an endpoint.
+            //  Find unobstructed points in the previous and next segments.
+            //  Replace obstructed point with those two points.
+            list revresult = pathfindunobstructed(pts,n,-1, height, width);     // search backwards
+            vector revpt = llList2Vector(revresult,0);                          // new clear point in reverse dir
+            integer revix = llList2Integer(revresult,1);                        // index of point after find pt
+            if (n == length-1)                                                  // if last point, special case
+            {   if (revix <= 0)
+                {   llOwnerSay("Cannot find unobstructed end point anywhere near " + (string)pos); // ***TEMP***
+                    return([]);                                                     // fails
+                }
+                llOwnerSay("Replaced endpoint " + (string)pos + " with " + (string)revpt);    // ***TEMP***
+                pts = llListReplaceList(pts,[revpt],n,n);                       // replace endpoint
+                return(pts);                                                    // result
+            
+            }
+            list fwdresult = pathfindunobstructed(pts,n, 1, height, width);     // search forwards
+            vector fwdpt = llList2Vector(fwdresult,0);                          // new clear point in forward dir
+            integer fwdix = llList2Integer(fwdresult,1);                        // index of point before find pt.
+            if (fwdix <= 0 || revix <= 0)
+            {   llOwnerSay("Cannot find unobstructed points anywhere near " + (string)pos); // ***TEMP***
+                return([]);                                                     // fails
+            }
+            //  We now have two unobstructed points, fwdpt and revpt. Those will be connected, and replace
+            //  the points between them. 
+            //  Drop points from n through fwdix, and replace with new fwd point. 
+            //  If fwdix is off the end, the new point just replaces it.
+            llOwnerSay("Replacing point #" + (string)n + " at " + (string)pos + " with " + (string)fwdpt + " and " + (string)revpt);    // ***TEMP***
+            pts = llListReplaceList(pts, [fwdpt], n, fwdix);                    // replace point ahead
+            pts = llListReplaceList(pts, [revpt], revix-1, n-1);                // replace point behind - CHECK THIS
+        }   
+    }
+    return(pts);
 }
 #endif // PATHBUILDUTILS
 
