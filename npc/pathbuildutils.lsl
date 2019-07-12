@@ -306,7 +306,7 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float height, float
             {   return([ZERO_VECTOR,-1]);  }        // hit end of path without find, fails
             distalongseg = 0.0;                     // start working next segment
         } else {
-            if (!obstaclecheckcelloccupied(p0, p1, width, height, TRUE))
+            if (!obstaclecheckcelloccupied(p0, pos, width, height, TRUE))
             {   return([pos,ix]); }                 // found an open spot
             distalongseg += width;              // advance to next spot to try
         }
