@@ -184,7 +184,7 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
     //  Don't test against land, because the static path check did that already.
     float disttohit = castbeam(p0, p1, width, height, probespacing, FALSE, [RC_REJECT_TYPES,RC_REJECT_LAND]);
     if (disttohit != INFINITY)
-    {   ////llOwnerSay("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
+    {   llOwnerSay("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
         return(FALSE);
     }
     return(TRUE);                                               // success
@@ -239,17 +239,18 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
     vector pa = p1 + (dir*(width*0.5)) + (crossdir*(width*0.5));  // one test corner at ground level
     vector pb = p1 + (dir*(width*0.5)) - (crossdir*(width*0.5));  // other test corner at ground level
-    castresult = castray(pa-<0,0,MAZEBELOWGNDTOL>,pa+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,2]); // cast upwards, no land check
+    llOwnerSay("Obstacle check cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " height: " + (string)height);     // ***TEMP***
+    castresult = castray(pa-<0,0,MAZEBELOWGNDTOL>,pa+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards, no land check
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
-    castresult = castray(pb-<0,0,MAZEBELOWGNDTOL>,pb+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,2]); // cast upwards
+    castresult = castray(pb-<0,0,MAZEBELOWGNDTOL>,pb+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
     if (!dobackcorners) { return(FALSE); }
     //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
     vector pc = p1 - (dir*(width*0.5)) + (crossdir*(width*0.5));  // one test corner at ground level
     vector pd = p1 - (dir*(width*0.5)) - (crossdir*(width*0.5));  // other test corner at ground level
-    castresult = castray(pc-<0,0,MAZEBELOWGNDTOL>,pc+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,2]); // cast upwards, no land check
+    castresult = castray(pc-<0,0,MAZEBELOWGNDTOL>,pc+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards, no land check
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
-    castresult = castray(pd-<0,0,MAZEBELOWGNDTOL>,pd+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,2]); // cast upwards
+    castresult = castray(pd-<0,0,MAZEBELOWGNDTOL>,pd+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail    
     return(FALSE);                                               // success, no obstacle
 }
@@ -265,8 +266,8 @@ integer mazecasthitnonwalkable(list castresult)
         return(TRUE);                                       // fails, unlikely       
     }
     integer n;
-    //  Scan all hits for non-walkables.
-    for (n=0; n<status; n++)
+    //  Scan all hits for non-walkables above a walkable. Result is from an upward ray cast, so we scan in reverse,
+    for (n=status-1; n>=0; n--)
     {
         vector hitpt = llList2Vector(castresult, n*2+1);        // get point of hit
         key hitobj = llList2Key(castresult, n*2+0);             // get object hit
@@ -274,9 +275,12 @@ integer mazecasthitnonwalkable(list castresult)
         {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                // if it's not a walkable
-            {   ////llOwnerSay("Hit."); // ***TEMP***
-                return(TRUE);  
-            }                                               // fails, can't walk here   
+            {   llOwnerSay("Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));                // ***TEMP***
+                return(TRUE);                                   // hit non-walkable, obstructed
+            } else {
+                llOwnerSay("Hit walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));                // ***TEMP***
+                return(FALSE);                                  // hit walkable, done.
+            }                                              // fails, can't walk here   
         }
     }
     return(FALSE);
@@ -306,6 +310,7 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float height, float
             {   return([ZERO_VECTOR,-1]);  }        // hit end of path without find, fails
             distalongseg = 0.0;                     // start working next segment
         } else {
+            ////llOwnerSay("Looking for unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  // ***TEMP***
             if (!obstaclecheckcelloccupied(p0, pos, width, height, TRUE))
             {   return([pos,ix]); }                 // found an open spot
             distalongseg += width;              // advance to next spot to try
