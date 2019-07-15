@@ -368,7 +368,7 @@ list pathendpointadjust(list pts, float width, float height)
             //  If fwdix is off the end, the new point just replaces it.
             llOwnerSay("At pt #" + (string)n + ", replacing points [" + (string)revix + ".." + (string)fwdix + "] at " + (string)pos + " with " + (string)revpt + " and " + (string)fwdpt);    // ***TEMP***
             llOwnerSay("List before update: " + llDumpList2String(pts,", "));    
-            pts = llListReplaceList(pts, [fwdpt, revpt], revix, fwdix);             // replace points revix through fwdix inclusive
+            pts = llListReplaceList(pts, [revpt, fwdpt], revix, fwdix);             // replace points revix through fwdix inclusive
             ////pts = llListReplaceList(pts, [fwdpt], n, fwdix);                    // replace point ahead
             ////pts = llListReplaceList(pts, [revpt], revix-1, n-1);                // replace point behind - CHECK THIS
             llOwnerSay("List after update: " + llDumpList2String(pts,", ")); 
