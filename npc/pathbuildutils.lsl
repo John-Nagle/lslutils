@@ -105,9 +105,9 @@ list castray(vector p0, vector p1, list params)
     integer tries = CASTRAYRETRIES;                         // number of retries
     list castresult = [];
     while (tries-- > 0)
-    {   ////llOwnerSay("Cast ray: p0: " + (string)p0 + "  p1: " + (string)p1);  // ***TEMP*** 
+    {   llOwnerSay("Cast ray: p0: " + (string)p0 + "  p1: " + (string)p1);  // ***TEMP*** 
         castresult = llCastRay(p0, p1, params);             // try cast ray
-        ////llOwnerSay("Cast result: " + llDumpList2String(castresult,","));    // ***TEMP***
+        llOwnerSay("Cast result: " + llDumpList2String(castresult,","));    // ***TEMP***
         if (llList2Integer(castresult,-1) >= 0)             // if good status
         {   return(castresult); }                           // non-error, return
         llOwnerSay("Cast delayed: " + (string) llList2Integer(castresult,-1));  // ***TEMP***
@@ -212,7 +212,7 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     float MAZEBELOWGNDTOL = 0.20;                           // cast upwards from just below ground
     float mazedepthmargin = llFabs(p1.z - p0.z)+MAZEBELOWGNDTOL;            // allow for sloped area
     list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
-    ////llOwnerSay("Probe: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
+    llOwnerSay("Probe: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
     integer status = llList2Integer(castresult, -1);        // status is last element in list
     if (status < 0)
     {   ////llOwnerSay("Cast ray status: " + (string)status);
@@ -229,7 +229,7 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
         {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                // if it's not a walkable
-            {   ////llOwnerSay("Hit."); // ***TEMP***
+            {   llOwnerSay("Hit."); // ***TEMP***
                 return(TRUE);  
             }                                               // fails, can't walk here   
         }
@@ -237,9 +237,10 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     //  Center of cell is clear and walkable. Now check upwards at leading corners.
     vector dir = llVecNorm(p1-p0);                          // forward direction
     vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
+    llOwnerSay("Corner check: dir = " + (string)dir + " crossdir: " + (string)crossdir + " p0: " + (string) p0 + " p1: " + (string)p1);
     vector pa = p1 + (dir*(width*0.5)) + (crossdir*(width*0.5));  // one test corner at ground level
     vector pb = p1 + (dir*(width*0.5)) - (crossdir*(width*0.5));  // other test corner at ground level
-    llOwnerSay("Obstacle check cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " height: " + (string)height);     // ***TEMP***
+    llOwnerSay("Obstacle check if cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " width: " + (string)width + " height: " + (string)height);     // ***TEMP***
     castresult = castray(pa-<0,0,MAZEBELOWGNDTOL>,pa+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards, no land check
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
     castresult = castray(pb-<0,0,MAZEBELOWGNDTOL>,pb+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
@@ -293,11 +294,11 @@ integer mazecasthitnonwalkable(list castresult)
 //
 //  This is inefficient but seldom used.
 //
-list pathfindunobstructed(list pts, integer ix, integer fwd, float height, float width)
+list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float height)
 {
     ////assert(fwd == 1 || fwd == -1);
     integer length = llGetListLength(pts);
-    float distalongseg = 0.0;                   // distance along segment starting at ix.
+    float distalongseg = width;                   // distance along segment starting at ix.
     while (TRUE)                                // until return
     {   integer ix2 = ix + fwd;                 // next index in desired direction
         vector p0 = llList2Vector(pts,ix);      // index of previous point
@@ -308,9 +309,9 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float height, float
         {   ix = ix + fwd;                      // advance one seg in desired dir
             if (ix + fwd >= length || ix + fwd < 0) // end of entire path without find
             {   return([ZERO_VECTOR,-1]);  }        // hit end of path without find, fails
-            distalongseg = 0.0;                     // start working next segment
+            distalongseg = width;                     // start working next segment
         } else {
-            ////llOwnerSay("Looking for unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  // ***TEMP***
+            llOwnerSay("Looking for unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  // ***TEMP***
             if (!obstaclecheckcelloccupied(p0, pos, width, height, TRUE))
             {   return([pos,ix]); }                 // found an open spot
             distalongseg += width;              // advance to next spot to try
@@ -341,7 +342,7 @@ list pathendpointadjust(list pts, float width, float height)
             //  We are going to have to move an endpoint.
             //  Find unobstructed points in the previous and next segments.
             //  Replace obstructed point with those two points.
-            list revresult = pathfindunobstructed(pts,n,-1, height, width);     // search backwards
+            list revresult = pathfindunobstructed(pts,n,-1, width, height);     // search backwards
             vector revpt = llList2Vector(revresult,0);                          // new clear point in reverse dir
             integer revix = llList2Integer(revresult,1);                        // index of point after find pt
             if (n == llGetListLength(pts)-1)                                                  // if last point, special case
@@ -354,20 +355,25 @@ list pathendpointadjust(list pts, float width, float height)
                 return(pts);                                                    // result
             
             }
-            list fwdresult = pathfindunobstructed(pts,n, 1, height, width);     // search forwards
+            list fwdresult = pathfindunobstructed(pts,n, 1, width, height);     // search forwards
             vector fwdpt = llList2Vector(fwdresult,0);                          // new clear point in forward dir
             integer fwdix = llList2Integer(fwdresult,1);                        // index of point before find pt.
             if (fwdix <= 0 || revix <= 0)
             {   llOwnerSay("Cannot find unobstructed points anywhere near " + (string)pos); // ***TEMP***
                 return([]);                                                     // fails
             }
-            //  We now have two unobstructed points, fwdpt and revpt. Those will be connected, and replace
+            //  We now have two unobstructed points, fwdpt and revpt. Those will be connected, and will replace
             //  the points between them. 
             //  Drop points from n through fwdix, and replace with new fwd point. 
             //  If fwdix is off the end, the new point just replaces it.
-            llOwnerSay("Replacing point #" + (string)n + " at " + (string)pos + " with " + (string)fwdpt + " and " + (string)revpt);    // ***TEMP***
-            pts = llListReplaceList(pts, [fwdpt], n, fwdix);                    // replace point ahead
-            pts = llListReplaceList(pts, [revpt], revix-1, n-1);                // replace point behind - CHECK THIS
+            llOwnerSay("At pt #" + (string)n + ", replacing points [" + (string)revix + ".." + (string)fwdix + "] at " + (string)pos + " with " + (string)revpt + " and " + (string)fwdpt);    // ***TEMP***
+            llOwnerSay("List before update: " + llDumpList2String(pts,", "));    
+            pts = llListReplaceList(pts, [fwdpt, revpt], revix, fwdix);             // replace points revix through fwdix inclusive
+            ////pts = llListReplaceList(pts, [fwdpt], n, fwdix);                    // replace point ahead
+            ////pts = llListReplaceList(pts, [revpt], revix-1, n-1);                // replace point behind - CHECK THIS
+            llOwnerSay("List after update: " + llDumpList2String(pts,", ")); 
+            //  ***NEED TO UPDATE N***   
+
         }   
     }
     return(pts);
