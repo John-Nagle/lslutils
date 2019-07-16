@@ -42,6 +42,7 @@
 //
 //
 #include "npc/pathbuildutils.lsl"
+#include "npc/mazedefs.lsl"
 
 //  Constants
 //

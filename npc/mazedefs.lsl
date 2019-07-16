@@ -5,8 +5,9 @@
 //
 //  June, 2019
 //
-#ifndef MAZEDEFS
-#define MAZEDEFS        
+#ifndef MAZEDEFSLSL
+#define MAZEDEFSLSL
+#include "npc/assert.lsl"        
 //
 //   Maze path storage - X && Y in one 32-bit value
 //
@@ -49,18 +50,8 @@
                                                 // bug traps
 #define MAZESTATUSGEOMBUG   -1001               // Geometry setup failed
 
-////#define DEBUG
-#ifdef DEBUG
-#define DEBUGPRINT(s) // Nothing for now
-#define DEBUGPRINT1(s) llOwnerSay(s)
-////#define assert(exp) // Nothing for now
-#define assert(exp) { if (!(exp)) { llOwnerSay("Assertion failed at " + __SHORTFILE__ + " line " + (string) __LINE__); panic(); }}
-#else // not debugging
-#define DEBUGPRINT(s) {}
-#define DEBUGPRINT1(s) {}
-#define assert(exp) {}
-#endif // DEBUG
 
 
 
-#endif // MAZEDEFS
+
+#endif // MAZEDEFSLSL

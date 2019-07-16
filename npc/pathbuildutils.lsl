@@ -6,9 +6,10 @@
 //   Animats
 //   June, 2019
 //
-#ifndef PATHBUILDUTILS                                       // include guard, like C/C++
-#define PATHBUILDUTILS
-#include "npc/mazedefs.lsl"
+#ifndef PATHBUILDUTILSLSL                                   // include guard, like C/C++
+#define PATHBUILDUTILSLSL
+#include "npc/assert.lsl"                                   // assert
+////#include "npc/mazedefs.lsl"
 //
 //  Constants
 //
@@ -399,5 +400,5 @@ list pathclean(list path)
     newpath += llList2Vector(path,-1);                      // always include final point
     return(newpath);                                        // cleaned up path
 }
-#endif // PATHBUILDUTILS
+#endif // PATHBUILDUTILSLSL
 
