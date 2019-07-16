@@ -9,7 +9,6 @@
 #ifndef PATHBUILDUTILSLSL                                   // include guard, like C/C++
 #define PATHBUILDUTILSLSL
 #include "npc/assert.lsl"                                   // assert
-////#include "npc/mazedefs.lsl"
 //
 //  Constants
 //
@@ -102,16 +101,16 @@ rotation rotperpenonground(vector p0, vector p1)
 //
 list castray(vector p0, vector p1, list params)
 {
-    ////llOwnerSay("Cast ray: " + (string)p0 + " " + (string)p1);   // ***TEMP***
+    ////DEBUGPRINT1("Cast ray: " + (string)p0 + " " + (string)p1);   // ***TEMP***
     integer tries = CASTRAYRETRIES;                         // number of retries
     list castresult = [];
     while (tries-- > 0)
-    {   llOwnerSay("Cast ray: p0: " + (string)p0 + "  p1: " + (string)p1);  // ***TEMP*** 
+    {   DEBUGPRINT1("Cast ray: p0: " + (string)p0 + "  p1: " + (string)p1);  // ***TEMP*** 
         castresult = llCastRay(p0, p1, params);             // try cast ray
-        llOwnerSay("Cast result: " + llDumpList2String(castresult,","));    // ***TEMP***
+        DEBUGPRINT1("Cast result: " + llDumpList2String(castresult,","));    // ***TEMP***
         if (llList2Integer(castresult,-1) >= 0)             // if good status
         {   return(castresult); }                           // non-error, return
-        llOwnerSay("Cast delayed: " + (string) llList2Integer(castresult,-1));  // ***TEMP***
+        DEBUGPRINT1("Cast delayed: " + (string) llList2Integer(castresult,-1));  // ***TEMP***
         llSleep(CASTRAYRETRYDELAY);                         // error, wait and retry
     }
     //  Too many retries, give up
@@ -129,23 +128,23 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 {   float yoffset;                                          // cast ray offset, Y dir in coords of vector
     float zoffset;                                          // cast ray offset, Z dir in coords of vector
     float nearestdist = INFINITY;                           // closest hit
-    ////llOwnerSay("p0: " + (string)p0 + "  p1: " + (string)p1 + " probespacing: " + (string) probespacing);  // ***TEMP***
+    ////DEBUGPRINT1("p0: " + (string)p0 + "  p1: " + (string)p1 + " probespacing: " + (string) probespacing);  // ***TEMP***
     integer probecount = (integer)((height-GROUNDCLEARANCE)/probespacing); // number of probes
     if (probecount < 1) { probecount = 1; }                 // minimum is one probe
     probespacing = (height-GROUNDCLEARANCE)/probecount;     // adjust to match height
     if (probespacing < 0.10) { return(-4); }                // Bad call
     vector dir = llVecNorm(p1-p0);                          // direction of raycast 
     vector endoffsetdir = <0,1,0>*rotperpenonground(p0,p1);    // offset for horizontal part of scan
-    ////llOwnerSay("End offset dir: " + (string)endoffsetdir);  // ***TEMP***
+    ////DEBUGPRINT1("End offset dir: " + (string)endoffsetdir);  // ***TEMP***
     //  Always do 3 scans across width - left edge, middle, right edge.
     for (yoffset = -width * 0.5; yoffset <= width * 0.5 + 0.001; yoffset += (width*0.5))
     {   for (zoffset = GROUNDCLEARANCE; zoffset <= height  + 0.001; zoffset += probespacing)
-        {   ////llOwnerSay("p0: " + (string)p0 + "  p1: " + (string)p1 + "  zoffset: " + (string)zoffset); // ***TEMP***
+        {   ////DEBUGPRINT1("p0: " + (string)p0 + "  p1: " + (string)p1 + "  zoffset: " + (string)zoffset); // ***TEMP***
             vector yadjust = yoffset*endoffsetdir;          // offset for scan crosswise to path
             list castresult = castray(<p0.x, p0.y, p0.z+zoffset>+yadjust, <p1.x, p1.y, p1.z + zoffset>+yadjust, castparams);
             integer status = llList2Integer(castresult, -1);// status is last element in list
             if (status < 0)
-            {   llOwnerSay("Cast ray status: " + (string)status);
+            {   DEBUGPRINT1("Cast ray status: " + (string)status);
                 return((integer)status);                    // fails       
             }
             if (status > 0) { 
@@ -179,13 +178,13 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
     integer status = llList2Integer(path,-1);                   // last item is status
     path = llList2List(path,0,-2);                              // remove last item
     if (status != 0 || llGetListLength(path) > 2 && !checkcollinear(path))
-    {   llOwnerSay("Path static check failed for " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
+    {   DEBUGPRINT1("Path static check failed for " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
         return(FALSE);
     }
     //  Don't test against land, because the static path check did that already.
     float disttohit = castbeam(p0, p1, width, height, probespacing, FALSE, [RC_REJECT_TYPES,RC_REJECT_LAND]);
     if (disttohit != INFINITY)
-    {   llOwnerSay("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
+    {   DEBUGPRINT1("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
         return(FALSE);
     }
     return(TRUE);                                               // success
@@ -213,14 +212,14 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     float MAZEBELOWGNDTOL = 0.20;                           // cast upwards from just below ground
     float mazedepthmargin = llFabs(p1.z - p0.z)+MAZEBELOWGNDTOL;            // allow for sloped area
     list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
-    llOwnerSay("Probe: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
+    DEBUGPRINT1("Probe: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
     integer status = llList2Integer(castresult, -1);        // status is last element in list
     if (status < 0)
-    {   ////llOwnerSay("Cast ray status: " + (string)status);
+    {   ////DEBUGPRINT1("Cast ray status: " + (string)status);
         return(TRUE);                                       // fails, unlikely       
     }
     if (status == 0)
-    {   ////llOwnerSay("No ground:" + llDumpList2String(castresult, ", ")); // ***TEMP***
+    {   ////DEBUGPRINT1("No ground:" + llDumpList2String(castresult, ", ")); // ***TEMP***
         return(TRUE);                                       // where's the ground? Cliff?  Fails.
     }
     if (status > 0)                                         // found something
@@ -230,7 +229,7 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
         {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                // if it's not a walkable
-            {   llOwnerSay("Hit."); // ***TEMP***
+            {   DEBUGPRINT1("Hit."); // ***TEMP***
                 return(TRUE);  
             }                                               // fails, can't walk here   
         }
@@ -238,10 +237,10 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     //  Center of cell is clear and walkable. Now check upwards at leading corners.
     vector dir = llVecNorm(p1-p0);                          // forward direction
     vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
-    llOwnerSay("Corner check: dir = " + (string)dir + " crossdir: " + (string)crossdir + " p0: " + (string) p0 + " p1: " + (string)p1);
+    DEBUGPRINT1("Corner check: dir = " + (string)dir + " crossdir: " + (string)crossdir + " p0: " + (string) p0 + " p1: " + (string)p1);
     vector pa = p1 + (dir*(width*0.5)) + (crossdir*(width*0.5));  // one test corner at ground level
     vector pb = p1 + (dir*(width*0.5)) - (crossdir*(width*0.5));  // other test corner at ground level
-    llOwnerSay("Obstacle check if cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " width: " + (string)width + " height: " + (string)height);     // ***TEMP***
+    DEBUGPRINT1("Obstacle check if cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " width: " + (string)width + " height: " + (string)height);     // ***TEMP***
     castresult = castray(pa-<0,0,MAZEBELOWGNDTOL>,pa+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards, no land check
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
     castresult = castray(pb-<0,0,MAZEBELOWGNDTOL>,pb+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
@@ -264,7 +263,7 @@ integer mazecasthitnonwalkable(list castresult)
     integer status = llList2Integer(castresult, -1);        // status is last element in list
     if (status == 0) { return(FALSE); }                     // hit nothing, fast case
     if (status < 0)
-    {   ////llOwnerSay("Cast ray status: " + (string)status);
+    {   ////DEBUGPRINT1("Cast ray status: " + (string)status);
         return(TRUE);                                       // fails, unlikely       
     }
     integer n;
@@ -277,10 +276,10 @@ integer mazecasthitnonwalkable(list castresult)
         {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                // if it's not a walkable
-            {   llOwnerSay("Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));                // ***TEMP***
+            {   DEBUGPRINT1("Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));                // ***TEMP***
                 return(TRUE);                                   // hit non-walkable, obstructed
             } else {
-                llOwnerSay("Hit walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));                // ***TEMP***
+                DEBUGPRINT1("Hit walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));                // ***TEMP***
                 return(FALSE);                                  // hit walkable, done.
             }                                              // fails, can't walk here   
         }
@@ -312,7 +311,7 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
             {   return([ZERO_VECTOR,-1]);  }        // hit end of path without find, fails
             distalongseg = width;                     // start working next segment
         } else {
-            llOwnerSay("Looking for unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  // ***TEMP***
+            DEBUGPRINT1("Looking for unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  // ***TEMP***
             if (!obstaclecheckcelloccupied(p0, pos, width, height, TRUE))
             {   return([pos,ix]); }                 // found an open spot
             distalongseg += width;              // advance to next spot to try
@@ -339,7 +338,7 @@ list pathendpointadjust(list pts, float width, float height)
     {   vector pos = llList2Vector(pts,n);
         vector prevpos = llList2Vector(pts,n-1);                                // previous point
         if (obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))       // if obstacle at endpoint
-        {   llOwnerSay("Path segment endpoint #" + (string)n + " obstructed at " + (string)pos);   // ***TEMP***
+        {   DEBUGPRINT1("Path segment endpoint #" + (string)n + " obstructed at " + (string)pos);   // ***TEMP***
             //  We are going to have to move an endpoint.
             //  Find unobstructed points in the previous and next segments.
             //  Replace obstructed point with those two points.
@@ -348,10 +347,10 @@ list pathendpointadjust(list pts, float width, float height)
             integer revix = llList2Integer(revresult,1);                        // index of point after find pt
             if (n == llGetListLength(pts)-1)                                                  // if last point, special case
             {   if (revix <= 0)
-                {   llOwnerSay("Cannot find unobstructed end point anywhere near " + (string)pos); // ***TEMP***
+                {   DEBUGPRINT1("Cannot find unobstructed end point anywhere near " + (string)pos); // ***TEMP***
                     return([]);                                                     // fails
                 }
-                llOwnerSay("Replaced endpoint " + (string)pos + " with " + (string)revpt);    // ***TEMP***
+                DEBUGPRINT1("Replaced endpoint " + (string)pos + " with " + (string)revpt);    // ***TEMP***
                 pts = llListReplaceList(pts,[revpt],n,n);                       // replace endpoint
                 return(pts);                                                    // result
             
@@ -360,19 +359,19 @@ list pathendpointadjust(list pts, float width, float height)
             vector fwdpt = llList2Vector(fwdresult,0);                          // new clear point in forward dir
             integer fwdix = llList2Integer(fwdresult,1);                        // index of point before find pt.
             if (fwdix <= 0 || revix <= 0)
-            {   llOwnerSay("Cannot find unobstructed points anywhere near " + (string)pos); // ***TEMP***
+            {   DEBUGPRINT1("Cannot find unobstructed points anywhere near " + (string)pos); // ***TEMP***
                 return([]);                                                     // fails
             }
             //  We now have two unobstructed points, fwdpt and revpt. Those will be connected, and will replace
             //  the points between them. 
             //  Drop points from n through fwdix, and replace with new fwd point. 
             //  If fwdix is off the end, the new point just replaces it.
-            llOwnerSay("At pt #" + (string)n + ", replacing points [" + (string)revix + ".." + (string)fwdix + "] at " + (string)pos + " with " + (string)revpt + " and " + (string)fwdpt);    // ***TEMP***
-            llOwnerSay("List before update: " + llDumpList2String(pts,", "));    
+            DEBUGPRINT1("At pt #" + (string)n + ", replacing points [" + (string)revix + ".." + (string)fwdix + "] at " + (string)pos + " with " + (string)revpt + " and " + (string)fwdpt);    // ***TEMP***
+            DEBUGPRINT1("List before update: " + llDumpList2String(pts,", "));    
             pts = llListReplaceList(pts, [revpt, fwdpt], revix, fwdix);             // replace points revix through fwdix inclusive
             ////pts = llListReplaceList(pts, [fwdpt], n, fwdix);                    // replace point ahead
             ////pts = llListReplaceList(pts, [revpt], revix-1, n-1);                // replace point behind - CHECK THIS
-            llOwnerSay("List after update: " + llDumpList2String(pts,", ")); 
+            DEBUGPRINT1("List after update: " + llDumpList2String(pts,", ")); 
             //  ***NEED TO UPDATE N***   
 
         }   
