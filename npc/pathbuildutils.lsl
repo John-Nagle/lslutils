@@ -205,12 +205,14 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 //
 //  p0 and p1 must be one width apart. 
 //
-//  Only three cast ray calls per cell.
+//  
 //
 integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float height, integer dobackcorners)
 {
     float MAZEBELOWGNDTOL = 0.20;                           // cast upwards from just below ground
     float mazedepthmargin = llFabs(p1.z - p0.z)+MAZEBELOWGNDTOL;            // allow for sloped area
+    vector dir = llVecNorm(p1-p0);                          // forward direction
+    p0 = p1 - dir*(width*0.5);                              // start casts from one halfwidth back from p1
     list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
     DEBUGPRINT1("Probe: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
     integer status = llList2Integer(castresult, -1);        // status is last element in list
@@ -234,9 +236,12 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
             }                                               // fails, can't walk here   
         }
     }
+    //  Horizontal check in forward direction to catch tall obstacles.
+    castresult = castray(p0-<0,0,height*0.5>,p1+<0,0,height*0.5>,[]); // Horizontal cast, any hit is bad
+    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
+    
     //  Center of cell is clear and walkable. Now check upwards at front and side.
     //  The idea is to check at points that are on a circle of diameter "width"
-    vector dir = llVecNorm(p1-p0);                          // forward direction
     vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
     DEBUGPRINT1("Cell edge check: dir = " + (string)dir + " crossdir: " + (string)crossdir + " p0: " + (string) p0 + " p1: " + (string)p1);
     vector pa = p1 + (crossdir*(width*0.5));                // one edge at ground level
