@@ -209,15 +209,17 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 //
 integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float height, integer dobackcorners)
 {
-    float MAZEBELOWGNDTOL = 0.20;                           // cast upwards from just below ground
-    float mazedepthmargin = llFabs(p1.z - p0.z)+MAZEBELOWGNDTOL;            // allow for sloped area
-    vector dir = llVecNorm(p1-p0);                          // forward direction
+    float MAZEBELOWGNDTOL = 0.20;                           // cast downwards to just below ground
+    vector dv = p1-p0;                                      // direction, unnormalized
+    float mazedepthmargin = llFabs(dv.z)+MAZEBELOWGNDTOL;   // allow for sloped area, cast deeper
+    dv.z = 0;
+    vector dir = llVecNorm(dv);                             // forward direction, XY plane
     p0 = p1 - dir*(width*0.5);                              // start casts from one halfwidth back from p1
     DEBUGPRINT1("Cell occupied check: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
     list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
     if (!mazecasthitonlywalkable(castresult)) { return(TRUE); } // cell is occupied
     //  Horizontal check in forward direction to catch tall obstacles.
-    castresult = castray(p0-<0,0,height*0.5>,p1+<0,0,height*0.5>,[]); // Horizontal cast, any hit is bad
+    castresult = castray(p0+<0,0,height*0.5>,p1+<0,0,height*0.5>,[]); // Horizontal cast, any hit is bad
     if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
     
     //  Center of cell is clear and walkable. Now check upwards at front and side.
@@ -242,11 +244,11 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
 #endif // OBSOLETE 
     //  Downward ray casts only.  Must hit a walkable.   
-    castresult = castray(pa+<0,0,height>,pa-<0,0,MAZEBELOWGNDTOL>,[]); // cast upwards, no land check
+    castresult = castray(pa+<0,0,height>,pa-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable
     if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
-    castresult = castray(pb+<0,0,height>,pb-<0,0,MAZEBELOWGNDTOL>,[]); // cast upwards, no land check
+    castresult = castray(pb+<0,0,height>,pb-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable
     if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
-    castresult = castray(pc+<0,0,height>,pc-<0,0,MAZEBELOWGNDTOL>,[]); // cast upwards, no land check
+    castresult = castray(pc+<0,0,height>,pc-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable
     if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
     if (!dobackcorners) 
     {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
