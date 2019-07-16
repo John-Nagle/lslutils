@@ -213,32 +213,12 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     float mazedepthmargin = llFabs(p1.z - p0.z)+MAZEBELOWGNDTOL;            // allow for sloped area
     vector dir = llVecNorm(p1-p0);                          // forward direction
     p0 = p1 - dir*(width*0.5);                              // start casts from one halfwidth back from p1
+    DEBUGPRINT1("Cell occupied check: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
     list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
-    DEBUGPRINT1("Probe: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
-    integer status = llList2Integer(castresult, -1);        // status is last element in list
-    if (status < 0)
-    {   ////DEBUGPRINT1("Cast ray status: " + (string)status);
-        return(TRUE);                                       // fails, unlikely       
-    }
-    if (status == 0)
-    {   ////DEBUGPRINT1("No ground:" + llDumpList2String(castresult, ", ")); // ***TEMP***
-        return(TRUE);                                       // where's the ground? Cliff?  Fails.
-    }
-    if (status > 0)                                         // found something
-    {   vector hitpt = llList2Vector(castresult, 1);        // get point of hit
-        key hitobj = llList2Key(castresult, 0);             // get object hit
-        if (hitobj != NULL_KEY)                             // null key is land, that's OK
-        {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
-            integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-            if (pathfindingtype != OPT_WALKABLE)                // if it's not a walkable
-            {   DEBUGPRINT1("Hit."); // ***TEMP***
-                return(TRUE);  
-            }                                               // fails, can't walk here   
-        }
-    }
+    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); } // cell is occupied
     //  Horizontal check in forward direction to catch tall obstacles.
     castresult = castray(p0-<0,0,height*0.5>,p1+<0,0,height*0.5>,[]); // Horizontal cast, any hit is bad
-    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
+    if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
     
     //  Center of cell is clear and walkable. Now check upwards at front and side.
     //  The idea is to check at points that are on a circle of diameter "width"
@@ -248,6 +228,7 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     vector pb = p1 - (crossdir*(width*0.5));                // other edge at ground level
     vector pc = p1 - (dir*(width*0.5));                     // ahead at ground level
     DEBUGPRINT1("Obstacle check if cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " width: " + (string)width + " height: " + (string)height);     // ***TEMP***
+#ifdef OBSOLETE
     castresult = castray(pa-<0,0,MAZEBELOWGNDTOL>,pa+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards, no land check
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
     castresult = castray(pb-<0,0,MAZEBELOWGNDTOL>,pb+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
@@ -258,11 +239,60 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
     vector pd = p1 - (dir*(width*0.5));                          // "behind" point 
     castresult = castray(pd-<0,0,MAZEBELOWGNDTOL>,pd+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
-    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail    
+    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
+#endif // OBSOLETE 
+    //  Downward ray casts only.  Must hit a walkable.   
+    castresult = castray(pa+<0,0,height>,pa-<0,0,MAZEBELOWGNDTOL>,[]); // cast upwards, no land check
+    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
+    castresult = castray(pb+<0,0,height>,pb-<0,0,MAZEBELOWGNDTOL>,[]); // cast upwards, no land check
+    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
+    castresult = castray(pc+<0,0,height>,pc-<0,0,MAZEBELOWGNDTOL>,[]); // cast upwards, no land check
+    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
+    if (!dobackcorners) 
+    {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
+        return(FALSE); 
+    }
+    //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
+    vector pd = p1 - (dir*(width*0.5));                          // "behind" point 
+    castresult = castray(pd+<0,0,height>,pd-<0,0,MAZEBELOWGNDTOL>,[]); // cast upwards, no land check
+    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
+    DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
     return(FALSE);                                               // success, no obstacle
 }
 //
-//  mazecasthitnonwalkable --  true if any cast ray hit is not a walkable
+//  mazecasthitonlywalkable  -- true if cast ray hit a walkable, only. Used for downward casts
+//
+integer mazecasthitonlywalkable(list castresult)
+{
+    integer status = llList2Integer(castresult, -1);        // status is last element in list
+    if (status < 0)
+    {   DEBUGPRINT1("Cast ray error status: " + (string)status);
+        return(FALSE);                                      // fails, unlikely       
+    }
+    if (status != 1) { return(FALSE); }                     // hit nothing, fails
+    vector hitpt = llList2Vector(castresult, 1);            // get point of hit
+    key hitobj = llList2Key(castresult, 0);                 // get object hit
+    if (hitobj == NULL_KEY) { return(TRUE); }               // null key is land, that's OK
+    list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
+    integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+    if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
+    {   DEBUGPRINT1("Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));                // ***TEMP***
+        return(FALSE);                                      // hit non-walkable, obstructed
+    }
+    return(TRUE);                                           // hit only a walkable - good.    
+}
+//
+//  mazecasthitanything  -- true if cast ray hit a walkable, only. Used for downward casts
+//
+integer mazecasthitanything(list castresult)
+{
+    integer status = llList2Integer(castresult, -1);        // status is last element in list
+    if (status == 0) { return(FALSE); }                     // hit nothing, good
+    return(TRUE);                                           // hit something, bad    
+}
+#ifdef OBSOLETE
+//
+//  mazecasthitnonwalkable --  true if any cast ray hit is not a walkable. Used for upward ray casts.
 //
 integer mazecasthitnonwalkable(list castresult)
 {
@@ -292,6 +322,7 @@ integer mazecasthitnonwalkable(list castresult)
     }
     return(FALSE);
 }
+#endif // OBSOLETE
 //
 //  pathfindunobstructed -- find an unobstructed point near a path segment end.
 //
