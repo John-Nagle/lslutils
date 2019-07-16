@@ -234,23 +234,24 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
             }                                               // fails, can't walk here   
         }
     }
-    //  Center of cell is clear and walkable. Now check upwards at leading corners.
+    //  Center of cell is clear and walkable. Now check upwards at front and side.
+    //  The idea is to check at points that are on a circle of diameter "width"
     vector dir = llVecNorm(p1-p0);                          // forward direction
     vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
-    DEBUGPRINT1("Corner check: dir = " + (string)dir + " crossdir: " + (string)crossdir + " p0: " + (string) p0 + " p1: " + (string)p1);
-    vector pa = p1 + (dir*(width*0.5)) + (crossdir*(width*0.5));  // one test corner at ground level
-    vector pb = p1 + (dir*(width*0.5)) - (crossdir*(width*0.5));  // other test corner at ground level
+    DEBUGPRINT1("Cell edge check: dir = " + (string)dir + " crossdir: " + (string)crossdir + " p0: " + (string) p0 + " p1: " + (string)p1);
+    vector pa = p1 + (crossdir*(width*0.5));                // one edge at ground level
+    vector pb = p1 - (crossdir*(width*0.5));                // other edge at ground level
+    vector pc = p1 - (dir*(width*0.5));                     // ahead at ground level
     DEBUGPRINT1("Obstacle check if cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " width: " + (string)width + " height: " + (string)height);     // ***TEMP***
     castresult = castray(pa-<0,0,MAZEBELOWGNDTOL>,pa+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards, no land check
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
     castresult = castray(pb-<0,0,MAZEBELOWGNDTOL>,pb+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
+    castresult = castray(pc-<0,0,MAZEBELOWGNDTOL>,pc+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
+    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
     if (!dobackcorners) { return(FALSE); }
     //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
-    vector pc = p1 - (dir*(width*0.5)) + (crossdir*(width*0.5));  // one test corner at ground level
-    vector pd = p1 - (dir*(width*0.5)) - (crossdir*(width*0.5));  // other test corner at ground level
-    castresult = castray(pc-<0,0,MAZEBELOWGNDTOL>,pc+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards, no land check
-    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
+    vector pd = p1 - (dir*(width*0.5));                          // "behind" point 
     castresult = castray(pd-<0,0,MAZEBELOWGNDTOL>,pd+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
     if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail    
     return(FALSE);                                               // success, no obstacle
