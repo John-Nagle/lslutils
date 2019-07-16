@@ -230,19 +230,6 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     vector pb = p1 - (crossdir*(width*0.5));                // other edge at ground level
     vector pc = p1 - (dir*(width*0.5));                     // ahead at ground level
     DEBUGPRINT1("Obstacle check if cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " width: " + (string)width + " height: " + (string)height);     // ***TEMP***
-#ifdef OBSOLETE
-    castresult = castray(pa-<0,0,MAZEBELOWGNDTOL>,pa+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards, no land check
-    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
-    castresult = castray(pb-<0,0,MAZEBELOWGNDTOL>,pb+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
-    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
-    castresult = castray(pc-<0,0,MAZEBELOWGNDTOL>,pc+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
-    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
-    if (!dobackcorners) { return(FALSE); }
-    //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
-    vector pd = p1 - (dir*(width*0.5));                          // "behind" point 
-    castresult = castray(pd-<0,0,MAZEBELOWGNDTOL>,pd+<0,0,height>,[RC_REJECT_TYPES,RC_REJECT_LAND,RC_MAX_HITS,5]); // cast upwards
-    if (mazecasthitnonwalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
-#endif // OBSOLETE 
     //  Downward ray casts only.  Must hit a walkable.   
     castresult = castray(pa+<0,0,height>,pa-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable
     if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
@@ -292,39 +279,6 @@ integer mazecasthitanything(list castresult)
     if (status == 0) { return(FALSE); }                     // hit nothing, good
     return(TRUE);                                           // hit something, bad    
 }
-#ifdef OBSOLETE
-//
-//  mazecasthitnonwalkable --  true if any cast ray hit is not a walkable. Used for upward ray casts.
-//
-integer mazecasthitnonwalkable(list castresult)
-{
-    integer status = llList2Integer(castresult, -1);        // status is last element in list
-    if (status == 0) { return(FALSE); }                     // hit nothing, fast case
-    if (status < 0)
-    {   ////DEBUGPRINT1("Cast ray status: " + (string)status);
-        return(TRUE);                                       // fails, unlikely       
-    }
-    integer n;
-    //  Scan all hits for non-walkables above a walkable. Result is from an upward ray cast, so we scan in reverse,
-    for (n=status-1; n>=0; n--)
-    {
-        vector hitpt = llList2Vector(castresult, n*2+1);        // get point of hit
-        key hitobj = llList2Key(castresult, n*2+0);             // get object hit
-        if (hitobj != NULL_KEY)                              // null key is land, that's OK
-        {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
-            integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-            if (pathfindingtype != OPT_WALKABLE)                // if it's not a walkable
-            {   DEBUGPRINT1("Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));                // ***TEMP***
-                return(TRUE);                                   // hit non-walkable, obstructed
-            } else {
-                DEBUGPRINT1("Hit walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));                // ***TEMP***
-                return(FALSE);                                  // hit walkable, done.
-            }                                              // fails, can't walk here   
-        }
-    }
-    return(FALSE);
-}
-#endif // OBSOLETE
 //
 //  pathfindunobstructed -- find an unobstructed point near a path segment end.
 //
@@ -437,6 +391,109 @@ list pathclean(list path)
     }
     newpath += llList2Vector(path,-1);                      // always include final point
     return(newpath);                                        // cleaned up path
+}
+
+//
+//  pathcheckobstacles -- check a path for obstacles.
+//
+//  The points on the incoming path should be unobstructed.
+//
+//  Output is a strided list of the form [pnt, blocked, pnt, blocked ...]
+//
+//  ***NOTYET***
+//  ***PROBABLY SHOULD TAKE STRIDED LIST AS INPUT WITH KNOWN OBSTRUCTIONS LISTED***
+//
+list pathcheckobstacles(list pts)
+{   
+    vector initialpos = llGetPos();                         // starting position
+    pathPoints = [];
+    integer i;
+    integer len = llGetListLength(pts);
+    vector prevpos = ZERO_VECTOR;                           // other end of 
+    for (i=0; i< len; i++)
+    {   vector pos = llList2Vector(pts, i);                 // nth point
+        //  Place line
+        if (prevpos != ZERO_VECTOR)                         // if not initial point
+        {
+            //  Check segment for obstacles
+            float fulllength = llVecMag(pos-prevpos);               // full segment length
+            vector dir = llVecNorm(pos-prevpos);                    // direction of segment
+            float hitdist = castbeam(prevpos, pos, CHARRADIUS*2, CHARHEIGHT, TESTSPACING, TRUE,
+                    [RC_REJECT_TYPES,RC_REJECT_LAND]);
+            if (hitdist < 0)
+            {   llSay(DEBUG_CHANNEL,"ERROR: Cast beam error " + (string)hitdist);
+                return([]);                                          // failure
+            }
+            if (hitdist != INFINITY)                                    // if meaningful hit distance
+            {   llOwnerSay("Hit obstacle at " + (string) (prevpos + dir * hitdist)); 
+                //  Need to subdivide vector into 3 vectors - 2 clear ones, and one obstructed one in the middle.
+                float prevposdist = hitdist;                            // begin to first hit
+                //  Search from other end. Other endpoint should be unobstructed.
+                //  That was fixed at a previous step.
+                //  Is reverse scan start point obstructed?
+                //  So we are raycasting from open space.
+                float posdist = castbeam(pos, prevpos, CHARRADIUS*2, CHARHEIGHT, TESTSPACING, TRUE,
+                    [RC_REJECT_TYPES,RC_REJECT_LAND]);
+                //  Check for strange cases. Cell occupied and horizontal beam cast disagree. 
+                //  If not obstructed both ways, assume clear. Probably some tiny bump.
+                if (posdist != INFINITY)                        // obstacle both ways
+                {    //  Back off, looking for open space
+                    integer noopenspace = TRUE;                 // no open space found yet
+                    vector interpt0 = dir * prevposdist + prevpos;          // first intermediate point
+                    while (noopenspace && prevposdist > 0)
+                    {   interpt0 = dir * prevposdist + prevpos; 
+                        // Check for an open cell. Search backwards from hit point.
+                        if (obstaclecheckcelloccupied(prevpos, interpt0, CHARRADIUS*2, CHARHEIGHT, TRUE))
+                        {   prevposdist = prevposdist - CHARRADIUS; // no open cell, back off
+                            if (prevposdist < 0) { prevposdist = 0; }
+                        } else { 
+                            noopenspace = FALSE;                    // found a good open cell
+                        }
+                    }
+                    if (noopenspace)                                // if could not find open space
+                    {   llOwnerSay("Can't find open space between " + (string)prevpos +  " and " + (string)pos); 
+                        return([]);                              // fails
+                    }
+                    //  Now do a similar backoff on the far side of the obstacle                
+                    vector interpt1 = -dir * posdist + pos; 
+                    noopenspace = TRUE;                             // no open space found yet
+                    while (noopenspace && posdist > 0)
+                    {   interpt1 = -dir * posdist + pos;            // search forwards from hit pt
+                        // Check for an open cell.
+                        if (obstaclecheckcelloccupied(prevpos, interpt1, CHARRADIUS*2, CHARHEIGHT, TRUE))
+                        {   llOwnerSay("No open cell at " + (string)interpt1); // ***TEMP***
+                            posdist = posdist - CHARRADIUS;         // no open cell, back off
+                            if (posdist < 0) { posdist = 0; }
+                        } else { 
+                            noopenspace = FALSE;                    // found a good open cell
+                        }
+                    }
+                    if (noopenspace)                                // if could not find open space
+                    {   llOwnerSay("Can't find open space in reverse between " + (string)pos +  " and " + (string)prevpos); 
+                        return([]);                              // fails
+                    }
+                    if (fulllength - (prevposdist + posdist) < 0.005)           // if nothing in the middle
+                    {   llOwnerSay("Segment from " + (string)prevpos + " to " + (string)pos + " with obstruction at " +
+                            (string)(prevpos + dir * hitdist) + "has inconsistent hits when tested from both ends.");
+                        //  2 segment case, with second one bad
+                        pathPoints += [prevpos, TRUE, interpt0, FALSE];
+                    } else {
+                       // 3 segment case, with obstruction in middle
+                        pathPoints += [prevpos, TRUE, interpt0, FALSE, interpt1, TRUE];
+                    }
+                } else {                                                        // no hit in reverse dir
+                    pathPoints += [prevpos, TRUE];                              // assume no hit, space clear. May be overoptimistic                  
+                }
+            } else {                                                            // no obstacle
+                //  Draw marker for segment
+                pathPoints += [prevpos, TRUE];                              // assume no hit                   
+            }
+        }
+        //  On to next point
+        prevpos = pos;
+    }
+    pathPoints += [llList2Vector(pts,-1), llList2Integer(gPathStatus,-1)];         // use status from last segment as dummy.
+    return(pathPoints);
 }
 #endif // PATHBUILDUTILSLSL
 
