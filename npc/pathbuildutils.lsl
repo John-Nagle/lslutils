@@ -406,7 +406,7 @@ list pathclean(list path)
 list pathcheckobstacles(list pts)
 {   
     vector initialpos = llGetPos();                         // starting position
-    pathPoints = [];
+    list pathPoints = [];
     integer i;
     integer len = llGetListLength(pts);
     vector prevpos = ZERO_VECTOR;                           // other end of 
@@ -492,7 +492,7 @@ list pathcheckobstacles(list pts)
         //  On to next point
         prevpos = pos;
     }
-    pathPoints += [llList2Vector(pts,-1), llList2Integer(gPathStatus,-1)];         // use status from last segment as dummy.
+    pathPoints += [llList2Vector(pts,-1), llList2Integer(pathPoints,-1)];         // use status from last segment as dummy.
     return(pathPoints);
 }
 #endif // PATHBUILDUTILSLSL
