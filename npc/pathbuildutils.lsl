@@ -290,6 +290,7 @@ integer mazecasthitanything(list castresult)
 list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float height)
 {
     ////assert(fwd == 1 || fwd == -1);
+    DEBUGPRINT1("Looking for unobstructed point on segment #" + (string)ix + " fwd " + (string)fwd);  
     integer length = llGetListLength(pts);
     float distalongseg = width;                   // distance along segment starting at ix.
     while (TRUE)                                // until return
@@ -301,12 +302,16 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
         if (distalongseg > vlen)                // if hit end of segment
         {   ix = ix + fwd;                      // advance one seg in desired dir
             if (ix + fwd >= length || ix + fwd < 0) // end of entire path without find
-            {   return([ZERO_VECTOR,-1]);  }        // hit end of path without find, fails
+            {   DEBUGPRINT1("Fail: no unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
+                return([ZERO_VECTOR,-1]);          // hit end of path without find, fails
+            }
             distalongseg = width;                     // start working next segment
         } else {
-            DEBUGPRINT1("Looking for unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  // ***TEMP***
+            DEBUGPRINT1("Trying point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
             if (!obstaclecheckcelloccupied(p0, pos, width, height, TRUE))
-            {   return([pos,ix]); }                 // found an open spot
+            {   DEBUGPRINT("Found unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd); 
+                return([pos,ix]);                  // found an open spot
+            }
             distalongseg += width;              // advance to next spot to try
         }
     }
