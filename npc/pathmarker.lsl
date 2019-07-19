@@ -1,5 +1,7 @@
 //
-//  pathmarker.lsl -- move object to given location, resize, and color.
+//  pathmarker.lsl -- move marker to given location, resize, and color.
+//
+//  The marker has a straight center section and two end caps.
 //
 //  Gets parameters over a channel via JSON.
 //
@@ -34,6 +36,9 @@ setposlong(vector pos)
 //
 //  setmarker -- set marker parameters
 //
+//  This marker has three prims. The root prim is a cube and at the center.
+//  The end prims are half-cylinders.
+//
 setmarker(vector pos, rotation rot, vector scale, vector color, float alpha)
 {
     llSetScale(scale);
@@ -41,6 +46,9 @@ setmarker(vector pos, rotation rot, vector scale, vector color, float alpha)
     setposlong(pos);                            // this takes time
     llSetColor(color,ALL_SIDES);                // 
     llSetAlpha(alpha,ALL_SIDES);
+    vector offset = <scale.x*0.5,0,0>;          // place end caps
+    llSetLinkPrimitiveParamsFast(2,[PRIM_SIZE,<scale.y, scale.y,scale.z>, PRIM_COLOR,ALL_SIDES,color, alpha, PRIM_POS_LOCAL, offset]);
+    llSetLinkPrimitiveParamsFast(3,[PRIM_SIZE,<scale.y, scale.y,scale.z>, PRIM_COLOR,ALL_SIDES,color, alpha, PRIM_POS_LOCAL, -offset]);
 }
 
 //
@@ -52,7 +60,7 @@ setmarker(vector pos, rotation rot, vector scale, vector color, float alpha)
 //
 handlemsg(integer channel, string name, key id, string message)
 {
-    llOwnerSay("Marker msg: " + message);               // ***TEMP***
+    ////llOwnerSay("Marker msg: " + message);               // ***TEMP***
     if (channel != MARKERCHANNEL) { return; }   // not ours
     if ((integer)llJsonGetValue(message, ["id"] ) != gId) { return; } // not our message
     string request = llJsonGetValue(message, ["request"]);       // what to do
@@ -76,7 +84,7 @@ default
     {   if (param == 0) { return; }                         // if rezzed not by program
         gId = param;
         gListenHandle = llListen(MARKERCHANNEL, "", NULL_KEY, ""); 
-        llOwnerSay(llList2Json(JSON_OBJECT,["reply","marker","id",gId]));  // we're rezzed, tell us what to do    // ***TEMP***    
+        ////llOwnerSay(llList2Json(JSON_OBJECT,["reply","marker","id",gId]));  // we're rezzed, tell us what to do    // ***TEMP***    
         llSay(MARKERREPLYCHANNEL, llList2Json(JSON_OBJECT,["reply","marker","id",gId]));  // we're rezzed, tell us what to do
     }
         
