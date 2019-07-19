@@ -11,10 +11,12 @@
 //
 //  Constants
 //
-integer MARKERCHANNEL = -3938235;                                // arbitrary channel number
+integer MARKERCHANNEL = -3938235;                                   // arbitrary channel number
+integer MARKERREPLYCHANNEL = -3938236;                              // reply channel                         
 //
 //  Globals
 integer gListenHandle = 0;                                          // our listen handle
+integer gId = 0;
 //
 //  setposlong -- llSetPos for long moves
 //
@@ -45,14 +47,14 @@ setmarker(vector pos, rotation rot, vector scale, vector color, float alpha)
 //  handlemsg -- handle incoming JSON message
 //
 //  Format:
-//  {"request": "marker", "id": KEY, "pos" : VECTOR, "rot" : ROTATION, "scale" : VECTOR,
+//  {"request": "marker", "id": INTEGER, "pos" : VECTOR, "rot" : ROTATION, "scale" : VECTOR,
 //      "color": VECTOR, "alpha": FLOAT}
 //
 handlemsg(integer channel, string name, key id, string message)
 {
     llOwnerSay("Marker msg: " + message);               // ***TEMP***
     if (channel != MARKERCHANNEL) { return; }   // not ours
-    if (llJsonGetValue(message, ["id"] ) != llGetKey()) { return; } // not our message
+    if ((integer)llJsonGetValue(message, ["id"] ) != gId) { return; } // not our message
     string request = llJsonGetValue(message, ["request"]);       // what to do
     if (request != "marker")                            // not valid 
     {   llSay(DEBUG_CHANNEL, "Invalid request to marker: " + message); return; }
@@ -72,12 +74,15 @@ default
 
     on_rez(integer param)
     {   if (param == 0) { return; }                         // if rezzed not by program
-        gListenHandle = llListen(MARKERCHANNEL, "", llGetOwner(), ""); 
+        gId = param;
+        gListenHandle = llListen(MARKERCHANNEL, "", NULL_KEY, ""); 
+        llOwnerSay(llList2Json(JSON_OBJECT,["reply","marker","id",gId]));  // we're rezzed, tell us what to do    // ***TEMP***    
+        llSay(MARKERREPLYCHANNEL, llList2Json(JSON_OBJECT,["reply","marker","id",gId]));  // we're rezzed, tell us what to do
     }
         
     listen(integer channel, string name, key id, string message)
     {
-        handlemsg(channel, name, id, message);              // do msg
+        handlemsg(channel, name, id, message);              // told what to do
     }
 }
 
