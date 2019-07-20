@@ -214,21 +214,23 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     float mazedepthmargin = llFabs(dv.z)+MAZEBELOWGNDTOL;   // allow for sloped area, cast deeper
     dv.z = 0;
     vector dir = llVecNorm(dv);                             // forward direction, XY plane
-    p0 = p1 - dir*(width*0.5);                              // start casts from one halfwidth back from p1
-    DEBUGPRINT1("Cell occupied check: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
-    list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
-    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); } // cell is occupied
-    //  Horizontal check in forward direction to catch tall obstacles.
-    castresult = castray(p0+<0,0,height*0.5>,p1+<0,0,height*0.5>,[]); // Horizontal cast, any hit is bad
-    if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
-    
-    //  Center of cell is clear and walkable. Now check upwards at front and side.
-    //  The idea is to check at points that are on a circle of diameter "width"
+    p0 = p1 - dir*(width*1.5);                              // start casts from far side of previous cell
     vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
     DEBUGPRINT1("Cell edge check: dir = " + (string)dir + " crossdir: " + (string)crossdir + " p0: " + (string) p0 + " p1: " + (string)p1);
     vector pa = p1 + (crossdir*(width*0.5));                // one edge at ground level
     vector pb = p1 - (crossdir*(width*0.5));                // other edge at ground level
-    vector pc = p1 - (dir*(width*0.5));                     // ahead at ground level
+    vector pc = p1 + (dir*(width*0.5));                     // ahead at ground level
+    DEBUGPRINT1("Cell occupied check: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
+    list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
+    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); } // cell is occupied
+    //  Horizontal check in forward direction to catch tall obstacles or thin ones.
+    castresult = castray(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>,[]); // Horizontal cast, any hit is bad
+    if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
+    //  Crosswise horizontal check.
+    castresult = castray(pa+<0,0,height*0.5>,pb+<0,0,height*0.5>,[]); // Horizontal cast, any hit is bad
+    if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail    
+    //  Center of cell is clear and walkable. Now check upwards at front and side.
+    //  The idea is to check at points that are on a circle of diameter "width"
     DEBUGPRINT1("Obstacle check if cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " width: " + (string)width + " height: " + (string)height);     // ***TEMP***
     //  Downward ray casts only.  Must hit a walkable.   
     castresult = castray(pa+<0,0,height>,pa-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable

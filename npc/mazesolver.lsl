@@ -838,7 +838,7 @@ integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
 {   
     vector p0 = mazecelltopoint(prevx, prevy);          // centers of the start and end test cells
     vector p1 = mazecelltopoint(x,y);
-    return(obstaclecheckcelloccupied(p0, p1, gMazeWidth, gMazeHeight, FALSE));    // test whether cell occupied, assuming prev cell was OK
+    return(obstaclecheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, FALSE));    // test whether cell occupied, assuming prev cell was OK
 }
 //
 //  mazecelltopoint -- convert maze coordinates to point in world space
