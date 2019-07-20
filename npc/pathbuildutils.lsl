@@ -220,12 +220,18 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     vector pa = p1 + (crossdir*(width*0.5));                // one edge at ground level
     vector pb = p1 - (crossdir*(width*0.5));                // other edge at ground level
     vector pc = p1 + (dir*(width*0.5));                     // ahead at ground level
+    vector pd = p1 - (dir*(width*0.5));                     // "behind" point 
     DEBUGPRINT1("Cell occupied check: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
     list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
     if (!mazecasthitonlywalkable(castresult)) { return(TRUE); } // cell is occupied
-    //  Horizontal check in forward direction to catch tall obstacles or thin ones.
-    castresult = castray(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>,[]); // Horizontal cast, any hit is bad
+    //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
+    castresult = castray(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>,[]); // Horizontal cast at mid height, any hit is bad
     if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
+    castresult = castray(p0+<0,0,mazedepthmargin>,p1+dir*(width*0.5)+<0,0,GROUNDCLEARANCE>,[]); // Horizontal cast at ground level, any hit is bad
+    if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
+    castresult = castray(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>,[]); // Horizontal cast at mid height, any hit is bad
+    if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
+
     //  Crosswise horizontal check.
     castresult = castray(pa+<0,0,height*0.5>,pb+<0,0,height*0.5>,[]); // Horizontal cast, any hit is bad
     if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail    
@@ -239,12 +245,13 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
     castresult = castray(pc+<0,0,height>,pc-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable
     if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
+    castresult = castray(pd+<0,0,height>,pc-<0,0,mazedepthmargin>,[]); // cast at steep angle, must hit walkable
+    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
     if (!dobackcorners) 
     {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
         return(FALSE); 
     }
     //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
-    vector pd = p1 - (dir*(width*0.5));                          // "behind" point 
     castresult = castray(pd+<0,0,height>,pd-<0,0,MAZEBELOWGNDTOL>,[]); // cast upwards, no land check
     if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
     DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
