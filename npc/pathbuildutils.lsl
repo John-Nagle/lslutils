@@ -227,9 +227,9 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
     castresult = castray(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>,[]); // Horizontal cast at mid height, any hit is bad
     if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
-    castresult = castray(p0+<0,0,mazedepthmargin>,p1+dir*(width*0.5)+<0,0,GROUNDCLEARANCE>,[]); // Horizontal cast at ground level, any hit is bad
+    castresult = castray(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>,[]); // Horizontal cast near ground level, any hit is bad
     if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
-    castresult = castray(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>,[]); // Horizontal cast at mid height, any hit is bad
+    castresult = castray(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>,[]); // Horizontal cast at full height, any hit is bad
     if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
 
     //  Crosswise horizontal check.
