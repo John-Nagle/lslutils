@@ -21,6 +21,9 @@ float PATHCHECKTOL = 0.02;                                  // allow 2cm colline
 #define INFINITY ((float)"inf")                             // is there a better way?
 #endif // INFINITY
 
+#ifndef panic
+#define panic() { llSay(DEBUG_CHANNEL, "PANIC"); llResetScript(); }
+#endif // panic
 //
 //  
 //
@@ -289,6 +292,144 @@ integer mazecasthitanything(list castresult)
     return(TRUE);                                           // hit something, bad    
 }
 //
+//  pathcalccellmovedist 
+//
+//  How far to move in dir to get an integral number of cells between points.
+//  We need to move the point by a small distance in dir to achieve this.
+//  Movement must always increase prevdist
+//
+//  Goal: |pnt+dir*movedist - endpt| mod cellsize == 0
+//
+//  Derivation:
+//    Number of cells needed, rounding up from what we have
+//
+//      unitcells = ceil(|pnt-endpt| / cellsize)
+//
+//    So we want this relationship.
+//
+//      |pnt+dir*movedist - endpt| = unitcells * cellsize  
+//
+//    Solve for movedist
+//
+//      Let dv = pnt - endpt
+//      Let cdist = unitcells*cellsize
+//
+//      Then |dv+dir*movedist| == cdist
+//
+//      (dv+dir*movedist)^2 == cdist^2
+//
+//      Let cdist2 = cdist^2
+//      Let dv2 = dv*dv
+//
+//      dv2 + dir*movedist*dir*movedist + 2*dv*dir*movedist = cdist2
+//
+//      dir*movedist*dir*movedist + 2*dv*dir*movedist = cdist2 - dv2
+//
+//      (dir2)*movedist^2 + (2*dv*dir)*movedist + dv2-cdist2 = 0
+//
+//  Which is a quadratic.
+//
+//      a = dir*dir = 1
+//      b = 2*dv*dir 
+//      c = dv2-cdist2
+//  So
+//      movedist = (-b +- sqrt(b*b-4*a*c)) / (2*a)
+//
+//  ***UNTESTED***
+//      
+//
+//  This is just geometry.
+//  It's really finding a point which is on an XY plane circle centered at endpt and an
+//  integral number of widths from it, and also on the line from pnt along vector dist.
+//
+#ifndef NAN
+#define NAN ((float)"nan")
+#endif // 
+//
+float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsize, float prevdist3d)
+{
+    if (endpt == ZERO_VECTOR) { return(prevdist3d+cellsize); }   // no endpt constraint, simple solutoin
+    endpt.z = 0;                                    // project endpoint into XY plane
+    pnt.z = 0;                                      // project pnt into XY plane
+    vector dirflat = dir3d;                         // project direction into XY plane
+    dirflat.z = 0;                  
+    dirflat = llVecNorm(dirflat);                   // and normalize
+    float scale2d = dirflat*dir3d;                  // scale 3D lengths in dir down to 2D
+    float prevdistflat = prevdist3d * scale2d;      // XY plane of prevdist
+    vector p0 = pnt+(dirflat*(prevdistflat+0.01));  // starting point, just past prevdist to force progress
+    p0.z = 0;                                       // in XY plane only.
+    vector dv = p0 - endpt;                         // start point to center
+    integer unitcells = llCeil(llVecMag(dv)/cellsize); // number of cells between desired endpoints
+    float cdist = unitcells*cellsize;               // desired distance to endpt
+    float cdist2 = cdist*cdist;                     // distance squared
+    float dv2 = dv*dv;                              // distance squared
+    float a = 1;                                    // quadratic solution
+    float b = 2*(dv*dirflat);
+    float c = dv2 - cdist2;
+    float numera = b*b-4*a*c;                       // term under radical in quadratic equation
+    if (numera < 0.0) { return(NAN); }              // Error
+    float numer = llSqrt(b*b-4*a*c);                // must be nonnegative
+    float movedistflat = (-b + numer) / a;          // the two solutions
+    ////float m2 = (-b - numer) / a;                // we don't need the smaller solution
+    if (movedistflat < 0) { return(NAN); }
+    assert(llFabs(llVecMag(pnt+dirflat*movedistflat - endpt) - unitcells*cellsize) < 0.01); // math check
+    assert(movedistflat > prevdistflat);            // must increase dist  
+    float movedist3d = movedistflat / scale2d;      // scale up for 3D
+    return(movedist3d);                             // move this far along segment in 3D 
+}
+//
+//
+//  pathfindunobstructed2 -- find an unobstructed point near a path segment end.
+//
+//  Returns [pnt,ix], where ix is the point index previous, in the direction of scan, to the
+//  scan, of the point found.
+//
+//  This is inefficient but seldom used.
+//
+//  Attempts to move the point to another point which is an integral number of widths from endpt.
+//
+//  ***UNTESTED***
+//
+//
+list pathfindunobstructed2(list pts, integer ix, integer fwd, float width, float height, vector endpt)
+{
+    assert(fwd == 1 || fwd == -1);
+    DEBUGPRINT1("Looking for unobstructed point on segment #" + (string)ix + " fwd " + (string)fwd);  
+    integer length = llGetListLength(pts);
+    vector p0 = llList2Vector(pts,ix);      // index of previous point
+    vector p1 = llList2Vector(pts,ix + fwd);// index of next point
+    vector dir = llVecNorm(p1-p0);          // move dir
+    float distalongseg = pathcalccellmovedist(p0, dir, endpt, width, width); // integral number of widths from endpt
+    // distance along segment starting at ix.
+    while (TRUE)                                // until return
+    {   
+        p0 = llList2Vector(pts,ix);             // index of previous point
+        p1 = llList2Vector(pts,ix + fwd);       // index of next point
+        dir = llVecNorm(p1-p0);                 // move dir
+        vector pos = p0 + llVecNorm(p1-p0) * distalongseg; // next point to try
+        float vlen = llVecMag(p1-p0);           // length of vector
+        if (distalongseg > vlen)                // if hit end of segment
+        {   ix = ix + fwd;                      // advance one seg in desired dir
+            if (ix + fwd >= length || ix + fwd < 0) // end of entire path without find
+            {   DEBUGPRINT1("Fail: no unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
+                return([ZERO_VECTOR,-1]);       // hit end of path without find, fails
+            }
+            distalongseg = pathcalccellmovedist(p0, dir, endpt, width, 0);
+            if (distalongseg == NAN) { return([ZERO_VECTOR,-1]); }   // math trouble
+
+        } else {                                // did not hit end of segment
+            DEBUGPRINT1("Trying point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
+            if (!obstaclecheckcelloccupied(p0, pos, width, height, TRUE))
+            {   DEBUGPRINT("Found unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd); 
+                return([pos,ix]);               // found an open spot
+            }
+            distalongseg = pathcalccellmovedist(p0, dir, endpt, width, distalongseg); // integral number of widths from endpt
+        }
+    }
+    //  Unreachable
+    return([ZERO_VECTOR,-1]);                   // no way
+}
+//
 //  pathfindunobstructed -- find an unobstructed point near a path segment end.
 //
 //  Returns [pnt,ix], where ix is the point index previous, in the direction of scan, to the
@@ -298,6 +439,9 @@ integer mazecasthitanything(list castresult)
 //
 list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float height)
 {
+
+    return(pathfindunobstructed2(pts, ix, fwd, width, height, ZERO_VECTOR));        // Use more general fn
+#ifdef OBSOLETE
     ////assert(fwd == 1 || fwd == -1);
     DEBUGPRINT1("Looking for unobstructed point on segment #" + (string)ix + " fwd " + (string)fwd);  
     integer length = llGetListLength(pts);
@@ -326,6 +470,7 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
     }
     //  Unreachable
     return([ZERO_VECTOR,-1]);                   // no way
+#endif // OBSOLETE
 }
 //
 //  pathendpointadjust -- make sure the endpoint of each path segment is clear.
