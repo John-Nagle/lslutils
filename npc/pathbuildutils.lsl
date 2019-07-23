@@ -336,6 +336,7 @@ integer mazecasthitanything(list castresult)
 //      movedist = (-b +- sqrt(b*b-4*a*c)) / (2*a)
 //
 //  ***UNTESTED***
+//  ***ASSERT FAILING - MATH IS WRONG***
 //      
 //
 //  This is just geometry.
@@ -348,7 +349,7 @@ integer mazecasthitanything(list castresult)
 //
 float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsize, float prevdist3d)
 {
-    if (endpt == ZERO_VECTOR) { return(prevdist3d+cellsize); }   // no endpt constraint, simple solutoin
+    if (endpt == ZERO_VECTOR) { return(prevdist3d+cellsize); }   // no endpt constraint, simple solution
     endpt.z = 0;                                    // project endpoint into XY plane
     pnt.z = 0;                                      // project pnt into XY plane
     vector dirflat = dir3d;                         // project direction into XY plane
@@ -366,13 +367,16 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
     float a = 1;                                    // quadratic solution
     float b = 2*(dv*dirflat);
     float c = dv2 - cdist2;
-    float numera = b*b-4*a*c;                       // term under radical in quadratic equation
-    if (numera < 0.0) { return(NAN); }              // Error
-    float numer = llSqrt(b*b-4*a*c);                // must be nonnegative
-    float movedistflat = (-b + numer) / a;          // the two solutions
-    ////float m2 = (-b - numer) / a;                // we don't need the smaller solution
+    float numersq = b*b-4*a*c;                       // term under radical in quadratic equation
+    if (numersq < 0.0) { return(NAN); }              // Error
+    float numer = llSqrt(numersq);                   // must be nonnegative
+    float movedistflat = (-b + numer) / 2*a;         // the two solutions
+    ////float m2 = (-b - numer) / a;                 // we don't need the smaller solution
     if (movedistflat < 0) { return(NAN); }
-    assert(llFabs(llVecMag(pnt+dirflat*movedistflat - endpt) - unitcells*cellsize) < 0.01); // math check
+    DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((pnt+dirflat*movedistflat) - endpt) : " + (string) (llFabs(llVecMag((pnt+dirflat*movedistflat) - endpt))) 
+        + " unit cells: " + (string)unitcells + " cell size: " + (string)cellsize + " pnt: " + (string)pnt + " dirflat: " + (string)dirflat + " movedistflat: "  
+        + (string)movedistflat);
+    assert(llFabs(llVecMag((pnt+dirflat*movedistflat) - endpt) - unitcells*cellsize) < 0.01); // math check
     assert(movedistflat > prevdistflat);            // must increase dist  
     float movedist3d = movedistflat / scale2d;      // scale up for 3D
     return(movedist3d);                             // move this far along segment in 3D 
