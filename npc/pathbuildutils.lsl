@@ -377,8 +377,8 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
     float movedistflat = (-b + numer) / (2*a);       // the larger quadatic solution.
     ////float m2 = (-b - numer) / a;                 // we don't need the smaller solution
     if (movedistflat < 0) { return(NAN); }
-    DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((pntflat+dirflat*movedistflat) - endptflat) : " 
-        + (string) (llFabs(llVecMag((pntflat+dirflat*movedistflat) - endptflat))) 
+    DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((endptflat - pntflat+dirflat*movedistflat)) : " 
+        + (string) llFabs(llVecMag((endptflat - pntflat+dirflat*movedistflat))) 
         + " unit cells: " + (string)unitcells + " cell size: " + (string)cellsize + " pntflat: " + (string)pntflat + " endpflat: "
         + (string)endptflat +  " p0: " + (string)p0 + " dirflat: " + (string)dirflat + " movedistflat: "  
         + (string)movedistflat);
