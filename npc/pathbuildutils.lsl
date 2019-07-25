@@ -341,43 +341,8 @@ integer mazecasthitanything(list castresult)
 //      b = 2*dir*dv
 //      c = dvsq - cdistsq
 //
-//  ============================same as last time - what's wrong?
-//
-//      Let dv = endpt - pnt
-//      Let cdist = unitcells*cellsize
-//
-//      Then |dv+dir*movedist| == cdist
-//
-//      (dv+dir*movedist)^2 == cdist^2
-//
-//      Let cdistsq = cdist^2
-//      Let dvsq = dv*dv
-//
-//      |dv+dir*movedist|^2 = (dv+dir*movedist)*(dv+dir*movedist)
-//
-//      ***BAD***
-//      But those are vectors. Is that right?
-//  
-//      dvsq + dir*movedist*dir*movedist + 2*dv*dir*movedist = cdistsq
-//
-//      dir*movedist*dir*movedist + 2*dv*dir*movedist = cdistsq - dvsq
-//
-//      (dir2)*movedist^2 + (2*dv*dir)*movedist + dvsq-cdistsq = 0
-//
-//  Which is a quadratic.
-//
-//      a = dir*dir = 1
-//      b = 2*dv*dir 
-//      c = dvsq-cdistsq
-//  So
-//      movedist = (-b +- sqrt(b*b-4*a*c)) / (2*a)
-//
-//  ======================= Derived twice, same result
-//
-//  ***UNTESTED***
-//  ***ASSERT FAILING - MATH IS WRONG***
+//  ***UNTESTED*** Math OK, but not yet in use.
 //      
-//
 //  This is just geometry.
 //  It's really finding a point which is on an XY plane circle centered at endpt and an
 //  integral number of widths from it, and also on the line from pnt along vector dist.
@@ -400,14 +365,12 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
     integer unitcells = llCeil(p0toendptflat/cellsize);     // number of cells desireed between endpoints
     float cdist = unitcells*cellsize;               // desired distance to endpt
     float cdistsq = cdist*cdist;                    // distance squared
-    //  ***THIS SETUP MUST BE WRONG***
-    //  Wanted: |endptflat - (pntflat+dirflat*movedist)| = cdist 
+     //  Wanted: |endptflat - (pntflat+dirflat*movedist)| = cdist 
     vector dv = endptflat - pntflat;                // start point to center  
     float dvsq = dv*dv;                             // distance squared
     float a = 1;                                    // quadratic solution
     float b = 2*(dv*dirflat);
     float c = dvsq - cdistsq;
-    //  ***END OF WRONG SECTION?***
     float numersq = b*b-4*a*c;                       // term under radical in quadratic equation
     if (numersq < 0.0) { return(NAN); }              // Error
     float numer = llSqrt(numersq);                   // must be nonnegative
