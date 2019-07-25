@@ -394,18 +394,20 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
     vector dirflat = llVecNorm(<dir3d.x, dir3d.y,0.0>);    // project direction into XY plane
     float scale2d = dirflat*dir3d;                  // scale 3D lengths in dir down to 2D
     float prevdistflat = prevdist3d * scale2d;      // XY plane length of prevdist
-    //  ***THIS SETUP MUST BE WRONG***
     vector p0 = pntflat+(dirflat*(prevdistflat+0.01));  // starting point, just past prevdist to force progress
+    assert(llFabs(p0.z) < 0.001);                   // p0 is in XY plane
     float p0toendptflat = llVecMag(p0-endptflat);   // approx dist to center
     integer unitcells = llCeil(p0toendptflat/cellsize);     // number of cells desireed between endpoints
-    assert(llFabs(p0.z) < 0.001);                   // p0 is in XY plane
-    vector dv = endptflat - pntflat;                // start point to center  
     float cdist = unitcells*cellsize;               // desired distance to endpt
     float cdistsq = cdist*cdist;                    // distance squared
+    //  ***THIS SETUP MUST BE WRONG***
+    //  Wanted: |endptflat - (pntflat+dirflat*movedist)| = cdist 
+    vector dv = endptflat - pntflat;                // start point to center  
     float dvsq = dv*dv;                             // distance squared
     float a = 1;                                    // quadratic solution
     float b = 2*(dv*dirflat);
     float c = dvsq - cdistsq;
+    //  ***END OF WRONG SECTION?***
     float numersq = b*b-4*a*c;                       // term under radical in quadratic equation
     if (numersq < 0.0) { return(NAN); }              // Error
     float numer = llSqrt(numersq);                   // must be nonnegative
@@ -418,7 +420,7 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
         + (string)endptflat +  " p0: " + (string)p0 + " dirflat: " + (string)dirflat + " movedistflat: "  
         + (string)movedistflat);
     assert(llFabs(a*movedistflat*movedistflat + b*movedistflat + c) < 0.001);   // quadratic equation check
-    assert(llFabs(llVecMag((pntflat+dirflat*movedistflat) - endptflat) - unitcells*cellsize) < 0.01); // math check
+    assert(llFabs(llVecMag(endptflat - pntflat + dirflat*movedistflat) - unitcells*cellsize) < 0.01); // math check
     assert(movedistflat > prevdistflat);            // must increase dist  
     float movedist3d = movedistflat / scale2d;      // scale up for 3D
     return(movedist3d);                             // move this far along segment in 3D 
