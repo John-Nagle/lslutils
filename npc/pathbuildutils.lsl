@@ -298,42 +298,81 @@ integer mazecasthitanything(list castresult)
 //  We need to move the point by a small distance in dir to achieve this.
 //  Movement must always increase prevdist
 //
-//  Goal: |pnt+dir*movedist - endpt| mod cellsize == 0
+//  Goal: |endpt - (pnt+dir*movedist)| mod cellsize == 0
+//
+//  with all the vectors in the XY plane only.
 //
 //  Derivation:
+//
 //    Number of cells needed, rounding up from what we have
 //
 //      unitcells = ceil(|pnt-endpt| / cellsize)
 //
-//    So we want this relationship.
+//    So we want this relationship:
 //
-//      |pnt+dir*movedist - endpt| = unitcells * cellsize  
+//      |endpt - (pnt+dir*movedist)| = unitcells * cellsize  
 //
-//    Solve for movedist
+//    Solve for movedist.
 //
-//      Let dv = pnt - endpt
+//      Let cdist = unitcells*cellsize
+//      Let cdistsq = cdist^2
+//      Let dv = endpt - pnt
+//      Let dvsq = dv*dv
+//
+//    so
+//
+//      |dv - dir*movedist| = cdist 
+//
+//    or
+//
+//      |dv - dir*movedist|^2 = cdist^2
+//
+//    Expand length of vector
+//      
+//      (dv - dir*movedist)*(dv - dir*movedist) = cdistsq
+//
+//      dv*dv - 2*dir*movedist*dv + dir*dir*movedist*movedist = cdistsq
+//
+//      (dir*dir) * movedist^2 + movedist*(2*dir) + dv*dv - cdistsq = 0
+//
+//   Which is a quadratic.
+//
+//      a = dir*dir = 1
+//      b = 2*dir*dv
+//      c = dvsq - cdistsq
+//
+//  ============================same as last time - what's wrong?
+//
+//      Let dv = endpt - pnt
 //      Let cdist = unitcells*cellsize
 //
 //      Then |dv+dir*movedist| == cdist
 //
 //      (dv+dir*movedist)^2 == cdist^2
 //
-//      Let cdist2 = cdist^2
-//      Let dv2 = dv*dv
+//      Let cdistsq = cdist^2
+//      Let dvsq = dv*dv
 //
-//      dv2 + dir*movedist*dir*movedist + 2*dv*dir*movedist = cdist2
+//      |dv+dir*movedist|^2 = (dv+dir*movedist)*(dv+dir*movedist)
 //
-//      dir*movedist*dir*movedist + 2*dv*dir*movedist = cdist2 - dv2
+//      ***BAD***
+//      But those are vectors. Is that right?
+//  
+//      dvsq + dir*movedist*dir*movedist + 2*dv*dir*movedist = cdistsq
 //
-//      (dir2)*movedist^2 + (2*dv*dir)*movedist + dv2-cdist2 = 0
+//      dir*movedist*dir*movedist + 2*dv*dir*movedist = cdistsq - dvsq
+//
+//      (dir2)*movedist^2 + (2*dv*dir)*movedist + dvsq-cdistsq = 0
 //
 //  Which is a quadratic.
 //
 //      a = dir*dir = 1
 //      b = 2*dv*dir 
-//      c = dv2-cdist2
+//      c = dvsq-cdistsq
 //  So
 //      movedist = (-b +- sqrt(b*b-4*a*c)) / (2*a)
+//
+//  ======================= Derived twice, same result
 //
 //  ***UNTESTED***
 //  ***ASSERT FAILING - MATH IS WRONG***
@@ -350,33 +389,36 @@ integer mazecasthitanything(list castresult)
 float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsize, float prevdist3d)
 {
     if (endpt == ZERO_VECTOR) { return(prevdist3d+cellsize); }   // no endpt constraint, simple solution
-    endpt.z = 0;                                    // project endpoint into XY plane
-    pnt.z = 0;                                      // project pnt into XY plane
-    vector dirflat = dir3d;                         // project direction into XY plane
-    dirflat.z = 0;                  
-    dirflat = llVecNorm(dirflat);                   // and normalize
+    vector endptflat = <endpt.x, endpt.y, 0.0>;     // project endpoint into XY plane
+    vector pntflat = <pnt.x,pnt.y,0.0>;             // project pnt into XY plane
+    vector dirflat = llVecNorm(<dir3d.x, dir3d.y,0.0>);    // project direction into XY plane
     float scale2d = dirflat*dir3d;                  // scale 3D lengths in dir down to 2D
-    float prevdistflat = prevdist3d * scale2d;      // XY plane of prevdist
-    vector p0 = pnt+(dirflat*(prevdistflat+0.01));  // starting point, just past prevdist to force progress
-    p0.z = 0;                                       // in XY plane only.
-    vector dv = p0 - endpt;                         // start point to center
-    integer unitcells = llCeil(llVecMag(dv)/cellsize); // number of cells between desired endpoints
+    float prevdistflat = prevdist3d * scale2d;      // XY plane length of prevdist
+    //  ***THIS SETUP MUST BE WRONG***
+    vector p0 = pntflat+(dirflat*(prevdistflat+0.01));  // starting point, just past prevdist to force progress
+    float p0toendptflat = llVecMag(p0-endptflat);   // approx dist to center
+    integer unitcells = llCeil(p0toendptflat/cellsize);     // number of cells desireed between endpoints
+    assert(llFabs(p0.z) < 0.001);                   // p0 is in XY plane
+    vector dv = endptflat - pntflat;                // start point to center  
     float cdist = unitcells*cellsize;               // desired distance to endpt
-    float cdist2 = cdist*cdist;                     // distance squared
-    float dv2 = dv*dv;                              // distance squared
+    float cdistsq = cdist*cdist;                    // distance squared
+    float dvsq = dv*dv;                             // distance squared
     float a = 1;                                    // quadratic solution
     float b = 2*(dv*dirflat);
-    float c = dv2 - cdist2;
+    float c = dvsq - cdistsq;
     float numersq = b*b-4*a*c;                       // term under radical in quadratic equation
     if (numersq < 0.0) { return(NAN); }              // Error
     float numer = llSqrt(numersq);                   // must be nonnegative
-    float movedistflat = (-b + numer) / 2*a;         // the two solutions
+    float movedistflat = (-b + numer) / (2*a);       // the larger quadatic solution.
     ////float m2 = (-b - numer) / a;                 // we don't need the smaller solution
     if (movedistflat < 0) { return(NAN); }
-    DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((pnt+dirflat*movedistflat) - endpt) : " + (string) (llFabs(llVecMag((pnt+dirflat*movedistflat) - endpt))) 
-        + " unit cells: " + (string)unitcells + " cell size: " + (string)cellsize + " pnt: " + (string)pnt + " dirflat: " + (string)dirflat + " movedistflat: "  
+    DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((pntflat+dirflat*movedistflat) - endptflat) : " 
+        + (string) (llFabs(llVecMag((pntflat+dirflat*movedistflat) - endptflat))) 
+        + " unit cells: " + (string)unitcells + " cell size: " + (string)cellsize + " pntflat: " + (string)pntflat + " endpflat: "
+        + (string)endptflat +  " p0: " + (string)p0 + " dirflat: " + (string)dirflat + " movedistflat: "  
         + (string)movedistflat);
-    assert(llFabs(llVecMag((pnt+dirflat*movedistflat) - endpt) - unitcells*cellsize) < 0.01); // math check
+    assert(llFabs(a*movedistflat*movedistflat + b*movedistflat + c) < 0.001);   // quadratic equation check
+    assert(llFabs(llVecMag((pntflat+dirflat*movedistflat) - endptflat) - unitcells*cellsize) < 0.01); // math check
     assert(movedistflat > prevdistflat);            // must increase dist  
     float movedist3d = movedistflat / scale2d;      // scale up for 3D
     return(movedist3d);                             // move this far along segment in 3D 
