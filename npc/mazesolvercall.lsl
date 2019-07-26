@@ -65,14 +65,15 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     //  between xstart and xend is the center of the maze (roughly), and ystart and yend are halfway
     //  across the maze. 
     integer startx = (integer)(MAXMAZESIZE/2) - (integer)(unitcells / 2);
-    integer starty = (integer)MAXMAZESIZE/2;
+    integer starty = (integer)(MAXMAZESIZE/2);
     integer endx = startx + unitcells;    // 
-    integer endy = (integer)MAXMAZESIZE/2;
+    integer endy = starty;
     vector p0inmaze = (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
     ////vector startrel = <startx*gMazeCellSize,starty*gMazeCellSize,0>; // vector from maze (0,0) to p0
     gMazePos = p0 - p0inmaze;                       // position of cell (0,0)
 #define GEOMCHECK
 #ifdef GEOMCHECK
+    //  ***WRONG? - gMazeCellSize is for flat cells, not tilted ones.***
     vector p0chk = gMazePos + (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
     vector p1chk = gMazePos + (<endx,endy,0>*gMazeCellSize) * gMazeRot; 
     if (llVecNorm(p1chk -p0chk) * llVecNorm(p1-p0) < 0.999)
