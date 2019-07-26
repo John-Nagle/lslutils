@@ -374,16 +374,17 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
     float numersq = b*b-4*a*c;                       // term under radical in quadratic equation
     if (numersq < 0.0) { return(NAN); }              // Error
     float numer = llSqrt(numersq);                   // must be nonnegative
-    float movedistflat = (-b + numer) / (2*a);       // the larger quadatic solution.
-    ////float m2 = (-b - numer) / a;                 // we don't need the smaller solution
-    if (movedistflat < 0) { return(NAN); }
-    DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((endptflat - pntflat+dirflat*movedistflat)) : " 
-        + (string) llFabs(llVecMag((endptflat - pntflat+dirflat*movedistflat))) 
+    ////float movedistflat = (-b + numer) / (2*a);       // the larger quadatic solution.
+    float movedistflat = (-b - numer) / (2*a);       // the smaller quadatic solution.
+    DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((endptflat - (pntflat+dirflat*movedistflat)() : " 
+        + (string) llFabs(llVecMag((endptflat - (pntflat+dirflat*movedistflat)))) 
         + " unit cells: " + (string)unitcells + " cell size: " + (string)cellsize + " pntflat: " + (string)pntflat + " endpflat: "
         + (string)endptflat +  " p0: " + (string)p0 + " dirflat: " + (string)dirflat + " movedistflat: "  
         + (string)movedistflat);
     assert(llFabs(a*movedistflat*movedistflat + b*movedistflat + c) < 0.001);   // quadratic equation check
-    assert(llFabs(llVecMag(endptflat - pntflat + dirflat*movedistflat) - unitcells*cellsize) < 0.01); // math check
+    movedistflat = -movedistflat;                   // ***NOT SURE ABOUT THIS***
+    if (movedistflat < 0) { return(NAN); }
+    assert(llFabs(llVecMag(endptflat - (pntflat + dirflat*movedistflat)) - unitcells*cellsize) < 0.01); // math check
     assert(movedistflat > prevdistflat);            // must increase dist  
     float movedist3d = movedistflat / scale2d;      // scale up for 3D
     return(movedist3d);                             // move this far along segment in 3D 

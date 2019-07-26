@@ -41,25 +41,32 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     if (vdist < 0.01) { return(MAZESTATUSTOOSHORT); }              // too close, error
     vector pmid = (p0 + p1)*0.5;                    // center of maze area
     //  "pos" is the center of cell (0,0) of the maze.
-    //  "cellsize" is the size of a maze cell. This must be larger than "width".
+    //  "cellsize" is the size of a maze cell. This must be the same as width.
+    //  p0 to p1 in the XY plane must be an integral number of widths.
+#ifdef OBSOLETE
     //  We enlarge cell size so that there is an integer number of cells from p0 to p1.
     //  This works better if something upstream ensures a reasonable minimum distance between p0 and p1, like a meter.
     float cellsize = 1.5*width;                     // initial cell size
     float celldistfromstarttoend = vdist / cellsize;   // number of cells between start and end
-    if (celldistfromstarttoend < 2) { return(MAZESTATUSTOOSHORT); } // start too close to end. Need to back off start and end points.
-    integer cellsfromstarttoend = (integer)celldistfromstarttoend; // at least 2
-    if (cellsfromstarttoend >= MAXMAZESIZE*0.75)    // too big
+#endif // OBSOLETE
+    float cellsize = width;                         // just use width
+    float flatdist = llVecMag(<p0.x,p0.y,0.0> - <p1.x,p1.y,0.0>);   // distance in 2D plane
+    integer unitcells = (integer)(flatdist/cellsize+0.001);   // integral number of cells
+    if (unitcells < 2) { return(MAZESTATUSTOOSHORT); } // start too close to end. Need to back off start and end points.
+    if (unitcells >= MAXMAZESIZE*0.75)    // too big
     {   return(MAZESTATUSTOOLONG); }
+    if (llFabs(unitcells*cellsize - flatdist) > 0.01)   // not a multiple of width
+    {   return(MAZESTATUSBADCELLSIZE); }
     //  OK, good to go.
-    gMazeCellSize = vdist / cellsfromstarttoend;         // size of a cell so that start and end line up
+    gMazeCellSize = cellsize;                       // size of a cell so that start and end line up
     gMazeRot = rotperpenonground(p0, p1);           // rotation of center of maze
     //  For now, we always build a maze of MAXMAZESIZE*MAXMAZESIZE.
     //  The maze is aligned so that the X direction of the maze is from xstart to xend, the midpoint
     //  between xstart and xend is the center of the maze (roughly), and ystart and yend are halfway
     //  across the maze. 
-    integer startx = (integer)(MAXMAZESIZE/2) - (integer)(cellsfromstarttoend / 2);
+    integer startx = (integer)(MAXMAZESIZE/2) - (integer)(unitcells / 2);
     integer starty = (integer)MAXMAZESIZE/2;
-    integer endx = startx + cellsfromstarttoend;    // 
+    integer endx = startx + unitcells;    // 
     integer endy = (integer)MAXMAZESIZE/2;
     vector p0inmaze = (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
     ////vector startrel = <startx*gMazeCellSize,starty*gMazeCellSize,0>; // vector from maze (0,0) to p0
@@ -75,7 +82,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
         return(MAZESTATUSGEOMBUG);                                 // fails
     }
 
-    if (llFabs(llVecMag(p1chk-p0chk) - llVecMag(p1-p0)) > 0.001)
+    if (llFabs(llVecMag(p1chk-p0chk) - llVecMag(p1-p0)) > 0.01)
     {   
         llSay(DEBUG_CHANNEL, "Maze geometry incorrect. Distance between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
