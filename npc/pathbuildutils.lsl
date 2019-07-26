@@ -21,9 +21,6 @@ float PATHCHECKTOL = 0.02;                                  // allow 2cm colline
 #define INFINITY ((float)"inf")                             // is there a better way?
 #endif // INFINITY
 
-#ifndef panic
-#define panic() { llSay(DEBUG_CHANNEL, "PANIC"); llResetScript(); }
-#endif // panic
 //
 //  
 //
