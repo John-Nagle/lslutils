@@ -91,13 +91,18 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     integer starty = (integer)(MAXMAZESIZE/2);
     integer endx = startx + unitcells;    // 
     integer endy = starty;
-    vector p0inmaze = (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
+    ////vector p0inmaze = (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
+    gMazePos = ZERO_VECTOR;                                                // temporary for this maze cell calc
+    vector p0inmaze = mazecellto3d(startx, starty);                        // convert back to 3D coords 
+
     ////vector startrel = <startx*gMazeCellSize,starty*gMazeCellSize,0>; // vector from maze (0,0) to p0
     gMazePos = p0 - p0inmaze;                       // position of cell (0,0)
 #define GEOMCHECK
 #ifdef GEOMCHECK
     //  ***WRONG? - gMazeCellSize is in the XY plane, not for tilted cells.*** Trying new calc
-    vector p0chk = gMazePos + (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
+    ////vector p0chk = gMazePos + (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
+    vector p0chk = mazecellto3d(startx, starty);                        // convert back to 3D coords 
+
     ////vector mazedirflat = llVecNorm(p1.x-p0.x, p1.y-p0.y,0.0>;   // p0 to p1 in XY plane
     ////rotation mazerotflat = llRotBetween(<1,0,0>,mazedirflat);  // rotate vec in XY plane
     ////vector p1chkflat = <gMazePos.x,gMazePos.y, 0.0> + (<endx,endy,0>*gMazeCellSize)*mazerotflat;    // X and Y for p1chk
@@ -108,21 +113,18 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     ////p1chk = p1chkflat; // ***TEMP TEST*** Z is wrong
     if (llVecNorm(p1chk -p0chk) * llVecNorm(p1-p0) < 0.999)
     {   
-        llSay(DEBUG_CHANNEL, "Maze geometry incorrect. Direction between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
+        panic("Maze geometry incorrect. Direction between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
-        return(MAZESTATUSGEOMBUG);                                 // fails
     }
 
     if (llFabs(llVecMag(p1chk-p0chk) - llVecMag(p1-p0)) > 0.01)
     {   
-        llSay(DEBUG_CHANNEL, "Maze geometry incorrect. Distance between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
+        panic("Maze geometry incorrect. Distance between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
-        return(MAZESTATUSGEOMBUG);                                 // fails
     }
     if ((llVecMag(p0chk-p0) > 0.05) || (llVecMag(p1chk-p1) > 0.05))         // allow 5cm error. Rounding problem?
-    {   llSay(DEBUG_CHANNEL, "Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
+    {   panic("Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
-        return(MAZESTATUSGEOMBUG);                                 // fails
     }
 #endif // GEOMCHECK
 
