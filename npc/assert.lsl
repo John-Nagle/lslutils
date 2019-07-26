@@ -10,8 +10,8 @@
 //
 panic(string msg)
 {   msg = "PANIC: " + msg;
-    llOwnerSay(msg);
-    llSay(DEBUG_CHANNEL, msg);
+    llOwnerSay(msg);                                        // tell owner
+    llSay(DEBUG_CHANNEL, msg);                              // tell nearby
     llMessageLinked(LINK_SET, DEBUG_CHANNEL, msg, "");      // tell other scripts we aborted so they can reset
     llSleep(1.0);                                           // wait for message propagation
     llResetScript();                                        // reset this script
