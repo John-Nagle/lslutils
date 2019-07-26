@@ -26,6 +26,29 @@ vector gMazePos;                                    // position of current maze
 rotation gMazeRot;                                  // rotation of current maze
 float gMazeCellSize;                                // cell size of maze
 //
+//  mazecellto3d  -- convert maze cell to 3D coords
+//
+//  gMazeCellSize is the size of a cell in the XY plane, not the 3D plane
+//  gMazePos is the position of cell (0,0);
+//  gMazeRot is the rotation of the maze plane.
+//
+//  ***NEEDS WORK*** ***WRONG*** ***ASSERTION FAILS***
+//
+vector mazecellto3d(integer x, integer y)
+{
+    if (x == 0 && y == 0) { return(gMazePos); }     // avoid divide by zero
+    vector vflat = <x*gMazeCellSize,y*gMazeCellSize,0.0>;   // vector to cell in XY plane
+    vector dir = llVecNorm(vflat*gMazeRot);         // 3D direction to point, but wrong dist
+    float flatlen = llVecMag(vflat);                // vector length in 2D
+    vector dirflat = llVecNorm(<dir.x,dir.y,0.0>);  // azimuth vector
+    //  Now we need to scale up.
+    float scale = dir*dirflat;                      // scale-down factor
+    vector p = (flatlen/scale) * dir;               // scale correct dir to fit 2D X and Y. 
+    ////assert(llFabs(p.x - vflat.x) < 0.01);           // check X and Y
+    ////assert(llFabs(p.y - vflat.y) < 0.01);  
+    return(p + gMazePos);
+}
+//
 //  mazesolverstart -- make a request of the maze solver.
 //
 //  Reply comes back later as a message.
@@ -73,9 +96,16 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     gMazePos = p0 - p0inmaze;                       // position of cell (0,0)
 #define GEOMCHECK
 #ifdef GEOMCHECK
-    //  ***WRONG? - gMazeCellSize is for flat cells, not tilted ones.***
+    //  ***WRONG? - gMazeCellSize is in the XY plane, not for tilted cells.*** Trying new calc
     vector p0chk = gMazePos + (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
-    vector p1chk = gMazePos + (<endx,endy,0>*gMazeCellSize) * gMazeRot; 
+    ////vector mazedirflat = llVecNorm(p1.x-p0.x, p1.y-p0.y,0.0>;   // p0 to p1 in XY plane
+    ////rotation mazerotflat = llRotBetween(<1,0,0>,mazedirflat);  // rotate vec in XY plane
+    ////vector p1chkflat = <gMazePos.x,gMazePos.y, 0.0> + (<endx,endy,0>*gMazeCellSize)*mazerotflat;    // X and Y for p1chk
+    //  Need to compute Z for p1chk ***MORE***
+    ////p1chkdirflat = llVecNorm((<endx,endy,0>*gMazeCellSize) * gMazeRot); // dir to p1 in XY plane
+    ////vector p1chk = gMazePos + (<endx,endy,0>*gMazeCellSize) * gMazeRot; // ***WRONG***
+    vector p1chk = mazecellto3d(endx, endy);                        // convert back to 3D coords 
+    ////p1chk = p1chkflat; // ***TEMP TEST*** Z is wrong
     if (llVecNorm(p1chk -p0chk) * llVecNorm(p1-p0) < 0.999)
     {   
         llSay(DEBUG_CHANNEL, "Maze geometry incorrect. Direction between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
