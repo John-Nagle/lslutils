@@ -33,6 +33,7 @@ float gMazeCellSize;                                // cell size of maze
 //  gMazeRot is the rotation of the maze plane.
 //
 //  ***NEEDS WORK*** ***WRONG*** ***ASSERTION FAILS***
+//  ***THIS IS OFF BY 1-2%. WHY???***
 //
 vector mazecellto3d(integer x, integer y)
 {
@@ -44,14 +45,22 @@ vector mazecellto3d(integer x, integer y)
     //  Now we need to scale up.
     float scale = dir*dirflat;                      // scale-down factor
     vector p = (flatlen/scale) * dir;               // scale correct dir to fit 2D X and Y. 
-    ////assert(llFabs(p.x - vflat.x) < 0.01);           // check X and Y
-    ////assert(llFabs(p.y - vflat.y) < 0.01);  
+#ifdef NOGOOD // This doesn't work at all
+    //  Checks
+    rotation azimuthrot = llRotBetween(<1,0,0>,dirflat);   // rotation 
+    vector vflatrot = vflat*azimuthrot;             // vector in XY plane
+    DEBUGPRINT1("mazecellto3d: x: " + (string)x + " y: " + (string)y + " p: " + (string)p + " vflatrot: " + (string)vflatrot);
+    assert(llFabs(p.x - vflatrot.x) < 0.01);        // check X and Y ***WRONG***
+    assert(llFabs(p.y - vflatrot.y) < 0.01);  
+#endif // NOGOOD
     return(p + gMazePos);
 }
 //
 //  mazesolverstart -- make a request of the maze solver.
 //
 //  Reply comes back later as a message.
+//
+//  p0-p1 distance must be an integral number of widths.
 //
 //  ***GEOMETRY CALC NEEDS WORK***
 //
