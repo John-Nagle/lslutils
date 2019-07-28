@@ -844,7 +844,8 @@ integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
 //  mazecelltopoint -- convert maze coordinates to point in world space
 //
 vector mazecelltopoint(integer x, integer y)
-{      return(gMazePos + (<x,y,0>*gMazeCellSize) * gMazeRot);  }
+////{      return(gMazePos + (<x,y,0>*gMazeCellSize) * gMazeRot);  } //// OBSOLETE - use common fn
+{   return(mazecellto3d(x, y, gMazeCellSize, gMazePos, gMazeRot)); }
                 
 //
 //   Test-only code

@@ -25,6 +25,7 @@ integer gMazeSerial = 0;                            // serial number of request.
 vector gMazePos;                                    // position of current maze
 rotation gMazeRot;                                  // rotation of current maze
 float gMazeCellSize;                                // cell size of maze
+#ifdef OBSOLETE
 //
 //  mazecellto3d  -- convert maze cell to 3D coords
 //
@@ -66,6 +67,7 @@ vector mazecellto3d(integer x, integer y)
 #endif // NOGOOD
     return(p + gMazePos);
 }
+#endif // OBSOLETE
 //
 //  mazesolverstart -- make a request of the maze solver.
 //
@@ -109,40 +111,29 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     //  across the maze. 
     integer startx = (integer)(MAXMAZESIZE/2) - (integer)(unitcells / 2);
     integer starty = (integer)(MAXMAZESIZE/2);
-    integer endx = startx + unitcells;    // 
+    integer endx = startx + unitcells;              // end is unitcells from startx in X dir
     integer endy = starty;
-    ////vector p0inmaze = (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
-    gMazePos = ZERO_VECTOR;                                                // temporary for this maze cell calc
-    vector p0inmaze = mazecellto3d(startx, starty);                        // convert back to 3D coords 
+    vector p0inmaze = mazecellto3d(startx, starty, gMazeCellSize, ZERO_VECTOR, gMazeRot);      // convert back to 3D coords relative to maze space 
 
-    ////vector startrel = <startx*gMazeCellSize,starty*gMazeCellSize,0>; // vector from maze (0,0) to p0
+    //  Calculate base pos of maze.
+    //  ***MAY BE WRONG***
     gMazePos = p0 - p0inmaze;                       // position of cell (0,0)
 #define GEOMCHECK
 #ifdef GEOMCHECK
-    //  ***WRONG? - gMazeCellSize is in the XY plane, not for tilted cells.*** Trying new calc
-    ////vector p0chk = gMazePos + (<startx,starty,0>*gMazeCellSize) * gMazeRot;    // convert p0 back to world coords
-    vector p0chk = mazecellto3d(startx, starty);                        // convert back to 3D coords 
-
-    ////vector mazedirflat = llVecNorm(p1.x-p0.x, p1.y-p0.y,0.0>;   // p0 to p1 in XY plane
-    ////rotation mazerotflat = llRotBetween(<1,0,0>,mazedirflat);  // rotate vec in XY plane
-    ////vector p1chkflat = <gMazePos.x,gMazePos.y, 0.0> + (<endx,endy,0>*gMazeCellSize)*mazerotflat;    // X and Y for p1chk
-    //  Need to compute Z for p1chk ***MORE***
-    ////p1chkdirflat = llVecNorm((<endx,endy,0>*gMazeCellSize) * gMazeRot); // dir to p1 in XY plane
-    ////vector p1chk = gMazePos + (<endx,endy,0>*gMazeCellSize) * gMazeRot; // ***WRONG***
-    vector p1chk = mazecellto3d(endx, endy);                        // convert back to 3D coords 
-    ////p1chk = p1chkflat; // ***TEMP TEST*** Z is wrong
+    vector p0chk = mazecellto3d(startx, starty, gMazeCellSize, gMazePos, gMazeRot);                        // convert back to 3D coords 
+    vector p1chk = mazecellto3d(endx, endy, gMazeCellSize, gMazePos, gMazeRot);                        // convert back to 3D coords 
     if (llVecNorm(p1chk -p0chk) * llVecNorm(p1-p0) < 0.999)
     {   
         panic("Maze geometry incorrect. Direction between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
     }
 
-    if (llFabs(llVecMag(p1chk-p0chk) - llVecMag(p1-p0)) > 0.01)
+    if (llFabs(llVecMag(p1chk-p0chk) - llVecMag(p1-p0)) > 0.001)
     {   
         panic("Maze geometry incorrect. Distance between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
     }
-    if ((llVecMag(p0chk-p0) > 0.05) || (llVecMag(p1chk-p1) > 0.05))         // allow 5cm error. Rounding problem?
+    if ((llVecMag(p0chk-p0) > 0.01) || (llVecMag(p1chk-p1) > 0.01))        
     {   panic("Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
     }
