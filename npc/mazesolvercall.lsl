@@ -179,7 +179,8 @@ list mazesolveranswer(string jsn, integer status)
     for (i=0; i<length; i++)
     {   integer val = llList2Integer(ptsmaze,i);            // X and Y encoded into one integer
         llOwnerSay("Maze solve pt: (" + (string)mazepathx(val) + "," + (string)mazepathy(val) + ")");
-        vector cellpos = gMazePos + (<mazepathx(val), mazepathy(val), 0>*gMazeCellSize)*gMazeRot;  // center of cell in world space
+        ////vector cellpos = gMazePos + (<mazepathx(val), mazepathy(val), 0>*gMazeCellSize)*gMazeRot;  // center of cell in world space
+        vector cellpos = mazecellto3d(mazepathx(val), mazepathy(val), gMazeCellSize, gMazePos, gMazeRot);                        // convert back to 3D coords 
         ptsworld += [cellpos];                              // accum list of waypoints
     }
     return(ptsworld);
