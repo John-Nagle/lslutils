@@ -520,7 +520,7 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
 //  segment if necessary. That's so we can send multiple NPCs to the same destination
 //  and have them end up as a crowd, rather than all but one failing.
 //
-list pathendpointadjust(list pts, float width, float height)
+list pathendpointadjust(list pts, float width, float height, integer verbose)
 {
     integer n;
     if (llGetListLength(pts) == 0) { return(pts); } // empty
@@ -537,7 +537,7 @@ list pathendpointadjust(list pts, float width, float height)
             integer revix = llList2Integer(revresult,1);                        // index of point after find pt
             if (n == llGetListLength(pts)-1)                                                  // if last point, special case
             {   if (revix <= 0)
-                {   DEBUGPRINT1("Cannot find unobstructed end point anywhere near " + (string)pos); // ***TEMP***
+                {   if (verbose) { llOwnerSay("Cannot find unobstructed end point anywhere near " + (string)pos);} // ***TEMP***
                     return([]);                                                     // fails
                 }
                 DEBUGPRINT1("Replaced endpoint " + (string)pos + " with " + (string)revpt);    // ***TEMP***
@@ -549,7 +549,7 @@ list pathendpointadjust(list pts, float width, float height)
             vector fwdpt = llList2Vector(fwdresult,0);                          // new clear point in forward dir
             integer fwdix = llList2Integer(fwdresult,1);                        // index of point before find pt.
             if (fwdix <= 0 || revix <= 0)
-            {   DEBUGPRINT1("Cannot find unobstructed points anywhere near " + (string)pos); // ***TEMP***
+            {   if (verbose) { llOwnerSay("Cannot find unobstructed points anywhere near " + (string)pos); }
                 return([]);                                                     // fails
             }
             //  We now have two unobstructed points, fwdpt and revpt. Those will be connected, and will replace
