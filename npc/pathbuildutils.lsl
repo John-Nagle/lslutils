@@ -599,7 +599,7 @@ list pathclean(list path)
 //
 //  ***PROBABLY SHOULD TAKE STRIDED LIST AS INPUT WITH KNOWN OBSTRUCTIONS LISTED***
 //
-list pathcheckobstacles(list pts, float width, float height)
+list pathcheckobstacles(list pts, float width, float height, integer verbose)
 {   
     vector initialpos = llGetPos();                         // starting position
     list pathPoints = [];
@@ -650,7 +650,7 @@ list pathcheckobstacles(list pts, float width, float height)
                         }
                     }
                     if (noopenspace)                                // if could not find open space
-                    {   DEBUGPRINT1("Can't find open space between " + (string)prevpos +  " and " + (string)pos); 
+                    {   if (verbose) { llOwnerSay("Can't find open space between " + (string)prevpos +  " and " + (string)pos); }
                         return([]);                              // fails
                     }
                     //  Now do a similar backoff on the far side of the obstacle 
@@ -670,7 +670,7 @@ list pathcheckobstacles(list pts, float width, float height)
                         }
                     }
                     if (noopenspace)                                // if could not find open space
-                    {   DEBUGPRINT1("Can't find open space in reverse between " + (string)pos +  " and " + (string)prevpos); 
+                    {   if (verbose) { llOwnerSay("Can't find open space in reverse between " + (string)pos +  " and " + (string)prevpos); }
                         return([]);                              // fails
                     }
                     if (fulllength - (prevposdist + posdist) < 0.005)           // if nothing in the middle
