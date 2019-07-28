@@ -45,11 +45,22 @@ vector mazecellto3d(integer x, integer y)
     //  Now we need to scale up.
     float scale = dir*dirflat;                      // scale-down factor
     vector p = (flatlen/scale) * dir;               // scale correct dir to fit 2D X and Y. 
-#ifdef NOGOOD // This doesn't work at all
     //  Checks
-    rotation azimuthrot = llRotBetween(<1,0,0>,dirflat);   // rotation 
+    vector azimuthvec = <1,0,0>*gMazeRot;           // rotation 
+    azimuthvec = llVecNorm(<azimuthvec.x, azimuthvec.y,0.0>);
+    rotation azimuthrot = llRotBetween(<1,0,0>,azimuthvec);
     vector vflatrot = vflat*azimuthrot;             // vector in XY plane
+    //  Vflatrot has correct X and Y. Now we need Z.
+    vector planenormal = <0,0,1>*gMazeRot;          // normal to rotated plane. Plane is through origin here.
+    //  Distance from point to plane is p*planenormal.  We want that to be zero.
+    p = vflatrot;
+    //  We want p.z such that p*planenormal = 0;
+    //  want p.x*planenormal.x + p.y * planenormal.y + p.z * planenormal.z = 0
+    //  want p.x*planenormal.x + p.y * planenormal.y = -p.z * planenormal.z
+    p.z = - (p.x*planenormal.x + p.y * planenormal.y)/planenormal.z;    // planenormal.z cannot be zero unless tilted plane is vertical
     DEBUGPRINT1("mazecellto3d: x: " + (string)x + " y: " + (string)y + " p: " + (string)p + " vflatrot: " + (string)vflatrot);
+#ifdef NOGOOD // This doesn't work at all
+
     assert(llFabs(p.x - vflatrot.x) < 0.01);        // check X and Y ***WRONG***
     assert(llFabs(p.y - vflatrot.y) < 0.01);  
 #endif // NOGOOD
