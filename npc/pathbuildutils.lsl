@@ -568,10 +568,9 @@ list pathclean(list path)
 //
 //  Output is a strided list of the form [pnt, blocked, pnt, blocked ...]
 //
-//  ***NOTYET***
 //  ***PROBABLY SHOULD TAKE STRIDED LIST AS INPUT WITH KNOWN OBSTRUCTIONS LISTED***
 //
-list pathcheckobstacles(list pts)
+list pathcheckobstacles(list pts, float width, float height)
 {   
     vector initialpos = llGetPos();                         // starting position
     list pathPoints = [];
@@ -584,9 +583,10 @@ list pathcheckobstacles(list pts)
         if (prevpos != ZERO_VECTOR)                         // if not initial point
         {
             //  Check segment for obstacles
+            DEBUGPRINT1("Checking " + (string)prevpos + " to " + (string)pos + " for obstacles.");
             float fulllength = llVecMag(pos-prevpos);               // full segment length
             vector dir = llVecNorm(pos-prevpos);                    // direction of segment
-            float hitdist = castbeam(prevpos, pos, CHARRADIUS*2, CHARHEIGHT, TESTSPACING, TRUE,
+            float hitdist = castbeam(prevpos, pos, width, height, TESTSPACING, TRUE,
                     [RC_REJECT_TYPES,RC_REJECT_LAND]);
             if (hitdist < 0)
             {   llSay(DEBUG_CHANNEL,"ERROR: Cast beam error " + (string)hitdist);
@@ -600,48 +600,52 @@ list pathcheckobstacles(list pts)
                 //  That was fixed at a previous step.
                 //  Is reverse scan start point obstructed?
                 //  So we are raycasting from open space.
-                float posdist = castbeam(pos, prevpos, CHARRADIUS*2, CHARHEIGHT, TESTSPACING, TRUE,
+                float posdist = castbeam(pos, prevpos, width, height, TESTSPACING, TRUE,
                     [RC_REJECT_TYPES,RC_REJECT_LAND]);
                 //  Check for strange cases. Cell occupied and horizontal beam cast disagree. 
                 //  If not obstructed both ways, assume clear. Probably some tiny bump.
                 if (posdist != INFINITY)                        // obstacle both ways
                 {    //  Back off, looking for open space
                     integer noopenspace = TRUE;                 // no open space found yet
+                    DEBUGPRINT1("Looking for open space on near side of obstacle.");
+                    prevposdist -= width*0.5;                   // prevposdist is center of circle; we want edge
                     vector interpt0 = dir * prevposdist + prevpos;          // first intermediate point
                     while (noopenspace && prevposdist > 0)
                     {   interpt0 = dir * prevposdist + prevpos; 
                         // Check for an open cell. Search backwards from hit point.
-                        if (obstaclecheckcelloccupied(prevpos, interpt0, CHARRADIUS*2, CHARHEIGHT, TRUE))
-                        {   prevposdist = prevposdist - CHARRADIUS; // no open cell, back off
+                        if (obstaclecheckcelloccupied(prevpos, interpt0, width, height, TRUE))
+                        {   prevposdist = prevposdist - width; // no open cell, back off
                             if (prevposdist < 0) { prevposdist = 0; }
                         } else { 
                             noopenspace = FALSE;                    // found a good open cell
                         }
                     }
                     if (noopenspace)                                // if could not find open space
-                    {   llOwnerSay("Can't find open space between " + (string)prevpos +  " and " + (string)pos); 
+                    {   DEBUGPRINT1("Can't find open space between " + (string)prevpos +  " and " + (string)pos); 
                         return([]);                              // fails
                     }
-                    //  Now do a similar backoff on the far side of the obstacle                
+                    //  Now do a similar backoff on the far side of the obstacle 
+                    DEBUGPRINT1("Looking for open space on far side of obstacle.");
+                    posdist -= (width*0.5);                         // posdist is center; we want edge of circle              
                     vector interpt1 = -dir * posdist + pos; 
                     noopenspace = TRUE;                             // no open space found yet
                     while (noopenspace && posdist > 0)
                     {   interpt1 = -dir * posdist + pos;            // search forwards from hit pt
                         // Check for an open cell.
-                        if (obstaclecheckcelloccupied(prevpos, interpt1, CHARRADIUS*2, CHARHEIGHT, TRUE))
-                        {   llOwnerSay("No open cell at " + (string)interpt1); // ***TEMP***
-                            posdist = posdist - CHARRADIUS;         // no open cell, back off
+                        if (obstaclecheckcelloccupied(prevpos, interpt1, width, height, TRUE))
+                        {   DEBUGPRINT1("No open cell at " + (string)interpt1); // ***TEMP***
+                            posdist = posdist - width;       // no open cell, back off
                             if (posdist < 0) { posdist = 0; }
                         } else { 
                             noopenspace = FALSE;                    // found a good open cell
                         }
                     }
                     if (noopenspace)                                // if could not find open space
-                    {   llOwnerSay("Can't find open space in reverse between " + (string)pos +  " and " + (string)prevpos); 
+                    {   DEBUGPRINT1("Can't find open space in reverse between " + (string)pos +  " and " + (string)prevpos); 
                         return([]);                              // fails
                     }
                     if (fulllength - (prevposdist + posdist) < 0.005)           // if nothing in the middle
-                    {   llOwnerSay("Segment from " + (string)prevpos + " to " + (string)pos + " with obstruction at " +
+                    {   DEBUGPRINT1("Segment from " + (string)prevpos + " to " + (string)pos + " with obstruction at " +
                             (string)(prevpos + dir * hitdist) + "has inconsistent hits when tested from both ends.");
                         //  2 segment case, with second one bad
                         pathPoints += [prevpos, TRUE, interpt0, FALSE];
