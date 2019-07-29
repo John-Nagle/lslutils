@@ -511,6 +511,37 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
 #endif // OBSOLETE
 }
 //
+//  pathendtrim -- trim path at end if the end is obstructed.
+//
+//  This gives us a "best effort" path, going as far as we can.
+//
+list pathendtrim(list pts, float width, float height, integer verbose)
+{   DEBUGPRINT1("Path end trim.");
+    integer n = llGetListLength(pts);                               // working backwards from end
+    if (n < 2) { return(pts); }                                     // empty
+    n = n-1;                                                        // last 2 points
+    vector pos = llList2Vector(pts,n);                              // last point
+    vector prevpos = llList2Vector(pts,n-1);                        // previous point
+    if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE)) // is end obstructed?    
+    {   DEBUGPRINT1("Path end " + (string)pos + " is clear.");
+        return(pts);                                                 // no, no problem
+    }
+    DEBUGPRINT1("Path endpoint #" + (string)n + " obstructed at " + (string)pos);   
+    //  We are going to have to move the endpoint.
+    //  Find unobstructed points in the previous and next segments.
+    //  Replace obstructed point with those two points.
+    list revresult = pathfindunobstructed(pts,n,-1, width, height);     // search backwards
+    vector revpt = llList2Vector(revresult,0);                          // new clear point in reverse dir
+    integer revix = llList2Integer(revresult,1);                        // index of point after find pt         
+    if (revix <= 0)
+    {   if (verbose) { llOwnerSay("Cannot find unobstructed end point anywhere near " + (string)pos);} 
+        return([]);                                                     // fails
+    }
+    DEBUGPRINT1("Replaced path endpoint " + (string)pos + " with " + (string)revpt + " replacing [" + (string)(revix) + ":" + (string)n + "]");
+    pts = llListReplaceList(pts,[revpt],revix,n);                     // replace endpoint
+    return(pts);                                                        // result
+}
+//
 //  pathendpointadjust -- make sure the endpoint of each path segment is clear.
 //
 //  The next phase of processing requires this. We can only do a maze solve if
@@ -528,23 +559,25 @@ list pathendpointadjust(list pts, float width, float height, integer verbose)
     {   vector pos = llList2Vector(pts,n);
         vector prevpos = llList2Vector(pts,n-1);                                // previous point
         if (obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))       // if obstacle at endpoint
-        {   DEBUGPRINT1("Path segment endpoint #" + (string)n + " obstructed at " + (string)pos);   // ***TEMP***
+        {   DEBUGPRINT1("Path segment point #" + (string)n + " obstructed at " + (string)pos);   // ***TEMP***
             //  We are going to have to move an endpoint.
             //  Find unobstructed points in the previous and next segments.
             //  Replace obstructed point with those two points.
             list revresult = pathfindunobstructed(pts,n,-1, width, height);     // search backwards
             vector revpt = llList2Vector(revresult,0);                          // new clear point in reverse dir
             integer revix = llList2Integer(revresult,1);                        // index of point after find pt
+#ifdef OBSOLETE // handled in pathendtrim
             if (n == llGetListLength(pts)-1)                                                  // if last point, special case
             {   if (revix <= 0)
-                {   if (verbose) { llOwnerSay("Cannot find unobstructed end point anywhere near " + (string)pos);} // ***TEMP***
+                {   if (verbose) { llOwnerSay("Cannot find unobstructed point anywhere near " + (string)pos);} // ***TEMP***
                     return([]);                                                     // fails
                 }
-                DEBUGPRINT1("Replaced endpoint " + (string)pos + " with " + (string)revpt);    // ***TEMP***
+                DEBUGPRINT1("Replaced point " + (string)pos + " with " + (string)revpt);    // ***TEMP***
                 pts = llListReplaceList(pts,[revpt],n,n);                       // replace endpoint
                 return(pts);                                                    // result
             
             }
+#endif // OBSOLETE
             list fwdresult = pathfindunobstructed(pts,n, 1, width, height);     // search forwards
             vector fwdpt = llList2Vector(fwdresult,0);                          // new clear point in forward dir
             integer fwdix = llList2Integer(fwdresult,1);                        // index of point before find pt.
