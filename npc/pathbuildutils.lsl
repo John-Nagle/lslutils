@@ -402,11 +402,13 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
     float numer = llSqrt(numersq);                   // must be nonnegative
     ////float movedistflat = (-b + numer) / (2*a);       // the larger quadatic solution.
     float movedistflat = (-b - numer) / (2*a);       // the smaller quadatic solution.
+#ifdef OBSOLETE
     DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((endptflat - (pntflat+dirflat*movedistflat)() : " 
         + (string) llFabs(llVecMag((endptflat - (pntflat+dirflat*movedistflat)))) 
         + " unit cells: " + (string)unitcells + " cell size: " + (string)cellsize + " pntflat: " + (string)pntflat + " endpflat: "
         + (string)endptflat +  " p0: " + (string)p0 + " dirflat: " + (string)dirflat + " movedistflat: "  
         + (string)movedistflat);
+#endif // OBSOLETE
     assert(llFabs(a*movedistflat*movedistflat + b*movedistflat + c) < 0.001);   // quadratic equation check
     movedistflat = -movedistflat;                   // ***NOT SURE ABOUT THIS***
     if (movedistflat < 0) { return(NAN); }
@@ -449,7 +451,7 @@ list pathfindunobstructed2(list pts, integer ix, integer fwd, float width, float
         if (distalongseg > vlen)                // if hit end of segment
         {   ix = ix + fwd;                      // advance one seg in desired dir
             if (ix + fwd >= length || ix + fwd < 0) // end of entire path without find
-            {   DEBUGPRINT1("Fail: no unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
+            {   DEBUGPRINT1("Fail: no clear point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
                 return([ZERO_VECTOR,-1]);       // hit end of path without find, fails
             }
             distalongseg = pathcalccellmovedist(p0, dir, endpt, width, 0);
@@ -458,7 +460,7 @@ list pathfindunobstructed2(list pts, integer ix, integer fwd, float width, float
         } else {                                // did not hit end of segment
             DEBUGPRINT1("Trying point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
             if (!obstaclecheckcelloccupied(p0, pos, width, height, TRUE))
-            {   DEBUGPRINT("Found unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd); 
+            {   DEBUGPRINT("Found clear point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd); 
                 return([pos,ix]);               // found an open spot
             }
             distalongseg = pathcalccellmovedist(p0, dir, endpt, width, distalongseg); // integral number of widths from endpt
@@ -500,7 +502,7 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
         } else {
             DEBUGPRINT1("Trying point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
             if (!obstaclecheckcelloccupied(p0, pos, width, height, TRUE))
-            {   DEBUGPRINT("Found unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd); 
+            {   DEBUGPRINT("Found clear point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd); 
                 return([pos,ix]);                  // found an open spot
             }
             distalongseg += width;              // advance to next spot to try
@@ -516,14 +518,14 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
 //  This gives us a "best effort" path, going as far as we can.
 //
 list pathendtrim(list pts, float width, float height, integer verbose)
-{   DEBUGPRINT1("Path end trim.");
+{   ////DEBUGPRINT1("Path end trim.");
     integer n = llGetListLength(pts);                               // working backwards from end
     if (n < 2) { return(pts); }                                     // empty
     n = n-1;                                                        // last 2 points
     vector pos = llList2Vector(pts,n);                              // last point
     vector prevpos = llList2Vector(pts,n-1);                        // previous point
     if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE)) // is end obstructed?    
-    {   DEBUGPRINT1("Path end " + (string)pos + " is clear.");
+    {   ////DEBUGPRINT1("Path end " + (string)pos + " is clear.");
         return(pts);                                                 // no, no problem
     }
     DEBUGPRINT1("Path endpoint #" + (string)n + " obstructed at " + (string)pos);   
@@ -569,7 +571,7 @@ list pathendpointadjust(list pts, float width, float height, integer verbose)
 #ifdef OBSOLETE // handled in pathendtrim
             if (n == llGetListLength(pts)-1)                                                  // if last point, special case
             {   if (revix <= 0)
-                {   if (verbose) { llOwnerSay("Cannot find unobstructed point anywhere near " + (string)pos);} // ***TEMP***
+                {   if (verbose) { llOwnerSay("No clear point anywhere near " + (string)pos);} // ***TEMP***
                     return([]);                                                     // fails
                 }
                 DEBUGPRINT1("Replaced point " + (string)pos + " with " + (string)revpt);    // ***TEMP***
@@ -582,7 +584,7 @@ list pathendpointadjust(list pts, float width, float height, integer verbose)
             vector fwdpt = llList2Vector(fwdresult,0);                          // new clear point in forward dir
             integer fwdix = llList2Integer(fwdresult,1);                        // index of point before find pt.
             if (fwdix <= 0 || revix <= 0)
-            {   if (verbose) { llOwnerSay("Cannot find unobstructed points anywhere near " + (string)pos); }
+            {   if (verbose) { llOwnerSay("No clear points anywhere near " + (string)pos); }
                 return([]);                                                     // fails
             }
             //  We now have two unobstructed points, fwdpt and revpt. Those will be connected, and will replace
