@@ -633,6 +633,7 @@ list pathclean(list path)
 //  Output is a strided list of the form [pnt, blocked, pnt, blocked ...]
 //
 //  ***PROBABLY SHOULD TAKE STRIDED LIST AS INPUT WITH KNOWN OBSTRUCTIONS LISTED***
+//  ***FAILS ON VERY SHORT SEGMENTS WHERE A MOVE TO AN ADJACENT SEGMENT IS NEEDED***
 //
 list pathcheckobstacles(list pts, float width, float height, integer verbose)
 {   
