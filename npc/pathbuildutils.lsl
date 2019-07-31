@@ -755,32 +755,37 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
     list pathPoints = [];
     integer len = llGetListLength(pts);
     if (len < 2) { return([]);}                             // empty list
-    vector currentpos = llList2Vector(pts,0);               // starting position
-    vector nextpos = llList2Vector(pts,1);                  // next position
+    vector p0 = llList2Vector(pts,0);                       // starting position
+    vector p1 = llList2Vector(pts,1);                       // next position
+    float distalongseg = 0.0;                               // starting position, one extra width
     integer currentix = 0;                                  // working on segment 0
     while (TRUE)                                            // until return
     {   //  Check segment for obstacles, going forward.
-        DEBUGPRINT1("Checking " + (string)currentpos + " to " + (string)nextpos + " for obstacles.");
-        float fulllength = llVecMag(nextpos-currentpos);    // full segment length
-        vector dir = llVecNorm(nextpos-currentpos);                // direction of segment
-        float hitdist = castbeam(currentpos, nextpos, width, height, TESTSPACING, TRUE,
+        float fulllength = llVecMag(p1-p0);                 // full segment length
+        vector dir = llVecNorm(p1-p0);                      // direction of segment
+        vector pos = p0 + dir*distalongseg;                 // current working position
+        DEBUGPRINT1("Checking " + (string)pos + " to " + (string)p1 + " for obstacles.");
+        float hitdist = castbeam(pos, p1, width, height, TESTSPACING, TRUE,
                     [RC_REJECT_TYPES,RC_REJECT_LAND]);
         if (hitdist < 0)
         {   llSay(DEBUG_CHANNEL,"ERROR: Cast beam error " + (string)hitdist);
             return([]);                                          // failure
         }    
-        if (hitdist == INFINITY)                            // conmpletely clear segment
+        if (hitdist == INFINITY)                            // completely clear segment
         {
-            pathPoints += [currentpos, TRUE];               // completely empty segment
+            pathPoints += [pos, TRUE];                      // completely empty segment
             currentix += 1;                                 // advance to next segment
             if (currentix >= len)                           // done
-            {   pathPoints += [nextpos, TRUE];              // finish off final segment
+            {   pathPoints += [p1, TRUE];                   // finish off final segment
                 return(pathPoints);                         // return strided list of path segments
             }
+            p0 = llList2Vector(pts,currentix);              // starting position in new segment
+            p1 = llList2Vector(pts,currentix+1);            // next position
+            distalongseg = 0.0;                             // starting new segment
         } else {                                            // there is an obstruction 
-            ////vector interpt0 = currentpos + dir*hitdist;     // obstacle here 
+            ////vector interpt0 = p0 + dir*hitdist;     // obstacle here 
             //  ***THIS NEEDS TO WORK BACKWARDS PROPERLY AT CORNERS AND CHECK FOR CLEAR SPACE***
-            vector interpt0 = currentpos + dir*(hitdist-width*0.5);     // just clear of obstacle here  
+            vector interpt0 = p0 + dir*(hitdist-width*0.5);     // just clear of obstacle here  
             if (verbose) { llOwnerSay("Hit obstacle at " + (string) interpt0); }
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for open space on far side of obstacle.");
@@ -791,15 +796,18 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             }
             //  Found point on far side, we have something for the maze solver.
             vector interpt1 = llList2Vector(obsendinfo,0);   // clear position on far side
-            pathPoints += [currentpos, TRUE, interpt0, FALSE, interpt1, TRUE];
             integer interp1ix = llList2Integer(obsendinfo,1);     // in this segment
+            if (verbose) { llOwnerSay("Found open space at segment #" + (string) interp1ix + " " + (string)interpt1); }
+            pathPoints += [p0, TRUE, interpt0, FALSE, interpt1, TRUE];
             if (llVecMag(interpt1 - llList2Vector(pts,len-1)) < 0.01)  // if at final destination
             {   return(pathPoints);  }                          // done, return strided list of path segments
             assert(interp1ix < len-1);                          // ix must never pass beginning of last segment
             //  Forward progress check to prevent infinite loop. Must either advance segment, or be further from start of current segment.
-            assert(interp1ix > currentix || (llVecMag(llList2Vector(pts, currentix) - currentpos) < llVecMag(llList2Vector(pts, currentix) - interpt1)));
+            assert(interp1ix > currentix || (llVecMag(llList2Vector(pts, currentix) - p0) < llVecMag(llList2Vector(pts, currentix) - interpt1)));
             currentix = interp1ix;                              // continue from point just found
-            currentpos = interpt1;                              // continue from here
+            p0 = llList2Vector(pts,currentix);                  // starting position in new segment
+            p1 = llList2Vector(pts,currentix+1);                // next position
+            distalongseg = llVecMag(interpt1 - p0);             // how far along seg
         }
     }
     return([]);                                                 // unreachable
@@ -844,7 +852,7 @@ list pathfindclearspace(list pts, vector pos, integer obstacleix, float width, f
         //  Test the new point.  This test is not airtight because we are not testing from open space.
         //  May need further checks here.
         if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))
-        {   if (verbose) { llOwnerSay("Found open space at segment #" + (string) currentix + " " + (string)pos); }
+        {   
             return([pos,currentix]);                                // success, found open space
         }
     }
