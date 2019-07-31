@@ -624,7 +624,7 @@ list pathclean(list path)
     newpath += llList2Vector(path,-1);                      // always include final point
     return(newpath);                                        // cleaned up path
 }
-
+#ifdef OBSOLETE
 //
 //  pathcheckobstacles -- check a path for obstacles.
 //
@@ -731,6 +731,121 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
     }
     pathPoints += [llList2Vector(pts,-1), llList2Integer(pathPoints,-1)];         // use status from last segment as dummy.
     return(pathPoints);
+}
+#endif // OBSOLETE
+//
+//  pathcheckobstacles -- check a path for obstacles.
+//
+//  Output is a strided list of the form [pnt, unblocked, pnt, unblocked ...]
+//
+//  (Replaces pathcheckobstacles and pathendpointadjust.)
+//
+//  Input conditions - first and last point are unobstructed. That's all we know.
+//
+//  All points must be unobstructed. Obstructed points must be marked as 
+//  ends of blocked segments. Blocked segments must be at least 2 widths long,
+//  so the maze solver can run.
+//
+//  ***UNTESTED*** 
+//
+list pathcheckobstacles(list pts, float width, float height, integer verbose)
+{   
+    list pathPoints = [];
+    integer i;
+    integer len = llGetListLength(pts);
+    if (len < 2) { return([]);}                             // empty list
+    vector currentpos = llList2Vector(pts,0);               // starting position
+    vector nextpos = llList2Vector(pts,1);                  // next position
+    integer currentix = 0;                                  // working on segment 0
+    while (TRUE)                                            // until return
+    {   //  Check segment for obstacles, going forward.
+        DEBUGPRINT1("Checking " + (string)currentpos + " to " + (string)nextpos + " for obstacles.");
+        float fulllength = llVecMag(nextpos-currentpos);    // full segment length
+        vector dir = llVecNorm(nextpos-currentpos);                // direction of segment
+        float hitdist = castbeam(currentpos, nextpos, width, height, TESTSPACING, TRUE,
+                    [RC_REJECT_TYPES,RC_REJECT_LAND]);
+        if (hitdist < 0)
+        {   llSay(DEBUG_CHANNEL,"ERROR: Cast beam error " + (string)hitdist);
+            return([]);                                          // failure
+        }    
+        if (hitdist == INFINITY)                            // conmpletely clear segment
+        {
+            pathPoints += [currentpos, TRUE];               // completely empty segment
+            currentix += 1;                                 // advance to next segment
+            if (currentix >= len)                           // done
+            {   pathPoints += [nextpos, TRUE];              // finish off final segment
+                return(pathPoints);                         // return strided list of path segments
+            }
+        } else {                                            // there is an obstruction 
+            vector interpt0 = currentpos + dir*hitdist;     // obstacle here  
+            if (verbose) { llOwnerSay("Hit obstacle at " + (string) interpt0); }
+            //  Search for the other side of the obstacle.                     
+            DEBUGPRINT1("Looking for open space on far side of obstacle.");
+            list obsendinfo = pathfindclearspace(pts, interpt0, currentix, width, height, verbose);    // find far side of obstacle
+            if (llGetListLength(obsendinfo) < 2)
+            {   if (verbose) { llOwnerSay("Cannot find open space after obstacle at " + (string)interpt0 + " on segment #" + (string)(i-1));}
+                return([]);
+            }
+            //  Found point on far side, we have something for the maze solver.
+            vector interpt1 = llList2Vector(obsendinfo,0);   // clear position on far side
+            pathPoints += [currentpos, TRUE, interpt0, FALSE, interpt1, TRUE];
+            integer interp1ix = llList2Integer(obsendinfo,1);     // in this segment
+            if (llVecMag(interpt1 - llList2Vector(pts,len-1)) < 0.01)  // if at final destination
+            {   return(pathPoints);  }                          // done, return strided list of path segments
+            assert(interp1ix < len-1);                          // ix must never pass beginning of last segment
+            //  Forward progress check to prevent infinite loop. Must either advance segment, or be further from start of current segment.
+            assert(interp1ix > currentix || (llVecMag(llList2Vector(pts, currentix) - currentpos) < llVecMag(llList2Vector(pts, currentix) - interpt1)));
+            currentix = interp1ix;                              // continue from point just found
+            currentpos = interpt1;                              // continue from here
+        }
+    }
+    return([]);                                                 // unreachable
+}
+//
+//  pathfindclearspace -- find clear space after obstacle
+//
+//  Returns [pos, segmentid] or [] if fail.
+//
+//  This is very difficult, if not impossible, to do perfectly.
+//  llCastRay will not tell us if the starting position is inside an obstacle. So there's some guessing involved.
+//  If we guess wrong, the problem will be detected when the character follows the path.
+//
+list pathfindclearspace(list pts, vector pos, integer obstacleix, float width, float height, integer verbose)
+{
+    //  Dumb version. Just try the same check the maze solver uses, advancing along the path, until we find open space.
+    integer len = llGetListLength(pts);
+    vector p0 = llList2Vector(pts,obstacleix);
+    vector p1 = llList2Vector(pts,obstacleix+1);
+    vector prevpos = pos;                                           // need current and previous points
+    //  Starting position is one extra width from start to provide some separation between start and finish."
+    float distalongseg = llVecMag(pos - p0) + width;                // starting position, one extra width
+    float seglength = llVecMag(p1-p0);
+    integer currentix = obstacleix;                                 // working on segment 0
+    while (TRUE)
+    {   //  Advance one width
+        distalongseg = distalongseg + width;                        // advance one width
+        prevpos = pos;
+        if (distalongseg > seglength)                               // if reached end of segment
+        {   if (currentix >= len-2)                                 // must be able to advance
+            {   if (verbose) { llOwnerSay("Reached end of path without finding open space."); }
+                return([]);                                         // reached end with no find
+            }
+            currentix += 1;                                         // start next segment
+            distalongseg = 0.0;                                     // start at next seg point, although arguably should advance around corner
+        }
+        p0 = llList2Vector(pts,currentix);
+        p1 = llList2Vector(pts,currentix+1);
+        seglength = llVecMag(p1-p0);                                // current segment length
+        vector dir = llVecNorm(p1-p0);
+        pos = p0+dir*distalongseg;                                 // next point to try
+        //  Test the new point.  This test is not airtight because we are not testing from open space.
+        //  May need further checks here.
+        if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))
+        {   if (verbose) { llOwnerSay("Found open space at segment #" + (string) currentix + " " + (string)pos); }
+            return([pos,currentix]);                                // success, found open space
+        }
+    }
+    return([]);                                                     // unreachable  
 }
 #endif // PATHBUILDUTILSLSL
 
