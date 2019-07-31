@@ -755,6 +755,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
     list pathPoints = [];
     integer len = llGetListLength(pts);
     if (len < 2) { return([]);}                             // empty list
+    DEBUGPRINT1("path check for obstacles. Segments: " + (string)len); // ***TEMP***
     vector p0 = llList2Vector(pts,0);                       // starting position
     vector p1 = llList2Vector(pts,1);                       // next position
     float distalongseg = 0.0;                               // starting position, one extra width
@@ -775,7 +776,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
         {
             pathPoints += [pos, TRUE];                      // completely empty segment
             currentix += 1;                                 // advance to next segment
-            if (currentix >= len)                           // done
+            if (currentix >= len-1)                         // done
             {   pathPoints += [p1, TRUE];                   // finish off final segment
                 return(pathPoints);                         // return strided list of path segments
             }
@@ -786,7 +787,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             ////vector interpt0 = p0 + dir*hitdist;     // obstacle here 
             //  ***THIS NEEDS TO WORK BACKWARDS PROPERLY AT CORNERS AND CHECK FOR CLEAR SPACE***
             vector interpt0 = p0 + dir*(hitdist-width*0.5);     // just clear of obstacle here  
-            if (verbose) { llOwnerSay("Hit obstacle at " + (string) interpt0); }
+            if (verbose) { llOwnerSay("Hit obstacle at segment #" + (string)currentix + " " + (string) interpt0); }
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for open space on far side of obstacle.");
             list obsendinfo = pathfindclearspace(pts, interpt0, currentix, width, height, verbose);    // find far side of obstacle
