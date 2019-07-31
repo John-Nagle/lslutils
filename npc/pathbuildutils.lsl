@@ -746,12 +746,13 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
 //  ends of blocked segments. Blocked segments must be at least 2 widths long,
 //  so the maze solver can run.
 //
+//  ***NEEDS TO MOVE OBSTACLE POINTS CLEAR OF OBSTACLE***
+//
 //  ***UNTESTED*** 
 //
 list pathcheckobstacles(list pts, float width, float height, integer verbose)
 {   
     list pathPoints = [];
-    integer i;
     integer len = llGetListLength(pts);
     if (len < 2) { return([]);}                             // empty list
     vector currentpos = llList2Vector(pts,0);               // starting position
@@ -777,13 +778,15 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
                 return(pathPoints);                         // return strided list of path segments
             }
         } else {                                            // there is an obstruction 
-            vector interpt0 = currentpos + dir*hitdist;     // obstacle here  
+            ////vector interpt0 = currentpos + dir*hitdist;     // obstacle here 
+            //  ***THIS NEEDS TO WORK BACKWARDS PROPERLY AT CORNERS AND CHECK FOR CLEAR SPACE***
+            vector interpt0 = currentpos + dir*(hitdist-width*0.5);     // just clear of obstacle here  
             if (verbose) { llOwnerSay("Hit obstacle at " + (string) interpt0); }
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for open space on far side of obstacle.");
             list obsendinfo = pathfindclearspace(pts, interpt0, currentix, width, height, verbose);    // find far side of obstacle
             if (llGetListLength(obsendinfo) < 2)
-            {   if (verbose) { llOwnerSay("Cannot find open space after obstacle at " + (string)interpt0 + " on segment #" + (string)(i-1));}
+            {   if (verbose) { llOwnerSay("Cannot find open space after obstacle at " + (string)interpt0 + " on segment #" + (string)(currentix-1));}
                 return([]);
             }
             //  Found point on far side, we have something for the maze solver.
