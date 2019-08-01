@@ -789,7 +789,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
         } else {                                            // there is an obstruction 
             ////vector interpt0 = p0 + dir*hitdist;     // obstacle here 
             //  ***THIS NEEDS TO WORK BACKWARDS PROPERLY AT CORNERS AND CHECK FOR CLEAR SPACE***
-            vector interpt0 = p0 + dir*(hitdist-width*0.5);     // just clear of obstacle here  
+            vector interpt0 = p0 + dir*(hitdist-width);     // just clear of obstacle here  
             if (verbose) { llOwnerSay("Hit obstacle at segment #" + (string)currentix + " " + (string) interpt0); }
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for open space on far side of obstacle.");
