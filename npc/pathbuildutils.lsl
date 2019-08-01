@@ -253,51 +253,52 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     vector pd = p1 - (dir*(width*0.5));                     // "behind" point 
     DEBUGPRINT1("Cell occupied check: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
     list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
-    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); } // cell is occupied
+    if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }  // must hit walkable   
     //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
-    castresult = castray(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>,[]); // Horizontal cast at mid height, any hit is bad
-    if (mazecasthitanything(castresult) && !mazecasthitonlywalkable(castresult)) { return(TRUE); }  // if any hits, fail
+    castresult = castray(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>,[]); // Horizontal cast at mid height, any non walkable hit is bad
+    if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
     castresult = castray(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>,[]); // Horizontal cast near ground level, any non walkable hit is bad
-    if (mazecasthitanything(castresult) && !mazecasthitonlywalkable(castresult)) { return(TRUE); }  // if any non walkable hit, fail
+    if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
     castresult = castray(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>,[]); // Horizontal cast at full height, any hit is bad
-    if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
+    if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
 
     //  Crosswise horizontal check.
     castresult = castray(pa+<0,0,height*0.5>,pb+<0,0,height*0.5>,[]); // Horizontal cast, any hit is bad
-    if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail    
+    if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
     //  Center of cell is clear and walkable. Now check upwards at front and side.
     //  The idea is to check at points that are on a circle of diameter "width"
     DEBUGPRINT1("Obstacle check if cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " width: " + (string)width + " height: " + (string)height);     // ***TEMP***
     //  Downward ray casts only.  Must hit a walkable.   
     castresult = castray(pa+<0,0,height>,pa-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable
-    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }// if any non-walkable hits, fail
+    if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }// if any non-walkable hits, fail
     castresult = castray(pb+<0,0,height>,pb-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable
-    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
+    if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }    // if any non-walkable hits, fail
     castresult = castray(pc+<0,0,height>,pc-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable
-    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
+    if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }    // if any non-walkable hits, fail
     castresult = castray(pd+<0,0,height>,pc-<0,0,mazedepthmargin>,[]); // cast at steep angle, must hit walkable
-    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
+    if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }    // if any non-walkable hits, fail
     if (!dobackcorners) 
     {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
         return(FALSE); 
     }
     //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
     castresult = castray(pd+<0,0,height>,pd-<0,0,MAZEBELOWGNDTOL>,[]); // cast upwards, no land check
-    if (!mazecasthitonlywalkable(castresult)) { return(TRUE); }    // if any non-walkable hits, fail
+    if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }    // if any non-walkable hits, fail
     DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
     return(FALSE);                                               // success, no obstacle
 }
 //
 //  mazecasthitonlywalkable  -- true if cast ray hit a walkable, only. Used for downward casts
 //
-integer mazecasthitonlywalkable(list castresult)
+integer mazecasthitonlywalkable(list castresult, integer nohitval)
 {
     integer status = llList2Integer(castresult, -1);        // status is last element in list
     if (status < 0)
     {   DEBUGPRINT1("Cast ray error status: " + (string)status);
         return(FALSE);                                      // fails, unlikely       
     }
-    if (status != 1) { return(FALSE); }                     // hit nothing, fails
+    if (status == 0) { return(nohitval); }                  // hit nothing, use no hit value
+    if (status != 1) { return(FALSE); }                     // problem, fails
     vector hitpt = llList2Vector(castresult, 1);            // get point of hit
     key hitobj = llList2Key(castresult, 0);                 // get object hit
     if (hitobj == NULL_KEY) { return(TRUE); }               // null key is land, that's OK
@@ -309,8 +310,9 @@ integer mazecasthitonlywalkable(list castresult)
     }
     return(TRUE);                                           // hit only a walkable - good.    
 }
+#ifdef OBSOLETE
 //
-//  mazecasthitanything  -- true if cast ray hit a walkable, only. Used for downward casts
+//  mazecasthitanything  -- true if cast ray hit anything at all.  Used for horizontal casts. 
 //
 integer mazecasthitanything(list castresult)
 {
@@ -318,6 +320,7 @@ integer mazecasthitanything(list castresult)
     if (status == 0) { return(FALSE); }                     // hit nothing, good
     return(TRUE);                                           // hit something, bad    
 }
+#endif // OBSOLETE
 //
 //  pathcalccellmovedist 
 //
