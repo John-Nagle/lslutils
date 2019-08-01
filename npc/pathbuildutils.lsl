@@ -20,6 +20,10 @@ float PATHCHECKTOL = 0.02;                                  // allow 2cm colline
 #ifndef INFINITY                                            // should be an LSL builtin
 #define INFINITY ((float)"inf")                             // is there a better way?
 #endif // INFINITY
+#ifndef NAN
+#define NAN ((float)"nan")
+#endif // 
+
 
 //
 //  
@@ -376,9 +380,6 @@ integer mazecasthitanything(list castresult)
 //  It's really finding a point which is on an XY plane circle centered at endpt and an
 //  integral number of widths from it, and also on the line from pnt along vector dist.
 //
-#ifndef NAN
-#define NAN ((float)"nan")
-#endif // 
 //
 float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsize, float prevdist3d)
 {
@@ -430,8 +431,6 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
 //  This is inefficient but seldom used.
 //
 //  Attempts to move the point to another point which is an integral number of widths from endpt.
-//
-//  ***UNTESTED***
 //
 //
 list pathfindunobstructed2(list pts, integer ix, integer fwd, float width, float height, vector endpt)
@@ -546,6 +545,7 @@ list pathendtrim(list pts, float width, float height, integer verbose)
     pts = llListReplaceList(pts,[revpt],revix,n);                     // replace endpoint
     return(pts);                                                        // result
 }
+#ifdef OBSOLETE2
 //
 //  pathendpointadjust -- make sure the endpoint of each path segment is clear.
 //
@@ -571,18 +571,6 @@ list pathendpointadjust(list pts, float width, float height, integer verbose)
             list revresult = pathfindunobstructed(pts,n,-1, width, height);     // search backwards
             vector revpt = llList2Vector(revresult,0);                          // new clear point in reverse dir
             integer revix = llList2Integer(revresult,1);                        // index of point after find pt
-#ifdef OBSOLETE // handled in pathendtrim
-            if (n == llGetListLength(pts)-1)                                                  // if last point, special case
-            {   if (revix <= 0)
-                {   if (verbose) { llOwnerSay("No clear point anywhere near " + (string)pos);} // ***TEMP***
-                    return([]);                                                     // fails
-                }
-                DEBUGPRINT1("Replaced point " + (string)pos + " with " + (string)revpt);    // ***TEMP***
-                pts = llListReplaceList(pts,[revpt],n,n);                       // replace endpoint
-                return(pts);                                                    // result
-            
-            }
-#endif // OBSOLETE
             list fwdresult = pathfindunobstructed(pts,n, 1, width, height);     // search forwards
             vector fwdpt = llList2Vector(fwdresult,0);                          // new clear point in forward dir
             integer fwdix = llList2Integer(fwdresult,1);                        // index of point before find pt.
@@ -606,6 +594,7 @@ list pathendpointadjust(list pts, float width, float height, integer verbose)
     }
     return(pts);
 }
+#endif // OBSOLETE2
 //
 //  pathclean - remove very short segments from path. llGetStaticPath has a problem with this.
 //
@@ -627,115 +616,6 @@ list pathclean(list path)
     newpath += llList2Vector(path,-1);                      // always include final point
     return(newpath);                                        // cleaned up path
 }
-#ifdef OBSOLETE
-//
-//  pathcheckobstacles -- check a path for obstacles.
-//
-//  The points on the incoming path should be unobstructed.
-//
-//  Output is a strided list of the form [pnt, blocked, pnt, blocked ...]
-//
-//  ***PROBABLY SHOULD TAKE STRIDED LIST AS INPUT WITH KNOWN OBSTRUCTIONS LISTED***
-//  ***FAILS ON VERY SHORT SEGMENTS WHERE A MOVE TO AN ADJACENT SEGMENT IS NEEDED***
-//
-list pathcheckobstacles(list pts, float width, float height, integer verbose)
-{   
-    vector initialpos = llGetPos();                         // starting position
-    list pathPoints = [];
-    integer i;
-    integer len = llGetListLength(pts);
-    vector prevpos = ZERO_VECTOR;                           // other end of 
-    for (i=0; i< len; i++)
-    {   vector pos = llList2Vector(pts, i);                 // nth point
-        //  Place line
-        if (prevpos != ZERO_VECTOR)                         // if not initial point
-        {
-            //  Check segment for obstacles
-            DEBUGPRINT1("Checking " + (string)prevpos + " to " + (string)pos + " for obstacles.");
-            float fulllength = llVecMag(pos-prevpos);               // full segment length
-            vector dir = llVecNorm(pos-prevpos);                    // direction of segment
-            float hitdist = castbeam(prevpos, pos, width, height, TESTSPACING, TRUE,
-                    [RC_REJECT_TYPES,RC_REJECT_LAND]);
-            if (hitdist < 0)
-            {   llSay(DEBUG_CHANNEL,"ERROR: Cast beam error " + (string)hitdist);
-                return([]);                                          // failure
-            }
-            if (hitdist != INFINITY)                                    // if meaningful hit distance
-            {   llOwnerSay("Hit obstacle at " + (string) (prevpos + dir * hitdist)); 
-                //  Need to subdivide vector into 3 vectors - 2 clear ones, and one obstructed one in the middle.
-                float prevposdist = hitdist;                            // begin to first hit
-                //  Search from other end. Other endpoint should be unobstructed.
-                //  That was fixed at a previous step.
-                //  Is reverse scan start point obstructed?
-                //  So we are raycasting from open space.
-                float posdist = castbeam(pos, prevpos, width, height, TESTSPACING, TRUE,
-                    [RC_REJECT_TYPES,RC_REJECT_LAND]);
-                //  Check for strange cases. Cell occupied and horizontal beam cast disagree. 
-                //  If not obstructed both ways, assume clear. Probably some tiny bump.
-                if (posdist != INFINITY)                        // obstacle both ways
-                {    //  Back off, looking for open space
-                    integer noopenspace = TRUE;                 // no open space found yet
-                    DEBUGPRINT1("Looking for open space on near side of obstacle.");
-                    prevposdist -= width*0.5;                   // prevposdist is center of circle; we want edge
-                    vector interpt0 = dir * prevposdist + prevpos;          // first intermediate point
-                    while (noopenspace && prevposdist > 0)
-                    {   interpt0 = dir * prevposdist + prevpos; 
-                        // Check for an open cell. Search backwards from hit point.
-                        if (obstaclecheckcelloccupied(prevpos, interpt0, width, height, TRUE))
-                        {   prevposdist = prevposdist - width; // no open cell, back off
-                            if (prevposdist < 0) { prevposdist = 0; }
-                        } else { 
-                            noopenspace = FALSE;                    // found a good open cell
-                        }
-                    }
-                    if (noopenspace)                                // if could not find open space
-                    {   if (verbose) { llOwnerSay("Can't find open space between " + (string)prevpos +  " and " + (string)pos); }
-                        return([]);                              // fails
-                    }
-                    //  Now do a similar backoff on the far side of the obstacle 
-                    DEBUGPRINT1("Looking for open space on far side of obstacle.");
-                    posdist -= (width*0.5);                         // posdist is center; we want edge of circle              
-                    vector interpt1 = -dir * posdist + pos; 
-                    noopenspace = TRUE;                             // no open space found yet
-                    while (noopenspace && posdist > 0)
-                    {   interpt1 = -dir * posdist + pos;            // search forwards from hit pt
-                        // Check for an open cell.
-                        if (obstaclecheckcelloccupied(prevpos, interpt1, width, height, TRUE))
-                        {   DEBUGPRINT1("No open cell at " + (string)interpt1); // ***TEMP***
-                            posdist = posdist - width;       // no open cell, back off
-                            if (posdist < 0) { posdist = 0; }
-                        } else { 
-                            noopenspace = FALSE;                    // found a good open cell
-                        }
-                    }
-                    if (noopenspace)                                // if could not find open space
-                    {   if (verbose) { llOwnerSay("Can't find open space in reverse between " + (string)pos +  " and " + (string)prevpos); }
-                        return([]);                              // fails
-                    }
-                    if (fulllength - (prevposdist + posdist) < 0.005)           // if nothing in the middle
-                    {   DEBUGPRINT1("Segment from " + (string)prevpos + " to " + (string)pos + " with obstruction at " +
-                            (string)(prevpos + dir * hitdist) + "has inconsistent hits when tested from both ends.");
-                        //  2 segment case, with second one bad
-                        pathPoints += [prevpos, TRUE, interpt0, FALSE];
-                    } else {
-                       // 3 segment case, with obstruction in middle
-                        pathPoints += [prevpos, TRUE, interpt0, FALSE, interpt1, TRUE];
-                    }
-                } else {                                                        // no hit in reverse dir
-                    pathPoints += [prevpos, TRUE];                              // assume no hit, space clear. May be overoptimistic                  
-                }
-            } else {                                                            // no obstacle
-                //  Draw marker for segment
-                pathPoints += [prevpos, TRUE];                              // assume no hit                   
-            }
-        }
-        //  On to next point
-        prevpos = pos;
-    }
-    pathPoints += [llList2Vector(pts,-1), llList2Integer(pathPoints,-1)];         // use status from last segment as dummy.
-    return(pathPoints);
-}
-#endif // OBSOLETE
 //
 //  pathcheckobstacles -- check a path for obstacles.
 //
@@ -751,7 +631,6 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
 //
 //  ***NEEDS TO MOVE OBSTACLE POINTS CLEAR OF OBSTACLE***
 //
-//  ***UNTESTED*** 
 //
 list pathcheckobstacles(list pts, float width, float height, integer verbose)
 {   
