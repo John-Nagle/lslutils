@@ -240,7 +240,8 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
 {
     float MAZEBELOWGNDTOL = 0.20;                           // cast downwards to just below ground
     vector dv = p1-p0;                                      // direction, unnormalized
-    float mazedepthmargin = llFabs(dv.z)+MAZEBELOWGNDTOL;   // allow for sloped area, cast deeper
+    vector dvnorm = llVecNorm(dv);                          // 3D direction, normalized.
+    float mazedepthmargin = 0.5*width*llFabs(dvnorm.z)+MAZEBELOWGNDTOL;   // allow for sloped area, cast deeper
     dv.z = 0;
     vector dir = llVecNorm(dv);                             // forward direction, XY plane
     p0 = p1 - dir*(width*1.5);                              // start casts from far side of previous cell
@@ -255,9 +256,9 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     if (!mazecasthitonlywalkable(castresult)) { return(TRUE); } // cell is occupied
     //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
     castresult = castray(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>,[]); // Horizontal cast at mid height, any hit is bad
-    if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
-    castresult = castray(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>,[]); // Horizontal cast near ground level, any hit is bad
-    if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
+    if (mazecasthitanything(castresult) && !mazecasthitonlywalkable(castresult)) { return(TRUE); }  // if any hits, fail
+    castresult = castray(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>,[]); // Horizontal cast near ground level, any non walkable hit is bad
+    if (mazecasthitanything(castresult) && !mazecasthitonlywalkable(castresult)) { return(TRUE); }  // if any non walkable hit, fail
     castresult = castray(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>,[]); // Horizontal cast at full height, any hit is bad
     if (mazecasthitanything(castresult)) { return(TRUE); }  // if any hits, fail
 
@@ -367,7 +368,6 @@ integer mazecasthitanything(list castresult)
 //      b = 2*dir*dv
 //      c = dvsq - cdistsq
 //
-//  ***UNTESTED*** Math OK, but not yet in use.
 //      
 //  This is just geometry.
 //  It's really finding a point which is on an XY plane circle centered at endpt and an
