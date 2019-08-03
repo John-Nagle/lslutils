@@ -242,7 +242,7 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 //
 integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float height, integer dobackcorners)
 {
-    float MAZEBELOWGNDTOL = 0.20;                           // cast downwards to just below ground
+    float MAZEBELOWGNDTOL = 0.40;                           // cast downwards to just below ground
     vector dv = p1-p0;                                      // direction, unnormalized
     vector dvnorm = llVecNorm(dv);                          // 3D direction, normalized.
     float mazedepthmargin = 0.5*width*llFabs(dvnorm.z)+MAZEBELOWGNDTOL;   // allow for sloped area, cast deeper

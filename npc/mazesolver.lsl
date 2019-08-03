@@ -369,17 +369,19 @@ list mazeaddpttolist(list path, integer x, integer y)
 //                                                       
 integer mazetestcell(integer fromx, integer fromy, integer x, integer y)
 {
-    DEBUGPRINT("Testcell (%d,%d)" % (x,y));       // ***TEMP***
     if (x < 0 || x >= gMazeXsize || y < 0 || y >= gMazeYsize)  // if off grid
     {    return(1);      }                      // treat as occupied
     integer v = mazecellget(x,y);
     if (v & MAZEEXAMINED) 
-    {   return(v & MAZEBARRIER); }              // already have this one
+    {   DEBUGPRINT1("Checked cell (" + (string)x + "," + (string)y + ") : " + (string)(v & MAZEBARRIER));
+        return(v & MAZEBARRIER);                // already have this one
+    }
     integer barrier = gBarrierFn(fromx, fromy, x,y); // check this location
     v = MAZEEXAMINED | barrier;
     mazecellset(x,y,v);                         // update cells checked
     if (barrier && (x == gMazeEndX) && (y == gMazeEndY))    // if the end cell is blocked
     {   gMazeStatus = MAZESTATUSBADEND; }       // force abort, maze is unsolveable
+    DEBUGPRINT1("Tested cell (" + (string)x + "," + (string)y + ") : " + (string)(barrier));
     return(barrier);                            // return 1 if obstacle
 }
  
@@ -524,8 +526,8 @@ list mazewallfollow(list params, integer sidelr)
     integer y = llList2Integer(params,-2);
     integer direction = llList2Integer(params,-1);
     list path = llListReplaceList(params,[],-3,-1); // remove non-path items.
-    DEBUGPRINT1("Following wall at (" + (string)x + "," + (string)y + ")" + " side " + (string)sidelr + " direction " + (string) direction + " md " + (string)mazemd(x, y, 
-            gMazeEndX, gMazeEndY));
+    DEBUGPRINT1("Following wall at (" + (string)x + "," + (string)y + ")" + " side " + (string)sidelr + " direction " + (string) direction 
+        + "  md: " + (string)mazemd(x, y, gMazeEndX, gMazeEndY) + " mdbest: " + (string)gMazeMdbest);
     integer dx = MAZEEDGEFOLLOWDX(direction);
     integer dy = MAZEEDGEFOLLOWDY(direction);
     integer dxsame = MAZEEDGEFOLLOWDX(((direction + sidelr) + 4) % 4); // if not blocked ahead
@@ -533,8 +535,6 @@ list mazewallfollow(list params, integer sidelr)
     integer followedside = mazetestcell(x, y, x + dxsame, y+dysame);
     if (!followedside) 
     {
-        DEBUGPRINT("***ERROR*** followedside not blocked. dx,dy: (%d,%d)  dxsame,dysame: (%d,%d) sidelr %d direction %d" %
-                (dx,dy, dxsame,dysame, sidelr,direction));
         assert(followedside);                            // must be next to obstacle
     }
     integer blockedahead = mazetestcell(x, y, x + dx, y + dy);
