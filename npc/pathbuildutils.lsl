@@ -406,13 +406,13 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
     float numer = llSqrt(numersq);                   // must be nonnegative
     ////float movedistflat = (-b + numer) / (2*a);       // the larger quadatic solution.
     float movedistflat = (-b - numer) / (2*a);       // the smaller quadatic solution.
-#ifdef OBSOLETE
-    DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((endptflat - (pntflat+dirflat*movedistflat)() : " 
-        + (string) llFabs(llVecMag((endptflat - (pntflat+dirflat*movedistflat)))) 
+////#ifdef OBSOLETE
+    DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((endptflat - (pntflat+dirflat*(-movedistflat))() : " 
+        + (string) llFabs(llVecMag((endptflat - (pntflat+dirflat*(-movedistflat)))))
         + " unit cells: " + (string)unitcells + " cell size: " + (string)cellsize + " pntflat: " + (string)pntflat + " endpflat: "
         + (string)endptflat +  " p0: " + (string)p0 + " dirflat: " + (string)dirflat + " movedistflat: "  
         + (string)movedistflat);
-#endif // OBSOLETE
+////#endif // OBSOLETE
     assert(llFabs(a*movedistflat*movedistflat + b*movedistflat + c) < 0.001);   // quadratic equation check
     movedistflat = -movedistflat;                   // ***NOT SURE ABOUT THIS***
     if (movedistflat < 0) { return(NAN); }
@@ -704,12 +704,13 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
 //  llCastRay will not tell us if the starting position is inside an obstacle. So there's some guessing involved.
 //  If we guess wrong, the problem will be detected when the character follows the path.
 //
-list pathfindclearspace(list pts, vector pos, integer obstacleix, float width, float height, integer verbose)
+list pathfindclearspace(list pts, vector startpos, integer obstacleix, float width, float height, integer verbose)
 {
     //  Dumb version. Just try the same check the maze solver uses, advancing along the path, until we find open space.
     integer len = llGetListLength(pts);
     vector p0 = llList2Vector(pts,obstacleix);
     vector p1 = llList2Vector(pts,obstacleix+1);
+    vector pos = startpos;                                          // start search here
     vector prevpos = pos;                                           // need current and previous points
     //  Starting position is one extra width from start to provide some separation between start and finish."
     float distalongseg = llVecMag(pos - p0) + width;                // starting position, one extra width
@@ -717,7 +718,7 @@ list pathfindclearspace(list pts, vector pos, integer obstacleix, float width, f
     integer currentix = obstacleix;                                 // working on segment 0
     while (TRUE)
     {   //  Advance one width
-        distalongseg = distalongseg + width;                        // advance one width
+        distalongseg = distalongseg + width;                        // advance half width
         prevpos = pos;
         if (distalongseg > seglength)                               // if reached end of segment
         {   if (currentix >= len-2)                                 // must be able to advance
@@ -731,13 +732,33 @@ list pathfindclearspace(list pts, vector pos, integer obstacleix, float width, f
         p1 = llList2Vector(pts,currentix+1);
         seglength = llVecMag(p1-p0);                                // current segment length
         vector dir = llVecNorm(p1-p0);
-        pos = p0+dir*distalongseg;                                 // next point to try
+        pos = p0+dir*distalongseg;                                  // next point to try
+////#ifdef NOTYET
+        // Adjust pos to be an integral number of widths from pos. Movement is forward.
+        float adjdistalongseg = pathcalccellmovedist(p0, dir, startpos, width, distalongseg);
+        vector checkvec = (p0 + dir * adjdistalongseg) - startpos;                           // checking only
+        DEBUGPRINT1("Maze endpoint adjust. Dist along seg " + (string)distalongseg + " -> " + (string)adjdistalongseg + " 2D dist: " + 
+            (string)llVecMag(<checkvec.x,checkvec.y,0.0>));
+        if (adjdistalongseg >= 0 && adjdistalongseg <= seglength)   // if still on same segment
+        {   assert(adjdistalongseg >= distalongseg);                // must progress forward
+            distalongseg = adjdistalongseg;
+            pos = p0 + dir * distalongseg;                           // should be an integral number of widths from startpos in 2D plane.
+            //  Test the new point.  This test is not airtight because we are not testing from open space.
+            //  May need further checks here.
+            if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))
+            {   
+                return([pos,currentix]);                                // success, found open space
+            }
+        }
+////#endif // NOTYET
+#ifdef OBSOLETE
         //  Test the new point.  This test is not airtight because we are not testing from open space.
         //  May need further checks here.
         if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))
         {   
             return([pos,currentix]);                                // success, found open space
         }
+#endif // OBSOLETE
     }
     return([]);                                                     // unreachable  
 }
