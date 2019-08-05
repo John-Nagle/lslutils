@@ -423,13 +423,13 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
     float numer = llSqrt(numersq);                   // must be nonnegative
     ////float movedistflat = (-b + numer) / (2*a);       // the larger quadatic solution.
     float movedistflat = (-b - numer) / (2*a);       // the smaller quadatic solution.
-////#ifdef OBSOLETE
+#ifdef OBSOLETE
     DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((endptflat - (pntflat+dirflat*(-movedistflat))() : " 
         + (string) llFabs(llVecMag((endptflat - (pntflat+dirflat*(-movedistflat)))))
         + " unit cells: " + (string)unitcells + " cell size: " + (string)cellsize + " pntflat: " + (string)pntflat + " endpflat: "
         + (string)endptflat +  " p0: " + (string)p0 + " dirflat: " + (string)dirflat + " movedistflat: "  
         + (string)movedistflat);
-////#endif // OBSOLETE
+#endif // OBSOLETE
     assert(llFabs(a*movedistflat*movedistflat + b*movedistflat + c) < 0.001);   // quadratic equation check
     movedistflat = -movedistflat;                   // ***NOT SURE ABOUT THIS***
     if (movedistflat < 0) { return(NAN); }
@@ -694,8 +694,9 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             if (hitdist-width < 0)                          // too close to beginning of current segment to back up
             {                                               // must search in previous segments
                 list pinfo =  pathfindunobstructed(pts, currentix, -1, width, height);
-                vector interpt0 = llList2Vector(pinfo,0);              // open space point before obstacle, in a prevous segment
+                vector interpt0 = llList2Vector(pinfo,0);       // open space point before obstacle, in a prevous segment
                 integer newix = llList2Integer(pinfo,1);        // segment in which we found point
+                DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
                 if (newix < 0) { patherror(MAZESTATUSBADSTART, pos); return([]); }  // no open space found, fail
                 currentix = newix;                              // back up current position
                 p0 = llList2Vector(pts,currentix);              // starting position in new segment
