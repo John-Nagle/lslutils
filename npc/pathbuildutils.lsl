@@ -151,7 +151,6 @@ vector mazecellto3d(integer x, integer y, float mazecellsize, vector mazepos, ro
 //
 list castray(vector p0, vector p1, list params)
 {
-    ////DEBUGPRINT1("Cast ray: " + (string)p0 + " " + (string)p1);   // ***TEMP***
     integer tries = CASTRAYRETRIES;                         // number of retries
     list castresult = [];
     while (tries-- > 0)
@@ -331,17 +330,6 @@ integer mazecasthitonlywalkable(list castresult, integer nohitval)
     }
     return(TRUE);                                           // hit only a walkable - good.    
 }
-#ifdef OBSOLETE
-//
-//  mazecasthitanything  -- true if cast ray hit anything at all.  Used for horizontal casts. 
-//
-integer mazecasthitanything(list castresult)
-{
-    integer status = llList2Integer(castresult, -1);        // status is last element in list
-    if (status == 0) { return(FALSE); }                     // hit nothing, good
-    return(TRUE);                                           // hit something, bad    
-}
-#endif // OBSOLETE
 //
 //  pathcalccellmovedist 
 //
@@ -421,7 +409,6 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
     float numersq = b*b-4*a*c;                       // term under radical in quadratic equation
     if (numersq < 0.0) { return(NAN); }              // Error
     float numer = llSqrt(numersq);                   // must be nonnegative
-    ////float movedistflat = (-b + numer) / (2*a);       // the larger quadatic solution.
     float movedistflat = (-b - numer) / (2*a);       // the smaller quadatic solution.
 #ifdef OBSOLETE
     DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((endptflat - (pntflat+dirflat*(-movedistflat))() : " 
@@ -500,36 +487,6 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
 {
 
     return(pathfindunobstructed2(pts, ix, fwd, width, height, ZERO_VECTOR));        // Use more general fn
-#ifdef OBSOLETE
-    ////assert(fwd == 1 || fwd == -1);
-    DEBUGPRINT1("Looking for unobstructed point on segment #" + (string)ix + " fwd " + (string)fwd);  
-    integer length = llGetListLength(pts);
-    float distalongseg = width;                   // distance along segment starting at ix.
-    while (TRUE)                                // until return
-    {   integer ix2 = ix + fwd;                 // next index in desired direction
-        vector p0 = llList2Vector(pts,ix);      // index of previous point
-        vector p1 = llList2Vector(pts,ix2);     // index of next point
-        vector pos = p0 + llVecNorm(p1-p0) * distalongseg; // next point to try
-        float vlen = llVecMag(p1-p0);           // length of vector
-        if (distalongseg > vlen)                // if hit end of segment
-        {   ix = ix + fwd;                      // advance one seg in desired dir
-            if (ix + fwd >= length || ix + fwd < 0) // end of entire path without find
-            {   DEBUGPRINT1("Fail: no unobstructed point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
-                return([ZERO_VECTOR,-1]);          // hit end of path without find, fails
-            }
-            distalongseg = width;                     // start working next segment
-        } else {
-            DEBUGPRINT1("Trying point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
-            if (!obstaclecheckcelloccupied(p0, pos, width, height, TRUE))
-            {   DEBUGPRINT("Found clear point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd); 
-                return([pos,ix]);                  // found an open spot
-            }
-            distalongseg += width;              // advance to next spot to try
-        }
-    }
-    //  Unreachable
-    return([ZERO_VECTOR,-1]);                   // no way
-#endif // OBSOLETE
 }
 //
 //  pathendtrim -- trim path at end if the end is obstructed.
@@ -537,16 +494,13 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
 //  This gives us a "best effort" path, going as far as we can.
 //
 list pathendtrim(list pts, float width, float height, integer verbose)
-{   ////DEBUGPRINT1("Path end trim.");
-    integer n = llGetListLength(pts);                               // working backwards from end
+{   integer n = llGetListLength(pts);                               // working backwards from end
     if (n < 2) { return(pts); }                                     // empty
     n = n-1;                                                        // last 2 points
     vector pos = llList2Vector(pts,n);                              // last point
     vector prevpos = llList2Vector(pts,n-1);                        // previous point
     if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE)) // is end obstructed?    
-    {   ////DEBUGPRINT1("Path end " + (string)pos + " is clear.");
-        return(pts);                                                 // no, no problem
-    }
+    {   return(pts); }                                                // no, no problem
     DEBUGPRINT1("Path endpoint #" + (string)n + " obstructed at " + (string)pos);   
     //  We are going to have to move the endpoint.
     //  Find unobstructed points in the previous and next segments.
@@ -562,56 +516,6 @@ list pathendtrim(list pts, float width, float height, integer verbose)
     pts = llListReplaceList(pts,[revpt],revix,n);                     // replace endpoint
     return(pts);                                                        // result
 }
-#ifdef OBSOLETE2
-//
-//  pathendpointadjust -- make sure the endpoint of each path segment is clear.
-//
-//  The next phase of processing requires this. We can only do a maze solve if
-//  we have clear start and end points.
-//
-//  As a special case, it's OK if we can't reach the endpoint. We will shorten the last
-//  segment if necessary. That's so we can send multiple NPCs to the same destination
-//  and have them end up as a crowd, rather than all but one failing.
-//
-list pathendpointadjust(list pts, float width, float height, integer verbose)
-{
-    integer n;
-    if (llGetListLength(pts) == 0) { return(pts); } // empty
-    for (n=1; n<llGetListLength(pts); n++)          // check all points except start
-    {   vector pos = llList2Vector(pts,n);
-        vector prevpos = llList2Vector(pts,n-1);                                // previous point
-        if (obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))       // if obstacle at endpoint
-        {   DEBUGPRINT1("Path segment point #" + (string)n + " obstructed at " + (string)pos);   // ***TEMP***
-            //  We are going to have to move an endpoint.
-            //  Find unobstructed points in the previous and next segments.
-            //  Replace obstructed point with those two points.
-            list revresult = pathfindunobstructed(pts,n,-1, width, height);     // search backwards
-            vector revpt = llList2Vector(revresult,0);                          // new clear point in reverse dir
-            integer revix = llList2Integer(revresult,1);                        // index of point after find pt
-            list fwdresult = pathfindunobstructed(pts,n, 1, width, height);     // search forwards
-            vector fwdpt = llList2Vector(fwdresult,0);                          // new clear point in forward dir
-            integer fwdix = llList2Integer(fwdresult,1);                        // index of point before find pt.
-            if (fwdix <= 0 || revix <= 0)
-            {   if (verbose) { llOwnerSay("No clear points anywhere near " + (string)pos); }
-                return([]);                                                     // fails
-            }
-            //  We now have two unobstructed points, fwdpt and revpt. Those will be connected, and will replace
-            //  the points between them. 
-            //  Drop points from n through fwdix, and replace with new fwd point. 
-            //  If fwdix is off the end, the new point just replaces it.
-            DEBUGPRINT1("At pt #" + (string)n + ", replacing points [" + (string)revix + ".." + (string)fwdix + "] at " + (string)pos + " with " + (string)revpt + " and " + (string)fwdpt);    // ***TEMP***
-            DEBUGPRINT1("List before update: " + llDumpList2String(pts,", "));    
-            pts = llListReplaceList(pts, [revpt, fwdpt], revix, fwdix);             // replace points revix through fwdix inclusive
-            ////pts = llListReplaceList(pts, [fwdpt], n, fwdix);                    // replace point ahead
-            ////pts = llListReplaceList(pts, [revpt], revix-1, n-1);                // replace point behind - CHECK THIS
-            DEBUGPRINT1("List after update: " + llDumpList2String(pts,", ")); 
-            //  ***NEED TO UPDATE N***   
-
-        }   
-    }
-    return(pts);
-}
-#endif // OBSOLETE2
 //
 //  pathclean - remove very short segments from path. llGetStaticPath has a problem with this.
 //
@@ -646,8 +550,6 @@ list pathclean(list path)
 //  ends of blocked segments. Blocked segments must be at least 2 widths long,
 //  so the maze solver can run.
 //
-//  ***NEEDS TO MOVE OBSTACLE POINTS CLEAR OF OBSTACLE***
-//
 //
 list pathcheckobstacles(list pts, float width, float height, integer verbose)
 {   
@@ -668,7 +570,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
         float hitdist = castbeam(pos, p1, width, height, TESTSPACING, TRUE,
                     [RC_REJECT_TYPES,RC_REJECT_LAND]);
         if (hitdist < 0)
-        {   ////llSay(DEBUG_CHANNEL,"ERROR: Cast beam error " + (string)hitdist);
+        {  
             patherror(MAZESTATUSCASTFAIL, pos);             // failure
             return([]);                                          // failure
         }    
@@ -683,12 +585,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             p0 = llList2Vector(pts,currentix);              // starting position in new segment
             p1 = llList2Vector(pts,currentix+1);            // next position
             distalongseg = 0.0;                             // starting new segment
-        } else {                                            // there is an obstruction 
-            ////vector interpt0 = p0 + dir*hitdist;     // obstacle here 
-            //  ***THIS NEEDS TO WORK BACKWARDS PROPERLY AT CORNERS AND CHECK FOR CLEAR SPACE***
-            
-            
-            
+        } else {                                            // there is an obstruction        
             vector interpt0 = pos + dir*(hitdist-width);     // just clear of obstacle here  
             if (verbose) { llOwnerSay("Hit obstacle at segment #" + (string)currentix + " " + (string) interpt0); }
             if (hitdist-width < 0)                          // too close to beginning of current segment to back up
