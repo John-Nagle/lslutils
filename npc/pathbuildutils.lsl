@@ -733,7 +733,6 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
         seglength = llVecMag(p1-p0);                                // current segment length
         vector dir = llVecNorm(p1-p0);
         pos = p0+dir*distalongseg;                                  // next point to try
-////#ifdef NOTYET
         // Adjust pos to be an integral number of widths from pos. Movement is forward.
         float adjdistalongseg = pathcalccellmovedist(p0, dir, startpos, width, distalongseg);
         vector checkvec = (p0 + dir * adjdistalongseg) - startpos;                           // checking only
@@ -750,15 +749,6 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
                 return([pos,currentix]);                                // success, found open space
             }
         }
-////#endif // NOTYET
-#ifdef OBSOLETE
-        //  Test the new point.  This test is not airtight because we are not testing from open space.
-        //  May need further checks here.
-        if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))
-        {   
-            return([pos,currentix]);                                // success, found open space
-        }
-#endif // OBSOLETE
     }
     return([]);                                                     // unreachable  
 }
