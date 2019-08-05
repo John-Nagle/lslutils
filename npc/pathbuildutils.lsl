@@ -591,7 +591,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             if (hitdist-width < 0)                          // too close to beginning of current segment to back up
             {                                               // must search in previous segments
                 list pinfo =  pathfindunobstructed(pts, currentix, -1, width, height);
-                vector interpt0 = llList2Vector(pinfo,0);       // open space point before obstacle, in a prevous segment
+                interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
                 integer newix = llList2Integer(pinfo,1);        // segment in which we found point
                 DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
                 if (newix < 0) { patherror(MAZESTATUSBADSTART, pos); return([]); }  // no open space found, fail
