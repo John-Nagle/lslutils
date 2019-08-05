@@ -9,6 +9,7 @@
 #ifndef PATHBUILDUTILSLSL                                   // include guard, like C/C++
 #define PATHBUILDUTILSLSL
 #include "npc/assert.lsl"                                   // assert
+#include "npc/mazedefs.lsl"
 //
 //  Constants
 //
@@ -23,6 +24,22 @@ float PATHCHECKTOL = 0.02;                                  // allow 2cm colline
 #ifndef NAN
 #define NAN ((float)"nan")
 #endif // 
+
+//
+//  Globals
+//
+integer gPathErrorStatus = 0;                               // last error
+vector gPathErrorPos;                                       // world pos of last error
+
+//
+//  patherror - record error
+//
+patherror(integer status, vector pos)
+{   if (gPathErrorStatus != 0) return;                      // not first error, ignore
+    gPathErrorStatus = status;                              // what
+    gPathErrorPos = pos;                                    // where
+    DEBUGPRINT1("Path error " + (string)status + " at " + (string)pos); 
+}
 
 
 //
@@ -538,7 +555,7 @@ list pathendtrim(list pts, float width, float height, integer verbose)
     vector revpt = llList2Vector(revresult,0);                          // new clear point in reverse dir
     integer revix = llList2Integer(revresult,1);                        // index of point after find pt         
     if (revix <= 0)
-    {   if (verbose) { llOwnerSay("Cannot find unobstructed end point anywhere near " + (string)pos);} 
+    {   patherror(MAZESTATUSBADEND, pos);                               // cannot find open space at end
         return([]);                                                     // fails
     }
     DEBUGPRINT1("Replaced path endpoint " + (string)pos + " with " + (string)revpt + " replacing [" + (string)(revix) + ":" + (string)n + "]");
@@ -651,7 +668,8 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
         float hitdist = castbeam(pos, p1, width, height, TESTSPACING, TRUE,
                     [RC_REJECT_TYPES,RC_REJECT_LAND]);
         if (hitdist < 0)
-        {   llSay(DEBUG_CHANNEL,"ERROR: Cast beam error " + (string)hitdist);
+        {   ////llSay(DEBUG_CHANNEL,"ERROR: Cast beam error " + (string)hitdist);
+            patherror(MAZESTATUSCASTFAIL, pos);             // failure
             return([]);                                          // failure
         }    
         if (hitdist == INFINITY)                            // completely clear segment
@@ -668,13 +686,36 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
         } else {                                            // there is an obstruction 
             ////vector interpt0 = p0 + dir*hitdist;     // obstacle here 
             //  ***THIS NEEDS TO WORK BACKWARDS PROPERLY AT CORNERS AND CHECK FOR CLEAR SPACE***
+            
+            
+            
             vector interpt0 = pos + dir*(hitdist-width);     // just clear of obstacle here  
             if (verbose) { llOwnerSay("Hit obstacle at segment #" + (string)currentix + " " + (string) interpt0); }
+            if (hitdist-width < 0)                          // too close to beginning of current segment to back up
+            {                                               // must search in previous segments
+                list pinfo =  pathfindunobstructed(pts, currentix, -1, width, height);
+                vector interpt0 = llList2Vector(pinfo,0);              // open space point before obstacle, in a prevous segment
+                integer newix = llList2Integer(pinfo,1);        // segment in which we found point
+                if (newix < 0) { patherror(MAZESTATUSBADSTART, pos); return([]); }  // no open space found, fail
+                currentix = newix;                              // back up current position
+                p0 = llList2Vector(pts,currentix);              // starting position in new segment
+                p1 = llList2Vector(pts,currentix+1);            // next position
+                //  Need to discard some points in pathPts because we backed through it.
+                //  ***CHECK THIS*** - compares on point position and might discard the whole list. Or it might discard a blocked area.
+                while ((llGetListLength(pathPoints) > 0) && llVecMag(llList2Vector(pathPoints,-2)-p0) > 0.001)         // while have path points left
+                {   
+                    DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-2) + " from pathPoints while working backwards");
+                    pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-2, llGetListLength(pathPoints)-1);
+                }
+                if (llGetListLength(pathPoints) == 0)                                       // if lost entire list
+                {   patherror(MAZESTATUSBADBACKUP, p0); return([]); }                       // fails
+            }
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for open space on far side of obstacle.");
             list obsendinfo = pathfindclearspace(pts, interpt0, currentix, width, height, verbose);    // find far side of obstacle
             if (llGetListLength(obsendinfo) < 2)
             {   if (verbose) { llOwnerSay("Cannot find open space after obstacle at " + (string)interpt0 + " on segment #" + (string)(currentix-1));}
+                patherror(MAZESTATUSBADOBSTACLE, interpt0);     // cannot find open space after obstacle
                 return([]);
             }
             //  Found point on far side, we have something for the maze solver.
@@ -722,8 +763,7 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
         prevpos = pos;
         if (distalongseg > seglength)                               // if reached end of segment
         {   if (currentix >= len-2)                                 // must be able to advance
-            {   if (verbose) { llOwnerSay("Reached end of path without finding open space."); }
-                return([]);                                         // reached end with no find
+            {   return([]);                                         // reached end with no find. Caller reports error
             }
             currentix += 1;                                         // start next segment
             distalongseg = 0.0;                                     // start at next seg point, although arguably should advance around corner
