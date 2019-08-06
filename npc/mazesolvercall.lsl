@@ -10,7 +10,6 @@
 //  itself is in a separate script, for memory size reasons.
 //
 #include "npc/mazedefs.lsl"
-////#include "npc/pathbuildutils.lsl"
 //
 //  Format:
 //  { "request" : "mazesolve",  "verbose" : INTEGER, "serial", INTEGER,
@@ -25,49 +24,7 @@ integer gMazeSerial = 0;                            // serial number of request.
 vector gMazePos;                                    // position of current maze
 rotation gMazeRot;                                  // rotation of current maze
 float gMazeCellSize;                                // cell size of maze
-#ifdef OBSOLETE
-//
-//  mazecellto3d  -- convert maze cell to 3D coords
-//
-//  gMazeCellSize is the size of a cell in the XY plane, not the 3D plane
-//  gMazePos is the position of cell (0,0);
-//  gMazeRot is the rotation of the maze plane.
-//
-//  ***NEEDS WORK*** ***WRONG*** ***ASSERTION FAILS***
-//  ***THIS IS OFF BY 1-2%. WHY???***
-//
-vector mazecellto3d(integer x, integer y)
-{
-    if (x == 0 && y == 0) { return(gMazePos); }     // avoid divide by zero
-    vector vflat = <x*gMazeCellSize,y*gMazeCellSize,0.0>;   // vector to cell in XY plane
-    vector dir = llVecNorm(vflat*gMazeRot);         // 3D direction to point, but wrong dist
-    float flatlen = llVecMag(vflat);                // vector length in 2D
-    vector dirflat = llVecNorm(<dir.x,dir.y,0.0>);  // azimuth vector
-    //  Now we need to scale up.
-    float scale = dir*dirflat;                      // scale-down factor
-    vector p = (flatlen/scale) * dir;               // scale correct dir to fit 2D X and Y. 
-    //  Checks
-    vector azimuthvec = <1,0,0>*gMazeRot;           // rotation 
-    azimuthvec = llVecNorm(<azimuthvec.x, azimuthvec.y,0.0>);
-    rotation azimuthrot = llRotBetween(<1,0,0>,azimuthvec);
-    vector vflatrot = vflat*azimuthrot;             // vector in XY plane
-    //  Vflatrot has correct X and Y. Now we need Z.
-    vector planenormal = <0,0,1>*gMazeRot;          // normal to rotated plane. Plane is through origin here.
-    //  Distance from point to plane is p*planenormal.  We want that to be zero.
-    p = vflatrot;
-    //  We want p.z such that p*planenormal = 0;
-    //  want p.x*planenormal.x + p.y * planenormal.y + p.z * planenormal.z = 0
-    //  want p.x*planenormal.x + p.y * planenormal.y = -p.z * planenormal.z
-    p.z = - (p.x*planenormal.x + p.y * planenormal.y)/planenormal.z;    // planenormal.z cannot be zero unless tilted plane is vertical
-    DEBUGPRINT1("mazecellto3d: x: " + (string)x + " y: " + (string)y + " p: " + (string)p + " vflatrot: " + (string)vflatrot);
-#ifdef NOGOOD // This doesn't work at all
 
-    assert(llFabs(p.x - vflatrot.x) < 0.01);        // check X and Y ***WRONG***
-    assert(llFabs(p.y - vflatrot.y) < 0.01);  
-#endif // NOGOOD
-    return(p + gMazePos);
-}
-#endif // OBSOLETE
 //
 //  mazesolverstart -- make a request of the maze solver.
 //
@@ -75,7 +32,6 @@ vector mazecellto3d(integer x, integer y)
 //
 //  p0-p1 distance must be an integral number of widths.
 //
-//  ***GEOMETRY CALC NEEDS WORK***
 //
 integer mazesolverstart(vector p0, vector p1, float width, float height, float probespacing, integer verbose) 
 {
@@ -88,12 +44,6 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     //  "pos" is the center of cell (0,0) of the maze.
     //  "cellsize" is the size of a maze cell. This must be the same as width.
     //  p0 to p1 in the XY plane must be an integral number of widths.
-#ifdef OBSOLETE
-    //  We enlarge cell size so that there is an integer number of cells from p0 to p1.
-    //  This works better if something upstream ensures a reasonable minimum distance between p0 and p1, like a meter.
-    float cellsize = 1.5*width;                     // initial cell size
-    float celldistfromstarttoend = vdist / cellsize;   // number of cells between start and end
-#endif // OBSOLETE
     float cellsize = width;                         // just use width
     float flatdist = llVecMag(<p0.x,p0.y,0.0> - <p1.x,p1.y,0.0>);   // distance in 2D plane
     integer unitcells = (integer)(flatdist/cellsize+0.001);   // integral number of cells
