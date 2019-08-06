@@ -135,4 +135,50 @@ list mazesolveranswer(string jsn, integer status)
     }
     return(ptsworld);
 }
+//
+//  Path builder task interface
+//
+integer gPathSerial = 0;                                        // path build serial number
+integer gPathSectionSerial = 0;                                 // serial number of path section
+//
+//  pathbuildstart -- make a request of the path builder
+//
+//  Reply comes back later as multiple messages.
+//
+//
+integer pathbuildstart(vector p0, vector p1, float width, float height, integer mustreachgoal, integer verbose) 
+{
+    gPathSerial++;
+    gPathSectionSerial = 0;                         // segments in order
+    llMessageLinked(LINK_THIS, PATHBUILDREQUEST, llList2Json(JSON_OBJECT, [
+        "request", "pathbuild",                     // type of request
+        "verbose", verbose,                         // debug use - maze solver will print messages
+        "mustreachend", mustreachgoal,              // if true, must reach goal. If false, best effort 
+        "p0", p0,
+        "p1", p1,
+        "serial", gPathSerial,                      // serial number for check
+            ]),"");
+    return(0);
+}
+
+//
+//  pathbuildanswer -- path builder replied with a message, decode result
+//
+//  Result is one path section, or a one-element list with a status.
+//  A path segment is a maze start point followed by a list of safe points.
+//  If the first point is ZERO_VECTOR, a maze solve is not needed.
+//
+list pathbuildanswer(string jsn) 
+{
+    string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
+    if (requesttype != "pathbuild") { return([MAZESTATUSFORMAT]); }                 // ignore, not our msg
+    string serial = llJsonGetValue(jsn, ["serial"]);
+    if ((integer)serial != gPathSerial) { return([MAZESTATUSCOMMSEQ]); }            // out of sequence 
+    integer status = (integer)llJsonGetValue(jsn, ["status"]);                      // get status from msg
+    if (status != 0) { return((integer)status); }                   /               // error status from other side
+    integer segserial = (integer)llJsonGetValue(jsn,["segment"]);
+    if (segserial != gPathSegmentSerial) { return([MAZESTATUSCOMMSEQ]); }           // sections out of sequence
+    gPathSectionSerial++;                                                           // ready for next segment
+    return(llJson2List(llJsonGetValue(jsn, ["points"])));                           // points, one per word
+}
 
