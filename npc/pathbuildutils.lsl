@@ -479,15 +479,9 @@ list pathfindunobstructed2(list pts, integer ix, integer fwd, float width, float
 //  pathfindunobstructed -- find an unobstructed point near a path segment end.
 //
 //  Returns [pnt,ix], where ix is the point index previous, in the direction of scan, to the
-//  scan, of the point found.
+//  scan, of the point found.  No constraint on distance to point
 //
-//  This is inefficient but seldom used.
-//
-list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float height)
-{
-
-    return(pathfindunobstructed2(pts, ix, fwd, width, height, ZERO_VECTOR));        // Use more general fn
-}
+#define pathfindunobstructed(pts, ix, fwd, width, height) pathfindunobstructed2(pts, ix, fwd, width, height, ZERO_VECTOR) 
 //
 //  pathendtrim -- trim path at end if the end is obstructed.
 //
