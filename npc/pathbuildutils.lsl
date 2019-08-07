@@ -580,27 +580,30 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             p1 = llList2Vector(pts,currentix+1);            // next position
             distalongseg = 0.0;                             // starting new segment
         } else {                                            // there is an obstruction        
-            vector interpt0 = pos + dir*(hitdist-width);     // just clear of obstacle here  
+            ////vector hitpt = pos + dir*hitdist;               // look for clear space forward from hit point, not backed-up interpt0
+            vector interpt0 = pos + dir*(hitdist-width);    // back away from obstacle.
             if (verbose) { llOwnerSay("Hit obstacle at segment #" + (string)currentix + " " + (string) interpt0); }
-            if (hitdist-width < 0)                          // too close to beginning of current segment to back up
+            //  ***WAS WRONG TEST*** - this is not "are we in previous segment". 
+            if (distalongseg + hitdist-width < 0)           // too close to beginning of current segment to back up
             {                                               // must search in previous segments
                 list pinfo =  pathfindunobstructed(pts, currentix, -1, width, height);
                 interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
                 integer newix = llList2Integer(pinfo,1);        // segment in which we found point
+                //  ***BAD*** can back up enough to put algo in loop.***
                 DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
                 if (newix < 0) { patherror(MAZESTATUSBADSTART, pos); return([]); }  // no open space found, fail
-                currentix = newix;                              // back up current position
-                p0 = llList2Vector(pts,currentix);              // starting position in new segment
-                p1 = llList2Vector(pts,currentix+1);            // next position
+                ////currentix = newix;                              // back up current position
+                vector p0work = llList2Vector(pts,newix);              // starting position in new segment
+                ////p1 = llList2Vector(pts,currentix+1);            // next position
                 //  Need to discard some points in pathPts because we backed through it.
                 //  ***CHECK THIS*** - compares on point position and might discard the whole list. Or it might discard a blocked area.
-                while ((llGetListLength(pathPoints) > 0) && llVecMag(llList2Vector(pathPoints,-2)-p0) > 0.001)         // while have path points left
+                while ((llGetListLength(pathPoints) > 0) && llVecMag(llList2Vector(pathPoints,-2)-p0work) > 0.001)         // while have path points left
                 {   
                     DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-2) + " from pathPoints while working backwards");
                     pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-2, llGetListLength(pathPoints)-1);
                 }
                 if (llGetListLength(pathPoints) == 0)                                       // if lost entire list
-                {   patherror(MAZESTATUSBADBACKUP, p0); return([]); }                       // fails
+                {   patherror(MAZESTATUSBADBACKUP, p0work); return([]); }                       // fails
             }
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for open space on far side of obstacle.");
@@ -608,7 +611,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             if (llGetListLength(obsendinfo) < 2)
             {   if (verbose) { llOwnerSay("Cannot find open space after obstacle at " + (string)interpt0 + " on segment #" + (string)(currentix-1));}
                 patherror(MAZESTATUSBADOBSTACLE, interpt0);     // cannot find open space after obstacle
-                return([]);
+                return(pathPoints);                             // best effort result
             }
             //  Found point on far side, we have something for the maze solver.
             vector interpt1 = llList2Vector(obsendinfo,0);   // clear position on far side
@@ -623,7 +626,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             currentix = interp1ix;                              // continue from point just found
             p0 = llList2Vector(pts,currentix);                  // starting position in new segment
             p1 = llList2Vector(pts,currentix+1);                // next position
-            distalongseg = llVecMag(interpt1 - p0);             // how far along seg
+            distalongseg = llVecMag(interpt1 - p0);             // how far along seg ***CHECK THIS - new p0 may be wrong***
         }
     }
     return([]);                                                 // unreachable
@@ -645,7 +648,7 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
     vector p1 = llList2Vector(pts,obstacleix+1);
     vector pos = startpos;                                          // start search here
     vector prevpos = pos;                                           // need current and previous points
-    //  Starting position is one extra width from start to provide some separation between start and finish."
+    //  Starting position is one extra width from start to provide some separation between start and finish.
     float distalongseg = llVecMag(pos - p0) + width;                // starting position, one extra width
     float seglength = llVecMag(p1-p0);
     integer currentix = obstacleix;                                 // working on segment 0
@@ -665,7 +668,7 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
         seglength = llVecMag(p1-p0);                                // current segment length
         vector dir = llVecNorm(p1-p0);
         pos = p0+dir*distalongseg;                                  // next point to try
-        // Adjust pos to be an integral number of widths from pos. Movement is forward.
+        // Adjust pos to be an integral number of widths from startpos. Movement is forward.
         float adjdistalongseg = pathcalccellmovedist(p0, dir, startpos, width, distalongseg);
         vector checkvec = (p0 + dir * adjdistalongseg) - startpos;                           // checking only
         DEBUGPRINT1("Maze endpoint adjust. Dist along seg " + (string)distalongseg + " -> " + (string)adjdistalongseg + " 2D dist: " + 
