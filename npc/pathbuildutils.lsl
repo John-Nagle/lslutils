@@ -509,7 +509,6 @@ list pathclean(list path)
 //
 pathcheckobstacles(list pts, float width, float height, integer verbose)
 {   
-    list pathPoints = [];                                   // output points
     integer len = llGetListLength(pts);
     if (len < 2)
     {   pathdeliversegment([], FALSE, TRUE);                // empty set of points, no maze, done.
@@ -517,6 +516,7 @@ pathcheckobstacles(list pts, float width, float height, integer verbose)
     }
     DEBUGPRINT1("path check for obstacles. Segments: " + (string)len); 
     vector p0 = llList2Vector(pts,0);                       // starting position
+    list pathPoints = [p0];                                 // output points
     vector p1 = llList2Vector(pts,1);                       // next position
     float distalongseg = 0.0;                               // starting position, one extra width
     integer currentix = 0;                                  // working on segment 0
@@ -536,10 +536,10 @@ pathcheckobstacles(list pts, float width, float height, integer verbose)
         }    
         if (hitdist == INFINITY)                            // completely clear segment
         {
-            pathPoints += [pos];                            // completely empty segment
+            pathPoints += [p1];                             // completely empty segment
             currentix += 1;                                 // advance to next segment
             if (currentix >= len-1)                         // done
-            {   pathPoints += [p1];                         // finish off final segment
+            {   ////pathPoints += [p1];                         // finish off final segment
                 pathdeliversegment(pathPoints, FALSE, TRUE);// points, not a maze, final.
                 return;                                     // return strided list of path segments
             }
@@ -553,14 +553,14 @@ pathcheckobstacles(list pts, float width, float height, integer verbose)
             {                                               // must search in previous segments
                 list pinfo =  pathfindunobstructed(pts, currentix-1, -1, width, height);
                 interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
-                integer newix = llList2Integer(pinfo,1);    // segment in which we found point
+                integer newix = llList2Integer(pinfo,1);    // segment in which we found point, counting backwards
                 DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
-                if (newix < 0)
+                if (newix < 1)
                 {   patherror(MAZESTATUSBADSTART, pos); 
                     pathdeliversegment(pathPoints,FALSE, TRUE); // points, no maze, done
                     return;                                 // no open space found, fail
                 }
-                vector p0work = llList2Vector(pts,newix);              // starting position in new segment
+                vector p0work = llList2Vector(pts,newix-1);              // starting position in new segment
                  //  Need to discard some points in pathPts because we backed through them.
                 //  ***CHECK THIS*** - compares on point position and might discard the whole list. Or it might discard a blocked area.
                 while ((llGetListLength(pathPoints) > 0) && llVecMag(llList2Vector(pathPoints,-1)-p0work) > 0.001)         // while have path points left
@@ -589,10 +589,10 @@ pathcheckobstacles(list pts, float width, float height, integer verbose)
             integer interp1ix = llList2Integer(obsendinfo,1);   // in this segment
             if (verbose) { llOwnerSay("Found open space at segment #" + (string) interp1ix + " " + (string)interpt1); }
             //  Output points so far, then a maze. 
-            pathPoints += [p0, interpt0];                       // segment up to start of maze
+            pathPoints += [interpt0];                           // segment up to start of maze
             pathdeliversegment(pathPoints, FALSE, FALSE);       // points so far, no maze, not done.
             pathdeliversegment([interpt0, interpt1], TRUE, FALSE);// bounds of a maze area, maze, not done
-            pathPoints = [interpt1];                            // path continues after maze
+            pathPoints = [interpt1];                            // path clears and continues after maze
             ////pathPoints += [p0, TRUE, interpt0, FALSE, interpt1, TRUE];
             if (llVecMag(interpt1 - llList2Vector(pts,len-1)) < 0.01)  // if at final destination
             {   pathdeliversegment(pathPoints, FALSE, TRUE);    // done, return final part of path
