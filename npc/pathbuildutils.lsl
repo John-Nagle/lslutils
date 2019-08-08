@@ -507,11 +507,14 @@ list pathclean(list path)
 //  so the maze solver can run.
 //
 //
-list pathcheckobstacles(list pts, float width, float height, integer verbose)
+pathcheckobstacles(list pts, float width, float height, integer verbose)
 {   
     list pathPoints = [];                                   // output points
     integer len = llGetListLength(pts);
-    if (len < 2) { return([]);}                             // empty list
+    if (len < 2)
+    {   pathdeliversegment([], FALSE, TRUE);                // empty set of points, no maze, done.
+        return;                                             // empty list
+    }
     DEBUGPRINT1("path check for obstacles. Segments: " + (string)len); 
     vector p0 = llList2Vector(pts,0);                       // starting position
     vector p1 = llList2Vector(pts,1);                       // next position
@@ -528,15 +531,17 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
         if (hitdist < 0)
         {  
             patherror(MAZESTATUSCASTFAIL, pos);             // failure
-            return([]);                                     // failure
+            pathdeliversegment([], FALSE, TRUE);            // empty set of points, no maze, done.
+            return;                                         // failure
         }    
         if (hitdist == INFINITY)                            // completely clear segment
         {
-            pathPoints += [pos, TRUE];                      // completely empty segment
+            pathPoints += [pos];                            // completely empty segment
             currentix += 1;                                 // advance to next segment
             if (currentix >= len-1)                         // done
-            {   pathPoints += [p1, TRUE];                   // finish off final segment
-                return(pathPoints);                         // return strided list of path segments
+            {   pathPoints += [p1];                         // finish off final segment
+                pathdeliversegment(pathPoints, FALSE, TRUE);// points, not a maze, final.
+                return;                                     // return strided list of path segments
             }
             p0 = llList2Vector(pts,currentix);              // starting position in new segment
             p1 = llList2Vector(pts,currentix+1);            // next position
@@ -550,7 +555,11 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
                 interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
                 integer newix = llList2Integer(pinfo,1);    // segment in which we found point
                 DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
-                if (newix < 0) { patherror(MAZESTATUSBADSTART, pos); return([]); }  // no open space found, fail
+                if (newix < 0)
+                {   patherror(MAZESTATUSBADSTART, pos); 
+                    pathdeliversegment(pathPoints,FALSE, TRUE); // points, no maze, done
+                    return;                                 // no open space found, fail
+                }
                 vector p0work = llList2Vector(pts,newix);              // starting position in new segment
                  //  Need to discard some points in pathPts because we backed through them.
                 //  ***CHECK THIS*** - compares on point position and might discard the whole list. Or it might discard a blocked area.
@@ -560,7 +569,10 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
                     pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-2, llGetListLength(pathPoints)-1);
                 }
                 if (llGetListLength(pathPoints) == 0)                                       // if lost entire list
-                {   patherror(MAZESTATUSBADBACKUP, p0work); return([]); }                       // fails
+                {   patherror(MAZESTATUSBADBACKUP, p0work);
+                    pathdeliversegment([], FALSE, TRUE);                // empty set of points, no maze, done.
+                    return; 
+                }                      // fails
             }
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for open space on far side of obstacle.");
@@ -568,16 +580,24 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             if (llGetListLength(obsendinfo) < 2)
             {   if (verbose) { llOwnerSay("Cannot find open space after obstacle at " + (string)interpt0 + " on segment #" + (string)(currentix-1));}
                 patherror(MAZESTATUSBADOBSTACLE, interpt0);     // cannot find open space after obstacle
-                pathPoints += [p0, TRUE, interpt0, FALSE];
-                return(pathPoints);                             // best effort result
+                pathPoints += [p0, interpt0];                   // best effort result
+                pathdeliversegment(pathPoints, FALSE, TRUE);    // final set of points
+                return;                                         // partial result
             }
             //  Found point on far side, we have something for the maze solver.
             vector interpt1 = llList2Vector(obsendinfo,0);      // clear position on far side
             integer interp1ix = llList2Integer(obsendinfo,1);   // in this segment
             if (verbose) { llOwnerSay("Found open space at segment #" + (string) interp1ix + " " + (string)interpt1); }
-            pathPoints += [p0, TRUE, interpt0, FALSE, interpt1, TRUE];
+            //  Output points so far, then a maze. 
+            pathPoints += [p0, interpt0];                       // segment up to start of maze
+            pathdeliversegment(pathPoints, FALSE, FALSE);       // empty set of points, no maze, not done.
+            pathdeliversegment([interpt0, interpt1], TRUE, FALSE);// bounds of a maze area, maze, not done
+            pathPoints = [interpt1];                            // path continues after maze
+            ////pathPoints += [p0, TRUE, interpt0, FALSE, interpt1, TRUE];
             if (llVecMag(interpt1 - llList2Vector(pts,len-1)) < 0.01)  // if at final destination
-            {   return(pathPoints);  }                          // done, return strided list of path segments
+            {   pathdeliversegment(pathPoints, FALSE, TRUE);    // done, return final part of path
+                return;
+            }
             assert(interp1ix < len-1);                          // ix must never pass beginning of last segment
             //  Forward progress check to prevent infinite loop. Must either advance segment, or be further from start of current segment.
             assert(interp1ix > currentix || (llVecMag(llList2Vector(pts, currentix) - p0) < llVecMag(llList2Vector(pts, currentix) - interpt1)));
@@ -587,7 +607,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             distalongseg = llVecMag(interpt1 - p0);             // how far along seg 
         }
     }
-    return([]);                                                 // unreachable
+    //  Not reached.
 }
 //
 //  pathfindclearspace -- find clear space after obstacle
