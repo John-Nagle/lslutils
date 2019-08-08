@@ -509,10 +509,10 @@ list pathclean(list path)
 //
 list pathcheckobstacles(list pts, float width, float height, integer verbose)
 {   
-    list pathPoints = [];
+    list pathPoints = [];                                   // output points
     integer len = llGetListLength(pts);
     if (len < 2) { return([]);}                             // empty list
-    DEBUGPRINT1("path check for obstacles. Segments: " + (string)len); // ***TEMP***
+    DEBUGPRINT1("path check for obstacles. Segments: " + (string)len); 
     vector p0 = llList2Vector(pts,0);                       // starting position
     vector p1 = llList2Vector(pts,1);                       // next position
     float distalongseg = 0.0;                               // starting position, one extra width
@@ -528,7 +528,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
         if (hitdist < 0)
         {  
             patherror(MAZESTATUSCASTFAIL, pos);             // failure
-            return([]);                                          // failure
+            return([]);                                     // failure
         }    
         if (hitdist == INFINITY)                            // completely clear segment
         {
@@ -542,14 +542,13 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             p1 = llList2Vector(pts,currentix+1);            // next position
             distalongseg = 0.0;                             // starting new segment
         } else {                                            // there is an obstruction        
-            ////vector hitpt = pos + dir*hitdist;               // look for clear space forward from hit point, not backed-up interpt0
             vector interpt0 = pos + dir*(hitdist-width);    // back away from obstacle.
             if (verbose) { llOwnerSay("Hit obstacle at segment #" + (string)currentix + " " + (string) interpt0); }
             if (distalongseg + hitdist-width < 0)           // too close to beginning of current segment to back up
             {                                               // must search in previous segments
                 list pinfo =  pathfindunobstructed(pts, currentix-1, -1, width, height);
                 interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
-                integer newix = llList2Integer(pinfo,1);        // segment in which we found point
+                integer newix = llList2Integer(pinfo,1);    // segment in which we found point
                 DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
                 if (newix < 0) { patherror(MAZESTATUSBADSTART, pos); return([]); }  // no open space found, fail
                 vector p0work = llList2Vector(pts,newix);              // starting position in new segment
@@ -573,8 +572,8 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
                 return(pathPoints);                             // best effort result
             }
             //  Found point on far side, we have something for the maze solver.
-            vector interpt1 = llList2Vector(obsendinfo,0);   // clear position on far side
-            integer interp1ix = llList2Integer(obsendinfo,1);     // in this segment
+            vector interpt1 = llList2Vector(obsendinfo,0);      // clear position on far side
+            integer interp1ix = llList2Integer(obsendinfo,1);   // in this segment
             if (verbose) { llOwnerSay("Found open space at segment #" + (string) interp1ix + " " + (string)interpt1); }
             pathPoints += [p0, TRUE, interpt0, FALSE, interpt1, TRUE];
             if (llVecMag(interpt1 - llList2Vector(pts,len-1)) < 0.01)  // if at final destination
@@ -585,7 +584,7 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             currentix = interp1ix;                              // continue from point just found
             p0 = llList2Vector(pts,currentix);                  // starting position in new segment
             p1 = llList2Vector(pts,currentix+1);                // next position
-            distalongseg = llVecMag(interpt1 - p0);             // how far along seg ***CHECK THIS - new p0 may be wrong***
+            distalongseg = llVecMag(interpt1 - p0);             // how far along seg 
         }
     }
     return([]);                                                 // unreachable
