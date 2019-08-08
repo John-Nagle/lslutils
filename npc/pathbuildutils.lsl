@@ -427,17 +427,14 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
 }
 //
 //
-//  pathfindunobstructed2 -- find an unobstructed point near a path segment end.
+//  pathfindunobstructed -- find an unobstructed point near a path segment end.
 //
 //  Returns [pnt,ix], where ix is the point index previous, in the direction of scan, to the
 //  scan, of the point found.
 //
-//  This is inefficient but seldom used.
-//
-//  Attempts to move the point to another point which is an integral number of widths from endpt. (UNUSED FEATURE - DELETE)
 //
 //
-list pathfindunobstructed2(list pts, integer ix, integer fwd, float width, float height, vector endpt)
+list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float height)
 {
     assert(fwd == 1 || fwd == -1);
     DEBUGPRINT1("Looking for unobstructed point on segment #" + (string)ix + " fwd " + (string)fwd); 
@@ -447,7 +444,6 @@ list pathfindunobstructed2(list pts, integer ix, integer fwd, float width, float
     vector p1 = llList2Vector(pts,ix + fwd);// index of next point
     vector dir = llVecNorm(p1-p0);          // move dir
     float distalongseg = 0.001;                  // just enough to get into segment
-    ////float distalongseg = pathcalccellmovedist(p0, dir, endpt, width, width); // integral number of widths from endpt
     // distance along segment starting at ix.
     while (TRUE)                                // until return
     {   
@@ -463,10 +459,6 @@ list pathfindunobstructed2(list pts, integer ix, integer fwd, float width, float
                 return([ZERO_VECTOR,-1]);       // hit end of path without find, fails
             }
             distalongseg = 0.001;               // just enough into new seg
-            ////distalongseg = pathcalccellmovedist(p0, dir, endpt, width, 0);
-            if (distalongseg == NAN)            // math trouble
-            {   return([ZERO_VECTOR,-1]);   
-            }  
 
         } else {                                // did not hit end of segment
             DEBUGPRINT1("Trying point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
@@ -475,46 +467,10 @@ list pathfindunobstructed2(list pts, integer ix, integer fwd, float width, float
                 return([pos,ix]);               // found an open spot
             }
             distalongseg += width;              // advance one width
-            ///distalongseg = pathcalccellmovedist(p0, dir, endpt, width, distalongseg); // integral number of widths from endpt
         }
     }
     //  Unreachable
     return([ZERO_VECTOR,-1]);                   // no way
-}
-//
-//  pathfindunobstructed -- find an unobstructed point near a path segment end.
-//
-//  Returns [pnt,ix], where ix is the point index previous, in the direction of scan, to the
-//  scan, of the point found.  No constraint on distance to point
-//
-#define pathfindunobstructed(pts, ix, fwd, width, height) pathfindunobstructed2(pts, ix, fwd, width, height, ZERO_VECTOR) 
-//
-//  pathendtrim -- trim path at end if the end is obstructed.
-//
-//  This gives us a "best effort" path, going as far as we can.
-//
-list pathendtrim(list pts, float width, float height, integer verbose)
-{   integer n = llGetListLength(pts);                               // working backwards from end
-    if (n < 2) { return(pts); }                                     // empty
-    n = n-1;                                                        // last 2 points
-    vector pos = llList2Vector(pts,n);                              // last point
-    vector prevpos = llList2Vector(pts,n-1);                        // previous point
-    if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE)) // is end obstructed?    
-    {   return(pts); }                                                // no, no problem
-    DEBUGPRINT1("Path endpoint #" + (string)n + " obstructed at " + (string)pos);   
-    //  We are going to have to move the endpoint.
-    //  Find unobstructed points in the previous and next segments.
-    //  Replace obstructed point with those two points.
-    list revresult = pathfindunobstructed(pts,n,-1, width, height);     // search backwards
-    vector revpt = llList2Vector(revresult,0);                          // new clear point in reverse dir
-    integer revix = llList2Integer(revresult,1);                        // index of point after find pt         
-    if (revix <= 0)
-    {   patherror(MAZESTATUSBADEND, pos);                               // cannot find open space at end
-        return([]);                                                     // fails
-    }
-    DEBUGPRINT1("Replaced path endpoint " + (string)pos + " with " + (string)revpt + " replacing [" + (string)(revix) + ":" + (string)n + "]");
-    pts = llListReplaceList(pts,[revpt],revix,n);                     // replace endpoint
-    return(pts);                                                        // result
 }
 //
 //  pathclean - remove very short segments from path. llGetStaticPath has a problem with this.
@@ -589,25 +545,16 @@ list pathcheckobstacles(list pts, float width, float height, integer verbose)
             ////vector hitpt = pos + dir*hitdist;               // look for clear space forward from hit point, not backed-up interpt0
             vector interpt0 = pos + dir*(hitdist-width);    // back away from obstacle.
             if (verbose) { llOwnerSay("Hit obstacle at segment #" + (string)currentix + " " + (string) interpt0); }
-            //  ***WAS WRONG TEST*** - this is not "are we in previous segment". 
             if (distalongseg + hitdist-width < 0)           // too close to beginning of current segment to back up
             {                                               // must search in previous segments
                 list pinfo =  pathfindunobstructed(pts, currentix-1, -1, width, height);
                 interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
                 integer newix = llList2Integer(pinfo,1);        // segment in which we found point
-                //  ***BAD*** can back up enough to put algo in loop.***
                 DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
                 if (newix < 0) { patherror(MAZESTATUSBADSTART, pos); return([]); }  // no open space found, fail
-                ////currentix = newix;                              // back up current position
                 vector p0work = llList2Vector(pts,newix);              // starting position in new segment
-                ////p1 = llList2Vector(pts,currentix+1);            // next position
-                //  Need to discard some points in pathPts because we backed through them.
+                 //  Need to discard some points in pathPts because we backed through them.
                 //  ***CHECK THIS*** - compares on point position and might discard the whole list. Or it might discard a blocked area.
-                //  ***FAILING WITH POINT LOOKED FOR NOT EQUAL TO ANY STORED POINT*** but close.
-                //  ***NEED A PROPER "later point along path" check. 
-                //  ***OR DELIVER pathPoints to output and clear list after finding the near side of each maze.
-                //  ***SHOULD NEVER BACK THROUGH A MAZE ENDPOINT***
-                //  ***NEEDS WORK***
                 while ((llGetListLength(pathPoints) > 0) && llVecMag(llList2Vector(pathPoints,-2)-p0work) > 0.001)         // while have path points left
                 {   
                     DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-2) + " from pathPoints looking for " + (string)p0work);
