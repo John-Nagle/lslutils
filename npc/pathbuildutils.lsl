@@ -563,10 +563,10 @@ pathcheckobstacles(list pts, float width, float height, integer verbose)
                 vector p0work = llList2Vector(pts,newix);              // starting position in new segment
                  //  Need to discard some points in pathPts because we backed through them.
                 //  ***CHECK THIS*** - compares on point position and might discard the whole list. Or it might discard a blocked area.
-                while ((llGetListLength(pathPoints) > 0) && llVecMag(llList2Vector(pathPoints,-2)-p0work) > 0.001)         // while have path points left
+                while ((llGetListLength(pathPoints) > 0) && llVecMag(llList2Vector(pathPoints,-1)-p0work) > 0.001)         // while have path points left
                 {   
-                    DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-2) + " from pathPoints looking for " + (string)p0work);
-                    pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-2, llGetListLength(pathPoints)-1);
+                    DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-1) + " from pathPoints looking for " + (string)p0work);
+                    pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-1, llGetListLength(pathPoints)-1);
                 }
                 if (llGetListLength(pathPoints) == 0)                                       // if lost entire list
                 {   patherror(MAZESTATUSBADBACKUP, p0work);
@@ -580,7 +580,7 @@ pathcheckobstacles(list pts, float width, float height, integer verbose)
             if (llGetListLength(obsendinfo) < 2)
             {   if (verbose) { llOwnerSay("Cannot find open space after obstacle at " + (string)interpt0 + " on segment #" + (string)(currentix-1));}
                 patherror(MAZESTATUSBADOBSTACLE, interpt0);     // cannot find open space after obstacle
-                pathPoints += [p0, interpt0];                   // best effort result
+                pathPoints += [interpt0];                       // best effort result
                 pathdeliversegment(pathPoints, FALSE, TRUE);    // final set of points
                 return;                                         // partial result
             }
@@ -590,7 +590,7 @@ pathcheckobstacles(list pts, float width, float height, integer verbose)
             if (verbose) { llOwnerSay("Found open space at segment #" + (string) interp1ix + " " + (string)interpt1); }
             //  Output points so far, then a maze. 
             pathPoints += [p0, interpt0];                       // segment up to start of maze
-            pathdeliversegment(pathPoints, FALSE, FALSE);       // empty set of points, no maze, not done.
+            pathdeliversegment(pathPoints, FALSE, FALSE);       // points so far, no maze, not done.
             pathdeliversegment([interpt0, interpt1], TRUE, FALSE);// bounds of a maze area, maze, not done
             pathPoints = [interpt1];                            // path continues after maze
             ////pathPoints += [p0, TRUE, interpt0, FALSE, interpt1, TRUE];
