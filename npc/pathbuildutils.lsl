@@ -15,9 +15,10 @@
 //
 integer CASTRAYRETRIES = 10;                                // retry up to 10 times
 float CASTRAYRETRYDELAY = 0.200;                            // if a problem, retry slowly
-float GROUNDCLEARANCE = 0.05;                               // avoid false ground collisions
-float MAXAVOIDMOVE = 8.0;                                   // max distance to avoid obstacle
-float PATHCHECKTOL = 0.02;                                  // allow 2cm collinearity error
+float GROUNDCLEARANCE = 0.05;                               // (m) avoid false ground collisions
+float PATHCHECKTOL = 0.02;                                  // (m) allow 2cm collinearity error
+float PATHSTATICTOL = 0.10;                                 // (m) allow extra space on either side of path 
+
 #ifndef INFINITY                                            // should be an LSL builtin
 #define INFINITY ((float)"inf")                             // is there a better way?
 #endif // INFINITY
@@ -75,7 +76,7 @@ integer checkcollinear(list pts)
     vector p1 = llList2Vector(pts,-1);  // last
     for (i=1; i<length-1; i++)          // points other than endpoints
     {   float dist = distpointtoline(llList2Vector(pts,i), p0, p1);    // dist from line between endpoints
-        if (dist > PATHCHECKTOL) { return(FALSE); } // tolerance 1cm
+        if (dist > PATHCHECKTOL) { return(FALSE); } // tolerance 2cm
     }
     return(TRUE);                       // collinear   
 }
@@ -494,27 +495,39 @@ list pathclean(list path)
     return(newpath);                                        // cleaned up path
 }
 //
-//  pathcheckobstacles -- check a path for obstacles.
+//  pathplan -- plan an obstacle-free path.
 //
-//  Output is a strided list of the form [pnt, unblocked, pnt, unblocked ...]
+//  Output is via calls to pathdeliversegment.
+//  Errors are reported via patherror.
 //
-//  (Replaces pathcheckobstacles and pathendpointadjust.)
+//  This constructs a static path, then checks it for open space.
+//  When it finds an obstacle, it reports clear points on both sides
+//  of the obstacle, which are then fed to the maze solver.
 //
-//  Input conditions - first and last point are unobstructed. That's all we know.
+//  This is slow; it can take many seconds. But as soon as some results
+//  have been delivered via pathdeliversegment, character movement can start.
 //
-//  All points must be unobstructed. Obstructed points must be marked as 
-//  ends of blocked segments. Blocked segments must be at least 2 widths long,
-//  so the maze solver can run.
+//  This is best-effort; moves will be reported even if the destination cannot be
+//  fully reached.
 //
-//
-pathcheckobstacles(list pts, float width, float height, integer verbose)
-{   
+pathplan(vector startpos, vector endpos, float width, float height, integer verbose)
+{   //  Use the system's GetStaticPath to get an initial path
+    list pts = llGetStaticPath(startpos, endpos, width + PATHSTATICTOL, [CHARACTER_TYPE, CHARTYPE]);  // generate path
+    integer status = llList2Integer(pts,-1);                // last item is status
+    if (status != 0)                                        // static path fail
+    {   patherror(status, startpos); return; }              // status from llGetStaticPath status
+    //  Got path
+    pts = llList2List(pts,0,-2);                            // drop status from end of points list
+    DEBUGPRINT1("Static path: " + llDumpList2String(path,","));     // dump list for debug
+    pts = pathclean(pts);                                   // 
     integer len = llGetListLength(pts);
     if (len < 2)
-    {   pathdeliversegment([], FALSE, TRUE);                // empty set of points, no maze, done.
+    {   patherror(MAZESTATUSNOPTS, startpos);
+        pathdeliversegment([], FALSE, TRUE);                // empty set of points, no maze, done.
         return;                                             // empty list
     }
-    DEBUGPRINT1("path check for obstacles. Segments: " + (string)len); 
+    //  We have a valid static path. Now start checking for obstacles.
+    DEBUGPRINT1("Path check for obstacles. Segments: " + (string)len); 
     vector p0 = llList2Vector(pts,0);                       // starting position
     list pathPoints = [p0];                                 // output points
     vector p1 = llList2Vector(pts,1);                       // next position

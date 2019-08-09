@@ -45,6 +45,7 @@
 #define MAZESTATUSBADSTART  -206                // can't find open space at start
 #define MAZESTATUSBADOBSTACLE -208              // can't find open space after obstacle
 #define MAZESTATUSBADBACKUP  -209               // backup to find space before obstacle hit beginning
+#define MAZESTATUSNOPTS      -210               // empty path
 
                                                 // internal errors
 #define MAZESTATUSTIMEOUT   -501                // took too long
