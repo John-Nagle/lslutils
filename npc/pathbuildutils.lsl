@@ -42,7 +42,13 @@ patherror(integer status, vector pos)
     DEBUGPRINT1("Path error " + (string)status + " at " + (string)pos); 
 }
 
-
+//
+//  pathpointinsegment - is p between p0 and p1?
+//
+//  Tests for opposing directions to p0 and p1.
+//
+integer pathpointinsegment(vector p, vector p0, vector p1)
+{   return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < 0.999); }
 //
 //  
 //
@@ -564,7 +570,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
             if (verbose) { llOwnerSay("Hit obstacle at segment #" + (string)currentix + " " + (string) interpt0); }
             if (distalongseg + hitdist-width < 0)           // too close to beginning of current segment to back up
             {                                               // must search in previous segments
-                list pinfo =  pathfindunobstructed(pts, currentix-1, -1, width, height);
+                list pinfo =  pathfindunobstructed(pts, currentix, -1, width, height);
                 interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
                 integer newix = llList2Integer(pinfo,1);    // segment in which we found point, counting backwards
                 DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
@@ -573,6 +579,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
                     pathdeliversegment(pathPoints,FALSE, TRUE); // points, no maze, done
                     return;                                 // no open space found, fail
                 }
+#ifdef OBSOLETE
                 vector p0work = llList2Vector(pts,newix-1);              // starting position in new segment
                 //  Need to discard some points in pathPts because we backed through them.
                 //  ***CHECK THIS*** - compares on point position and might discard the whole list.
@@ -582,11 +589,19 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
                     DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-1) + " from pathPoints looking for " + (string)p0work);
                     pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-1, llGetListLength(pathPoints)-1);
                 }
+#endif // OBSOLETE
+                //  Discard points until we find the one that contains the new intermediate point.
+                do {
+                    DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-1) + " from pathPoints looking for " + (string)interpt0);
+                    pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-1, llGetListLength(pathPoints)-1);
+                } while ( llGetListLength(pathPoints) > 1 && !pathpointinsegment(interpt0,llList2Vector(pathPoints,-1), llList2Vector(pathPoints,-2)));
+#ifdef OBSOLETE             
                 if (llGetListLength(pathPoints) == 0)                                       // if lost entire list
                 {   patherror(MAZESTATUSBADBACKUP, p0work);
                     pathdeliversegment([], FALSE, TRUE);                // empty set of points, no maze, done.
                     return; 
                 }                      // fails
+#endif // OBSOLETE
             }
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for open space on far side of obstacle.");
