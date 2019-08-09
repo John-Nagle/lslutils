@@ -574,8 +574,9 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
                     return;                                 // no open space found, fail
                 }
                 vector p0work = llList2Vector(pts,newix-1);              // starting position in new segment
-                 //  Need to discard some points in pathPts because we backed through them.
-                //  ***CHECK THIS*** - compares on point position and might discard the whole list. Or it might discard a blocked area.
+                //  Need to discard some points in pathPts because we backed through them.
+                //  ***CHECK THIS*** - compares on point position and might discard the whole list.
+                //  ***STILL WRONG*** drops one too many points on at least one occasion.
                 while ((llGetListLength(pathPoints) > 0) && llVecMag(llList2Vector(pathPoints,-1)-p0work) > 0.001)         // while have path points left
                 {   
                     DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-1) + " from pathPoints looking for " + (string)p0work);
