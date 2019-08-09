@@ -518,7 +518,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
     {   patherror(status, startpos); return; }              // status from llGetStaticPath status
     //  Got path
     pts = llList2List(pts,0,-2);                            // drop status from end of points list
-    DEBUGPRINT1("Static path: " + llDumpList2String(path,","));     // dump list for debug
+    DEBUGPRINT1("Static path: " + llDumpList2String(pts,","));     // dump list for debug
     pts = pathclean(pts);                                   // 
     integer len = llGetListLength(pts);
     if (len < 2)
