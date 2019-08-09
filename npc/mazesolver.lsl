@@ -828,6 +828,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     {   llOwnerSay("Maze solver done. Free memory " + (string)llGetFreeMemory()); } 
     //  Send reply                  
     llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "serial", serial, "status", status,
+        "pos", gMazePos, "rot", gMazeRot, "cellsize", gMazeCellSize,
         "points", llList2Json(JSON_ARRAY, path)]),"");
 }
 
@@ -844,7 +845,6 @@ integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
 //  mazecelltopoint -- convert maze coordinates to point in world space
 //
 vector mazecelltopoint(integer x, integer y)
-////{      return(gMazePos + (<x,y,0>*gMazeCellSize) * gMazeRot);  } //// OBSOLETE - use common fn
 {   return(mazecellto3d(x, y, gMazeCellSize, gMazePos, gMazeRot)); }
                 
 //

@@ -119,9 +119,12 @@ list mazesolveranswer(string jsn, integer status)
     string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
     if (requesttype != "mazesolve") { return([MAZESTATUSFORMAT]); }              // ignore, not our msg
     string serial = llJsonGetValue(jsn, ["serial"]);
-    if ((integer)serial != gMazeSerial) { return([MAZESTATUSCOMMSEQ]); }            // out of sequence 
+    ////if ((integer)serial != gMazeSerial) { return([MAZESTATUSCOMMSEQ]); }            // out of sequence 
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) { return([status]); }                  // error status from other side
+    float cellsize = (float)llJsonGetValue(jsn,["cellsize"]); // get maze coords to world coords info
+    vector pos = (vector)llJsonGetValue(jsn,["pos"]);
+    rotation rot = (rotation)llJsonGetValue(jsn,["rot"]);
     list ptsmaze = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
     list ptsworld = [];
     integer i;
@@ -129,8 +132,7 @@ list mazesolveranswer(string jsn, integer status)
     for (i=0; i<length; i++)
     {   integer val = llList2Integer(ptsmaze,i);            // X and Y encoded into one integer
         llOwnerSay("Maze solve pt: (" + (string)mazepathx(val) + "," + (string)mazepathy(val) + ")");
-        ////vector cellpos = gMazePos + (<mazepathx(val), mazepathy(val), 0>*gMazeCellSize)*gMazeRot;  // center of cell in world space
-        vector cellpos = mazecellto3d(mazepathx(val), mazepathy(val), gMazeCellSize, gMazePos, gMazeRot);                        // convert back to 3D coords 
+        vector cellpos = mazecellto3d(mazepathx(val), mazepathy(val), cellsize, pos, rot);                        // convert back to 3D coords 
         ptsworld += [cellpos];                              // accum list of waypoints
     }
     return(ptsworld);
