@@ -83,7 +83,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
         panic("Maze geometry incorrect. Distance between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
     }
-    if ((llVecMag(p0chk-p0) > 0.01) || (llVecMag(p1chk-p1) > 0.01))        
+    if ((llVecMag(p0chk-p0) > 0.02) || (llVecMag(p1chk-p1) > 0.02))        
     {   panic("Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
     }

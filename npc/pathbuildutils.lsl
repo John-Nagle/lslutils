@@ -579,29 +579,11 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
                     pathdeliversegment(pathPoints,FALSE, TRUE); // points, no maze, done
                     return;                                 // no open space found, fail
                 }
-#ifdef OBSOLETE
-                vector p0work = llList2Vector(pts,newix-1);              // starting position in new segment
-                //  Need to discard some points in pathPts because we backed through them.
-                //  ***CHECK THIS*** - compares on point position and might discard the whole list.
-                //  ***STILL WRONG*** drops one too many points on at least one occasion.
-                while ((llGetListLength(pathPoints) > 0) && llVecMag(llList2Vector(pathPoints,-1)-p0work) > 0.001)         // while have path points left
-                {   
-                    DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-1) + " from pathPoints looking for " + (string)p0work);
-                    pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-1, llGetListLength(pathPoints)-1);
-                }
-#endif // OBSOLETE
                 //  Discard points until we find the one that contains the new intermediate point.
                 do {
                     DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-1) + " from pathPoints looking for " + (string)interpt0);
                     pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-1, llGetListLength(pathPoints)-1);
                 } while ( llGetListLength(pathPoints) > 1 && !pathpointinsegment(interpt0,llList2Vector(pathPoints,-1), llList2Vector(pathPoints,-2)));
-#ifdef OBSOLETE             
-                if (llGetListLength(pathPoints) == 0)                                       // if lost entire list
-                {   patherror(MAZESTATUSBADBACKUP, p0work);
-                    pathdeliversegment([], FALSE, TRUE);                // empty set of points, no maze, done.
-                    return; 
-                }                      // fails
-#endif // OBSOLETE
             }
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for open space on far side of obstacle.");
