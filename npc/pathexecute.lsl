@@ -6,7 +6,12 @@
 //  This is where the path components are assembled and keyframe
 //  animation lists are created and executed.
 //
-//  Speed and turning rate are set here, too
+//  Speed and turning rate are set here, too.
+//
+//  There is asychrony here. Segments arrive from two sources - 
+//  the path planner and the maze solver. Each segment has a 
+//  sequence number. From each source, the segments are in
+//  ascending order, but the two sources come in asychronously.
 //
 //  Animats
 //  June, 2019
@@ -18,10 +23,24 @@
 
 //
 //  Globals
-//
-list gInputSegments = [];                                   // strided list - segment number, segment points
+//                                
 float gMaxTurnRate = 0.2;                                   // (radians/sec) max turn rate
 float gMaxSpeed = 2.0;                                      // (meters/sec) max speed
+integer gPathId = 0;                                        // current path ID
+//
+//  Segment storage
+//  Each segment list is of the form [segmentid, pntcount, pnt, pnt ... segmentid, pntcount, pnt, pnt ...]
+//
+list gPathSegments = [];                                    // path segment list
+list gMazeSegments = [];                                    // maze segment list
+
+//  Segment storage functions. If only we could pass references.
+//  ***UNTESTED***
+#define pathexeaddseg(lst, segnum, pts) { lst = lst + ([(segnum), llGetListLength(pts)] + (pts); }   // add segment to list
+
+#define pathexegetseg(lst) (llList2List(lst, 2, llList2Integer(lst,2) + 2)) // get first segment from list. Check length first. Expression.
+
+#define pathexermseg(lst) { lst = llList2List(llList2Integer(lst,2) + 3,-1); } // remove first segment from list. OK on empty list
 
 
 
@@ -35,14 +54,65 @@ pathexeinit(float speed, float turnrate)
     gMaxTurnRate = turnrate;
     
 }
+#ifdef OBSOLETE  // there may be a better way
+//
+//  Path storage. Paths can come in out of order, so we need an array of lists.
+//  Which LSL does not have. So we have to construct one.
+//
+//  pathexestore -- store a path for later use
+//
+pathexestore(list pts, integer segmentid)
+{
+}
+
+//
+//  pathexeget -- get a path from the path store
+//
+list pathexeget(integer segmentid)
+{
+}
+
+//
+//  pathexestoreclear -- clear the path store
+//
+pathexestoreclear()
+{
+}
+
+//
+//  pathstoreisempty -- true if path store is empty
+//
+integer pathstoreisempty()
+{
+}
+#endif // OBSOLETE
 
 //
 //  pathexecutedeliver -- incoming path segment
 //
 //  Starts motion if necessary
 //
-pathexedeliver(list pts, integer pathid, integer segmentid)
+//  A new pathid forces a flush of everything.
+//
+integer pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
 {
+    if (llGetListLength(pts) < 2) { return(PATHEXEBADPATH1); } // bogus path
+    if (pathid != gPathId)                                  // starting a new segment, kill any movement
+    {   if (segmentid != 0) { return(PATHEXESEGOUTOFSEQ1); } // segment out of sequence
+        pathexestop();                                      // stop everything
+        gPathId = pathid;                                   // reset state to empty
+        gInputSegments = [];       
+    }
+    if (segmentid == 0)                                     // starting a new path
+    {   if (!pathstoreisempty())                            // so why do we have segments?
+        {   return(PATHEXESEGOUTOFSEQ2); }                  // bad
+        vector p0 = llList2Vector(pts,0);                   // get starting point
+        if (llVecMag(llGetPos()-p0) > PATHSTARTTOL)         // if too far from current pos
+        {   return(PATHEXEBADSTARTPOS); }                   // bad start position
+        // ***MORE***
+        
+    } else {                                                // continuing existing path
+    }
     //  ***MORE***
 }
 
