@@ -40,7 +40,7 @@ list gMazeSegments = [];                                    // maze segment list
 
 #define pathexegetseg(lst) (llList2List(lst, 2, llList2Integer(lst,2) + 2)) // get first segment from list. Check length first. Expression.
 
-#define pathexermseg(lst) { lst = llList2List(llList2Integer(lst,2) + 3,-1); } // remove first segment from list. OK on empty list
+#define pathexedelseg(lst) { lst = llList2List(llList2Integer(lst,2) + 3,-1); } // remove first segment from list. OK on empty list
 
 
 
@@ -54,38 +54,7 @@ pathexeinit(float speed, float turnrate)
     gMaxTurnRate = turnrate;
     
 }
-#ifdef OBSOLETE  // there may be a better way
-//
-//  Path storage. Paths can come in out of order, so we need an array of lists.
-//  Which LSL does not have. So we have to construct one.
-//
-//  pathexestore -- store a path for later use
-//
-pathexestore(list pts, integer segmentid)
-{
-}
 
-//
-//  pathexeget -- get a path from the path store
-//
-list pathexeget(integer segmentid)
-{
-}
-
-//
-//  pathexestoreclear -- clear the path store
-//
-pathexestoreclear()
-{
-}
-
-//
-//  pathstoreisempty -- true if path store is empty
-//
-integer pathstoreisempty()
-{
-}
-#endif // OBSOLETE
 
 //
 //  pathexecutedeliver -- incoming path segment
@@ -104,16 +73,17 @@ integer pathexedeliver(list pts, integer pathid, integer segmentid, integer isma
         gInputSegments = [];       
     }
     if (segmentid == 0)                                     // starting a new path
-    {   if (!pathstoreisempty())                            // so why do we have segments?
+    {   if (gPathSegments != [] || gMazeSegments != []))    // so why do we have segments?
         {   return(PATHEXESEGOUTOFSEQ2); }                  // bad
         vector p0 = llList2Vector(pts,0);                   // get starting point
         if (llVecMag(llGetPos()-p0) > PATHSTARTTOL)         // if too far from current pos
         {   return(PATHEXEBADSTARTPOS); }                   // bad start position
-        // ***MORE***
-        
-    } else {                                                // continuing existing path
-    }
-    //  ***MORE***
+    }  
+    if (ismaze)                                             // add to maze or path list
+    {   pathexeaddseg(gMazeSegments, segmentid, pts); }
+    else
+    {   pathexeaddseg(gPathSegments, segmentid, pts); }
+    pathexeevent();                                         // advance path processing as needed       
 }
 
 //
@@ -192,6 +162,21 @@ list pathexecakckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
     return([rp, rr, rt]);                       // [rel pos, rel rot, rel time]
 } 
 
+//
+//  pathexegetsegment -- get next segment from either queue.
+//
+//  Must be segment segid.
+//
+list pathexegetsegment(integer segid)
+{
+    //  Try path segment queue
+    if ((llGetListLength(gPathSegments) > 0) && llList2Integer(gPathSegments,0) == segid)
+    {   list nextseg = pathexegetseg(gPathSegments); pathexedelseg(gPathSegments); return(nextseg); }
+    //  Try maze segment queue
+    if ((llGetListLength(gMazeSegments) > 0) && llList2Integer(gMazeSegments,0) == segid)
+    {   list nextseg = pathexegetseg(gMazeSegments); pathexedelseg(gMazeSegments); return(nextseg); }
+    return([]); 
+}
 //
 //  pathexemovementend -- movement has finished, feed in next section if any
 //
