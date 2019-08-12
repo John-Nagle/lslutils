@@ -33,7 +33,7 @@ float gMazeCellSize;                                // cell size of maze
 //  p0-p1 distance must be an integral number of widths.
 //
 //
-integer mazesolverstart(vector p0, vector p1, float width, float height, float probespacing, integer verbose) 
+integer mazesolverstart(vector p0, vector p1, float width, float height, float probespacing, integer pathid, integer segmentid, integer verbose) 
 {
     //  Lay out the rectangle for the maze
     integer MAXMAZESIZE = 41;                       // ***TEMP*** belongs elsewhere
@@ -95,7 +95,8 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
         "verbose", verbose,                         // debug use - maze solver will print messages
         "probespacing", probespacing,               // distance between ray casts in height dir
         "cellsize", gMazeCellSize,                  // size of a maze cell. Typically 0.333 meter
-        "serial", gMazeSerial,                      // serial number for check
+        "pathid", pathid,                           // path we are working on
+        "segmentid", segmentid,                     // segment ID we are on
         "pos", gMazePos,                            // corner of maze in world space
         "rot", gMazeRot,                            // rotation of maze in world space
         "width", width,                             // avatar dimension
