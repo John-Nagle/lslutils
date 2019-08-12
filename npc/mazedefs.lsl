@@ -23,6 +23,7 @@
 //
 #define MAZESOLVEREQUEST 201                    // to maze solver
 #define MAZESOLVERREPLY 202                     // from maze solver
+#define MAZEPATHREPLY 203                       // from path planner
 
 #define MAZEMAXSIZE (41)                                    // maximum size of maze
 

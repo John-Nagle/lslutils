@@ -42,7 +42,16 @@
 //                                
 float gMaxTurnRate = 0.2;                                   // (radians/sec) max turn rate
 float gMaxSpeed = 2.0;                                      // (meters/sec) max speed
-integer gPathId = 0;                                        // current path ID
+integer gPathExeId = 0;                                     // current path ID
+integer gPathExeNextsegid;                                  // current segment
+integer gPathExeMoving;                                     // true if KFM movement in progress
+
+//  Avatar params
+float gPathExeWidth;
+float gPathExeHeight;
+float gPathExeProbespacing;
+integer gPathExeChartype;
+float gPathExeDisttoend = 1.5;                              // (m) distance to begin turn ahead of corner
 //
 //  Segment storage
 //  Each segment list is of the form [segmentid, pntcount, pnt, pnt ... segmentid, pntcount, pnt, pnt ...]
@@ -58,7 +67,7 @@ list gAllSegments = [];                                     // combined segments
 
 #define pathexegetseg(lst) (llList2List(lst, 2, llList2Integer(lst,2) + 2)) // get first segment from list. Check length first. Expression.
 
-#define pathexedelseg(lst) { lst = llList2List(llList2Integer(lst,2) + 3,-1); } // remove first segment from list. OK on empty list
+#define pathexedelseg(lst) { lst = llList2List(lst, llList2Integer(lst,2) + 3,-1); } // remove first segment from list. OK on empty list
 
 
 
@@ -88,10 +97,10 @@ pathexeinit(float speed, float turnrate, float width, float height, float probes
 integer pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
 {   
     if (llGetListLength(pts) < 2) { return(PATHEXEBADPATH1); } // bogus path
-    if (pathid != gPathId)                                  // starting a new segment, kill any movement
+    if (pathid != gPathExeId)                                // starting a new segment, kill any movement
     {   if (segmentid != 0) { return(PATHEXESEGOUTOFSEQ1); }// segment out of sequence
         pathexestop();                                      // stop everything
-        gPathId = pathid;                                   // reset state to empty
+        gPathExeId = pathid;                                // reset state to empty
     }
     if (segmentid == 0)                                     // starting a new path
     {   if (gClearSegments != [] || gMazeSegments != []))    // so why do we have segments?
@@ -128,7 +137,7 @@ list pathexeextrapoints(list pts, float distfromend)
         if (dlen >= 3*distfromend)                  // long enough to need 2 intermediate points
         {   newpts += [p0+dir*distfromend, p1-dir*distfromend]; }
         else if (dlen >= 2*distfromend)
-        {   newpts += [(p0+p1)*0.5); }              // add the midpoint 
+        {   newpts += [(p0+p1)*0.5]; }              // add the midpoint 
         newpts += [p1];
         p0 = p1;                                    // for next cycle
     }
@@ -144,15 +153,15 @@ list pathexebuildkfm(vector startpos, rotation startrot, list pts)
     integer i;
     integer length = llGetListLength(pts);
     vector pos = startpos;
-    vector rot = startrot;
+    rotation rot = startrot;
     //  Vectors off the end are ZERO_VECTOR. Code relies on this.
     for (i=1; i<length; i++)                    // skip 1, we are already there.
     {   vector pprev = llList2Vector(pts,i-1);  // previous point
         vector p0 = llList2Vector(pts,i);       // point we are going to
         vector p1 = llList2Vector(pts,i+1);
         kfmdata += pathexecalckfm(pos, rot, pprev, p0, p1);
-        pos += llList2Rotatation(kfmdata,-3);   // update pos in world coords
-        rot *= llList2Rotation(kfmdata,-2);     // update rot in world coords      
+        pos += llList2Vector(kfmdata,-3);       // update pos in world coords
+        rot *= llList2Rot(kfmdata,-2);          // update rot in world coords      
         pprev = p0;
     }
     return(kfmdata);                            // list ready for KFM
@@ -163,7 +172,7 @@ list pathexebuildkfm(vector startpos, rotation startrot, list pts)
 //
 //  ***NEED TO PREVENT ROTATION ERROR ACCUMULATION***
 //
-list pathexecakckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
+list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
 {
     vector rp = p0 - pos;                       // p0 in relative coords - advances us to p0
     //  Rotation is to the average direction of the previous and next sections in the XY plane.
@@ -176,7 +185,7 @@ list pathexecakckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
     vector dir = llVecNorm(invecnorm+outvecnorm);// next direction
     rotation rr = llRotBetween(invecnorm, dir); // relative rotation
     //  Time computation. Speed is limited by rotation rate.
-    float angle = llFAbs(llAngleBetween(ZERO_ROTATION, rr));    // how much rotation is this?
+    float angle = llFabs(llAngleBetween(ZERO_ROTATION, rr));    // how much rotation is this?
     float rsecs = angle / gMaxTurnRate;         // minimum time for this move per rotation limit
     float rt = outveclen / gMaxSpeed;           // minimum time for this move per speed limit
     if (rsecs > rt) { rt = rsecs; }             // choose longer time
@@ -203,7 +212,9 @@ list pathexegetsegment(integer segid)
 //
 pathexeassemblesegs()
 {   while (TRUE)
-    {   list nextseg = pathexegetsegment(gPathExeNextsegid);   // get next segment if any
+    {   list foo = pathexegetsegment(0); // ***TEMP***
+        integer bar = gPathExeNextsegid;// ***TEMP***
+        list nextseg = pathexegetsegment(gPathExeNextsegid);   // get next segment if any
         if (nextseg == []) return;                      // nothing to do
         gPathExeNextsegid++;                                   // advance seg ID
         if (gAllSegments == [])
@@ -216,9 +227,9 @@ pathexeassemblesegs()
             nextseg = llList2List(nextseg,1,-1);        // discard new duplicate point
             //  If we can take a short-cut at the join between two segments, do so.
             if (obstaclecheckpath(llList2Vector(gAllSegments,-2), llList2Vector(nextseg,0), gPathExeWidth, gPathExeHeight, gPathExeProbespacing, gPathExeChartype))
-            {   gAllSegments = llList2List(gAllSegments,0,-2) + pathextrapoints(nextseg, gPathExeDisttoend); }
+            {   gAllSegments = llList2List(gAllSegments,0,-2) + pathexeextrapoints(nextseg, gPathExeDisttoend); }
             else
-            {   gAllSegments += pathextrapoints(nextseg, gPathExeDisttoend);                // no, can't drop point
+            {   gAllSegments += pathexeextrapoints(nextseg, gPathExeDisttoend);                // no, can't drop point
             }
         }
     }
@@ -229,7 +240,7 @@ pathexeassemblesegs()
 pathexedomove()
 {
     if (gPathExeMoving) { return; }                     // we are moving, do nothing
-    pathassemblesegs();                                 // have work to do?
+    pathexeassemblesegs();                              // have work to do?
     if (gAllSegments != [])                             // if work
     {   list kfmmoves = pathexebuildkfm(llGetPos(), llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
