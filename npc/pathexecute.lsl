@@ -49,6 +49,7 @@ float gMaxSpeed = 2.0;                                      // (meters/sec) max 
 integer gPathExeId = 0;                                     // current path ID
 integer gPathExeNextsegid;                                  // current segment
 integer gPathExeMoving;                                     // true if KFM movement in progress
+integer gPathExeEOF;                                        // EOF seen
 
 //  Avatar params
 float gPathExeWidth;
@@ -70,7 +71,10 @@ list gAllSegments = [];                                     // combined segments
 
 #define pathexegetseg(lst) (llList2List(lst, 2, llList2Integer(lst,1) + 1)) // get first segment from list. Check length first. Expression.
 
-#define pathexedelseg(lst) { lst = llList2List(lst, llList2Integer(lst,1) + 3,-1); } // remove first segment from list. OK on empty list
+////#define pathexedelseg(lst) { lst = llList2List(lst, llList2Integer(lst,1) + 2,-1); } // remove first segment from list. OK on empty list
+
+//  Remove first segment of list. llList2List has strange semantics for start > end, so we have to test.
+#define pathexedelseg(lst) { if (llList2Integer(lst,1) + 2 >= llGetListLength(lst)) { lst = []; } else { lst = llList2List(lst, llList2Integer(lst,1) + 2,-1); }}
 
 
 
@@ -104,6 +108,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
     {   if (segmentid != 0) { pathexestop(PATHEXESEGOUTOFSEQ1); return; }// segment out of sequence
         pathexestop(0);                                     // normal start
         gPathExeId = pathid;                                // reset state to empty
+        gPathExeEOF = FALSE;                                // not at EOF
         llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
     }
     if (segmentid == 0)                                     // starting a new path
@@ -213,7 +218,12 @@ list pathexegetsegment(integer segid)
 {   DEBUGPRINT1("Getting segment #" + (string)segid);
     //  Try path segment queue
     if ((llGetListLength(gClearSegments) > 0) && llList2Integer(gClearSegments,0) == segid)
-    {       list nextseg = pathexegetseg(gClearSegments); pathexedelseg(gClearSegments); return(nextseg); }
+    {       DEBUGPRINT1("Clear segments before del: " + llDumpList2String(gClearSegments,","));    // ***TEMP***
+            list nextseg = pathexegetseg(gClearSegments); pathexedelseg(gClearSegments); 
+    
+            DEBUGPRINT1("Clear segments after del: " + llDumpList2String(gClearSegments,","));    // ***TEMP***
+    
+            return(nextseg); }
     //  Try maze segment queue
     if ((llGetListLength(gMazeSegments) > 0) && llList2Integer(gMazeSegments,0) == segid)
     {   list nextseg = pathexegetseg(gMazeSegments);  pathexedelseg(gMazeSegments); return(nextseg); }
@@ -222,22 +232,32 @@ list pathexegetsegment(integer segid)
 //
 //  pathexeassemblesegs  -- combine segments into one big list.
 //
+//  A segment of [ZERO_VECTOR] means EOF.
+//  That will result in a gAllSegments list of nothing but [ZERO_VECTOR] as the last
+//
 pathexeassemblesegs()
 {   while (TRUE)
     {   list nextseg = pathexegetsegment(gPathExeNextsegid);    // get next segment if any
-        if (nextseg == []) 
-        {   DEBUGPRINT1("Assembly complete: " + llDumpList2String(gAllSegments,","));
-            return;                                             // nothing to do
+        if (nextseg == [ZERO_VECTOR])
+        {   gPathExeEOF = TRUE;                                 // we are at EOF
+            nextseg = [];                                       // but must deliver the EOF flag later
         }
-        DEBUGPRINT1("Assembling segment #" + (string)gPathExeNextsegid + " : " + llDumpList2String(nextseg,","));
+        if (nextseg == []) 
+        {   if (gAllSegments == [] && gPathExeEOF) { gAllSegments = [ZERO_VECTOR]; } // done, deliver the EOF signal
+            DEBUGPRINT1("Assembly complete: " + llDumpList2String(gAllSegments,","));
+            return;                                             // caught up with input
+        }
+        DEBUGPRINT1("Assembling segment #" + (string)gPathExeNextsegid + ": " + llDumpList2String(nextseg,","));
+        if (nextseg == [ZERO_VECTOR] && gAllSegments != []) { return; } // if EOF marker, but segments left to do, use assembled segments
         gPathExeNextsegid++;                                    // advance seg ID
         if (gAllSegments == [])
         {   gAllSegments = pathexeextrapoints(nextseg, gPathExeDisttoend);  // first segment
             DEBUGPRINT1("Started gAllSegments from empty: " + llDumpList2String(gAllSegments,",")); // ***TEMP***
             nextseg = [];
         } else {
+            DEBUGPRINT1("Adding to gAllSegments: " + llDumpList2String(gAllSegments,",")); // ***TEMP***
             vector lastpt = llList2Vector(gAllSegments,-1);
-            vector firstpt = llList2Vector(gAllSegments,0);
+            vector firstpt = llList2Vector(nextseg,0);
             assert(llVecMag(lastpt-firstpt) < 0.01);    // endpoints should match
             nextseg = llList2List(nextseg,1,-1);        // discard new duplicate point
             //  If we can take a short-cut at the join between two segments, do so.
