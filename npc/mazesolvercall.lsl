@@ -137,6 +137,7 @@ list mazesolveranswer(string jsn, integer status)
     }
     return(ptsworld);
 }
+#ifdef NOTYET
 //
 //  Path builder task interface
 //
@@ -183,4 +184,5 @@ list pathbuildanswer(string jsn)
     gPathSectionSerial++;                                                           // ready for next segment
     return(llJson2List(llJsonGetValue(jsn, ["points"])));                           // points, one per word
 }
+#endif // NOTYET
 

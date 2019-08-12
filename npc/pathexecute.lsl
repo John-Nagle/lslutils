@@ -63,7 +63,7 @@ list gAllSegments = [];                                     // combined segments
 
 //  Segment storage functions. If only we could pass references.
 //  ***UNTESTED***
-#define pathexeaddseg(lst, segnum, pts) { lst = lst + ([(segnum), llGetListLength(pts)] + (pts); }   // add segment to list
+#define pathexeaddseg(lst, segnum, pts) { lst = lst + [(segnum), llGetListLength(pts)] + (pts); }   // add segment to list
 
 #define pathexegetseg(lst) (llList2List(lst, 2, llList2Integer(lst,2) + 2)) // get first segment from list. Check length first. Expression.
 
@@ -76,7 +76,7 @@ list gAllSegments = [];                                     // combined segments
 //
 pathexeinit(float speed, float turnrate, float width, float height, float probespacing, integer chartype)
 {
-    pathexestop();                                          // stop any operation in progress
+    pathexestop(0);                                          // stop any operation in progress
     gMaxSpeed = speed;
     gMaxTurnRate = turnrate; 
     gPathExeWidth = width;
@@ -94,26 +94,26 @@ pathexeinit(float speed, float turnrate, float width, float height, float probes
 //
 //  A new pathid forces a flush of everything.
 //
-integer pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
+pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
 {   
-    if (llGetListLength(pts) < 2) { return(PATHEXEBADPATH1); } // bogus path
+    if (llGetListLength(pts) < 2) { pathexestop(PATHEXEBADPATH1); return; } // bogus path
     if (pathid != gPathExeId)                                // starting a new segment, kill any movement
-    {   if (segmentid != 0) { return(PATHEXESEGOUTOFSEQ1); }// segment out of sequence
-        pathexestop();                                      // stop everything
+    {   if (segmentid != 0) { pathexestop(PATHEXESEGOUTOFSEQ1); return; }// segment out of sequence
+        pathexestop(0);                                     // normal start
         gPathExeId = pathid;                                // reset state to empty
     }
     if (segmentid == 0)                                     // starting a new path
-    {   if (gClearSegments != [] || gMazeSegments != []))    // so why do we have segments?
-        {   return(PATHEXESEGOUTOFSEQ2); }                  // bad
+    {   if (gClearSegments != [] || gMazeSegments != [])    // so why do we have segments?
+        {   pathexestop(PATHEXESEGOUTOFSEQ2); return; }      // bad
         vector p0 = llList2Vector(pts,0);                   // get starting point
         if (llVecMag(llGetPos()-p0) > PATHSTARTTOL)         // if too far from current pos
-        {   return(PATHEXEBADSTARTPOS); }                   // bad start position
+        {   pathexestop(PATHEXEBADSTARTPOS); return; }       // bad start position
     }  
     if (ismaze)                                             // add to maze or path list
     {   pathexeaddseg(gMazeSegments, segmentid, pts); }
     else
     {   pathexeaddseg(gClearSegments, segmentid, pts); }
-    pathexeevent();                                         // advance path processing as needed       
+    pathexedomove();                                        // advance path processing as needed 
 }
 
 //
@@ -244,7 +244,7 @@ pathexedomove()
     if (gAllSegments != [])                             // if work
     {   list kfmmoves = pathexebuildkfm(llGetPos(), llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
-        llSetKeyframedMotion(kfmmoves, []);             // begin motion
+        ////llSetKeyframedMotion(kfmmoves, []);             // begin motion
         gPathExeMoving = TRUE;                          // movement in progress
     } else {
         //  ***NEED TO DETECT END OF SEGMENTS***
@@ -272,7 +272,8 @@ pathexetimer()
 //
 pathexestop(integer status)
 {
-    llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP);    // stop whatever is going on
+    if (gPathExeMoving || status) { DEBUGPRINT("Forced movement stop. Status: " + status); }
+    llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);    // stop whatever is going on
     gClearSegments = [];                                    // reset state
     gMazeSegments = [];
     gAllSegments = [];
@@ -280,5 +281,47 @@ pathexestop(integer status)
     gPathExeMoving = FALSE;                                 // not moving     
 
 }
-
+//
+//  pathexemazedeliver  -- incoming maze result
+//
+pathexemazedeliver(string jsn) 
+{
+    string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
+    if (requesttype != "mazesolve") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
+    integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
+    integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
+    ////if ((integer)serial != gMazeSerial) { return([MAZESTATUSCOMMSEQ]); }            // out of sequence 
+    integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
+    if (status != 0) { pathexestop(status); return; }                  // error status from other side
+    float cellsize = (float)llJsonGetValue(jsn,["cellsize"]); // get maze coords to world coords info
+    vector pos = (vector)llJsonGetValue(jsn,["pos"]);
+    rotation rot = (rotation)llJsonGetValue(jsn,["rot"]);
+    list ptsmaze = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
+    list ptsworld = [];
+    integer i;
+    integer length = llGetListLength(ptsmaze);              // number of points
+    for (i=0; i<length; i++)
+    {   integer val = llList2Integer(ptsmaze,i);            // X and Y encoded into one integer
+        llOwnerSay("Maze solve pt: (" + (string)mazepathx(val) + "," + (string)mazepathy(val) + ")");
+        vector cellpos = mazecellto3d(mazepathx(val), mazepathy(val), cellsize, pos, rot);                        // convert back to 3D coords 
+        ptsworld += [cellpos];                              // accum list of waypoints
+    }
+    pathexedeliver(ptsworld, pathid, segmentid, TRUE);      // deliver maze solution
+}
+//
+//  pathexepathdeliver  -- JSON from path planner
+//
+//
+pathexepathdeliver(string jsn) 
+{
+    string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
+    if (requesttype != "path") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
+    integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
+    integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
+    ////if ((integer)serial != gMazeSerial) { return([MAZESTATUSCOMMSEQ]); }            // out of sequence 
+    integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
+    if (status != 0) { return; }                  // error status from other side
+    list pts = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
+    pathexedeliver(pts, pathid, segmentid, FALSE);      // deliver maze solution
+}
 #endif // PATHEXECUTE

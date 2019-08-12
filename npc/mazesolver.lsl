@@ -763,8 +763,8 @@ list mazeoptimizeroute(list route)
 //
 //  Only used for testing.
 //
-string mazereplyjson(integer status, integer serial, list path)
-{   return (llList2Json(JSON_OBJECT, ["reply", "mazesolve", "status", status, "serial", serial,
+string mazereplyjson(integer status, integer pathid, integer segmentid, list path)
+{   return (llList2Json(JSON_OBJECT, ["reply", "mazesolve", "status", status, "pathid", pathid, "segmentid", segmentid,
         "points", llList2Json(JSON_ARRAY, path)]));
 }
 
@@ -795,7 +795,8 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     integer status = 0;                                     // so far, so good
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type
     if (requesttype != "mazesolve") { return; }              // ignore, not our msg
-    string serial = llJsonGetValue(jsn, ["serial"]); 
+    integer pathid = (integer) llJsonGetValue(jsn, ["pathid"]); 
+    integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
     integer verbose = (integer)llJsonGetValue(jsn,["verbose"]);
     vector regioncorner = (vector)llJsonGetValue(jsn,["regioncorner"]);
     gMazePos = (vector)llJsonGetValue(jsn,["pos"]);
@@ -827,7 +828,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     if (verbose) 
     {   llOwnerSay("Maze solver done. Free memory " + (string)llGetFreeMemory()); } 
     //  Send reply                  
-    llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "serial", serial, "status", status,
+    llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "pathid", pathid, "segmentid", segmentid, "status", status,
         "pos", gMazePos, "rot", gMazeRot, "cellsize", gMazeCellSize,
         "points", llList2Json(JSON_ARRAY, path)]),"");
 }
