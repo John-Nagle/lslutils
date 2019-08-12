@@ -38,6 +38,10 @@
 #define PATHEXESEGOUTOFSEQ1 -2003
 #define PATHEXEBADSTARTPOS  -2004
 //
+//  Idle timer timeout
+//
+#define PATHEXETIMEOUT      2.0                             // check this often for progress
+//
 //  Globals
 //                                
 float gMaxTurnRate = 0.2;                                   // (radians/sec) max turn rate
@@ -100,6 +104,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
     {   if (segmentid != 0) { pathexestop(PATHEXESEGOUTOFSEQ1); return; }// segment out of sequence
         pathexestop(0);                                     // normal start
         gPathExeId = pathid;                                // reset state to empty
+        llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
     }
     if (segmentid == 0)                                     // starting a new path
     {   DEBUGPRINT1("Starting new path."); // ***TEMP***
@@ -173,7 +178,10 @@ list pathexebuildkfm(vector startpos, rotation startrot, list pts)
 //
 //  pathexecalckfm -- calc the keyframe parameters for one point
 //
+//  We are moving from pprev to p0.
+//
 //  ***NEED TO PREVENT ROTATION ERROR ACCUMULATION***
+//  ***NEED TO ROTATE BEFORE THE FIRST MOVE***
 //
 list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
 {
@@ -181,7 +189,7 @@ list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
     //  Rotation is to the average direction of the previous and next sections in the XY plane.
     vector invec = pprev-p0;                    // incoming direction
     vector outvec = p1-p0;                      // outgoing direction
-    float outveclen = llVecMag(outvec);         // distance of this move
+    float inveclen = llVecMag(invec);           // distance of this move
     vector invecnorm = llVecNorm(<invec.x, invec.y, 0>);
     vector outvecnorm = llVecNorm(<outvec.x,outvec.y,0>);
     if (p1 == ZERO_VECTOR) { outvecnorm = invecnorm; } // last section, no turn
@@ -190,8 +198,9 @@ list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
     //  Time computation. Speed is limited by rotation rate.
     float angle = llFabs(llAngleBetween(ZERO_ROTATION, rr));    // how much rotation is this?
     float rsecs = angle / gMaxTurnRate;         // minimum time for this move per rotation limit
-    float rt = outveclen / gMaxSpeed;           // minimum time for this move per speed limit
+    float rt = inveclen / gMaxSpeed;           // minimum time for this move per speed limit
     if (rsecs > rt) { rt = rsecs; }             // choose longer time
+    DEBUGPRINT1("angle: " + (string)angle + " inveclen: " + (string)inveclen + " rt: " + (string)rt); // ***TEMP***
     return([rp, rr, rt]);                       // [rel pos, rel rot, rel time]
 } 
 
@@ -273,6 +282,8 @@ pathexemovementend()
 //
 pathexetimer()
 {
+    //  ***TEMP** fake movement end to keep things moving when not really doing KFM motion yet.
+    pathexemovementend();   // ***TEMP***
 }
 
 //
@@ -286,8 +297,8 @@ pathexestop(integer status)
     gMazeSegments = [];
     gAllSegments = [];
     gPathExeNextsegid = 0; 
-    gPathExeMoving = FALSE;                                 // not moving     
-
+    gPathExeMoving = FALSE;                                 // not moving    
+    llSetTimerEvent(0.0);                                   // stop timing 
 }
 //
 //  pathexemazedeliver  -- incoming maze result
