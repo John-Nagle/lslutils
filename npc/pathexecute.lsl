@@ -104,8 +104,9 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
     }
     if (segmentid == 0)                                     // starting a new path
     {   DEBUGPRINT1("Starting new path."); // ***TEMP***
-        if (gClearSegments != [] || gMazeSegments != [])    // so why do we have segments?
+        if (gClearSegments != [] || gMazeSegments != [])    // so why do we have stored segments?
         {   pathexestop(PATHEXESEGOUTOFSEQ2); return; }     // bad
+        DEBUGPRINT1("First point: " + (string)llList2Vector(pts,0) + " Current pos: " + (string)llGetPos());
         vector verr = llList2Vector(pts,0) - llGetPos();    // get starting point
         if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL)         // if too far from current pos
         {   pathexestop(PATHEXEBADSTARTPOS); return; }       // bad start position
@@ -241,10 +242,12 @@ pathexedomove()
     if (gPathExeMoving) { return; }                     // we are moving, do nothing
     pathexeassemblesegs();                              // have work to do?
     if (gAllSegments != [])                             // if work
-    {   list kfmmoves = pathexebuildkfm(llGetPos(), llGetRot(), gAllSegments);   // build list of commands to do
+    {   DEBUGPRINT1("Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
+        list kfmmoves = pathexebuildkfm(llGetPos(), llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
         ////llSetKeyframedMotion(kfmmoves, []);             // begin motion
         gPathExeMoving = TRUE;                          // movement in progress
+        gAllSegments = [];                              // segments have been consumed
     } else {
         //  ***NEED TO DETECT END OF SEGMENTS***
         DEBUGPRINT1("Waiting for maze solver to catch up.");    // solver running behind action
@@ -290,7 +293,6 @@ pathexemazedeliver(string jsn)
     if (requesttype != "mazesolve") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
-    ////if ((integer)serial != gMazeSerial) { return([MAZESTATUSCOMMSEQ]); }            // out of sequence 
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) { pathexestop(status); return; }                  // error status from other side
     float cellsize = (float)llJsonGetValue(jsn,["cellsize"]); // get maze coords to world coords info
@@ -321,7 +323,11 @@ pathexepathdeliver(string jsn)
     ////if ((integer)serial != gMazeSerial) { return([MAZESTATUSCOMMSEQ]); }            // out of sequence 
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) { return; }                  // error status from other side
-    list pts = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
+    list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
+    list pts = [];
+    integer i;
+    integer len = llGetListLength(ptsstr);
+    for (i=0; i<len; i++) { pts += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors  
     pathexedeliver(pts, pathid, segmentid, FALSE);      // deliver maze solution
 }
 #endif // PATHEXECUTE
