@@ -16,11 +16,27 @@
 //  Animats
 //  June, 2019
 //
+//  TODO:
+//  1. Handle end of list with a ZERO_VECTOR at the end.
+//  2. Report completion via link msg
+//  3. Proper status handling.
+//  4. Smooth slow to stop at end.
+//  5. Prevent rotation and position error accumulation between segs.
+//  6. Add ray casting to detect obstacles when moving.
+//  7. Add timer handing.
+//
 #ifndef PATHEXECUTE                                         // include guard, like C/C++
 #define PATHEXECUTE
 #include "npc/assert.lsl"                                   // assert
 #include "npc/mazedefs.lsl"
-
+//
+//  Constants
+//
+//  Error codes. Move to pathdefs.
+#define PATHEXEBADPATH1     -2001
+#define PATHEXESEGOUTOFSEQ2 -2002
+#define PATHEXESEGOUTOFSEQ1 -2003
+#define PATHEXEBADSTARTPOS  -2004
 //
 //  Globals
 //                                
@@ -31,8 +47,10 @@ integer gPathId = 0;                                        // current path ID
 //  Segment storage
 //  Each segment list is of the form [segmentid, pntcount, pnt, pnt ... segmentid, pntcount, pnt, pnt ...]
 //
-list gPathSegments = [];                                    // path segment list
+list gClearSegments = [];                                   // path segment list
 list gMazeSegments = [];                                    // maze segment list
+
+list gAllSegments = [];                                     // combined segments from above, points onlyh
 
 //  Segment storage functions. If only we could pass references.
 //  ***UNTESTED***
@@ -47,12 +65,16 @@ list gMazeSegments = [];                                    // maze segment list
 //
 //  pathexeinit -- set up path execute parameters
 //
-pathexeinit(float speed, float turnrate)
+pathexeinit(float speed, float turnrate, float width, float height, float probespacing, integer chartype)
 {
     pathexestop();                                          // stop any operation in progress
     gMaxSpeed = speed;
-    gMaxTurnRate = turnrate;
-    
+    gMaxTurnRate = turnrate; 
+    gPathExeWidth = width;
+    gPathExeHeight = height;
+    gPathExeProbespacing = probespacing;
+    gPathExeChartype = chartype;
+    gPathExeNextsegid = 0;   
 }
 
 
@@ -64,16 +86,15 @@ pathexeinit(float speed, float turnrate)
 //  A new pathid forces a flush of everything.
 //
 integer pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
-{
+{   
     if (llGetListLength(pts) < 2) { return(PATHEXEBADPATH1); } // bogus path
     if (pathid != gPathId)                                  // starting a new segment, kill any movement
-    {   if (segmentid != 0) { return(PATHEXESEGOUTOFSEQ1); } // segment out of sequence
+    {   if (segmentid != 0) { return(PATHEXESEGOUTOFSEQ1); }// segment out of sequence
         pathexestop();                                      // stop everything
         gPathId = pathid;                                   // reset state to empty
-        gInputSegments = [];       
     }
     if (segmentid == 0)                                     // starting a new path
-    {   if (gPathSegments != [] || gMazeSegments != []))    // so why do we have segments?
+    {   if (gClearSegments != [] || gMazeSegments != []))    // so why do we have segments?
         {   return(PATHEXESEGOUTOFSEQ2); }                  // bad
         vector p0 = llList2Vector(pts,0);                   // get starting point
         if (llVecMag(llGetPos()-p0) > PATHSTARTTOL)         // if too far from current pos
@@ -82,7 +103,7 @@ integer pathexedeliver(list pts, integer pathid, integer segmentid, integer isma
     if (ismaze)                                             // add to maze or path list
     {   pathexeaddseg(gMazeSegments, segmentid, pts); }
     else
-    {   pathexeaddseg(gPathSegments, segmentid, pts); }
+    {   pathexeaddseg(gClearSegments, segmentid, pts); }
     pathexeevent();                                         // advance path processing as needed       
 }
 
@@ -170,18 +191,62 @@ list pathexecakckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
 list pathexegetsegment(integer segid)
 {
     //  Try path segment queue
-    if ((llGetListLength(gPathSegments) > 0) && llList2Integer(gPathSegments,0) == segid)
-    {   list nextseg = pathexegetseg(gPathSegments); pathexedelseg(gPathSegments); return(nextseg); }
+    if ((llGetListLength(gClearSegments) > 0) && llList2Integer(gClearSegments,0) == segid)
+    {   list nextseg = pathexegetseg(gClearSegments); pathexedelseg(gClearSegments); return(nextseg); }
     //  Try maze segment queue
     if ((llGetListLength(gMazeSegments) > 0) && llList2Integer(gMazeSegments,0) == segid)
     {   list nextseg = pathexegetseg(gMazeSegments); pathexedelseg(gMazeSegments); return(nextseg); }
     return([]); 
 }
 //
+//  pathexeassemblesegs  -- combine segments into one big list.
+//
+pathexeassemblesegs()
+{   while (TRUE)
+    {   list nextseg = pathexegetsegment(gPathExeNextsegid);   // get next segment if any
+        if (nextseg == []) return;                      // nothing to do
+        gPathExeNextsegid++;                                   // advance seg ID
+        if (gAllSegments == [])
+        {   gAllSegments = nextseg;                     // first segment
+            nextseg = [];
+        } else {
+            vector lastpt = llList2Vector(gAllSegments,-1);
+            vector firstpt = llList2Vector(gAllSegments,0);
+            assert(llVecMag(lastpt-firstpt) < 0.01);    // endpoints should match
+            nextseg = llList2List(nextseg,1,-1);        // discard new duplicate point
+            //  If we can take a short-cut at the join between two segments, do so.
+            if (obstaclecheckpath(llList2Vector(gAllSegments,-2), llList2Vector(nextseg,0), gPathExeWidth, gPathExeHeight, gPathExeProbespacing, gPathExeChartype))
+            {   gAllSegments = llList2List(gAllSegments,0,-2) + pathextrapoints(nextseg, gPathExeDisttoend); }
+            else
+            {   gAllSegments += pathextrapoints(nextseg, gPathExeDisttoend);                // no, can't drop point
+            }
+        }
+    }
+}
+//
+//  pathexedomove -- feed in next section if any
+//
+pathexedomove()
+{
+    if (gPathExeMoving) { return; }                     // we are moving, do nothing
+    pathassemblesegs();                                 // have work to do?
+    if (gAllSegments != [])                             // if work
+    {   list kfmmoves = pathexebuildkfm(llGetPos(), llGetRot(), gAllSegments);   // build list of commands to do
+        DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
+        llSetKeyframedMotion(kfmmoves, []);             // begin motion
+        gPathExeMoving = TRUE;                          // movement in progress
+    } else {
+        //  ***NEED TO DETECT END OF SEGMENTS***
+        DEBUGPRINT1("Waiting for maze solver to catch up.");    // solver running behind action
+    }
+}
+
+//
 //  pathexemovementend -- movement has finished, feed in next section if any
 //
 pathexemovementend()
-{
+{   gPathExeMoving = FALSE;                                 // not moving
+    pathexedomove();
 }
 
 //
@@ -196,6 +261,13 @@ pathexetimer()
 //
 pathexestop(integer status)
 {
+    llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP);    // stop whatever is going on
+    gClearSegments = [];                                    // reset state
+    gMazeSegments = [];
+    gAllSegments = [];
+    gPathExeNextsegid = 0; 
+    gPathExeMoving = FALSE;                                 // not moving     
+
 }
 
 #endif // PATHEXECUTE
