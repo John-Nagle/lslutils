@@ -65,9 +65,9 @@ list gAllSegments = [];                                     // combined segments
 //  ***UNTESTED***
 #define pathexeaddseg(lst, segnum, pts) { lst = lst + [(segnum), llGetListLength(pts)] + (pts); }   // add segment to list
 
-#define pathexegetseg(lst) (llList2List(lst, 2, llList2Integer(lst,2) + 1)) // get first segment from list. Check length first. Expression.
+#define pathexegetseg(lst) (llList2List(lst, 2, llList2Integer(lst,1) + 1)) // get first segment from list. Check length first. Expression.
 
-#define pathexedelseg(lst) { lst = llList2List(lst, llList2Integer(lst,2) + 3,-1); } // remove first segment from list. OK on empty list
+#define pathexedelseg(lst) { lst = llList2List(lst, llList2Integer(lst,1) + 3,-1); } // remove first segment from list. OK on empty list
 
 
 
@@ -205,10 +205,16 @@ list pathexegetsegment(integer segid)
 {   DEBUGPRINT1("Getting segment #" + (string)segid);
     //  Try path segment queue
     if ((llGetListLength(gClearSegments) > 0) && llList2Integer(gClearSegments,0) == segid)
-    {   list nextseg = pathexegetseg(gClearSegments); pathexedelseg(gClearSegments); return(nextseg); }
+    {   
+        DEBUGPRINT1("pathexegetseg in: " + llDumpList2String(gClearSegments,","));
+        list nextseg = pathexegetseg(gClearSegments); pathexedelseg(gClearSegments); 
+        DEBUGPRINT1("pathexegetseg out: " + llDumpList2String(nextseg,","));
+    
+    
+        return(nextseg); }
     //  Try maze segment queue
     if ((llGetListLength(gMazeSegments) > 0) && llList2Integer(gMazeSegments,0) == segid)
-    {   list nextseg = pathexegetseg(gMazeSegments); pathexedelseg(gMazeSegments); return(nextseg); }
+    {   list nextseg = pathexegetseg(gMazeSegments);  pathexedelseg(gMazeSegments); return(nextseg); }
     return([]); 
 }
 //
@@ -225,6 +231,7 @@ pathexeassemblesegs()
         gPathExeNextsegid++;                                    // advance seg ID
         if (gAllSegments == [])
         {   gAllSegments = pathexeextrapoints(nextseg, gPathExeDisttoend);  // first segment
+            DEBUGPRINT1("Started gAllSegments from empty: " + llDumpList2String(gAllSegments,",")); // ***TEMP***
             nextseg = [];
         } else {
             vector lastpt = llList2Vector(gAllSegments,-1);
