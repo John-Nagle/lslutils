@@ -99,7 +99,7 @@ pathexeinit(float speed, float turnrate, float width, float height, float probes
 //
 pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
 {   DEBUGPRINT1("patheexedeliver, segment #" + (string)segmentid + " points: " + llDumpList2String(pts,","));
-    if (llGetListLength(pts) < 2) { pathexestop(PATHEXEBADPATH1); return; } // bogus path
+    if (llGetListLength(pts) < 2 && pts != [ZERO_VECTOR]) { pathexestop(PATHEXEBADPATH1); return; } // bogus path
     if (pathid != gPathExeId)                                // starting a new segment, kill any movement
     {   if (segmentid != 0) { pathexestop(PATHEXESEGOUTOFSEQ1); return; }// segment out of sequence
         pathexestop(0);                                     // normal start
@@ -112,8 +112,8 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
         {   pathexestop(PATHEXESEGOUTOFSEQ2); return; }     // bad
         DEBUGPRINT1("First point: " + (string)llList2Vector(pts,0) + " Current pos: " + (string)llGetPos());
         vector verr = llList2Vector(pts,0) - llGetPos();    // get starting point
-        if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL)         // if too far from current pos
-        {   pathexestop(PATHEXEBADSTARTPOS); return; }       // bad start position
+        if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL)     // if too far from current pos
+        {   pathexestop(PATHEXEBADSTARTPOS); return; }      // bad start position
     }
     if (ismaze)                                             // add to maze or path list
     {   pathexeaddseg(gMazeSegments, segmentid, pts); }
@@ -256,7 +256,11 @@ pathexeassemblesegs()
 pathexedomove()
 {   if (gPathExeMoving) { return; }                     // we are moving, do nothing
     pathexeassemblesegs();                              // have work to do?
-    if (gAllSegments != [])                             // if work
+    if (gAllSegments == [ZERO_VECTOR])                  // if EOF signal
+    {   DEBUGPRINT1("Normal end of path.");             // ***TEMP***
+        pathexestop(0);                                 // all done, normal stop
+    }
+    else if (gAllSegments != [])                             // if work
     {   DEBUGPRINT1("Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
         list kfmmoves = pathexebuildkfm(llGetPos(), llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
@@ -264,7 +268,6 @@ pathexedomove()
         gPathExeMoving = TRUE;                          // movement in progress
         gAllSegments = [];                              // segments have been consumed
     } else {
-        //  ***NEED TO DETECT END OF SEGMENTS***
         DEBUGPRINT1("Waiting for maze solver to catch up.");    // solver running behind action
     }
 }
