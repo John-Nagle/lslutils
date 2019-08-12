@@ -206,6 +206,7 @@ list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
     float rsecs = angle / gMaxTurnRate;         // minimum time for this move per rotation limit
     float rt = inveclen / gMaxSpeed;           // minimum time for this move per speed limit
     if (rsecs > rt) { rt = rsecs; }             // choose longer time
+    if (rt < 0.15) { rt = 0.15; }               // minimum time for KFM step
     DEBUGPRINT1("angle: " + (string)angle + " inveclen: " + (string)inveclen + " rt: " + (string)rt); // ***TEMP***
     return([rp, rr, rt]);                       // [rel pos, rel rot, rel time]
 } 
