@@ -191,6 +191,7 @@ list pathexebuildkfm(vector startpos, rotation startrot, list pts)
 list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
 {
     vector rp = p0 - pos;                       // p0 in relative coords - advances us to p0
+    rp.z += gPathExeHeight * 0.5;               // add half-height, because path is at ground level
     //  Rotation is to the average direction of the previous and next sections in the XY plane.
     vector invec = pprev-p0;                    // incoming direction
     vector outvec = p1-p0;                      // outgoing direction
@@ -279,7 +280,7 @@ pathexedomove()
     {   DEBUGPRINT1("Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
         list kfmmoves = pathexebuildkfm(llGetPos(), llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
-        ////llSetKeyframedMotion(kfmmoves, []);             // begin motion
+        llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);             // begin motion
         gPathExeMoving = TRUE;                          // movement in progress
         gAllSegments = [];                              // segments have been consumed
     } else {
