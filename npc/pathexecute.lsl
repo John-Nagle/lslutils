@@ -62,7 +62,6 @@ list gMazeSegments = [];                                    // maze segment list
 list gAllSegments = [];                                     // combined segments from above, points only
 
 //  Segment storage functions. If only we could pass references.
-//  ***UNTESTED***
 #define pathexeaddseg(lst, segnum, pts) { lst = lst + [(segnum), llGetListLength(pts)] + (pts); }   // add segment to list
 
 #define pathexegetseg(lst) (llList2List(lst, 2, llList2Integer(lst,1) + 1)) // get first segment from list. Check length first. Expression.
@@ -205,13 +204,7 @@ list pathexegetsegment(integer segid)
 {   DEBUGPRINT1("Getting segment #" + (string)segid);
     //  Try path segment queue
     if ((llGetListLength(gClearSegments) > 0) && llList2Integer(gClearSegments,0) == segid)
-    {   
-        DEBUGPRINT1("pathexegetseg in: " + llDumpList2String(gClearSegments,","));
-        list nextseg = pathexegetseg(gClearSegments); pathexedelseg(gClearSegments); 
-        DEBUGPRINT1("pathexegetseg out: " + llDumpList2String(nextseg,","));
-    
-    
-        return(nextseg); }
+    {       list nextseg = pathexegetseg(gClearSegments); pathexedelseg(gClearSegments); return(nextseg); }
     //  Try maze segment queue
     if ((llGetListLength(gMazeSegments) > 0) && llList2Integer(gMazeSegments,0) == segid)
     {   list nextseg = pathexegetseg(gMazeSegments);  pathexedelseg(gMazeSegments); return(nextseg); }
