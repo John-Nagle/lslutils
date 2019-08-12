@@ -59,13 +59,13 @@ float gPathExeDisttoend = 1.5;                              // (m) distance to b
 list gClearSegments = [];                                   // path segment list
 list gMazeSegments = [];                                    // maze segment list
 
-list gAllSegments = [];                                     // combined segments from above, points onlyh
+list gAllSegments = [];                                     // combined segments from above, points only
 
 //  Segment storage functions. If only we could pass references.
 //  ***UNTESTED***
 #define pathexeaddseg(lst, segnum, pts) { lst = lst + [(segnum), llGetListLength(pts)] + (pts); }   // add segment to list
 
-#define pathexegetseg(lst) (llList2List(lst, 2, llList2Integer(lst,2) + 2)) // get first segment from list. Check length first. Expression.
+#define pathexegetseg(lst) (llList2List(lst, 2, llList2Integer(lst,2) + 1)) // get first segment from list. Check length first. Expression.
 
 #define pathexedelseg(lst) { lst = llList2List(lst, llList2Integer(lst,2) + 3,-1); } // remove first segment from list. OK on empty list
 
@@ -114,7 +114,9 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
     if (ismaze)                                             // add to maze or path list
     {   pathexeaddseg(gMazeSegments, segmentid, pts); }
     else
-    {   pathexeaddseg(gClearSegments, segmentid, pts); }
+    {   pathexeaddseg(gClearSegments, segmentid, pts);
+        DEBUGPRINT1("Clear segments: " + llDumpList2String(gClearSegments,","));    // ***TEMP***
+    }
     pathexedomove();                                        // advance path processing as needed 
 }
 
@@ -214,11 +216,15 @@ list pathexegetsegment(integer segid)
 //
 pathexeassemblesegs()
 {   while (TRUE)
-    {   list nextseg = pathexegetsegment(gPathExeNextsegid);   // get next segment if any
-        if (nextseg == []) return;                      // nothing to do
-        gPathExeNextsegid++;                                   // advance seg ID
+    {   list nextseg = pathexegetsegment(gPathExeNextsegid);    // get next segment if any
+        if (nextseg == []) 
+        {   DEBUGPRINT1("Assembly complete: " + llDumpList2String(gAllSegments,","));
+            return;                                             // nothing to do
+        }
+        DEBUGPRINT1("Assembling segment #" + (string)gPathExeNextsegid + " : " + llDumpList2String(nextseg,","));
+        gPathExeNextsegid++;                                    // advance seg ID
         if (gAllSegments == [])
-        {   gAllSegments = nextseg;                     // first segment
+        {   gAllSegments = pathexeextrapoints(nextseg, gPathExeDisttoend);  // first segment
             nextseg = [];
         } else {
             vector lastpt = llList2Vector(gAllSegments,-1);
@@ -226,6 +232,7 @@ pathexeassemblesegs()
             assert(llVecMag(lastpt-firstpt) < 0.01);    // endpoints should match
             nextseg = llList2List(nextseg,1,-1);        // discard new duplicate point
             //  If we can take a short-cut at the join between two segments, do so.
+            //  Also add "extra points" on long segments here for speed control.
             if (obstaclecheckpath(llList2Vector(gAllSegments,-2), llList2Vector(nextseg,0), gPathExeWidth, gPathExeHeight, gPathExeProbespacing, gPathExeChartype))
             {   gAllSegments = llList2List(gAllSegments,0,-2) + pathexeextrapoints(nextseg, gPathExeDisttoend); }
             else
@@ -238,8 +245,7 @@ pathexeassemblesegs()
 //  pathexedomove -- feed in next section if any
 //
 pathexedomove()
-{   DEBUGPRINT("Do move. Moving: " + (string)gPathExeMoving); // ***TEMP***
-    if (gPathExeMoving) { return; }                     // we are moving, do nothing
+{   if (gPathExeMoving) { return; }                     // we are moving, do nothing
     pathexeassemblesegs();                              // have work to do?
     if (gAllSegments != [])                             // if work
     {   DEBUGPRINT1("Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
