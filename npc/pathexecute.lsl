@@ -293,6 +293,7 @@ pathexedomove()
 //
 pathexemovementend()
 {   gPathExeMoving = FALSE;                                 // not moving
+    DEBUGPRINT1("Movement end");
     pathexedomove();
 }
 
@@ -302,7 +303,7 @@ pathexemovementend()
 pathexetimer()
 {
     //  ***TEMP** fake movement end to keep things moving when not really doing KFM motion yet.
-    pathexemovementend();   // ***TEMP***
+    ////pathexemovementend();   // ***TEMP***
 }
 
 //
