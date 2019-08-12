@@ -218,12 +218,7 @@ list pathexegetsegment(integer segid)
 {   DEBUGPRINT1("Getting segment #" + (string)segid);
     //  Try path segment queue
     if ((llGetListLength(gClearSegments) > 0) && llList2Integer(gClearSegments,0) == segid)
-    {       DEBUGPRINT1("Clear segments before del: " + llDumpList2String(gClearSegments,","));    // ***TEMP***
-            list nextseg = pathexegetseg(gClearSegments); pathexedelseg(gClearSegments); 
-    
-            DEBUGPRINT1("Clear segments after del: " + llDumpList2String(gClearSegments,","));    // ***TEMP***
-    
-            return(nextseg); }
+    {   list nextseg = pathexegetseg(gClearSegments); pathexedelseg(gClearSegments); return(nextseg); }
     //  Try maze segment queue
     if ((llGetListLength(gMazeSegments) > 0) && llList2Integer(gMazeSegments,0) == segid)
     {   list nextseg = pathexegetseg(gMazeSegments);  pathexedelseg(gMazeSegments); return(nextseg); }
