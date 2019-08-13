@@ -76,7 +76,15 @@ list gAllSegments = [];                                     // combined segments
 //  Remove first segment of list. llList2List has strange semantics for start > end, so we have to test.
 #define pathexedelseg(lst) { if (llList2Integer(lst,1) + 2 >= llGetListLength(lst)) { lst = []; } else { lst = llList2List(lst, llList2Integer(lst,1) + 2,-1); }}
 
-
+rotation NormRot(rotation Q)
+{    
+    float MagQ = llSqrt(Q.x*Q.x + Q.y*Q.y +Q.z*Q.z + Q.s*Q.s);    
+    Q.x = Q.x/MagQ;    
+    Q.y = Q.y/MagQ;    
+    Q.z = Q.z/MagQ;    
+    Q.s = Q.s/MagQ;
+    return Q;
+}
 
 //
 //  pathexeinit -- set up path execute parameters
@@ -193,14 +201,15 @@ list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
     vector rp = p0 - pos;                       // p0 in relative coords - advances us to p0
     rp.z += gPathExeHeight * 0.5;               // add half-height, because path is at ground level
     //  Rotation is to the average direction of the previous and next sections in the XY plane.
-    vector invec = pprev-p0;                    // incoming direction
+    vector invec = p0-pprev;                    // incoming direction
     vector outvec = p1-p0;                      // outgoing direction
     float inveclen = llVecMag(invec);           // distance of this move
     vector invecnorm = llVecNorm(<invec.x, invec.y, 0>);
     vector outvecnorm = llVecNorm(<outvec.x,outvec.y,0>);
     if (p1 == ZERO_VECTOR) { outvecnorm = invecnorm; } // last section, no turn
     vector dir = llVecNorm(invecnorm+outvecnorm);// next direction
-    rotation rr = llRotBetween(invecnorm, dir); // relative rotation
+    rotation rr = llRotBetween(<1,0,0>, dir) / rot; // relative rotation
+    rr = NormRot(rr);                           // why is this necessary?
     //  Time computation. Speed is limited by rotation rate.
     float angle = llFabs(llAngleBetween(ZERO_ROTATION, rr));    // how much rotation is this?
     float rsecs = angle / gMaxTurnRate;         // minimum time for this move per rotation limit
