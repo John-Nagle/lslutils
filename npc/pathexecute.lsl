@@ -17,7 +17,7 @@
 //  June, 2019
 //
 //  TODO:
-//  1. Handle end of list with a ZERO_VECTOR at the end.
+//  1. Handle end of list with a ZERO_VECTOR at the end.        [DONE]
 //  2. Report completion via link msg
 //  3. Proper status handling.
 //  4. Smooth slow to stop at end.
@@ -37,6 +37,7 @@
 #define PATHEXESEGOUTOFSEQ2 -2002
 #define PATHEXESEGOUTOFSEQ1 -2003
 #define PATHEXEBADSTARTPOS  -2004
+#define PATHEXECOLLISION    -2005
 //
 //  Idle timer timeout
 //
@@ -51,6 +52,7 @@ integer gPathExeNextsegid;                                  // current segment
 integer gPathExeMoving;                                     // true if KFM movement in progress
 integer gPathExeEOF;                                        // EOF seen
 integer gPathExeVerbose;                                    // verbose mode
+integer gPathExeFreemem;                                    // amount of free memory left
 
 //  Avatar params
 float gPathExeWidth;
@@ -71,8 +73,6 @@ list gAllSegments = [];                                     // combined segments
 #define pathexeaddseg(lst, segnum, pts) { lst = lst + [(segnum), llGetListLength(pts)] + (pts); }   // add segment to list
 
 #define pathexegetseg(lst) (llList2List(lst, 2, llList2Integer(lst,1) + 1)) // get first segment from list. Check length first. Expression.
-
-////#define pathexedelseg(lst) { lst = llList2List(lst, llList2Integer(lst,1) + 2,-1); } // remove first segment from list. OK on empty list
 
 //  Remove first segment of list. llList2List has strange semantics for start > end, so we have to test.
 #define pathexedelseg(lst) { if (llList2Integer(lst,1) + 2 >= llGetListLength(lst)) { lst = []; } else { lst = llList2List(lst, llList2Integer(lst,1) + 2,-1); }}
@@ -107,13 +107,6 @@ rotation TRANSYELLOW = <1,1,0,0.5>;
 //  Rez now, wait for message, send details to marker.
 //  We can't send enough data during the rez. We have to use a message for the params.
 //
-#ifdef OBSOLETE
-createmarker(string name, vector pos, rotation rot, vector scale, vector color, float alpha)
-{
-    list params = [ "pos", pos, "rot", rot, "scale", scale, "color", color, "alpha", alpha];
-    llMessageLinked(LINK_THIS, LINKMSGMARKER, llList2Json(JSON_OBJECT,params), name);   // ask marker service to place a marker.
-}
-#endif // OBSOLETE
 //
 //  placesegmentmarker - mark one segment of a path
 //
@@ -130,8 +123,6 @@ placesegmentmarker(string markername, vector p0, vector p1, rotation rgba, float
     vector scale = <length,CHARRADIUS*2,thickness>;    // size of marker
     list params = [ "pos", midpoint, "rot", rotperpenonground(p0,p1), "scale", scale, "color", color, "alpha", alpha];
     llMessageLinked(LINK_THIS, LINKMSGMARKER, llList2Json(JSON_OBJECT,params), markername);   // ask marker service to place a marker.   
-    ////createmarker(markername, midpoint, rotperpenonground(p0,p1), scale, color, alpha);
-    ////DEBUGPRINT1("Placed " + markername + " at " + (string)midpoint);
 }
 #endif // MARKERS
 
@@ -148,7 +139,8 @@ pathexeinit(float speed, float turnrate, float width, float height, float probes
     gPathExeProbespacing = probespacing;
     gPathExeChartype = chartype;
     gPathExeNextsegid = 0;
-    gPathExeVerbose = verbose;   
+    gPathExeVerbose = verbose;
+    gPathExeFreemem = llGetFreeMemory();   
 }
 
 
@@ -337,7 +329,8 @@ pathexedomove()
 {   if (gPathExeMoving) { return; }                     // we are moving, do nothing
     pathexeassemblesegs();                              // have work to do?
     if (gAllSegments == [ZERO_VECTOR])                  // if EOF signal
-    {   DEBUGPRINT1("Normal end of path.");             // ***TEMP***
+    {   if (gPathExeVerbose)
+        {   llOwnerSay("Normal end of path. Free mem: " + (string)gPathExeFreemem); }
         pathexestop(0);                                 // all done, normal stop
     }
     else if (gAllSegments != [])                             // if work
@@ -346,6 +339,8 @@ pathexedomove()
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
         llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);             // begin motion
         gPathExeMoving = TRUE;                          // movement in progress
+        integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
+        if (freemem > gPathExeFreemem) { gPathExeFreemem = freemem; }   // record free memory
         gAllSegments = [];                              // segments have been consumed
     } else {
         DEBUGPRINT1("Waiting for maze solver to catch up.");    // solver running behind action
@@ -432,5 +427,25 @@ pathexepathdeliver(string jsn)
     integer len = llGetListLength(ptsstr);
     for (i=0; i<len; i++) { pts += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors  
     pathexedeliver(pts, pathid, segmentid, FALSE);      // deliver maze solution
+}
+
+//
+//  pathexecollision -- collided with something
+//
+pathexecollision(integer num_detected)
+{   ////llOwnerSay("Collision");    // ***TEMP***
+    if (!gPathExeMoving) { return; }    // not moving, not our fault
+    integer i;
+    for (i=0; i<num_detected; i++)
+    {   key hitobj = llDetectedKey(i);
+        if (hitobj != NULL_KEY)              // null key is land
+        {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
+            integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+            if (pathfindingtype != OPT_WALKABLE)                    // hit a non-walkable
+            {   if (gPathExeVerbose) { llOwnerSay("Hit " + llDetectedName(i)); }
+                pathexestop(PATHEXECOLLISION);                      // stop
+            }
+        }
+    }
 }
 #endif // PATHEXECUTE
