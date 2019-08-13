@@ -50,6 +50,7 @@ integer gPathExeId = 0;                                     // current path ID
 integer gPathExeNextsegid;                                  // current segment
 integer gPathExeMoving;                                     // true if KFM movement in progress
 integer gPathExeEOF;                                        // EOF seen
+integer gPathExeVerbose;                                    // verbose mode
 
 //  Avatar params
 float gPathExeWidth;
@@ -87,9 +88,57 @@ rotation NormRot(rotation Q)
 }
 
 //
+//  Debug marker generation
+//
+#ifdef MARKERS
+string MARKERLINE = "Path marker, rounded (TEMP)";
+integer LINKMSGMARKER = 1001;                               // for sending to marker service
+
+//  Colors (RGBA)
+rotation TRANSGREEN = <0,0.35,0,0.5>;                          // translucent green
+rotation TRANSRED   = <1,0,0,0.5>;
+rotation TRANSYELLOW = <1,1,0,0.5>;
+
+
+
+//
+//  Create a marker with the requested parameters
+//
+//  Rez now, wait for message, send details to marker.
+//  We can't send enough data during the rez. We have to use a message for the params.
+//
+#ifdef OBSOLETE
+createmarker(string name, vector pos, rotation rot, vector scale, vector color, float alpha)
+{
+    list params = [ "pos", pos, "rot", rot, "scale", scale, "color", color, "alpha", alpha];
+    llMessageLinked(LINK_THIS, LINKMSGMARKER, llList2Json(JSON_OBJECT,params), name);   // ask marker service to place a marker.
+}
+#endif // OBSOLETE
+//
+//  placesegmentmarker - mark one segment of a path
+//
+//  "Color" is RGBA.
+//
+placesegmentmarker(string markername, vector p0, vector p1, rotation rgba, float thickness)
+{
+    //  Draw marker for segment
+    vector midpoint = (p0+p1)*0.5;          // midpoint
+    float length = llVecMag(p1-p0);         // how long
+    
+    vector color = <rgba.x, rgba.y, rgba.z>;
+    float alpha = rgba.s;
+    vector scale = <length,CHARRADIUS*2,thickness>;    // size of marker
+    list params = [ "pos", midpoint, "rot", rotperpenonground(p0,p1), "scale", scale, "color", color, "alpha", alpha];
+    llMessageLinked(LINK_THIS, LINKMSGMARKER, llList2Json(JSON_OBJECT,params), markername);   // ask marker service to place a marker.   
+    ////createmarker(markername, midpoint, rotperpenonground(p0,p1), scale, color, alpha);
+    ////DEBUGPRINT1("Placed " + markername + " at " + (string)midpoint);
+}
+#endif // MARKERS
+
+//
 //  pathexeinit -- set up path execute parameters
 //
-pathexeinit(float speed, float turnrate, float width, float height, float probespacing, integer chartype)
+pathexeinit(float speed, float turnrate, float width, float height, float probespacing, integer chartype, integer verbose)
 {
     pathexestop(0);                                          // stop any operation in progress
     gMaxSpeed = speed;
@@ -98,7 +147,8 @@ pathexeinit(float speed, float turnrate, float width, float height, float probes
     gPathExeHeight = height;
     gPathExeProbespacing = probespacing;
     gPathExeChartype = chartype;
-    gPathExeNextsegid = 0;   
+    gPathExeNextsegid = 0;
+    gPathExeVerbose = verbose;   
 }
 
 
@@ -198,6 +248,10 @@ list pathexebuildkfm(vector startpos, rotation startrot, list pts)
 //
 list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
 {
+#ifdef MARKERS
+    if (gPathExeVerbose)
+    {   placesegmentmarker(MARKERLINE, pprev, p0, TRANSGREEN, 0.20); }   // place a temporary line on the ground in-world.
+#endif // MARKERS
     vector rp = p0 - pos;                       // p0 in relative coords - advances us to p0
     rp.z += gPathExeHeight * 0.5;               // add half-height, because path is at ground level
     //  Rotation is to the average direction of the previous and next sections in the XY plane.
