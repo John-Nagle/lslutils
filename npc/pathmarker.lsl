@@ -27,7 +27,9 @@ setposlong(vector pos)
     do {
         llSetPos(pos);
         vector newpos = llGetPos();
-        if (llVecMag(pos - newpos) < 0.05) return;
+        vector dv = pos - newpos;
+        if (llVecMag(dv) < 0.05) return;
+        if (llVecMag(<dv.x,dv.y,0>) < 0.05 && (llFabs(dv.z) < 1.0)) return;         // can have troubles going into ground
         
     } while(--n > 0);
     llSay(DEBUG_CHANNEL, "Unable to set position to " + (string)pos + ". Stuck at " + (string) llGetPos());   // unlikely

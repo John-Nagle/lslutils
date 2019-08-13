@@ -346,6 +346,8 @@ pathexemazedeliver(string jsn)
         vector cellpos = mazecellto3d(mazepathx(val), mazepathy(val), cellsize, pos, rot);                        // convert back to 3D coords 
         ptsworld += [cellpos];                              // accum list of waypoints
     }
+    //  Straighten path. Maze solver paths are all right angles. Here we try short cuts.
+    ptsworld = pathstraighten(ptsworld, gPathExeWidth, gPathExeHeight, gPathExeProbespacing, gPathExeChartype);   // postprocess path
     pathexedeliver(ptsworld, pathid, segmentid, TRUE);      // deliver maze solution
 }
 //
