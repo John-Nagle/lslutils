@@ -31,6 +31,8 @@ float PATHSTATICTOL = 0.10;                                 // (m) allow extra s
 //
 integer gPathErrorStatus = 0;                               // last error
 vector gPathErrorPos;                                       // world pos of last error
+float gPathWidth = 0.5;                                     // dimensions of character
+float gPathHeight = 1.8;                                    // defaults, overridden in JSON
 
 //
 //  patherror - record error
@@ -40,6 +42,7 @@ patherror(integer status, vector pos)
     gPathErrorStatus = status;                              // what
     gPathErrorPos = pos;                                    // where
     DEBUGPRINT1("Path error " + (string)status + " at " + (string)pos); 
+    pathUpdateCallback(status, [pos]);                      // tell caller
 }
 
 //
@@ -516,9 +519,10 @@ list pathclean(list path)
 //  This is best-effort; moves will be reported even if the destination cannot be
 //  fully reached.
 //
-pathplan(vector startpos, vector endpos, float width, float height, integer verbose)
-{   //  Use the system's GetStaticPath to get an initial path
-    list pts = llGetStaticPath(startpos, endpos, width + PATHSTATICTOL, [CHARACTER_TYPE, CHARTYPE]);  // generate path
+pathplan(vector startpos, vector endpos, float width, float height, integer chartype, float testspacing, integer pathid, integer verbose)
+{   gPathErrorStatus = 0;                                   // no errors yet
+    //  Use the system's GetStaticPath to get an initial path
+    list pts = llGetStaticPath(startpos, endpos, width + PATHSTATICTOL, [CHARACTER_TYPE, chartype]);  // generate path
     integer status = llList2Integer(pts,-1);                // last item is status
     if (status != 0)                                        // static path fail
     {   patherror(status, startpos); return; }              // status from llGetStaticPath status
@@ -529,7 +533,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
     integer len = llGetListLength(pts);
     if (len < 2)
     {   patherror(MAZESTATUSNOPTS, startpos);
-        pathdeliversegment([], FALSE, TRUE);                // empty set of points, no maze, done.
+        pathdeliversegment([], FALSE, TRUE, pathid);        // empty set of points, no maze, done.
         return;                                             // empty list
     }
     //  We have a valid static path. Now start checking for obstacles.
@@ -545,12 +549,12 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
         vector dir = llVecNorm(p1-p0);                      // direction of segment
         vector pos = p0 + dir*distalongseg;                 // current working position
         DEBUGPRINT1("Checking " + (string)pos + " to " + (string)p1 + " for obstacles.");
-        float hitdist = castbeam(pos, p1, width, height, TESTSPACING, TRUE,
+        float hitdist = castbeam(pos, p1, width, height, testspacing, TRUE,
                     [RC_REJECT_TYPES,RC_REJECT_LAND]);
         if (hitdist < 0)
         {  
             patherror(MAZESTATUSCASTFAIL, pos);             // failure
-            pathdeliversegment([], FALSE, TRUE);            // empty set of points, no maze, done.
+            pathdeliversegment([], FALSE, TRUE, pathid);    // empty set of points, no maze, done.
             return;                                         // failure
         }    
         if (hitdist == INFINITY)                            // completely clear segment
@@ -559,7 +563,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
             currentix += 1;                                 // advance to next segment
             if (currentix >= len-1)                         // done
             {   ////pathPoints += [p1];                         // finish off final segment
-                pathdeliversegment(pathPoints, FALSE, TRUE);// points, not a maze, final.
+                pathdeliversegment(pathPoints, FALSE, TRUE, pathid);// points, not a maze, final.
                 return;                                     // return strided list of path segments
             }
             p0 = llList2Vector(pts,currentix);              // starting position in new segment
@@ -576,7 +580,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
                 DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
                 if (newix < 1)
                 {   patherror(MAZESTATUSBADSTART, pos); 
-                    pathdeliversegment(pathPoints,FALSE, TRUE); // points, no maze, done
+                    pathdeliversegment(pathPoints,FALSE, TRUE, pathid); // points, no maze, done
                     return;                                 // no open space found, fail
                 }
                 //  Discard points until we find the one that contains the new intermediate point.
@@ -592,7 +596,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
             {   if (verbose) { llOwnerSay("Cannot find open space after obstacle at " + (string)interpt0 + " on segment #" + (string)(currentix-1));}
                 patherror(MAZESTATUSBADOBSTACLE, interpt0);     // cannot find open space after obstacle
                 pathPoints += [interpt0];                       // best effort result
-                pathdeliversegment(pathPoints, FALSE, TRUE);    // final set of points
+                pathdeliversegment(pathPoints, FALSE, TRUE, pathid);    // final set of points
                 return;                                         // partial result
             }
             //  Found point on far side, we have something for the maze solver.
@@ -601,12 +605,12 @@ pathplan(vector startpos, vector endpos, float width, float height, integer verb
             if (verbose) { llOwnerSay("Found open space at segment #" + (string) interp1ix + " " + (string)interpt1); }
             //  Output points so far, then a maze. 
             pathPoints += [interpt0];                           // segment up to start of maze
-            pathdeliversegment(pathPoints, FALSE, FALSE);       // points so far, no maze, not done.
-            pathdeliversegment([interpt0, interpt1], TRUE, FALSE);// bounds of a maze area, maze, not done
+            pathdeliversegment(pathPoints, FALSE, FALSE, pathid);       // points so far, no maze, not done.
+            pathdeliversegment([interpt0, interpt1], TRUE, FALSE, pathid);// bounds of a maze area, maze, not done
             pathPoints = [interpt1];                            // path clears and continues after maze
             ////pathPoints += [p0, TRUE, interpt0, FALSE, interpt1, TRUE];
             if (llVecMag(interpt1 - llList2Vector(pts,len-1)) < 0.01)  // if at final destination
-            {   pathdeliversegment(pathPoints, FALSE, TRUE);    // done, return final part of path
+            {   pathdeliversegment(pathPoints, FALSE, TRUE, pathid);    // done, return final part of path
                 return;
             }
             assert(interp1ix < len-1);                          // ix must never pass beginning of last segment
@@ -675,6 +679,70 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
         }
     }
     return([]);                                                     // unreachable  
+}
+//
+//  Globals for message interface
+integer gPathId = 0;                                // serial number of path
+integer gSegmentId = 0;                             // segment number of path
+//
+//  Message interface
+//
+//  pathRequestRecv -- link message starts action here.
+//
+integer pathRequestRecv(string jsonstr)
+{   
+    vector startpos = llGetPos();                   // where we are now
+    vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);   // get goal
+    float gPathWidth = (float)llJsonGetValue(jsonstr,["width"]);
+    float gPathHeight = (float)llJsonGetValue(jsonstr,["height"]);
+    integer chartype = (integer)llJsonGetValue(jsonstr,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
+    integer testspacing = (integer)llJsonGetValue(jsonstr,["testspacing"]);
+    integer pathid = (integer)llJsonGetValue(jsonstr,["pathid"]);
+    integer verbose = (integer)llJsonGetValue(jsonstr,["verbose"]);
+    if (verbose) { llOwnerSay("Path request: " + jsonstr); }
+    //  Call the planner 
+    pathplan(startpos, goal, gPathWidth, gPathHeight, chartype, testspacing, pathid, verbose);    
+    return(TRUE);                                   // handled
+}
+
+
+//
+//  pathUpdateCallback -- pathfinding is done, tell requesting script
+//
+pathUpdateCallback(integer status, list unused)
+{   ////llOwnerSay("pathfinder -> client status: " + (string)status);   // ***TEMP***
+    llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, NULL_KEY);  // status to client
+}
+//
+//  pathdeliversegment -- path planner has a segment to be executed
+//
+pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid)
+{   if (pathid != gPathId)                                  // starting a new path 
+    {   gPathId = pathid;                                   // this is new pathid
+        gSegmentId = 0;                                     // segment ID resets
+    }
+    integer length = llGetListLength(path);
+    if (ismaze)                                             // maze, add to the to-do list
+    {   assert(length == 2);                                // maze must have two endpoints
+        vector bp0 = llList2Vector(path,0);
+        vector bp1 = llList2Vector(path,1);
+        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathWidth, gPathId, gSegmentId, TRUE); // ***TEMP***
+        if (status) 
+        {   llOwnerSay("Unable to start maze solver. Status: " + (string)status); }
+    }
+    else                                                    // non-maze
+    {
+        llMessageLinked(LINK_THIS,MAZEPATHREPLY,
+            llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId, "status",0, "points",
+            llList2Json(JSON_ARRAY,path)]),"");
+    }
+    gSegmentId++;                                           // next segment
+    if (isdone)
+    {
+        llMessageLinked(LINK_THIS,MAZEPATHREPLY,
+            llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId, "status",0, "points",
+            llList2Json(JSON_ARRAY,[ZERO_VECTOR])]),"");    // send one ZERO_VECTOR segment as an EOF.
+    }
 }
 #endif // PATHBUILDUTILSLSL
 

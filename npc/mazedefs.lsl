@@ -1,5 +1,5 @@
 //
-//  mazedefs.lsl -- definitions for maze solver
+//  mazedefs.lsl -- definitions for maze solver and path planner
 //
 //  Animats
 //
@@ -19,11 +19,15 @@
 #define INFINITY ((float)"inf")                             // is there a better way?
 #endif // INFINITY
 
-//  Message types
+//  Link message types
 //
 #define MAZESOLVEREQUEST 201                    // to maze solver
 #define MAZESOLVERREPLY 202                     // from maze solver
-#define MAZEPATHREPLY 203                       // from path planner
+#define MAZEPATHREPLY 203                       // from maze solver to path planner
+
+#define PATH_DIR_REQUEST 101                    // character controller to path planner                  
+#define PATH_DIR_REPLY 102                      // path planner to character controller
+
 
 #define MAZEMAXSIZE (41)                                    // maximum size of maze
 
