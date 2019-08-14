@@ -57,6 +57,7 @@
 #define MAZESTATUSNOMEM     -502                // out of memory
 #define MAZESTATUSLOOPING   -503                // runaway, didn't terminate
 #define MAZESTATUSCASTFAIL  -506                // cast ray hard failure
+#define MAZESTATUSKFMSTALL  -507                // not moving in KFM mode
                                                 // bug traps
 #define MAZESTATUSGEOMBUG   -1001               // Geometry setup failed
 

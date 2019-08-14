@@ -52,6 +52,7 @@ integer gPathExeNextsegid;                                  // current segment
 integer gPathExeMoving = FALSE;                             // true if KFM movement in progress
 integer gPathExeActive = FALSE;                             // path system is doing something
 integer gPathExeEOF;                                        // EOF seen
+vector  gPathExeLastPos;                                    // last position, for stall check
 integer gPathExeVerbose;                                    // verbose mode
 integer gPathExeFreemem;                                    // amount of free memory left
 
@@ -354,6 +355,7 @@ pathexedomove()
 //
 pathexemovementend()
 {   gPathExeMoving = FALSE;                                 // not moving
+    gPathExeLastPos = ZERO_VECTOR;                          // no last moving pos
     DEBUGPRINT1("Movement end");
     pathexedomove();
 }
@@ -363,8 +365,13 @@ pathexemovementend()
 //
 pathexetimer()
 {
-    //  ***TEMP** fake movement end to keep things moving when not really doing KFM motion yet.
-    ////pathexemovementend();   // ***TEMP***
+    if (gPathExeMoving)                                     // if we are supposed to be moving
+    {   vector pos = llGetPos();
+        if (llVecMag(pos - gPathExeLastPos) > 0.01)         // if moving at all
+        {   return; }                                       // OK
+        //  No KFM movement. Something has gone wrong
+        pathexestop(MAZESTATUSKFMSTALL);                    // stalled
+    }
 }
 
 //
@@ -379,6 +386,7 @@ pathexestop(integer status)
     gAllSegments = [];
     gPathExeNextsegid = 0; 
     gPathExeMoving = FALSE;                                 // not moving
+    gPathExeLastPos = ZERO_VECTOR;                          // no last position
     llSetTimerEvent(0.0);                                   // stop timing 
     if (gPathExeActive)                                     // if we are active
     {
