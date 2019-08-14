@@ -726,7 +726,8 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid)
     {   assert(length == 2);                                // maze must have two endpoints
         vector bp0 = llList2Vector(path,0);
         vector bp1 = llList2Vector(path,1);
-        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathWidth, gPathId, gSegmentId, TRUE); // ***TEMP***
+        //  Start the maze solver
+        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathWidth, gPathId, gSegmentId, TRUE); 
         if (status) 
         {   llOwnerSay("Unable to start maze solver. Status: " + (string)status); }
     }
