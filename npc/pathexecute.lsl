@@ -49,7 +49,8 @@ float gMaxTurnRate = 0.2;                                   // (radians/sec) max
 float gMaxSpeed = 2.0;                                      // (meters/sec) max speed
 integer gPathExeId = 0;                                     // current path ID
 integer gPathExeNextsegid;                                  // current segment
-integer gPathExeMoving;                                     // true if KFM movement in progress
+integer gPathExeMoving = FALSE;                             // true if KFM movement in progress
+integer gPathExeActive = FALSE;                             // path system is doing something
 integer gPathExeEOF;                                        // EOF seen
 integer gPathExeVerbose;                                    // verbose mode
 integer gPathExeFreemem;                                    // amount of free memory left
@@ -159,6 +160,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
         pathexestop(0);                                     // normal start
         gPathExeId = pathid;                                // reset state to empty
         gPathExeEOF = FALSE;                                // not at EOF
+        gPathExeActive = TRUE;                              // we are running
         llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
     }
     if (segmentid == 0)                                     // starting a new path
@@ -371,13 +373,18 @@ pathexetimer()
 pathexestop(integer status)
 {
     if (gPathExeMoving || (status != 0)) { DEBUGPRINT1("Forced movement stop. Status: " + (string)status); }
-    llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);    // stop whatever is going on
+    llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on
     gClearSegments = [];                                    // reset state
     gMazeSegments = [];
     gAllSegments = [];
     gPathExeNextsegid = 0; 
-    gPathExeMoving = FALSE;                                 // not moving    
+    gPathExeMoving = FALSE;                                 // not moving
     llSetTimerEvent(0.0);                                   // stop timing 
+    if (gPathExeActive)                                     // if we are active
+    {
+        pathUpdateCallback(status,[]);                      // tell caller about result
+        gPathExeActive = FALSE;                             // no longer active
+    }
 }
 //
 //  pathexemazedeliver  -- incoming maze result

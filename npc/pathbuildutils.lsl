@@ -562,17 +562,18 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
             pathPoints += [p1];                             // completely empty segment
             currentix += 1;                                 // advance to next segment
             if (currentix >= len-1)                         // done
-            {   ////pathPoints += [p1];                         // finish off final segment
-                pathdeliversegment(pathPoints, FALSE, TRUE, pathid);// points, not a maze, final.
+            {   pathdeliversegment(pathPoints, FALSE, TRUE, pathid);// points, not a maze, final.
                 return;                                     // return strided list of path segments
             }
             p0 = llList2Vector(pts,currentix);              // starting position in new segment
             p1 = llList2Vector(pts,currentix+1);            // next position
             distalongseg = 0.0;                             // starting new segment
-        } else {                                            // there is an obstruction        
-            vector interpt0 = pos + dir*(hitdist-width);    // back away from obstacle.
-            if (verbose) { llOwnerSay("Hit obstacle at segment #" + (string)currentix + " " + (string) interpt0); }
-            if (distalongseg + hitdist-width < 0)           // too close to beginning of current segment to back up
+        } else {                                            // there is an obstruction
+            float hitbackup = hitdist-width*0.5;            // back up just enough to get clear
+            vector interpt0 = pos + dir*(hitbackup);        // back away from obstacle.
+            if (verbose) { llOwnerSay("Hit obstacle at segment #" + (string)currentix + " " + (string) interpt0 + 
+                " hit dist along segment: " + (string)(distalongseg+hitbackup)); }
+            if (distalongseg + hitbackup < 0)               // too close to beginning of current segment to back up
             {                                               // must search in previous segments
                 list pinfo =  pathfindunobstructed(pts, currentix, -1, width, height);
                 interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
@@ -608,7 +609,6 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
             pathdeliversegment(pathPoints, FALSE, FALSE, pathid);       // points so far, no maze, not done.
             pathdeliversegment([interpt0, interpt1], TRUE, FALSE, pathid);// bounds of a maze area, maze, not done
             pathPoints = [interpt1];                            // path clears and continues after maze
-            ////pathPoints += [p0, TRUE, interpt0, FALSE, interpt1, TRUE];
             if (llVecMag(interpt1 - llList2Vector(pts,len-1)) < 0.01)  // if at final destination
             {   pathdeliversegment(pathPoints, FALSE, TRUE, pathid);    // done, return final part of path
                 return;
