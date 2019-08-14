@@ -400,10 +400,17 @@ pathexemazedeliver(string jsn)
     integer length = llGetListLength(ptsmaze);              // number of points
     for (i=0; i<length; i++)
     {   integer val = llList2Integer(ptsmaze,i);            // X and Y encoded into one integer
-        llOwnerSay("Maze solve pt: (" + (string)mazepathx(val) + "," + (string)mazepathy(val) + ")");
+        DEBUGPRINT1("Maze solve pt: (" + (string)mazepathx(val) + "," + (string)mazepathy(val) + ")");
         vector cellpos = mazecellto3d(mazepathx(val), mazepathy(val), cellsize, pos, rot);                        // convert back to 3D coords 
         ptsworld += [cellpos];                              // accum list of waypoints
     }
+#ifdef MARKERS  
+    if (gPathExeVerbose)
+    {   integer i;
+        for (i=0; i < llGetListLength(ptsworld)-1; i++)
+        {   placesegmentmarker(MARKERLINE, llList2Vector(ptsworld,i), llList2Vector(ptsworld,i+1), TRANSYELLOW, 0.20); }   // place a temporary line on the ground in-world.
+    }
+#endif // MARKERS
     //  Straighten path. Maze solver paths are all right angles. Here we try short cuts.
     ptsworld = pathstraighten(ptsworld, gPathExeWidth, gPathExeHeight, gPathExeProbespacing, gPathExeChartype);   // postprocess path
     pathexedeliver(ptsworld, pathid, segmentid, TRUE);      // deliver maze solution
