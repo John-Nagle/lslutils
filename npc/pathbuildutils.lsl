@@ -689,20 +689,20 @@ integer gSegmentId = 0;                             // segment number of path
 //
 //  pathRequestRecv -- link message starts action here.
 //
-integer pathRequestRecv(string jsonstr)
+pathRequestRecv(string jsonstr)
 {   
-    vector startpos = llGetPos();                   // where we are now
+    //  Starting position and goal position must be on a walkable surface, not at character midpoint.
+    vector startpos = (vector)llJsonGetValue(jsonstr,["startpos"]);   // get starting position
     vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);   // get goal
     float gPathWidth = (float)llJsonGetValue(jsonstr,["width"]);
     float gPathHeight = (float)llJsonGetValue(jsonstr,["height"]);
     integer chartype = (integer)llJsonGetValue(jsonstr,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
-    integer testspacing = (integer)llJsonGetValue(jsonstr,["testspacing"]);
+    float testspacing = (float)llJsonGetValue(jsonstr,["testspacing"]);
     integer pathid = (integer)llJsonGetValue(jsonstr,["pathid"]);
     integer verbose = (integer)llJsonGetValue(jsonstr,["verbose"]);
     if (verbose) { llOwnerSay("Path request: " + jsonstr); }
     //  Call the planner 
     pathplan(startpos, goal, gPathWidth, gPathHeight, chartype, testspacing, pathid, verbose);    
-    return(TRUE);                                   // handled
 }
 
 
