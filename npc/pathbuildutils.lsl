@@ -696,7 +696,7 @@ pathRequestRecv(string jsonstr)
 //  pathUpdateCallback -- pathfinding is done, tell requesting script
 //
 pathUpdateCallback(integer status, list unused)
-{   ////llOwnerSay("pathfinder -> client status: " + (string)status);   // ***TEMP***
+{   
     llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, NULL_KEY);  // status to client
 }
 //

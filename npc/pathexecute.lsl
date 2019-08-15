@@ -154,7 +154,7 @@ pathexeinit(float speed, float turnrate, float width, float height, float probes
 //
 //  A new pathid forces a flush of everything.
 //
-pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
+pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, integer status)
 {   DEBUGPRINT1("patheexedeliver, segment #" + (string)segmentid + " points: " + llDumpList2String(pts,","));
     if (llGetListLength(pts) < 2 && pts != [ZERO_VECTOR]) { pathexestop(PATHEXEBADPATH1); return; } // bogus path
     if (pathid != gPathExeId)                                // starting a new segment, kill any movement
@@ -163,7 +163,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
         gPathExeId = pathid;                                // reset state to empty
         gPathExeEOF = FALSE;                                // not at EOF
         gPathExeActive = TRUE;                              // we are running
-        gPathExePendingStatus = 0;                          // no error status pending
+        gPathExePendingStatus = 0;                          // no stored status yet
         llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
     }
     if (segmentid == 0)                                     // starting a new path
@@ -175,6 +175,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
         if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL)     // if too far from current pos
         {   pathexestop(PATHEXEBADSTARTPOS); return; }      // bad start position
     }
+    if (gPathExePendingStatus == 0) { gPathExePendingStatus = status; }   // save any error status sent for later
     if (ismaze)                                             // add to maze or path list
     {   pathexeaddseg(gMazeSegments, segmentid, pts); }
     else
@@ -430,7 +431,7 @@ pathexemazedeliver(string jsn)
 #endif // MARKERS
     //  Straighten path. Maze solver paths are all right angles. Here we try short cuts.
     ptsworld = pathstraighten(ptsworld, gPathExeWidth, gPathExeHeight, gPathExeProbespacing, gPathExeChartype);   // postprocess path
-    pathexedeliver(ptsworld, pathid, segmentid, TRUE);      // deliver maze solution
+    pathexedeliver(ptsworld, pathid, segmentid, TRUE, 0);      // deliver maze solution
 }
 //
 //  pathexepathdeliver  -- JSON from path planner
@@ -445,14 +446,15 @@ pathexepathdeliver(string jsn)
     ////if ((integer)serial != gMazeSerial) { return([MAZESTATUSCOMMSEQ]); }            // out of sequence 
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) 
-    {   if (gPathExePendingStatus == 0) {gPathExePendingStatus = status; }   // save any error status sent for later
+    {   if (gPathExeVerbose) { llOwnerSay("Path deliver with status " + (string)status); }
+        if (gPathExePendingStatus == 0) { gPathExePendingStatus = status; }   // save any error status sent for later
     }
     list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
     list pts = [];
     integer i;
     integer len = llGetListLength(ptsstr);
     for (i=0; i<len; i++) { pts += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors  
-    pathexedeliver(pts, pathid, segmentid, FALSE);      // deliver path segment
+    pathexedeliver(pts, pathid, segmentid, FALSE, status);      // deliver path segment
 }
 
 //
