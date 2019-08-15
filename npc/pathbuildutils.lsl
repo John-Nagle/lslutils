@@ -29,21 +29,8 @@ float PATHSTATICTOL = 0.10;                                 // (m) allow extra s
 //
 //  Globals
 //
-integer gPathErrorStatus = 0;                               // last error
-vector gPathErrorPos;                                       // world pos of last error
 float gPathWidth = 0.5;                                     // dimensions of character
 float gPathHeight = 1.8;                                    // defaults, overridden in JSON
-
-//
-//  patherror - record error
-//
-patherror(integer status, vector pos)
-{   if (gPathErrorStatus != 0) return;                      // not first error, ignore
-    gPathErrorStatus = status;                              // what
-    gPathErrorPos = pos;                                    // where
-    DEBUGPRINT1("Path error " + (string)status + " at " + (string)pos); 
-    pathUpdateCallback(status, [pos]);                      // tell caller
-}
 
 //
 //  pathpointinsegment - is p between p0 and p1?
@@ -507,7 +494,7 @@ list pathclean(list path)
 //  pathplan -- plan an obstacle-free path.
 //
 //  Output is via calls to pathdeliversegment.
-//  Errors are reported via patherror.
+//  Errors are reported via pathdeliversegment.
 //
 //  This constructs a static path, then checks it for open space.
 //  When it finds an obstacle, it reports clear points on both sides
@@ -520,20 +507,22 @@ list pathclean(list path)
 //  fully reached.
 //
 pathplan(vector startpos, vector endpos, float width, float height, integer chartype, float testspacing, integer pathid, integer verbose)
-{   gPathErrorStatus = 0;                                   // no errors yet
+{   
     //  Use the system's GetStaticPath to get an initial path
     list pts = llGetStaticPath(startpos, endpos, width + PATHSTATICTOL, [CHARACTER_TYPE, chartype]);  // generate path
     integer status = llList2Integer(pts,-1);                // last item is status
     if (status != 0)                                        // static path fail
-    {   patherror(status, startpos); return; }              // status from llGetStaticPath status
+    {   pathdeliversegment([], FALSE, TRUE, pathid, status);// report error
+        return;
+    }
     //  Got path
     pts = llList2List(pts,0,-2);                            // drop status from end of points list
     DEBUGPRINT1("Static path: " + llDumpList2String(pts,","));     // dump list for debug
     pts = pathclean(pts);                                   // 
     integer len = llGetListLength(pts);
     if (len < 2)
-    {   patherror(MAZESTATUSNOPTS, startpos);
-        pathdeliversegment([], FALSE, TRUE, pathid);        // empty set of points, no maze, done.
+    {   
+        pathdeliversegment([], FALSE, TRUE, pathid, MAZESTATUSNOPTS);        // empty set of points, no maze, done.
         return;                                             // empty list
     }
     //  We have a valid static path. Now start checking for obstacles.
@@ -553,8 +542,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
                     [RC_REJECT_TYPES,RC_REJECT_LAND]);
         if (hitdist < 0)
         {  
-            patherror(MAZESTATUSCASTFAIL, pos);             // failure
-            pathdeliversegment([], FALSE, TRUE, pathid);    // empty set of points, no maze, done.
+            pathdeliversegment([], FALSE, TRUE, pathid, MAZESTATUSCASTFAIL);    // empty set of points, no maze, done.
             return;                                         // failure
         }    
         if (hitdist == INFINITY)                            // completely clear segment
@@ -562,7 +550,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
             pathPoints += [p1];                             // completely empty segment
             currentix += 1;                                 // advance to next segment
             if (currentix >= len-1)                         // done
-            {   pathdeliversegment(pathPoints, FALSE, TRUE, pathid);// points, not a maze, final.
+            {   pathdeliversegment(pathPoints, FALSE, TRUE, pathid, 0);// points, not a maze, final.
                 return;                                     // return strided list of path segments
             }
             p0 = llList2Vector(pts,currentix);              // starting position in new segment
@@ -580,8 +568,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
                 integer newix = llList2Integer(pinfo,1);    // segment in which we found point, counting backwards
                 DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
                 if (newix < 1)
-                {   patherror(MAZESTATUSBADSTART, pos); 
-                    pathdeliversegment(pathPoints,FALSE, TRUE, pathid); // points, no maze, done
+                {   pathdeliversegment(pathPoints,FALSE, TRUE, pathid, MAZESTATUSBADSTART); // points, no maze, done
                     return;                                 // no open space found, fail
                 }
                 //  Discard points until we find the one that contains the new intermediate point.
@@ -595,9 +582,8 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
             list obsendinfo = pathfindclearspace(pts, interpt0, currentix, width, height, verbose);    // find far side of obstacle
             if (llGetListLength(obsendinfo) < 2)
             {   if (verbose) { llOwnerSay("Cannot find open space after obstacle at " + (string)interpt0 + " on segment #" + (string)(currentix-1));}
-                patherror(MAZESTATUSBADOBSTACLE, interpt0);     // cannot find open space after obstacle
                 pathPoints += [interpt0];                       // best effort result
-                pathdeliversegment(pathPoints, FALSE, TRUE, pathid);    // final set of points
+                pathdeliversegment(pathPoints, FALSE, TRUE, pathid, MAZESTATUSBADOBSTACLE);    // final set of points
                 return;                                         // partial result
             }
             //  Found point on far side, we have something for the maze solver.
@@ -606,11 +592,11 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
             if (verbose) { llOwnerSay("Found open space at segment #" + (string) interp1ix + " " + (string)interpt1); }
             //  Output points so far, then a maze. 
             pathPoints += [interpt0];                           // segment up to start of maze
-            pathdeliversegment(pathPoints, FALSE, FALSE, pathid);       // points so far, no maze, not done.
-            pathdeliversegment([interpt0, interpt1], TRUE, FALSE, pathid);// bounds of a maze area, maze, not done
+            pathdeliversegment(pathPoints, FALSE, FALSE, pathid, 0);       // points so far, no maze, not done.
+            pathdeliversegment([interpt0, interpt1], TRUE, FALSE, pathid, 0);// bounds of a maze area, maze, not done
             pathPoints = [interpt1];                            // path clears and continues after maze
             if (llVecMag(interpt1 - llList2Vector(pts,len-1)) < 0.01)  // if at final destination
-            {   pathdeliversegment(pathPoints, FALSE, TRUE, pathid);    // done, return final part of path
+            {   pathdeliversegment(pathPoints, FALSE, TRUE, pathid, 0);    // done, return final part of path
                 return;
             }
             assert(interp1ix < len-1);                          // ix must never pass beginning of last segment
@@ -716,7 +702,7 @@ pathUpdateCallback(integer status, list unused)
 //
 //  pathdeliversegment -- path planner has a segment to be executed
 //
-pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid)
+pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, integer status)
 {   if (pathid != gPathId)                                  // starting a new path 
     {   gPathId = pathid;                                   // this is new pathid
         gSegmentId = 0;                                     // segment ID resets
@@ -729,19 +715,26 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid)
         //  Start the maze solver
         integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathWidth, gPathId, gSegmentId, TRUE); 
         if (status) 
-        {   llOwnerSay("Unable to start maze solver. Status: " + (string)status); }
+        {   llOwnerSay("Unable to start maze solver. Status: " + (string)status); 
+            //  Create a dummy maze solve result and send it to path execution just to transmit the status.
+            llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT,
+            ["reply", "mazesolve", "pathid", pathid, "segmentid", gSegmentId, "status", status,
+                "pos", ZERO_VECTOR, "rot", ZERO_ROTATION, "cellsize", 0.0,
+                "points",[]]),"");
+            return;
+        }
     }
     else                                                    // non-maze
     {
         llMessageLinked(LINK_THIS,MAZEPATHREPLY,
-            llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId, "status",0, "points",
+            llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId, "status",status, "points",
             llList2Json(JSON_ARRAY,path)]),"");
     }
     gSegmentId++;                                           // next segment
     if (isdone)
     {
         llMessageLinked(LINK_THIS,MAZEPATHREPLY,
-            llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId, "status",0, "points",
+            llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId, "status",status, "points",
             llList2Json(JSON_ARRAY,[ZERO_VECTOR])]),"");    // send one ZERO_VECTOR segment as an EOF.
     }
 }

@@ -52,6 +52,7 @@ integer gPathExeNextsegid;                                  // current segment
 integer gPathExeMoving = FALSE;                             // true if KFM movement in progress
 integer gPathExeActive = FALSE;                             // path system is doing something
 integer gPathExeEOF;                                        // EOF seen
+integer gPathExePendingStatus;                              // pending error, to be reported at end of motion
 vector  gPathExeLastPos;                                    // last position, for stall check
 integer gPathExeVerbose;                                    // verbose mode
 integer gPathExeFreemem;                                    // amount of free memory left
@@ -162,6 +163,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze)
         gPathExeId = pathid;                                // reset state to empty
         gPathExeEOF = FALSE;                                // not at EOF
         gPathExeActive = TRUE;                              // we are running
+        gPathExePendingStatus = 0;                          // no error status pending
         llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
     }
     if (segmentid == 0)                                     // starting a new path
@@ -389,7 +391,7 @@ pathexestop(integer status)
     gPathExeLastPos = ZERO_VECTOR;                          // no last position
     llSetTimerEvent(0.0);                                   // stop timing 
     if (gPathExeActive)                                     // if we are active
-    {
+    {   if (status == 0) { status = gPathExePendingStatus; }// send back any stored status
         pathUpdateCallback(status,[]);                      // tell caller about result
         gPathExeActive = FALSE;                             // no longer active
     }
@@ -442,13 +444,15 @@ pathexepathdeliver(string jsn)
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
     ////if ((integer)serial != gMazeSerial) { return([MAZESTATUSCOMMSEQ]); }            // out of sequence 
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
-    if (status != 0) { return; }                  // error status from other side
+    if (status != 0) 
+    {   if (gPathExePendingStatus == 0) {gPathExePendingStatus = status; }   // save any error status sent for later
+    }
     list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
     list pts = [];
     integer i;
     integer len = llGetListLength(ptsstr);
     for (i=0; i<len; i++) { pts += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors  
-    pathexedeliver(pts, pathid, segmentid, FALSE);      // deliver maze solution
+    pathexedeliver(pts, pathid, segmentid, FALSE);      // deliver path segment
 }
 
 //
