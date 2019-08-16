@@ -570,19 +570,24 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
                 " hit dist along segment: " + (string)(distalongseg+hitbackup)); }
             if (distalongseg + hitbackup < 0)               // too close to beginning of current segment to back up
             {                                               // must search in previous segments
-                list pinfo =  pathfindunobstructed(pts, currentix, -1, width, height);
-                interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
-                integer newix = llList2Integer(pinfo,1);    // segment in which we found point, counting backwards
-                DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
-                if (newix < 1)
-                {   pathdeliversegment(pathPoints,FALSE, TRUE, pathid, MAZESTATUSBADSTART); // points, no maze, done
-                    return;                                 // no open space found, fail
+                if ((llVecMag(llList2Vector(pts,0) - interpt0)) > MINSEGMENTLENGTH)  // if we are not right on top of the starting point
+                {   list pinfo =  pathfindunobstructed(pts, currentix, -1, width, height);
+                    interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
+                    integer newix = llList2Integer(pinfo,1);    // segment in which we found point, counting backwards
+                    DEBUGPRINT1("Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
+                    if (newix < 1)
+                    {   pathdeliversegment(pathPoints,FALSE, TRUE, pathid, MAZESTATUSBADSTART); // points, no maze, done
+                        return;                                 // no open space found, fail
+                    }
+                    //  Discard points until we find the one that contains the new intermediate point.
+                    do {
+                        DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-1) + " from pathPoints looking for " + (string)interpt0);
+                        pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-1, llGetListLength(pathPoints)-1);
+                    } while ( llGetListLength(pathPoints) > 1 && !pathpointinsegment(interpt0,llList2Vector(pathPoints,-1), llList2Vector(pathPoints,-2)));
+                } else {                                    // we're at the segment start, and can't back up. Assume start of path is clear. We got there, after all.
+                    DEBUGPRINT1("Assuming start point of path is clear at " + (string)interpt0);
+                    interpt0 = p0;                              // zero length
                 }
-                //  Discard points until we find the one that contains the new intermediate point.
-                do {
-                    DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-1) + " from pathPoints looking for " + (string)interpt0);
-                    pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-1, llGetListLength(pathPoints)-1);
-                } while ( llGetListLength(pathPoints) > 1 && !pathpointinsegment(interpt0,llList2Vector(pathPoints,-1), llList2Vector(pathPoints,-2)));
             }
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for open space on far side of obstacle.");
@@ -597,8 +602,11 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
             vector interpt1 = llList2Vector(obsendinfo,0);      // clear position on far side
             integer interp1ix = llList2Integer(obsendinfo,1);   // in this segment
             if (verbose) { llOwnerSay("Found open space at segment #" + (string) interp1ix + " " + (string)interpt1); }
-            //  Output points so far, then a maze. 
-            pathPoints += [interpt0];                           // segment up to start of maze
+            //  Output points so far, then a maze.
+            if (pathPoints != [] && llVecMag(llList2Vector(pathPoints,-1) - interpt0) >= MINSEGMENTLENGTH) // if new point is different enough
+            {
+                pathPoints += [interpt0];                       // segment up to start of maze
+            }
             pathdeliversegment(pathPoints, FALSE, FALSE, pathid, 0);       // points so far, no maze, not done.
             pathdeliversegment([interpt0, interpt1], TRUE, FALSE, pathid, 0);// bounds of a maze area, maze, not done
             pathPoints = [interpt1];                            // path clears and continues after maze
@@ -712,6 +720,9 @@ pathUpdateCallback(integer status, list unused)
 }
 //
 //  pathdeliversegment -- path planner has a segment to be executed
+//
+//  Maze segments must be two points. The maze solver will fill in more points.
+//  Other segments must be one or more points.
 //
 pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, integer status)
 {   DEBUGPRINT1("Pathdeliversegment: maze: " + (string)ismaze + " done: " + (string)isdone + " status: " + (string)status + " path: " + llDumpList2String(path,","));

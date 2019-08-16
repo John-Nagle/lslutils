@@ -343,11 +343,13 @@ pathexedomove()
     {   DEBUGPRINT1("Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
         list kfmmoves = pathexebuildkfm(llGetPos(), llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
-        llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);             // begin motion
-        gPathExeMoving = TRUE;                          // movement in progress
-        integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
-        if (freemem < gPathExeFreemem) { gPathExeFreemem = freemem; }   // record free memory
-        gAllSegments = [];                              // segments have been consumed
+        if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
+        {   llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);             // begin motion
+            gPathExeMoving = TRUE;                          // movement in progress
+            integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
+            if (freemem < gPathExeFreemem) { gPathExeFreemem = freemem; }   // record free memory
+            gAllSegments = [];                              // segments have been consumed
+        }
     } else {
         DEBUGPRINT1("Waiting for maze solver to catch up.");    // solver running behind action
     }
@@ -443,7 +445,6 @@ pathexepathdeliver(string jsn)
     if (requesttype != "path") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
-    ////if ((integer)serial != gMazeSerial) { return([MAZESTATUSCOMMSEQ]); }            // out of sequence 
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) 
     {   if (gPathExeVerbose) { llOwnerSay("Path deliver with status " + (string)status); }
