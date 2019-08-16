@@ -195,9 +195,9 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
             {   DEBUGPRINT1("Cast ray status: " + (string)status);
                 return((integer)status);                    // fails       
             }
-            if (status > 0) {
-                integer i;
-                for (i=0; i<2*status; i++)                          // for all hits
+            if (status > 0) 
+            {   integer i;
+                for (i=0; i<2*status; i+= 2)                        // for all hits
                 {   key hitobj = llList2Key(castresult, i+0);       // get object hit
                     if (hitobj != ownkey)                           // ignore hits with self
                     {   vector hitpt = llList2Vector(castresult, i+1); // get point of hit
@@ -664,7 +664,7 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
         {   assert(adjdistalongseg >= distalongseg);                // must progress forward
             distalongseg = adjdistalongseg;
             pos = p0 + dir * distalongseg;                           // should be an integral number of widths from startpos in 2D plane.
-            if (checkvecmag - width > 2.0001)                       // if far enough to be sure of an intervening maze square
+            if (checkvecmag > 2*width)                              // if far enough to be sure of an intervening maze square
             {
                 //  Test the new point.  This test is not airtight because we are not testing from open space.
                 //  May need further checks here.
