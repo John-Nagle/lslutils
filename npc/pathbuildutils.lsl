@@ -18,6 +18,7 @@ float CASTRAYRETRYDELAY = 0.200;                            // if a problem, ret
 float GROUNDCLEARANCE = 0.05;                               // (m) avoid false ground collisions
 float PATHCHECKTOL = 0.02;                                  // (m) allow 2cm collinearity error
 float PATHSTATICTOL = 0.10;                                 // (m) allow extra space on either side of path 
+list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2]; // 2 hits, because we can hit ourself and must ignore that.
 
 #ifndef INFINITY                                            // should be an LSL builtin
 #define INFINITY ((float)"inf")                             // is there a better way?
@@ -174,6 +175,7 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 {   float yoffset;                                          // cast ray offset, Y dir in coords of vector
     float zoffset;                                          // cast ray offset, Z dir in coords of vector
     float nearestdist = INFINITY;                           // closest hit
+    key ownkey = llGetKey();                                // get our own key
     ////DEBUGPRINT1("p0: " + (string)p0 + "  p1: " + (string)p1 + " probespacing: " + (string) probespacing);  // ***TEMP***
     integer probecount = (integer)((height-GROUNDCLEARANCE)/probespacing); // number of probes
     if (probecount < 1) { probecount = 1; }                 // minimum is one probe
@@ -193,18 +195,23 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
             {   DEBUGPRINT1("Cast ray status: " + (string)status);
                 return((integer)status);                    // fails       
             }
-            if (status > 0) { 
-                vector hitpt = llList2Vector(castresult, 1); // get point of hit
-                key hitobj = llList2Key(castresult, 0);     // get object hit
-                list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
-                integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-                if (pathfindingtype != OPT_WALKABLE)        // if it's not a walkable
-                {   float dist = (hitpt-p0) * dir;          // distance to hit
-                    if (dist < 0) { dist = 0; }             // can potentially be small and negative, from geometry. Treat as zero.
-                    if (!wantnearest)                       // if don't need nearest
-                    {   return(dist); }                     // just return first
-                    if (dist < nearestdist)                 // save closest hit point
-                    {   nearestdist = dist; }
+            if (status > 0) {
+                integer i;
+                for (i=0; i<2*status; i++)                          // for all hits
+                {   key hitobj = llList2Key(castresult, i+0);       // get object hit
+                    if (hitobj != ownkey)                           // ignore hits with self
+                    {   vector hitpt = llList2Vector(castresult, i+1); // get point of hit
+                        list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
+                        integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+                        if (pathfindingtype != OPT_WALKABLE)        // if it's not a walkable
+                        {   float dist = (hitpt-p0) * dir;          // distance to hit
+                            if (dist < 0) { dist = 0; }             // can potentially be small and negative, from geometry. Treat as zero.
+                            if (!wantnearest)                       // if don't need nearest
+                            {   return(dist); }                     // just return first
+                            if (dist < nearestdist)                 // save closest hit point
+                            {   nearestdist = dist; }
+                        }
+                    }
                 }
             }          
         }
@@ -228,7 +235,7 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
         return(FALSE);
     }
     //  Don't test against land, because the static path check did that already.
-    float disttohit = castbeam(p0, p1, width, height, probespacing, FALSE, [RC_REJECT_TYPES,RC_REJECT_LAND]);
+    float disttohit = castbeam(p0, p1, width, height, probespacing, FALSE, PATHCASTRAYOPTS);
     if (disttohit != INFINITY)
     {   DEBUGPRINT1("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
         return(FALSE);
@@ -539,7 +546,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
         vector pos = p0 + dir*distalongseg;                 // current working position
         DEBUGPRINT1("Checking " + (string)pos + " to " + (string)p1 + " for obstacles.");
         float hitdist = castbeam(pos, p1, width, height, testspacing, TRUE,
-                    [RC_REJECT_TYPES,RC_REJECT_LAND]);
+                    PATHCASTRAYOPTS);
         if (hitdist < 0)
         {  
             pathdeliversegment([], FALSE, TRUE, pathid, MAZESTATUSCASTFAIL);    // empty set of points, no maze, done.
@@ -650,17 +657,21 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
         // Adjust pos to be an integral number of widths from startpos. Movement is forward.
         float adjdistalongseg = pathcalccellmovedist(p0, dir, startpos, width, distalongseg);
         vector checkvec = (p0 + dir * adjdistalongseg) - startpos;                           // checking only
+        float checkvecmag = llVecMag(<checkvec.x,checkvec.y,0.0>);                          // startpos to endpos of maze in XY plane
         DEBUGPRINT1("Maze endpoint adjust. Dist along seg " + (string)distalongseg + " -> " + (string)adjdistalongseg + " 2D dist: " + 
-            (string)llVecMag(<checkvec.x,checkvec.y,0.0>));
+            (string)checkvecmag);
         if (adjdistalongseg >= 0 && adjdistalongseg <= seglength)   // if still on same segment
         {   assert(adjdistalongseg >= distalongseg);                // must progress forward
             distalongseg = adjdistalongseg;
             pos = p0 + dir * distalongseg;                           // should be an integral number of widths from startpos in 2D plane.
-            //  Test the new point.  This test is not airtight because we are not testing from open space.
-            //  May need further checks here.
-            if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))
-            {   
-                return([pos,currentix]);                                // success, found open space
+            if (checkvecmag - width > 2.0001)                       // if far enough to be sure of an intervening maze square
+            {
+                //  Test the new point.  This test is not airtight because we are not testing from open space.
+                //  May need further checks here.
+                if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))
+                {   
+                    return([pos,currentix]);                                // success, found open space
+                }
             }
         }
     }
@@ -703,7 +714,8 @@ pathUpdateCallback(integer status, list unused)
 //  pathdeliversegment -- path planner has a segment to be executed
 //
 pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, integer status)
-{   if (pathid != gPathId)                                  // starting a new path 
+{   DEBUGPRINT1("Pathdeliversegment: maze: " + (string)ismaze + " done: " + (string)isdone + " status: " + (string)status + " path: " + llDumpList2String(path,","));
+    if (pathid != gPathId)                                  // starting a new path 
     {   gPathId = pathid;                                   // this is new pathid
         gSegmentId = 0;                                     // segment ID resets
     }
@@ -720,7 +732,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
             llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT,
             ["reply", "mazesolve", "pathid", pathid, "segmentid", gSegmentId, "status", status,
                 "pos", ZERO_VECTOR, "rot", ZERO_ROTATION, "cellsize", 0.0,
-                "points",[]]),"");
+                "points",llList2Json(JSON_ARRAY,[])]),"");
             return;
         }
     }
