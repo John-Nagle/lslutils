@@ -296,8 +296,11 @@ list pathexegetsegment(integer segid)
 pathexeassemblesegs()
 {   while (TRUE)
     {   list nextseg = pathexegetsegment(gPathExeNextsegid);    // get next segment if any
-        if (nextseg == [ZERO_VECTOR])
+        DEBUGPRINT1("Assembling segment #" + (string)gPathExeNextsegid + ": " + llDumpList2String(nextseg,","));
+        ////if (nextseg == [ZERO_VECTOR])                           // EOF sentinel
+        if (llGetListLength(nextseg) == 1 && llList2Vector(nextseg,0) == ZERO_VECTOR) // EOF sentinel - list with ZERO_VECTOR only
         {   gPathExeEOF = TRUE;                                 // we are at EOF
+            DEBUGPRINT1("Segment EOF");
             nextseg = [];                                       // but must deliver the EOF flag later
         }
         if (nextseg == []) 
@@ -305,8 +308,8 @@ pathexeassemblesegs()
             DEBUGPRINT1("Assembly complete: " + llDumpList2String(gAllSegments,","));
             return;                                             // caught up with input
         }
-        DEBUGPRINT1("Assembling segment #" + (string)gPathExeNextsegid + ": " + llDumpList2String(nextseg,","));
-        if (nextseg == [ZERO_VECTOR] && gAllSegments != []) { return; } // if EOF marker, but segments left to do, use assembled segments
+        if (llGetListLength(nextseg) == 1 && llList2Vector(nextseg,0) == ZERO_VECTOR && gAllSegments != [])
+        { return; }                                             // if EOF marker, but segments left to do, use assembled segments
         gPathExeNextsegid++;                                    // advance seg ID
         if (gAllSegments == [])
         {   gAllSegments = pathexeextrapoints(nextseg, gPathExeDisttoend);  // first segment
@@ -334,7 +337,8 @@ pathexeassemblesegs()
 pathexedomove()
 {   if (gPathExeMoving) { return; }                     // we are moving, do nothing
     pathexeassemblesegs();                              // have work to do?
-    if (gAllSegments == [ZERO_VECTOR])                  // if EOF signal
+    //// if (gAllSegments == [ZERO_VECTOR])                  // if EOF signal
+    if (llGetListLength(gAllSegments) == 1 && llList2Vector(gAllSegments,0) == ZERO_VECTOR) // if EOF signal
     {   if (gPathExeVerbose)
         {   llOwnerSay("Normal end of path. Free mem: " + (string)gPathExeFreemem); }
         pathexestop(0);                                 // all done, normal stop
@@ -440,7 +444,7 @@ pathexemazedeliver(string jsn)
 //
 //
 pathexepathdeliver(string jsn) 
-{   DEBUGPRINT1("Path deliver: " + jsn);
+{   DEBUGPRINT1("Path deliver received: " + jsn);
     string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
     if (requesttype != "path") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);

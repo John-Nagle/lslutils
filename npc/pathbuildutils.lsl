@@ -19,6 +19,7 @@ float GROUNDCLEARANCE = 0.05;                               // (m) avoid false g
 float PATHCHECKTOL = 0.02;                                  // (m) allow 2cm collinearity error
 float PATHSTATICTOL = 0.10;                                 // (m) allow extra space on either side of path 
 list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2]; // 2 hits, because we can hit ourself and must ignore that.
+list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2];                  // 2 hits, because we can hit ourselves and must ignore that
 
 #ifndef INFINITY                                            // should be an LSL builtin
 #define INFINITY ((float)"inf")                             // is there a better way?
@@ -32,6 +33,7 @@ list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2]; // 2 hit
 //
 float gPathWidth = 0.5;                                     // dimensions of character
 float gPathHeight = 1.8;                                    // defaults, overridden in JSON
+key   gPathSelfObject = NULL_KEY;                           // my own key
 
 //
 //  pathpointinsegment - is p between p0 and p1?
@@ -262,6 +264,8 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 //
 integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float height, integer dobackcorners)
 {
+    if (gPathSelfObject == NULL_KEY)
+    {   gPathSelfObject = llGetKey(); }                     // our own key, for later
     float MAZEBELOWGNDTOL = 0.40;                           // cast downwards to just below ground
     vector dv = p1-p0;                                      // direction, unnormalized
     vector dvnorm = llVecNorm(dv);                          // 3D direction, normalized.
@@ -276,37 +280,37 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     vector pc = p1 + (dir*(width*0.5));                     // ahead at ground level
     vector pd = p1 - (dir*(width*0.5));                     // "behind" point 
     DEBUGPRINT1("Cell occupied check: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
-    list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,[]);    // probe center of cell, looking down
+    list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS);    // probe center of cell, looking down
     if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }  // must hit walkable   
     //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
-    castresult = castray(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>,[]); // Horizontal cast at mid height, any non walkable hit is bad
+    castresult = castray(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>,PATHCASTRAYOPTSOBS); // Horizontal cast at mid height, any non walkable hit is bad
     if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
-    castresult = castray(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>,[]); // Horizontal cast near ground level, any non walkable hit is bad
+    castresult = castray(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>,PATHCASTRAYOPTSOBS); // Horizontal cast near ground level, any non walkable hit is bad
     if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
-    castresult = castray(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>,[]); // Horizontal cast at full height, any hit is bad
+    castresult = castray(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>,PATHCASTRAYOPTSOBS); // Horizontal cast at full height, any hit is bad
     if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
 
     //  Crosswise horizontal check.
-    castresult = castray(pa+<0,0,height*0.5>,pb+<0,0,height*0.5>,[]); // Horizontal cast, any hit is bad
+    castresult = castray(pa+<0,0,height*0.5>,pb+<0,0,height*0.5>,PATHCASTRAYOPTSOBS); // Horizontal cast, any hit is bad
     if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
     //  Center of cell is clear and walkable. Now check upwards at front and side.
     //  The idea is to check at points that are on a circle of diameter "width"
     DEBUGPRINT1("Obstacle check if cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " width: " + (string)width + " height: " + (string)height);     // ***TEMP***
     //  Downward ray casts only.  Must hit a walkable.   
-    castresult = castray(pa+<0,0,height>,pa-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable
+    castresult = castray(pa+<0,0,height>,pa-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS); // cast downwards, must hit walkable
     if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }// if any non-walkable hits, fail
-    castresult = castray(pb+<0,0,height>,pb-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable
+    castresult = castray(pb+<0,0,height>,pb-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS); // cast downwards, must hit walkable
     if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }    // if any non-walkable hits, fail
-    castresult = castray(pc+<0,0,height>,pc-<0,0,mazedepthmargin>,[]); // cast downwards, must hit walkable
+    castresult = castray(pc+<0,0,height>,pc-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS); // cast downwards, must hit walkable
     if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }    // if any non-walkable hits, fail
-    castresult = castray(pd+<0,0,height>,pc-<0,0,mazedepthmargin>,[]); // cast at steep angle, must hit walkable
+    castresult = castray(pd+<0,0,height>,pc-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS); // cast at steep angle, must hit walkable
     if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }    // if any non-walkable hits, fail
     if (!dobackcorners) 
     {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
         return(FALSE); 
     }
     //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
-    castresult = castray(pd+<0,0,height>,pd-<0,0,MAZEBELOWGNDTOL>,[]); // cast upwards, no land check
+    castresult = castray(pd+<0,0,height>,pd-<0,0,MAZEBELOWGNDTOL>,PATHCASTRAYOPTSOBS); // cast upwards, no land check
     if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }    // if any non-walkable hits, fail
     DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
     return(FALSE);                                               // success, no obstacle
@@ -322,17 +326,28 @@ integer mazecasthitonlywalkable(list castresult, integer nohitval)
         return(FALSE);                                      // fails, unlikely       
     }
     if (status == 0) { return(nohitval); }                  // hit nothing, use no hit value
-    if (status != 1) { return(FALSE); }                     // problem, fails
-    vector hitpt = llList2Vector(castresult, 1);            // get point of hit
-    key hitobj = llList2Key(castresult, 0);                 // get object hit
-    if (hitobj == NULL_KEY) { return(TRUE); }               // null key is land, that's OK
-    list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
-    integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-    if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
-    {   DEBUGPRINT1("Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));                // ***TEMP***
-        return(FALSE);                                      // hit non-walkable, obstructed
+    if (status < 0)  { return(FALSE); }                     // problem, fails
+    //  Hit something. Must analyze.
+    //  Hit ourself, ignore. 
+    //  Hit land or walkable, return TRUE.
+    //  Hit nothing but ignorables, return nohitval  
+    integer i;
+    for (i=0; i<2*status; i+=2)                             // check objects hit. Check two, because the first one might be ourself
+    {
+        key hitobj = llList2Key(castresult, i+0);           // get object hit
+        if (hitobj == NULL_KEY) { return(TRUE); }           // land is walkable, so, OK
+        if (hitobj != gPathSelfObject)                      // if hit something other than self.
+        {   vector hitpt = llList2Vector(castresult, i+1);            // get point of hit
+            list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
+            integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+            if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
+            {   DEBUGPRINT1("Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
+                return(FALSE);                              // hit non-walkable, obstructed
+            }
+            return(TRUE);                                   // we hit a walkable - good.
+        }
     }
-    return(TRUE);                                           // hit only a walkable - good.    
+    return(nohitval);                                       // hit nothing of interest   
 }
 //
 //  pathcalccellmovedist 
@@ -603,7 +618,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
             integer interp1ix = llList2Integer(obsendinfo,1);   // in this segment
             if (verbose) { llOwnerSay("Found open space at segment #" + (string) interp1ix + " " + (string)interpt1); }
             //  Output points so far, then a maze.
-            if (pathPoints != [] && llVecMag(llList2Vector(pathPoints,-1) - interpt0) >= MINSEGMENTLENGTH) // if new point is different enough
+            if (pathPoints != [] && llVecMag(llList2Vector(pathPoints,-1) - interpt0) >= 0.0001) // avoid zero length and divide by zero
             {
                 pathPoints += [interpt0];                       // segment up to start of maze
             }
