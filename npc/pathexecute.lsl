@@ -336,6 +336,7 @@ pathexeassemblesegs()
 //
 pathexedomove()
 {   if (gPathExeMoving) { return; }                     // we are moving, do nothing
+    if (!gPathExeActive) { return; }                    // system is idle, do nothing
     pathexeassemblesegs();                              // have work to do?
     //// if (gAllSegments == [ZERO_VECTOR])                  // if EOF signal
     if (llGetListLength(gAllSegments) == 1 && llList2Vector(gAllSegments,0) == ZERO_VECTOR) // if EOF signal
@@ -352,8 +353,8 @@ pathexedomove()
             gPathExeMoving = TRUE;                          // movement in progress
             integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
             if (freemem < gPathExeFreemem) { gPathExeFreemem = freemem; }   // record free memory
-            gAllSegments = [];                              // segments have been consumed
         }
+        gAllSegments = [];                              // segments have been consumed
     } else {
         DEBUGPRINT1("Waiting for maze solver to catch up.");    // solver running behind action
     }

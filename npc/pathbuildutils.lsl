@@ -585,7 +585,7 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
                 " hit dist along segment: " + (string)(distalongseg+hitbackup)); }
             if (distalongseg + hitbackup < 0)               // too close to beginning of current segment to back up
             {                                               // must search in previous segments
-                if ((llVecMag(llList2Vector(pts,0) - interpt0)) > MINSEGMENTLENGTH)  // if we are not right on top of the starting point
+                if ((llVecMag(llList2Vector(pts,0) - interpt0)) > (width))  // if we are not very close to the starting point
                 {   list pinfo =  pathfindunobstructed(pts, currentix, -1, width, height);
                     interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
                     integer newix = llList2Integer(pinfo,1);    // segment in which we found point, counting backwards
