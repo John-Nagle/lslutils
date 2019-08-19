@@ -7,6 +7,7 @@
 //
 //  License: GPLv3.
 //
+#include "npc/patherrors.lsl"
 //
 //  Error levels
 integer PATH_MSG_ERROR = 0;
@@ -70,7 +71,8 @@ pathNavigateTo(vector endpos, list params)
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
     endpos = pathfindwalkable(endpos, CHARHEIGHT);      // find walkable below char
     if (endpos == ZERO_VECTOR)
-    {   llOwnerSay("Error looking for walkable under goal."); 
+    {   llOwnerSay("Error looking for walkable under goal."); // ***TEMP***
+        llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)PATHEXENOTWALKABLE, ""); // send message to self to report error
         return; 
     }
     //  Generate path.
@@ -120,7 +122,7 @@ vector pathfindwalkable(vector startpos, float height)
             [RC_MAX_HITS,10, RC_REJECT_TYPES, RC_REJECT_PHYSICAL]); // go down up to 5 objs
     integer hitstatus = llList2Integer(hits,-1);        // < 0 is error
     if (hitstatus < 0)
-    {   llSay(DEBUG_CHANNEL,"Error looking for walkable under avatar."); return(ZERO_VECTOR); }
+    {   llSay(DEBUG_CHANNEL,"Error looking for walkable below " + (string)startpos); return(ZERO_VECTOR); }
     integer i;
     for (i=0; i<hitstatus*2; i = i + 2)                         // search hits
     {   key hitobj = llList2Key(hits,i);

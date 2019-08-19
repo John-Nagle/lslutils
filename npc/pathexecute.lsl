@@ -28,16 +28,12 @@
 #ifndef PATHEXECUTE                                         // include guard, like C/C++
 #define PATHEXECUTE
 #include "npc/assert.lsl"                                   // assert
+#include "npc/patherrors.lsl"
 #include "npc/mazedefs.lsl"
 //
 //  Constants
 //
-//  Error codes. Move to pathdefs.
-#define PATHEXEBADPATH1     -2001
-#define PATHEXESEGOUTOFSEQ2 -2002
-#define PATHEXESEGOUTOFSEQ1 -2003
-#define PATHEXEBADSTARTPOS  -2004
-#define PATHEXECOLLISION    -2005
+
 //
 //  Idle timer timeout
 //
