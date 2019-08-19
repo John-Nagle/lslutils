@@ -93,7 +93,7 @@ pathTick(){}
 //
 //  pathNavigateTo -- go to indicated point
 //
-pathNavigateTo(vector endpos, list params)
+pathNavigateTo(vector endpos, float stopshort)
 {
     vector startpos = llGetPos();
     vector startscale = llGetScale();
@@ -108,7 +108,7 @@ pathNavigateTo(vector endpos, list params)
         return; 
     }
     //  Generate path.
-    pathplanstart(startpos, endpos, CHARRADIUS*2, CHARHEIGHT, CHARACTER_TYPE_A, TESTSPACING, gLocalPathId, verbose);    
+    pathplanstart(startpos, endpos, CHARRADIUS*2, CHARHEIGHT, stopshort, CHARACTER_TYPE_A, TESTSPACING, gLocalPathId, verbose);    
     //  Output from pathcheckobstacles is via callbacks
 }
 
@@ -116,12 +116,13 @@ pathNavigateTo(vector endpos, list params)
 //  pathPursue -- go to target avatar. No real pursuit for now.
 //
 
-pathPursue(key target, list params)
+pathPursue(key target, float stopshort)
 {
     list details = llGetObjectDetails(target, [OBJECT_POS]);    // get object position
     vector endpos = llList2Vector(details,0);
-    pathNavigateTo(endpos, params);                     // head there
+    pathNavigateTo(endpos, stopshort);                          // head there
 }
+
 
 pathUpdate(integer status, list reserved) {}
 pathCollide(integer num_collisions) {}
@@ -173,10 +174,10 @@ vector pathfindwalkable(vector startpos, float height)
 //
 //  pathplanstart -- start the path planner task
 //
-pathplanstart(vector startpos, vector goal, float width, float height, integer chartype, float testspacing, integer pathid, integer verbose)
+pathplanstart(vector startpos, vector goal, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid, integer verbose)
 {
     string params = llList2Json(JSON_OBJECT, 
-        ["startpos",startpos, "goal", goal, "width", width, "height", height, "chartype", chartype, "testspacing", testspacing,
+        ["startpos",startpos, "goal", goal, "stopshort", stopshort, "width", width, "height", height, "chartype", chartype, "testspacing", testspacing,
         "pathid", pathid, "verbose", verbose]);
     ////llOwnerSay("Path request: " + params);
     llMessageLinked(LINK_THIS, PATH_DIR_REQUEST, params,"");   // send to planner  

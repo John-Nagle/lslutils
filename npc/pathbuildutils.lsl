@@ -513,6 +513,33 @@ list pathclean(list path)
     return(newpath);                                        // cleaned up path
 }
 //
+//  pathtrimmedstaticpath -- trim off end of path by specified distance
+//
+//  Used to make Pursue stop before hitting the target
+//
+list pathtrimmedstaticpath(vector startpos, vector endpos, float stopshort, float width, integer chartype)
+{   list path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);    // plan a static path
+    if (stopshort <= 0) return(path);                       // no need to trim
+    integer status = llList2Integer(path,-1);               // static path status
+    if (status != 0) { return([status]); }                  // fails
+    path = llList2List(path,0,-2);                          // path without status
+    integer i = llGetListLength(path);
+    while (i > 1)                                           // while at least two points
+    {   vector p0 = llList2Vector(path,-1);                 // last two points, reverse order
+        vector p1 = llList2Vector(path,-2);
+        vector dv = p1-p0;
+        float dvmag = llVecMag(dv);
+        if (dvmag > 0.001 && dvmag - stopshort > 0.001)     // trim is in this segment
+        {   vector p = p0 + llVecNorm(dv) * stopshort;      //
+            return(llListReplaceList(path,[p, 0],-1,-1));   // replace last point, add status             
+        }
+        path = llList2List(path,0,-2);                      // drop last point
+        stopshort -= dvmag;                                 // decrease trim dist by last segment
+        i = llGetListLength(path);                          // path has been trimmed
+    }
+    return([PU_GOAL_REACHED]);                              // we're so close we're there. 
+}
+//
 //  pathplan -- plan an obstacle-free path.
 //
 //  Output is via calls to pathdeliversegment.
@@ -528,10 +555,12 @@ list pathclean(list path)
 //  This is best-effort; moves will be reported even if the destination cannot be
 //  fully reached.
 //
-pathplan(vector startpos, vector endpos, float width, float height, integer chartype, float testspacing, integer pathid, integer verbose)
+pathplan(vector startpos, vector endpos, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid, integer verbose)
 {   
     //  Use the system's GetStaticPath to get an initial path
-    list pts = llGetStaticPath(startpos, endpos, width + PATHSTATICTOL, [CHARACTER_TYPE, chartype]);  // generate path
+    ////list pts = llGetStaticPath(startpos, endpos, width + PATHSTATICTOL, [CHARACTER_TYPE, chartype]);  // generate path
+    list pts = pathtrimmedstaticpath(startpos, endpos, stopshort, width + PATHSTATICTOL, chartype);
+    DEBUGPRINT1("Static path: " + llDumpList2String(pts,","));     // dump list for debug
     integer status = llList2Integer(pts,-1);                // last item is status
     if (status != 0)                                        // static path fail
     {   pathdeliversegment([], FALSE, TRUE, pathid, status);// report error
@@ -539,7 +568,6 @@ pathplan(vector startpos, vector endpos, float width, float height, integer char
     }
     //  Got path
     pts = llList2List(pts,0,-2);                            // drop status from end of points list
-    DEBUGPRINT1("Static path: " + llDumpList2String(pts,","));     // dump list for debug
     pts = pathclean(pts);                                   // 
     integer len = llGetListLength(pts);
     if (len < 2)
@@ -716,13 +744,14 @@ pathRequestRecv(string jsonstr)
     vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);   // get goal
     float gPathWidth = (float)llJsonGetValue(jsonstr,["width"]);
     float gPathHeight = (float)llJsonGetValue(jsonstr,["height"]);
+    float stopshort = (float)llJsonGetValue(jsonstr,["stopshort"]);
     integer chartype = (integer)llJsonGetValue(jsonstr,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
     float testspacing = (float)llJsonGetValue(jsonstr,["testspacing"]);
     integer pathid = (integer)llJsonGetValue(jsonstr,["pathid"]);
     integer verbose = (integer)llJsonGetValue(jsonstr,["verbose"]);
     if (verbose) { llOwnerSay("Path request: " + jsonstr); }
     //  Call the planner 
-    pathplan(startpos, goal, gPathWidth, gPathHeight, chartype, testspacing, pathid, verbose);    
+    pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, chartype, testspacing, pathid, verbose);    
 }
 
 
