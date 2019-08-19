@@ -186,7 +186,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
 //
 //  This is to allow smooth speed and direction changes.
 //
-list pathexeextrapoints(list pts, float distfromend)
+list pathexeextrapoints(list pts, float distfromends, integer first)
 {
     list newpts = [];
     integer i;
@@ -198,10 +198,15 @@ list pathexeextrapoints(list pts, float distfromend)
         //  Do we need to add any intermediate points?
         vector dv = p1-p0;
         vector dir = llVecNorm(dv);
-        float dlen = llVecMag(dv);                          
-        if (dlen >= 3*distfromend)                  // long enough to need 2 intermediate points
-        {   newpts += [p0+dir*distfromend, p1-dir*distfromend]; }
-        else if (dlen >= 2*distfromend)
+        float dlen = llVecMag(dv);
+        float distfromstart = distfromends;         // for first part of segment
+        //  For first segment, use a very short first section
+        //  so that turning takes place before acceleration.
+        if (first && i == 1 && PATHMINTURNSECTION < distfromstart) 
+        {   distfromstart = PATHMINTURNSECTION; }                      
+        if (dlen >= 3*distfromends)                 // long enough to need 2 intermediate points
+        {   newpts += [p0+dir*distfromstart, p1-dir*distfromends]; }
+        else if (dlen >= distfromstart + distfromends)
         {   newpts += [(p0+p1)*0.5]; }              // add the midpoint 
         newpts += [p1];
         p0 = p1;                                    // for next cycle
@@ -293,7 +298,6 @@ pathexeassemblesegs()
 {   while (TRUE)
     {   list nextseg = pathexegetsegment(gPathExeNextsegid);    // get next segment if any
         DEBUGPRINT1("Assembling segment #" + (string)gPathExeNextsegid + ": " + llDumpList2String(nextseg,","));
-        ////if (nextseg == [ZERO_VECTOR])                           // EOF sentinel
         if (llGetListLength(nextseg) == 1 && llList2Vector(nextseg,0) == ZERO_VECTOR) // EOF sentinel - list with ZERO_VECTOR only
         {   gPathExeEOF = TRUE;                                 // we are at EOF
             DEBUGPRINT1("Segment EOF");
@@ -306,25 +310,27 @@ pathexeassemblesegs()
         }
         if (llGetListLength(nextseg) == 1 && llList2Vector(nextseg,0) == ZERO_VECTOR && gAllSegments != [])
         { return; }                                             // if EOF marker, but segments left to do, use assembled segments
-        gPathExeNextsegid++;                                    // advance seg ID
+        //  We are going to use this segment.
         if (gAllSegments == [])
-        {   gAllSegments = pathexeextrapoints(nextseg, gPathExeDisttoend);  // first segment
+        {   gAllSegments = pathexeextrapoints(nextseg, gPathExeDisttoend, gPathExeNextSegid==0);  // first segment
             DEBUGPRINT1("Started gAllSegments from empty: " + llDumpList2String(gAllSegments,",")); // ***TEMP***
             nextseg = [];
         } else {
             DEBUGPRINT1("Adding to gAllSegments: " + llDumpList2String(gAllSegments,",")); // ***TEMP***
             vector lastpt = llList2Vector(gAllSegments,-1);
             vector firstpt = llList2Vector(nextseg,0);
+            integer first =  gPathExeNextSegid==0;      // first segment?
             assert(llVecMag(lastpt-firstpt) < 0.01);    // endpoints should match
             nextseg = llList2List(nextseg,1,-1);        // discard new duplicate point
             //  If we can take a short-cut at the join between two segments, do so.
             //  Also add "extra points" on long segments here for speed control.
             if (obstaclecheckpath(llList2Vector(gAllSegments,-2), llList2Vector(nextseg,0), gPathExeWidth, gPathExeHeight, gPathExeProbespacing, gPathExeChartype))
-            {   gAllSegments = llList2List(gAllSegments,0,-2) + pathexeextrapoints(nextseg, gPathExeDisttoend); }
+            {   gAllSegments = llList2List(gAllSegments,0,-2) + pathexeextrapoints(nextseg, gPathExeDisttoend, first); }
             else
-            {   gAllSegments += pathexeextrapoints(nextseg, gPathExeDisttoend);                // no, can't drop point
+            {   gAllSegments += pathexeextrapoints(nextseg, gPathExeDisttoend, first);                // no, can't drop point
             }
         }
+        gPathExeNextsegid++;                                    // advance seg ID
     }
 }
 //
