@@ -38,6 +38,7 @@
 //  Idle timer timeout
 //
 #define PATHEXETIMEOUT      2.0                             // check this often for progress
+#define PATHMINTURNSECTION  0.5                             // first section of path this length, for a starting turn
 //
 //  Globals
 //                                
@@ -311,15 +312,15 @@ pathexeassemblesegs()
         if (llGetListLength(nextseg) == 1 && llList2Vector(nextseg,0) == ZERO_VECTOR && gAllSegments != [])
         { return; }                                             // if EOF marker, but segments left to do, use assembled segments
         //  We are going to use this segment.
+        integer first =  gPathExeNextsegid==0;      // first segment?
         if (gAllSegments == [])
-        {   gAllSegments = pathexeextrapoints(nextseg, gPathExeDisttoend, gPathExeNextSegid==0);  // first segment
+        {   gAllSegments = pathexeextrapoints(nextseg, gPathExeDisttoend, first);  // first segment
             DEBUGPRINT1("Started gAllSegments from empty: " + llDumpList2String(gAllSegments,",")); // ***TEMP***
             nextseg = [];
         } else {
             DEBUGPRINT1("Adding to gAllSegments: " + llDumpList2String(gAllSegments,",")); // ***TEMP***
             vector lastpt = llList2Vector(gAllSegments,-1);
             vector firstpt = llList2Vector(nextseg,0);
-            integer first =  gPathExeNextSegid==0;      // first segment?
             assert(llVecMag(lastpt-firstpt) < 0.01);    // endpoints should match
             nextseg = llList2List(nextseg,1,-1);        // discard new duplicate point
             //  If we can take a short-cut at the join between two segments, do so.
