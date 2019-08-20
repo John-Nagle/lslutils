@@ -130,14 +130,14 @@ pathInit(){}
 pathCreateCharacter(list params){}
 pathUpdateCharacter(list params){}
 
-pathLinkMsg(integer sender_num, integer num, string msg, key id)
+pathLinkMsg(integer sender_num, integer num, string msg, key hitobj)
 {   
     if (num == PATH_DIR_REPLY)
     {   integer status = (integer)msg;
         llOwnerSay("Path complete, status " + (string)status + " Time: " + (string)llGetTime());
         integer callbackstat = PU_GOAL_REACHED;         // normal status
         if (status != 0) { callbackstat =  PU_FAILURE_UNREACHABLE; } // for now, not analyzing why
-        pathUpdateCallback(callbackstat,[]);
+        pathUpdateCallback(callbackstat, hitobj);
     }
 }
 

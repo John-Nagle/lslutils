@@ -758,9 +758,9 @@ pathRequestRecv(string jsonstr)
 //
 //  pathUpdateCallback -- pathfinding is done, tell requesting script
 //
-pathUpdateCallback(integer status, list unused)
+pathUpdateCallback(integer status, key hitobj)
 {   
-    llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, NULL_KEY);  // status to client
+    llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, hitobj);  // status to client
 }
 //
 //  pathdeliversegment -- path planner has a segment to be executed

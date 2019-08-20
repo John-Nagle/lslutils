@@ -243,9 +243,6 @@ list pathexebuildkfm(vector startpos, rotation startrot, list pts)
 //
 //  We are moving from pprev to p0.
 //
-//  ***NEED TO PREVENT ROTATION ERROR ACCUMULATION***
-//  ***NEED TO ROTATE BEFORE THE FIRST MOVE***
-//
 list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
 {
 #ifdef MARKERS
@@ -388,9 +385,9 @@ pathexetimer()
 }
 
 //
-//  pathexestop -- trouble, stop and abort keyframe motion
+//  pathexestopkey -- trouble, stop and abort keyframe motion, with key
 //
-pathexestop(integer status)
+pathexestopkey(integer status, key hitobj)
 {
     if (gPathExeMoving || (status != 0)) { DEBUGPRINT1("Forced movement stop. Status: " + (string)status); }
     llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on
@@ -403,10 +400,15 @@ pathexestop(integer status)
     llSetTimerEvent(0.0);                                   // stop timing 
     if (gPathExeActive)                                     // if we are active
     {   if (status == 0) { status = gPathExePendingStatus; }// send back any stored status
-        pathUpdateCallback(status,[]);                      // tell caller about result
+        pathUpdateCallback(status,hitobj);                  // tell caller about result
         gPathExeActive = FALSE;                             // no longer active
     }
 }
+//
+//  pathexestop -- trouble, stop and abort keyframe motion, short form
+//
+pathexestop(integer status)
+{   pathexestopkey(status, NULL_KEY); }
 //
 //  pathexemazedeliver  -- incoming maze result
 //
@@ -480,7 +482,8 @@ pathexecollision(integer num_detected)
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                    // hit a non-walkable
             {   if (gPathExeVerbose) { llOwnerSay("Hit " + llDetectedName(i)); }
-                pathexestop(PATHEXECOLLISION);                      // stop
+                pathexestopkey(PATHEXECOLLISION, llDetectedKey(i)); // stop
+                return;
             }
         }
     }
