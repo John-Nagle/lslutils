@@ -413,7 +413,8 @@ pathobstacleraycast(vector p, vector p1, vector p2)
             list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
-            {   DEBUGPRINT1("Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
+            {   DEBUGPRINT1("Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
+                    + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);
                 pathexestopkey(PATHEXEOBSTRUCTED, hitobj);  // report trouble
                 return;
             }
@@ -441,7 +442,7 @@ pathcheckdynobstacles()
             return;
         } 
     }
-    DEBUGPRINT1("Unable to find segment containing current position: " + (string)pos);
+    DEBUGPRINT1("Unable to find segment containing current position: " + (string)pos);  // internal error
 }
 //  
 //

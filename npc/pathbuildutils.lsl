@@ -47,7 +47,7 @@ integer pathpointinsegment(vector p, vector p0, vector p1)
 ////{   return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < 0.999); }
 {   if (!pathbetween(p.z, p0.z, p1.z, 2.0)) { return(FALSE); }    // way out of the Z range, more than any reasonable half-height
     p.z = 0.0; p0.z = 0.0; p1.z = 0.0;                  // ignore Z axis
-    return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < 0.999);
+    return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < -0.99); // opposed normals
 }
 //
 //  
@@ -534,6 +534,7 @@ list pathtrimmedstaticpath(vector startpos, vector endpos, float stopshort, floa
     while (i > 1)                                           // while at least two points
     {   vector p0 = llList2Vector(path,-1);                 // last two points, reverse order
         vector p1 = llList2Vector(path,-2);
+        DEBUGPRINT1("Stopshort test, at " + (string)p0);    // ***TEMP***
         vector dv = p1-p0;
         float dvmag = llVecMag(dv);
         if (dvmag > 0.001 && dvmag - stopshort > 0.001)     // trim is in this segment
@@ -570,7 +571,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     DEBUGPRINT1("Static path: " + llDumpList2String(pts,","));     // dump list for debug
     integer status = llList2Integer(pts,-1);                // last item is status
     if (status != 0)                                        // static path fail
-    {   pathdeliversegment([], FALSE, TRUE, pathid, status);// report error
+    {   pathdeliversegment([ZERO_VECTOR], FALSE, TRUE, pathid, status);// report error
         return;
     }
     //  Got path
@@ -579,7 +580,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     integer len = llGetListLength(pts);
     if (len < 2)
     {   
-        pathdeliversegment([], FALSE, TRUE, pathid, MAZESTATUSNOPTS);        // empty set of points, no maze, done.
+        pathdeliversegment([ZERO_VECTOR], FALSE, TRUE, pathid, MAZESTATUSNOPTS);        // empty set of points, no maze, done.
         return;                                             // empty list
     }
     //  We have a valid static path. Now start checking for obstacles.
@@ -599,7 +600,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
                     PATHCASTRAYOPTS);
         if (hitdist < 0)
         {  
-            pathdeliversegment([], FALSE, TRUE, pathid, MAZESTATUSCASTFAIL);    // empty set of points, no maze, done.
+            pathdeliversegment([ZERO_VECTOR], FALSE, TRUE, pathid, MAZESTATUSCASTFAIL);    // empty set of points, no maze, done.
             return;                                         // failure
         }    
         if (hitdist == INFINITY)                            // completely clear segment
@@ -614,7 +615,8 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
             p1 = llList2Vector(pts,currentix+1);            // next position
             distalongseg = 0.0;                             // starting new segment
         } else {                                            // there is an obstruction
-            float hitbackup = hitdist-width*0.5;            // back up just enough to get clear
+            ////float hitbackup = hitdist-width*0.5;            // back up just enough to get clear
+            float hitbackup = hitdist-width;                // back up just enough to get clear
             vector interpt0 = pos + dir*(hitbackup);        // back away from obstacle.
             if (verbose) { llOwnerSay("Hit obstacle at segment #" + (string)currentix + " " + (string) interpt0 + 
                 " hit dist along segment: " + (string)(distalongseg+hitbackup)); }
