@@ -386,8 +386,7 @@ list pathanalyzecastresult(list castresult, integer needwalkable)
             list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)            // if it's not a walkable
-            {   DEBUGPRINT1("Detected obstacle: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0)); 
-                return([hitobj, hitpt]);                    // obstacle
+            {   return([hitobj, hitpt]);                    // obstacle
             }
             return([]);                                     // we hit a walkable - good.
         }
