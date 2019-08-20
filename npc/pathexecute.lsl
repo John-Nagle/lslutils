@@ -389,6 +389,8 @@ pathexemovementend()
 //  Pos is at character midpoint height, but p1 and p2
 //  should be at ground level.
 //
+//  ***NEEDS BETTER CAST PATTERN*** This doesn't detect far enough ahead.
+//
 pathobstacleraycast(vector p, vector p1, vector p2)
 {   
     //  One simple ahead ray cast for now.
