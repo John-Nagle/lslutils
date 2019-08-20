@@ -35,13 +35,20 @@ float gPathWidth = 0.5;                                     // dimensions of cha
 float gPathHeight = 1.8;                                    // defaults, overridden in JSON
 key   gPathSelfObject = NULL_KEY;                           // my own key
 
+//  True if v between a and b within tolerance tol.
+#define pathbetween(v,a,b,tol) ((((v)>(a)-tol) && ((v)<(b)+tol)) || (((v)<(a)+tol) && ((v)>(b)-tol)))
 //
 //  pathpointinsegment - is p between p0 and p1?
 //
 //  Tests for opposing directions to p0 and p1.
+//  Allow big error in Z direction, 2 meters, because we may be comparing avatar mid-position and a ground point
 //
 integer pathpointinsegment(vector p, vector p0, vector p1)
-{   return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < 0.999); }
+////{   return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < 0.999); }
+{   if (!pathbetween(p.z, p0.z, p1.z, 2.0)) { return(FALSE); }    // way out of the Z range, more than any reasonable half-height
+    p.z = 0.0; p0.z = 0.0; p1.z = 0.0;                  // ignore Z axis
+    return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < 0.999);
+}
 //
 //  
 //

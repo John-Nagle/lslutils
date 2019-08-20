@@ -47,5 +47,6 @@
 #define PATHEXEBADSTARTPOS  -2004
 #define PATHEXECOLLISION    -2005
 #define PATHEXENOTWALKABLE  -2006               // can't find walkable surface under point
+#define PATHEXEOBSTRUCTED   -2007               // obstruction ahead
 
 #endif // PATHERRORS

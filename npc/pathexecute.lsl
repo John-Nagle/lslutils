@@ -38,7 +38,9 @@
 //  Idle timer timeout
 //
 #define PATHEXETIMEOUT      2.0                             // check this often for progress
+#define PATHEXERAYTIME      0.2                             // do a cast ray for obstacles this often
 #define PATHMINTURNSECTION  0.5                             // first section of path this length, for a starting turn
+#define PATHMOVECHECKSECS   2.0                             // check this often for progress
 //
 //  Globals
 //                                
@@ -53,6 +55,7 @@ integer gPathExePendingStatus;                              // pending error, to
 vector  gPathExeLastPos;                                    // last position, for stall check
 integer gPathExeVerbose;                                    // verbose mode
 integer gPathExeFreemem;                                    // amount of free memory left
+integer gPathLastTimetick = 0;                              // last time we tested for motion
 
 //  Avatar params
 float gPathExeWidth;
@@ -68,6 +71,9 @@ list gClearSegments = [];                                   // path segment list
 list gMazeSegments = [];                                    // maze segment list
 
 list gAllSegments = [];                                     // combined segments from above, points only
+list gKfmSegments = [];                                     // segments being executed by current KFM operation
+integer gKfmSegmentCurrent = 0;                             // which segment we are currently on
+
 
 //  Segment storage functions. If only we could pass references.
 #define pathexeaddseg(lst, segnum, pts) { lst = lst + [(segnum), llGetListLength(pts)] + (pts); }   // add segment to list
@@ -130,8 +136,8 @@ placesegmentmarker(string markername, vector p0, vector p1, rotation rgba, float
 //  pathexeinit -- set up path execute parameters
 //
 pathexeinit(float speed, float turnrate, float width, float height, float probespacing, integer chartype, integer verbose)
-{
-    pathexestop(0);                                          // stop any operation in progress
+{   gPathSelfObject = llGetKey();                           // us
+    pathexestop(0);                                         // stop any operation in progress
     gMaxSpeed = speed;
     gMaxTurnRate = turnrate; 
     gPathExeWidth = width;
@@ -351,6 +357,9 @@ pathexedomove()
         if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
         {   llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);             // begin motion
             gPathExeMoving = TRUE;                          // movement in progress
+            llSetTimerEvent(PATHEXERAYTIME);                // switch to fast timer for ray casts for obstructions
+            gKfmSegments = gAllSegments;                    // what we are currently doing
+            gKfmSegmentCurrent = 0;                         // we are at the beginning
             integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
             if (freemem < gPathExeFreemem) { gPathExeFreemem = freemem; }   // record free memory
         }
@@ -365,22 +374,93 @@ pathexedomove()
 //
 pathexemovementend()
 {   gPathExeMoving = FALSE;                                 // not moving
+    gKfmSegments = [];                                      // no current segments
     gPathExeLastPos = ZERO_VECTOR;                          // no last moving pos
+    
     DEBUGPRINT1("Movement end");
     pathexedomove();
 }
 
 //
-//  pathexetimer  -- timer event, check progress
+//  pathobstacleraycast -- check for obstacle ahead
+//
+//  We are at pos. The current segment ends at p1. 
+//  The next segment ends at p2, if p2 is not ZERO_VECTOR.
+//  Pos is at character midpoint height, but p1 and p2
+//  should be at ground level.
+//
+pathobstacleraycast(vector p, vector p1, vector p2)
+{   
+    //  One simple ahead ray cast for now.
+    list castresult = castray(p, p1, PATHCASTRAYOPTSOBS);
+    //  We have to do the whole analysis drill. Ground or walkable, OK. Self, OK.
+    //  Anything else is an obstacle
+    integer status = llList2Integer(castresult, -1);        // status is last element in list
+    if (status == 0) { return; }                            // hit nothing, use no hit value
+    if (status < 0)  
+    {   pathexestop(MAZESTATUSCASTFAIL); return; }          // problem, fails
+    //  Hit something. Must analyze.
+    //  Hit ourself, ignore. 
+    //  Hit land or walkable, ignore.
+    //  Otherwise, report.
+    integer i;
+    for (i=0; i<2*status; i+=2)                             // check objects hit. Check two, because the first one might be ourself
+    {
+        key hitobj = llList2Key(castresult, i+0);           // get object hit
+        if (hitobj == NULL_KEY) { return; }                 // land is walkable, so, OK
+        if (hitobj != gPathSelfObject)                      // if hit something other than self.
+        {   vector hitpt = llList2Vector(castresult, i+1);            // get point of hit
+            list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
+            integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+            if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
+            {   DEBUGPRINT1("Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
+                pathexestopkey(PATHEXEOBSTRUCTED, hitobj);  // report trouble
+                return;
+            }
+            return;                                         // we hit a walkable - good.
+        }
+    }
+}
+//
+//  pathcheckdynobstacles  -- check for dynamic obstacles encountered while moving.
+//
+//  Such as other KFM characters, which are not collidable.
+//
+pathcheckdynobstacles()
+{
+    //  We need to find out which segment of the path we are currently in.
+    vector pos = llGetPos();                    // where we are now
+    integer length = llGetListLength(gKfmSegments);
+    integer i;
+    for (i=gKfmSegmentCurrent; i<length-1; i++)
+    {   vector p0 = llList2Vector(gKfmSegments,i);
+        vector p1 = llList2Vector(gKfmSegments,i+1);
+        if (pathpointinsegment(pos, p0, p1))    // if found in this segment
+        {   pathobstacleraycast(pos, p1, llList2Vector(gKfmSegments,i+2));
+            gKfmSegmentCurrent = i;             // advance current segment pos
+            return;
+        } 
+    }
+    DEBUGPRINT1("Unable to find segment containing current position: " + (string)pos);
+}
+//  
+//
+//  pathexetimer  -- timer event, check progress and do ray casts
 //
 pathexetimer()
-{
-    if (gPathExeMoving)                                     // if we are supposed to be moving
-    {   vector pos = llGetPos();
-        if (llVecMag(pos - gPathExeLastPos) > 0.01)         // if moving at all
-        {   return; }                                       // OK
-        //  No KFM movement. Something has gone wrong
-        pathexestop(MAZESTATUSKFMSTALL);                    // stalled
+{   if (gPathExeMoving && gKfmSegments != [])                   // if we are moving and have a path
+    {   pathcheckdynobstacles(); }                              // ray cast for obstacles
+    if (gPathExeMoving)                                         // if we are supposed to be moving
+    {   
+        integer now = llGetUnixTime();                          // time now
+        if (now - gPathLastTimetick > PATHMOVECHECKSECS)
+        {   gPathLastTimetick = now;                            // update last check time
+            vector pos = llGetPos();
+            if (llVecMag(pos - gPathExeLastPos) > 0.01)         // if moving at all
+            {   return; }                                       // OK
+            //  No KFM movement. Something has gone wrong
+            pathexestop(MAZESTATUSKFMSTALL);                    // stalled
+        }
     }
 }
 
@@ -394,6 +474,7 @@ pathexestopkey(integer status, key hitobj)
     gClearSegments = [];                                    // reset state
     gMazeSegments = [];
     gAllSegments = [];
+    gKfmSegments = [];
     gPathExeNextsegid = 0; 
     gPathExeMoving = FALSE;                                 // not moving
     gPathExeLastPos = ZERO_VECTOR;                          // no last position
