@@ -395,6 +395,7 @@ pathobstacleraycast(vector p, vector p1, vector p2)
     list castresult = castray(p, p1, PATHCASTRAYOPTSOBS);
     //  We have to do the whole analysis drill. Ground or walkable, OK. Self, OK.
     //  Anything else is an obstacle
+#ifdef OBSOLETE
     integer status = llList2Integer(castresult, -1);        // status is last element in list
     if (status == 0) { return; }                            // hit nothing, use no hit value
     if (status < 0)  
@@ -421,6 +422,18 @@ pathobstacleraycast(vector p, vector p1, vector p2)
             return;                                         // we hit a walkable - good.
         }
     }
+#endif // OBSOLETE
+    list castanalysis = pathanalyzecastresult(castresult, FALSE);
+    if (castanalysis == []) return;                         // no problem
+    ////DEBUGPRINT1("Cast analysis: " + llDumpList2String(castanalysis,","));   // ***TEMP***
+    //  Analyze problem
+    if (llGetListLength(castanalysis) == 1)                 // error status
+    {   pathexestop(llList2Integer(castanalysis,0)); }      // report error
+    key hitobj = llList2Key(castanalysis,0);                // result is [obj, hitpt]
+    vector hitpt = llList2Vector(castanalysis,1);
+    DEBUGPRINT1("Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
+                    + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);
+    pathexestopkey(PATHEXEOBSTRUCTED, hitobj);  // report trouble
 }
 //
 //  pathcheckdynobstacles  -- check for dynamic obstacles encountered while moving.

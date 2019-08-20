@@ -357,6 +357,47 @@ integer mazecasthitonlywalkable(list castresult, integer nohitval)
     return(nohitval);                                       // hit nothing of interest   
 }
 //
+//  pathanalyzecastresult  -- analyze the result of a cast ray probe
+//
+//  Returns: 
+//  []              No problem
+//  [KEY,VECTOR]    Hit obstacle
+//  [INTEGER]       Error status
+//
+list pathanalyzecastresult(list castresult, integer needwalkable)
+{   integer status = llList2Integer(castresult, -1);        // status is last element in list
+    if (status == 0) 
+    {   if (needwalkable) { return([PATHEXENOTWALKABLE]); } // need ground support and don't have it
+        return([]);                                         // OK
+    }
+    if (status < 0)  
+    {   return([MAZESTATUSCASTFAIL]); }                     // problem, fails
+    //  Hit something. Must analyze.
+    //  Hit ourself, ignore. 
+    //  Hit land or walkable, ignore.
+    //  Otherwise, report.
+    integer i;
+    for (i=0; i<2*status; i+=2)                             // check objects hit. Check two, because the first one might be ourself
+    {
+        key hitobj = llList2Key(castresult, i+0);           // get object hit
+        if (hitobj == NULL_KEY) { return([]); }             // land is walkable, so, OK
+        if (hitobj != gPathSelfObject)                      // if hit something other than self.
+        {   vector hitpt = llList2Vector(castresult, i+1);            // get point of hit
+            list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
+            integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+            if (pathfindingtype != OPT_WALKABLE)            // if it's not a walkable
+            {   DEBUGPRINT1("Detected obstacle: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0)); 
+                return([hitobj, hitpt]);                    // obstacle
+            }
+            return([]);                                     // we hit a walkable - good.
+        }
+    }
+    if (needwalkable) { return([PATHEXENOTWALKABLE]); }     // need ground support and don't have it
+    return([]);                                             // OK
+}
+
+
+//
 //  pathcalccellmovedist 
 //
 //  How far to move in dir to get an integral number of cells between points.
