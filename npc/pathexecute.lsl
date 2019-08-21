@@ -400,8 +400,8 @@ pathobstacleraycast(vector p, vector p1)
     {   pathexestop(llList2Integer(castanalysis,0)); }      // report error
     key hitobj = llList2Key(castanalysis,0);                // result is [obj, hitpt]
     vector hitpt = llList2Vector(castanalysis,1);
-    llOwnerSay("Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
-                    + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1); // ***TEMP***
+    if (gPathExeVerbose) { llOwnerSay("Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
+                    + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);} 
     pathexestopkey(PATHEXEOBSTRUCTED, hitobj);  // report trouble
 }
 //

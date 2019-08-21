@@ -49,8 +49,7 @@ integer pathpointinsegment(vector p, vector p0, vector p1)
     p.z = 0.0; p0.z = 0.0; p1.z = 0.0;                  // ignore Z axis
     return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < -0.99); // opposed normals
 }
-//
-//  
+ 
 //
 //  distpointtoline -- point to line distance, infinite line
 //
@@ -92,7 +91,7 @@ integer checkcollinear(list pts)
 //  Works in 3D world, not maze cell space.
 //
 list pathstraighten(list pts, float width, float height, float probespacing, integer chartype)
-{
+{   return(pts);    // ***TEMP TEST*** NOT WORKING PROPERLY?
     integer n = 0;
     //   Advance through route. On each iteration, either the route gets shorter, or n gets
     //   larger, so this should always terminate.
@@ -236,10 +235,10 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 //
 integer obstaclecheckpath(vector p0, vector p1, float width, float height, float probespacing, integer chartype)
 {
-    list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, CHARTYPE]);
+    list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, chartype]);
     integer status = llList2Integer(path,-1);                   // last item is status
     path = llList2List(path,0,-2);                              // remove last item
-    if (status != 0 || llGetListLength(path) > 2 && !checkcollinear(path))
+    if (status != 0 || (llGetListLength(path) > 2 && !checkcollinear(path)))
     {   DEBUGPRINT1("Path static check failed for " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
         return(FALSE);
     }
@@ -549,7 +548,7 @@ list pathclean(list path)
     list newpath = [];                                      // which is the first output point
     integer i;
     for (i=1; i<len; i++)                                   // for all points after first
-    {   vector pt = llList2Vector(path,i);                  // get next pont
+    {   vector pt = llList2Vector(path,i);                  // get next point
         float dist = llVecMag(pt - prevpt);                 // segment length
         if (dist > MINSEGMENTLENGTH)                        // if long enough to keep
         {   newpath += prevpt;
@@ -672,10 +671,13 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
                         return;                                 // no open space found, fail
                     }
                     //  Discard points until we find the one that contains the new intermediate point.
+                    vector droppedpoint = ZERO_VECTOR;          // point we just dropped
                     do {
                         DEBUGPRINT1("Dropping point " + (string)llList2Vector(pathPoints,-1) + " from pathPoints looking for " + (string)interpt0);
+                        droppedpoint = llList2Vector(pathPoints,-1);
                         pathPoints = llListReplaceList(pathPoints,[],llGetListLength(pathPoints)-1, llGetListLength(pathPoints)-1);
-                    } while ( llGetListLength(pathPoints) > 1 && !pathpointinsegment(interpt0,llList2Vector(pathPoints,-1), llList2Vector(pathPoints,-2)));
+                        //  ***WRONG*** looks like an off by one error. 
+                    } while ( llGetListLength(pathPoints) > 0 && !pathpointinsegment(interpt0,droppedpoint,llList2Vector(pathPoints,-1)));
                 } else {                                    // we're at the segment start, and can't back up. Assume start of path is clear. We got there, after all.
                     DEBUGPRINT1("Assuming start point of path is clear at " + (string)interpt0);
                     interpt0 = p0;                              // zero length
