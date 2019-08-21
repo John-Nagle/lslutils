@@ -41,6 +41,8 @@
 #define PATHEXERAYTIME      0.2                             // do a cast ray for obstacles this often
 #define PATHMINTURNSECTION  0.5                             // first section of path this length, for a starting turn
 #define PATHMOVECHECKSECS   2.0                             // check this often for progress
+#define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
+
 //
 //  Globals
 //                                
@@ -384,14 +386,9 @@ pathexemovementend()
 //
 //  pathobstacleraycast -- check for obstacle ahead
 //
-//  We are at pos. The current segment ends at p1. 
-//  The next segment ends at p2, if p2 is not ZERO_VECTOR.
-//  Pos is at character midpoint height, but p1 and p2
-//  should be at ground level.
+//  Cast ray from p to p1.
 //
-//  ***NEEDS BETTER CAST PATTERN*** This doesn't detect far enough ahead.
-//
-pathobstacleraycast(vector p, vector p1, vector p2)
+pathobstacleraycast(vector p, vector p1)
 {   
     //  One simple ahead ray cast for now.
     list castresult = castray(p, p1, PATHCASTRAYOPTSOBS);
@@ -403,8 +400,8 @@ pathobstacleraycast(vector p, vector p1, vector p2)
     {   pathexestop(llList2Integer(castanalysis,0)); }      // report error
     key hitobj = llList2Key(castanalysis,0);                // result is [obj, hitpt]
     vector hitpt = llList2Vector(castanalysis,1);
-    DEBUGPRINT1("Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
-                    + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);
+    llOwnerSay("Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
+                    + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1); // ***TEMP***
     pathexestopkey(PATHEXEOBSTRUCTED, hitobj);  // report trouble
 }
 //
@@ -415,19 +412,33 @@ pathobstacleraycast(vector p, vector p1, vector p2)
 pathcheckdynobstacles()
 {
     //  We need to find out which segment of the path we are currently in.
+    float lookaheaddist = PATHEXELOOKAHEADDIST;    // distance to look ahead
     vector pos = llGetPos();                    // where we are now
-    integer length = llGetListLength(gKfmSegments);
     integer i;
-    for (i=gKfmSegmentCurrent; i<length-1; i++)
+    integer foundseg = FALSE;
+    //  Start at segment where last found the position.  
+    //  Stop at end of list, finished lookaheaddist, or no longer moving.
+    for (i=gKfmSegmentCurrent; i<llGetListLength(gKfmSegments)-1 && lookaheaddist > 0 && gPathExeMoving != 0; i++)
     {   vector p0 = llList2Vector(gKfmSegments,i);
         vector p1 = llList2Vector(gKfmSegments,i+1);
-        if (pathpointinsegment(pos, p0, p1))    // if found in this segment
-        {   pathobstacleraycast(pos, p1, llList2Vector(gKfmSegments,i+2));
-            gKfmSegmentCurrent = i;             // advance current segment pos
-            return;
-        } 
+        if (!foundseg && pathpointinsegment(pos, p0, p1))        // if found in this segment
+        {   
+            gKfmSegmentCurrent = i;                 // advance current segment pos
+            foundseg = TRUE;                        // start checking from here
+        }
+        if (foundseg)                               // if pos is in this or a previous segment
+        {   vector dv = (p1 + <0,0,gPathExeHeight*0.5>) - pos; // next cast dir
+            float castdist = llVecMag(dv);
+            if (lookaheaddist < castdist) { castdist = lookaheaddist; }
+            if  (castdist <= 0) { return; };        // at end
+            vector pos2 = pos + llVecNorm(dv)*castdist; // how far to cast            
+            pathobstacleraycast(pos,pos2);          // look ahead horizontally       
+            lookaheaddist -= castdist;              // reduce distance ahead
+            pos = p1 + <0,0,gPathExeHeight*0.5>;    // start of next segment is start of next cast
+        }   
     }
-    DEBUGPRINT1("Unable to find segment containing current position: " + (string)pos);  // internal error
+    if (!foundseg)
+    {   DEBUGPRINT1("Unable to find segment containing current position: " + (string)pos); } // are we off the path?
 }
 //  
 //
