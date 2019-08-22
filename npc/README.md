@@ -2,6 +2,8 @@
 
 John Nagle
 
+Animats
+
 June, 2019
 
 (PRELIMINARY - WILL CHANGE BEFORE RELEASE)
@@ -187,6 +189,18 @@ make it a static obstacle.
 
 * This system can climb stairs, if there is a flat walkable surface just above them. The "invisible rug" trick works for this.
 Make sure the top and bottom of the physics models fit well with the floors above and below.
+
+## License
+
+This system is free software licensed under the [General Public License version 3.](https://www.gnu.org/licenses/gpl-3.0.en.html)
+You can look at it, copy it, and create things from it, but they must also be licensed under the GPLv3. 
+In Second Life terms, that means **full perms, zero cost.**
+
+Requests for commercial use can be addressed to "nagle@animats.com".
+
+
+
+
 
 
 
