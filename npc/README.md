@@ -4,7 +4,7 @@ John Nagle
 
 June, 2019
 
-(PRELIMINARY)
+(PRELIMINARY - WILL CHANGE BEFORE RELEASE)
 
 ![Path planning the Animats way](images/paththroughdoor.jpg)
 
@@ -48,8 +48,8 @@ not moving. When they are moving, overhead seems to be about 1ms/frame for one c
 
 ### Path following
 
-With a plan in place, path following can be done quickly. Both keyframed motion
-and vehicle-type motion could be used. We are trying keyframed motion first, because
+With a plan in place, path following can be done quickly. We are using keyframed motion to
+follow the path, because
 it works well under sim overload conditions. During keyframed motion, we must constantly
 check for obstacles ahead of the character, using llCastRay. If an obstacle is
 encountered, the character stops. We then repeat the planning process from the 
@@ -78,10 +78,10 @@ path planning system.
     pathPursue(key target, float stopshort)
     
 Pursue the object **target**, usually an avatar. Stop short of the target by the distance **stopshort**, so as not to get in the avatar's face.
-1.75 to 2.0 is a reasonable value for **stopshort**.
+1.75 to 2.0 meters is a reasonable value for **stopshort**.
 
 This just does a pathNavigateTo to the target's current location. If the target moves, it won't 
-change the character's course. This may be improved in later versions. 
+change the character's course. (This may be improved in later versions.)
 ### pathStop
     pathStop()
     
@@ -94,10 +94,12 @@ This is not usually necessary; sending a command while one is already running wi
 Sets the movement speed for future operations. 
 
 **speed** is in meters per second. Reasonable values are 0.5 to 4.
-Ordinary walking speed in Second Life is 1.5 m/sec.
+Ordinary walking speed in Second Life is 1.5 meters/sec.
 
 **turnspeed** is the turning speed when changing direction, in radians per second.
-0.2 is a reasonable value.
+0.2 is a reasonable value. When in a path segment with both moving and turning,
+movement speed is slowed to allow the turn to complete at the usual turn rate.
+So characters slow down when turning corners.
 
 ### Callbacks
 
@@ -138,7 +140,7 @@ to try to route around the new obstruction? It's up to the creator of the callin
 A useful basic policy is to say "Excuse me" to avatars, then try the movement operation again if the path distance
 to the goal is shorter than on the previous try. If you're not making forward progress, pick a new destination and go do something else.
 
-When pursuing an avatar, they may move, and you have to check, upon movement completion, that the avatar is still there. If the avatar
+When pursuing an avatar, the avatar may move, and you have to check, upon movement completion, that the avatar is still where it was when pursuit started. If the avatar
 has moved but is still nearby, you can then pursue them again, or do something else. This doesn't really work for chasing someone, because
 the original planned move runs to the original destination before detecting that the avatar has moved. (This may change.)
 
@@ -153,8 +155,8 @@ looks like it's trying to figure out where to go. Which it is. When no path plan
 
 ### Prepping the parcel
 The parcel must have pathfinding enabled, with walkable surfaces marked as walkable and static obstacles marked as such. Just enough that "llGetStaticPath" works. 
-This can be checked by using the path testing tool in the viewer to see if a place is reachable by the static path system. Our dynamic system takes care of 
-minor obstacles.
+This can be checked by using the path testing tool in the viewer to see if a place is reachable by the static path system. Use that to help prep the parcel.
+Our dynamic system takes care of minor obstacles.
 
 A few hints:
 
@@ -165,12 +167,12 @@ reach that size.
 walkable. An "invisible rug" will work, too. Transparent is OK, but phantom will not work.
 
 * Many automatic doors will not react to keyframed characters. We have a script for this and will publish it separately.
-The trick is to detect objects with llSensor, then check to see if they have nonzero velocity. That detectes avatars.
-vehicles, SL-style pathfinding characters, keyframe animated objects like these, and moving physical objects. 
+The trick is to detect objects with llSensor, then check to see if they have nonzero velocity. That detectes avatars,
+vehicles, SL-builtin type pathfinding characters, keyframe animated objects like these, and moving physical objects. 
 
-* The maze solver can work around objects not marked as static obstacles. But it's both slow and size-limited. 
+* The maze solver can find a path around objects not marked as static obstacles. But it's both slow and size-limited. 
 Anything bigger than a few meters across should be marked as a static obstacle if at all possible. The maze solver
-is limited to 20 character widths on either side of the static path, which is usually 10 meters or so. 
+is limited to 20 character widths on either side of the static path, which is usually 10 meters or so.
 
 ![Maze solving gets past reasonable-sized obstacles](images/patharoundcars.jpg)
 
@@ -179,7 +181,7 @@ is limited to 20 character widths on either side of the static path, which is us
 * Some objects, especially furniture, come with poorly chosen collision volumes. If you can walk though it with
 an avatar, this path planning system will go through it.
 
-* Thin horizontal objects, like tables, may not be detected by this system, because it's using llCastRay, and
+* Thin horizontal objects, such as tables, may not be detected by this system, because it's using llCastRay, and
 all the rays might miss the edge of the table. If this is a problem, put an invisible solid under the table and
 make it a static obstacle.
 
