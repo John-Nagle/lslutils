@@ -174,6 +174,8 @@ is limited to 20 character widths on either side of the static path, which is us
 
 ![Maze solving gets past reasonable-sized obstacles](images/patharoundcars.jpg)
 
+*Green is the static path. Red is where the static path was blocked. Yellow is the result from the maze solver.*
+
 * Some objects, especially furniture, come with poorly chosen collision volumes. If you can walk though it with
 an avatar, this path planning system will go through it.
 
