@@ -1,10 +1,12 @@
-# Path planing for non-player characters in Second Life
+# Path planning for non-player characters in Second Life
 
 John Nagle
 
 June, 2019
 
 (PRELIMINARY)
+
+!(Path planning the Animats way)[images/paththroughdoors.jpg]
 
 ## Movement and pathfinding
 Second Life has a built-in pathfinding system, released in 2011. It was little used 
@@ -39,7 +41,10 @@ open path to the destination appears.
 All this planning is done before character movement starts. It takes about 0.5 to 5
 seconds, depending on path length and clutter.
 
-Once a path has been planned, the character follows it using keyframe animation. 
+Once a path has been planned, the character follows it using keyframe animation.
+
+*This system does not turn on the full Second Life character pathfinding system.* So there's no overhead when characters are
+not moving. When they are moving, overhead seems to be about 1ms/frame for one character. (Further timing needed.)
 
 ### Path following
 
@@ -58,13 +63,17 @@ current position and try to follow the new plan.
 Sets up the path planning system. **width** and **height** are the dimensions of the character. **chartype**
 is the pathfinding type of the character, usually **CHARACTER_TYPE_A** for humanoid forms taller than they are wide.
 
-The width and height define a cylinder
-around the character's center. The character's collision model must not project beyond that cylinder. If it does,
-the character will bump into obstacles and stop motion.
+The width and height define a vertical cylinder
+around the character's center. The character's collision model must fit within cylinder. If it does not,
+the character will bump into obstacles and stop.
 ### pathNavigateTo
     pathNavigateTo(vector endpos)
     
 Go to the indicated location, in the current region, avoiding obstacles.
+A moving obstacle on the path ahead of the character will stop it. So will a collision.
+The calling script gets an error status via callback when this happens. It's up to the calling script to decide
+what to do next. That's a social decision, and belongs to the character control script, not the
+path planning system.
 ### pathPursue
     pathPursue(key target, float stopshort)
     
@@ -92,7 +101,7 @@ Ordinary walking speed in Second Life is 1.5 m/sec.
 
 ### Callbacks
 
-The user must call
+The calling script must call
 
     pathLinkMsg(integer sender_num, integer num, string msg, key hitobj)
     
@@ -101,27 +110,84 @@ on each incoming link message, and must define
     pathUpdateCallback(integer callbackstat, key hitobj)
    
 which will be called as each path operation completes.
-**callbackstat** is one of the values in "patherrors.lsl". 
+**callbackstat** is one of the values in "patherrors.lsl".
 
-The user should also call 
+**hitobj** is the key of the obstacle, for collisions and blocked paths. What to do about 
+obstacles is up to the caller.
+
+A callback with a status of 0 indicates normal completion. The character should be at the target position.
+For a nonzero status, the character should be somewhere along the planned path.
+
+The calling script should also call 
 
     pathTick()
     
-every few seconds. This is for a stall timer only; if something goes wrong
+every few seconds. This is used only for a stall timer; if something goes wrong
 in the pathfinding system and it stalls, **pathUpdateCallback** will still be called,
 after a long delay. So the caller can rely on getting a callback. This an emergency
-backup only; we've run days without needing it.
+backup; we've run days without needing it.
 
-### Technical notes
+### Social aspects of movement
+It's up to the calling script to decide where to go, and what to do when an obstacle is encountered.
+This system just takes care of getting the character there.
 
-#### Limitations of llGetStaticPath
+The system stops movement as soon as an obstruction is detected or the character has a collision. 
+The calling script has to decide what to do then. Apologise? Yell at the avatar? Shoot at them? Try the movement operation again
+to try to route around the new obstruction? It's up to the creator of the calling script.
 
-#### Limitations of llCastRay
+A useful basic policy is to say "Excuse me" to avatars, then try the movement operation again if the path distance
+to the goal is shorter than on the previous try. If you're not making forward progress, pick a new destination and go do something else.
 
-If the starting point for llCastRay is inside an object, that object will not be detected. This
-makes it hard to find the far side of an object. Working backwards from the next waypoint of the
-static path will fail if that waypoint is inside an object. 
+When pursuing an avatar, they may move, and you have to check, upon movement completion, that the avatar is still there. If the avatar
+has moved but is still nearby, you can then pursue them again, or do something else. This doesn't really work for chasing someone, because
+the original planned move runs to the original destination before detecting that the avatar has moved. (This may change.)
 
-Safely checking a path requires working forwards from a known point outside any solid object.
+Movement is smooth and fast but has stalls. When movement is first requested, nothing happens while the initial planning takes place.
+Then movement starts. The maze solver runs concurrently with movement, but may not have finished when the first obstacle needs to be
+avoided. Movement will stop for several seconds while the maze solver finishes. In overloaded sims, planning takes longer, but movement is always full speed.
+
+Animations can help with this. We have an animesh "animation overrider" (AO).
+This causes our animesh characters to perform walk, run, turn, and stand animations as they move, switching based on velocity and turn rate. 
+A "stand" animation of "looking around for where to go next" can be set, so that, during stalls while the planner catches up, the character
+looks like it's trying to figure out where to go. Which it is. When no path planning and movement is in progress, the stand animation should be changed to something else.
+
+### Prepping the parcel
+The parcel must have pathfinding enabled, with walkable surfaces marked as walkable and static obstacles marked as such. Just enough that "llGetStaticPath" works. 
+This can be checked by using the path testing tool in the viewer to see if a place is reachable by the static path system. Our dynamic system takes care of 
+minor obstacles.
+
+A few hints:
+
+* Walkable objects must be larger than 10m x 10m. That's for the linkset; you can link multiple walkable areas together to 
+reach that size.
+
+* If you need a walkable surface inside a building that's not set up for it, you can add a rug, at least 0.2m thick, and make it
+walkable. An "invisible rug" will work, too. Transparent is OK, but phantom will not work.
+
+* Many automatic doors will not react to keyframed characters. We have a script for this and will publish it separately.
+The trick is to detect objects with llSensor, then check to see if they have nonzero velocity. That detectes avatars.
+vehicles, SL-style pathfinding characters, keyframe animated objects like these, and moving physical objects. 
+
+* The maze solver can work around objects not marked as static obstacles. But it's both slow and size-limited. 
+Anything bigger than a few meters across should be marked as a static obstacle if at all possible. The maze solver
+is limited to 20 character widths on either side of the static path, which is usually 10 meters or so. 
+
+!(Maze solving gets past reasonable-sized obstacles)[images/patharoundcars.jpg]
+
+* Some objects, especially furniture, come with poorly chosen collision volumes. If you can walk though it with
+an avatar, this path planning system will go through it.
+
+* Thin horizontal objects, like tables, may not be detected by this system, because it's using llCastRay, and
+all the rays might miss the edge of the table. If this is a problem, put an invisible solid under the table and
+make it a static obstacle.
+
+* This system can climb stairs, if there is a flat walkable surface just above them. The "invisible rug" trick works for this.
+Make sure the top and bottom of the physics models fit well with the floors above and below.
+
+
+
+
+
+
 
 
