@@ -6,7 +6,7 @@ June, 2019
 
 (PRELIMINARY)
 
-![Path planning the Animats way](/images/paththroughdoors.jpg)
+![Path planning the Animats way](images/paththroughdoor.jpg)
 
 ## Movement and pathfinding
 Second Life has a built-in pathfinding system, released in 2011. It was little used 
@@ -172,7 +172,7 @@ vehicles, SL-style pathfinding characters, keyframe animated objects like these,
 Anything bigger than a few meters across should be marked as a static obstacle if at all possible. The maze solver
 is limited to 20 character widths on either side of the static path, which is usually 10 meters or so. 
 
-![Maze solving gets past reasonable-sized obstacles](/images/patharoundcars.jpg)
+![Maze solving gets past reasonable-sized obstacles](images/patharoundcars.jpg)
 
 * Some objects, especially furniture, come with poorly chosen collision volumes. If you can walk though it with
 an avatar, this path planning system will go through it.
