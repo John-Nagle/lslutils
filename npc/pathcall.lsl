@@ -87,11 +87,66 @@ pathFaceInDirection(vector lookdir)
         llSetRot(slerp(startrot, endrot, easefract));           // interpolate rotation
     }
 }
+//
+//  User API functions
+//
+//  ***SOME NOT YET IMPLEMENTED***
+//
+//  pathInit -- sets up the path planning system
+//
+//  Sets up the path planning system. 
+//  width and height are the dimensions of the character. 
+//  chartype is the pathfinding type of the character,
+//  usually **CHARACTER_TYPE_A** for humanoid forms taller than they are wide.
 
+//  The width and height define a vertical cylinder
+//  around the character's center. The character's collision model must fit within cylinder. 
+//  If it does not, the character will bump into obstacles and stop.
+//
+pathInit(float width, float height, integer chartype, integer verbose)
+{}
+
+//
+//  pathSpeed -- set linear and turn speed for future moves
+//
+//
+//  speed is in meters per second. Reasonable values are 0.5 to 4.
+//  Ordinary walking speed in Second Life is 1.5 meters/sec.
+//
+//  turnspeed is the turning speed when changing direction, in radians per second.
+//  0.2 is a reasonable value. When in a path segment with both moving and turning,
+//  movement speed is slowed to allow the turn to complete at the usual turn rate.
+//  So characters slow down when turning corners.
+//
+pathSpeed(float speed, float turnspeed)
+{}
+
+//
+//  pathStop -- stop current operation
+//
+//  A new command can then be sent. 
+//  This is not usually necessary.
+//  Sending a command while one is already running will stop 
+//  the current movement, although not instantly.
+//
+pathStop()
+{}
+
+//
+//  pathTick -- call every few seconds when running the path system.
+//
+//  This is used only for a stall timer.
+//
 pathTick(){}
+
+
 
 //
 //  pathNavigateTo -- go to indicated point
+//
+//  Go to the indicated location, in the current region, avoiding obstacles.
+//
+//  Stop short of the target by the distance stopshort. This can be zero. 
 //
 pathNavigateTo(vector endpos, float stopshort)
 {
@@ -115,20 +170,20 @@ pathNavigateTo(vector endpos, float stopshort)
 //
 //  pathPursue -- go to target avatar. No real pursuit for now.
 //
-
+//
+//  Pursue the object target, usually an avatar.
+//  Stop short of the target by the distance stopshort, so as not to get in the avatar's face.
+//  1.75 to 2.0 meters is a reasonable social distance for stopshort.
+//  This just does a pathNavigateTo to the target's current location.
+//  If the target moves, the character's course does not change. 
+//  (This may be improved in later versions.)
+//
 pathPursue(key target, float stopshort)
 {
     list details = llGetObjectDetails(target, [OBJECT_POS]);    // get object position
     vector endpos = llList2Vector(details,0);
     pathNavigateTo(endpos, stopshort);                          // head there
 }
-
-
-pathUpdate(integer status, list reserved) {}
-pathCollide(integer num_collisions) {}
-pathInit(){}
-pathCreateCharacter(list params){}
-pathUpdateCharacter(list params){}
 
 pathLinkMsg(integer sender_num, integer num, string msg, key hitobj)
 {   

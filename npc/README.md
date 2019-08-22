@@ -69,13 +69,15 @@ The width and height define a vertical cylinder
 around the character's center. The character's collision model must fit within cylinder. If it does not,
 the character will bump into obstacles and stop.
 ### pathNavigateTo
-    pathNavigateTo(vector endpos)
+    pathNavigateTo(vector endpos, float stopshort)
     
 Go to the indicated location, in the current region, avoiding obstacles.
 A moving obstacle on the path ahead of the character will stop it. So will a collision.
 The calling script gets an error status via callback when this happens. It's up to the calling script to decide
 what to do next. That's a social decision, and belongs to the character control script, not the
 path planning system.
+
+Stop short of the target by the distance **stopshort**. This can be zero. Used mostly when approaching an avatar.
 ### pathPursue
     pathPursue(key target, float stopshort)
     
