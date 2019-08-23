@@ -87,8 +87,11 @@ integer pathpointinsegment(vector p, vector p0, vector p1)
 {   if (!pathbetween(p.z, p0.z, p1.z, 2.0)) { return(FALSE); }    // way out of the Z range, more than any reasonable half-height
     p.z = 0.0; p0.z = 0.0; p1.z = 0.0;                  // ignore Z axis
     if (llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001) { return(TRUE); }  // close enough to endpoint to use, avoid divide by zero
-    if ((llVecNorm(p-p0) * llVecNorm(p-p1)) > 0) { return(FALSE); }        // normals in same direction means outside endpoints
-    return(distpointtoline(p,p0,p1) < PATHPOINTONSEGDIST);  // do distance from line check
+    float enddot = (p-p0)*(p1-p0);                                      // dot product of p0->p and p0-p1
+    float alldot = (p1-p0)*(p1-p0);                                     // dot with self
+    if (enddot < 0 || enddot > alldot) { return(FALSE); }                // outside endpoints
+    ////if ((llVecNorm(p-p0) * llVecNorm(p-p1)) > 0) { return(FALSE); } // normals in same direction means outside endpoints
+    return(distpointtoline(p,p0,p1) < PATHPOINTONSEGDIST);              // point must be near infinite line
     ////return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < -0.99); // opposed normals
 }
  
