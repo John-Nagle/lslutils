@@ -404,7 +404,7 @@ pathobstacleraycast(vector p, vector p1)
     key hitobj = llList2Key(castanalysis,0);                // result is [obj, hitpt]
     vector hitpt = llList2Vector(castanalysis,1);
     pathMsg(PATH_MSG_WARN,"Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
-                    + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);} 
+                    + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);
     pathexestopkey(PATHEXEOBSTRUCTED, hitobj);  // report trouble
 }
 //
@@ -471,7 +471,7 @@ pathexetimer()
 //
 pathexestopkey(integer status, key hitobj)
 {
-    if (gPathExeMoving || (status != 0)) { DEBUGPRINT1("Forced movement stop. Status: " + (string)status); }
+    if (gPathExeMoving || (status != 0)) { pathMsg(PATH_MSG_WARN,"Movement stop. Status: " + (string)status); }
     llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on
     gClearSegments = [];                                    // reset state
     gMazeSegments = [];
@@ -544,8 +544,6 @@ pathexepathdeliver(string jsn)
     gPathExeWidth = (float)llJsonGetValue(jsn,["width"]);
     gPathExeHeight = (float)llJsonGetValue(jsn,["height"]);
     gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
-    llOwnerSay("Path exe params: width: " + (string)gPathExeWidth + " height: " + (string)gPathExeHeight + " speed: " + (string)gPathExeMaxSpeed + " turnspeed: " + (string)gPathExeMaxTurnspeed); // ***TEMP***
-
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) 
     {   pathMsg(PATH_MSG_WARN,"Path deliver with status " + (string)status); 

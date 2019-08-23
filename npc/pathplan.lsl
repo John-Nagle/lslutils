@@ -281,7 +281,6 @@ pathRequestRecv(string jsonstr)
     gPathplanSpeed = (float)llJsonGetValue(jsonstr,["speed"]);
     gPathplanTurnspeed = (float)llJsonGetValue(jsonstr,["turnspeed"]);
     pathMsg(PATH_MSG_INFO,"Path request: " + jsonstr); 
-    llOwnerSay("Path plan params: width: " + (string)gPathWidth + " height: " + (string)gPathHeight + " speed: " + (string)gPathplanSpeed + " turnspeed: " + (string)gPathplanTurnspeed); // ***TEMP***
 
     //  Call the planner 
     pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, gPathplanChartype, testspacing, pathid);    
