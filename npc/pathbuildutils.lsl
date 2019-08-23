@@ -17,6 +17,7 @@ integer CASTRAYRETRIES = 10;                                // retry up to 10 ti
 float CASTRAYRETRYDELAY = 0.200;                            // if a problem, retry slowly
 float GROUNDCLEARANCE = 0.05;                               // (m) avoid false ground collisions
 float PATHCHECKTOL = 0.02;                                  // (m) allow 2cm collinearity error
+float PATHPOINTONSEGDIST = 0.10;                            // (m) allow point up to 10cm off line when checking for what seg contains a point
 float PATHSTATICTOL = 0.10;                                 // (m) allow extra space on either side of path 
 list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2]; // 2 hits, because we can hit ourself and must ignore that.
 list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2];                  // 2 hits, because we can hit ourselves and must ignore that
@@ -34,13 +35,9 @@ list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2];                  // 2 hits, because w
 integer PATH_MSG_ERROR = 0;
 integer PATH_MSG_WARN = 1;
 integer PATH_MSG_INFO = 2;
+integer PATH_MSG_DEBUG = 3;
 //  
-#ifdef OBSOLETE
-//  Message direction (because both ends see a reply)
-integer PATH_DIR_REQUEST = 101;                                 // application to path finding script
-integer PATH_DIR_REPLY = 102;                                   // reply coming back
-integer PATH_DIR_REPLY_TICK = 103;                              // reply indicating other end is still alive
-#endif // OBSOLETE
+
 //
 integer PATH_MIN_IM_INTERVAL = 3600;                            // seconds between IMs. Do not overdo.
 //                                  // Unused
@@ -89,7 +86,10 @@ integer pathpointinsegment(vector p, vector p0, vector p1)
 ////{   return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < 0.999); }
 {   if (!pathbetween(p.z, p0.z, p1.z, 2.0)) { return(FALSE); }    // way out of the Z range, more than any reasonable half-height
     p.z = 0.0; p0.z = 0.0; p1.z = 0.0;                  // ignore Z axis
-    return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < -0.99); // opposed normals
+    if (llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001) { return(TRUE); }  // close enough to endpoint to use, avoid divide by zero
+    if ((llVecNorm(p-p0) * llVecNorm(p-p1)) > 0) { return(FALSE); }        // normals in same direction means outside endpoints
+    return(distpointtoline(p,p0,p1) < PATHPOINTONSEGDIST);  // do distance from line check
+    ////return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < -0.99); // opposed normals
 }
  
 //

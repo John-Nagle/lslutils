@@ -185,7 +185,7 @@ vector pathfindwalkable(vector startpos, float height)
 {   //  Look downward twice the height, because of seat mispositioning issues.
     list hits = llCastRay(startpos, startpos - <0,0,height*3>, 
             [RC_MAX_HITS,10, RC_REJECT_TYPES, RC_REJECT_PHYSICAL]); // go down up to 5 objs
-    pathMsg(PATH_MSG_WARN,"Walkable hits looking down from " + (string)startpos + ": " + llDumpList2String(hits,",")); // ***TEMP***
+    pathMsg(PATH_MSG_INFO,"Walkable hits looking down from " + (string)startpos + ": " + llDumpList2String(hits,",")); // ***TEMP***
     integer hitstatus = llList2Integer(hits,-1);        // < 0 is error
     if (hitstatus < 0)
     {   pathMsg(PATH_MSG_ERROR,"Error looking for walkable below " + (string)startpos); return(ZERO_VECTOR); }

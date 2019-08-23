@@ -437,7 +437,7 @@ pathcheckdynobstacles()
         }   
     }
     if (!foundseg)
-    {   pathMsg(PATH_MSG_ERROR,"Unable to find segment containing current position: " + (string)pos); } // are we off the path?
+    {   pathMsg(PATH_MSG_ERROR,"Unable to find segment containing current position: " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
 }
 //  
 //
@@ -527,7 +527,7 @@ pathexemazedeliver(string jsn)
 //
 //
 pathexepathdeliver(string jsn) 
-{   pathMsg(PATH_MSG_WARN,"Path deliver received: " + jsn);
+{   pathMsg(PATH_MSG_INFO,"Path deliver received: " + jsn);
     string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
     if (requesttype != "path") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
