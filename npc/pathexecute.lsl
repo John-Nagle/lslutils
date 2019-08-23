@@ -43,6 +43,7 @@
 #define PATHMINTURNSECTION  0.5                             // first section of path this length, for a starting turn
 #define PATHMOVECHECKSECS   2.0                             // check this often for progress
 #define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
+#define PATHEXEMAXCREEP     0.10                            // (m) max positional error allowed after keyframe motion
 
 //
 //  Globals
@@ -352,8 +353,15 @@ pathexedomove()
         pathexestop(0);                                 // all done, normal stop
     }
     else if (gAllSegments != [])                             // if work
-    {   pathMsg(PATH_MSG_INFO,"Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
-        list kfmmoves = pathexebuildkfm(llGetPos(), llGetRot(), gAllSegments);   // build list of commands to do
+    {   
+        vector kfmstart = llList2Vector(gAllSegments,0);    // first point, which is where we should be
+        vector pos = llGetPos();                            // we are here
+        if (llVecMag(<kfmstart.x, kfmstart.y, 0> - <pos.x, pos.y, 0>) > PATHEXEMAXCREEP)     // we are out of position
+        {   pathMsg(PATH_MSG_ERROR, "Out of position. At " + (string)pos + ". Should be at " + (string)kfmstart); // probably user doing an edit
+        }
+        gAllSegments = llListReplaceList(gAllSegments,[pos],0,0);   // always start from current position
+        pathMsg(PATH_MSG_INFO,"Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
+        list kfmmoves = pathexebuildkfm(pos, llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
         if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
         {   llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);             // begin motion
@@ -439,7 +447,7 @@ pathcheckdynobstacles()
         }   
     }
     if (!foundseg)
-    {   pathMsg(PATH_MSG_WARN   ,"Unable to find segment containing current position: " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
+    {   pathMsg(PATH_MSG_ERROR,"Unable to find segment containing current position: " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
 }
 //  
 //
