@@ -632,31 +632,7 @@ list pathtrimmedstaticpath(vector startpos, vector endpos, float stopshort, floa
     return([PU_GOAL_REACHED]);                              // we're so close we're there. 
 }
 
-//
-//  Globals for message interface
-integer gPathId = 0;                                // serial number of path
-integer gSegmentId = 0;                             // segment number of path
-//
-//  Message interface
-//
-//  pathRequestRecv -- link message starts action here.
-//
-pathRequestRecv(string jsonstr)
-{   
-    //  Starting position and goal position must be on a walkable surface, not at character midpoint.
-    vector startpos = (vector)llJsonGetValue(jsonstr,["startpos"]);   // get starting position
-    vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);   // get goal
-    float gPathWidth = (float)llJsonGetValue(jsonstr,["width"]);
-    float gPathHeight = (float)llJsonGetValue(jsonstr,["height"]);
-    float stopshort = (float)llJsonGetValue(jsonstr,["stopshort"]);
-    integer chartype = (integer)llJsonGetValue(jsonstr,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
-    float testspacing = (float)llJsonGetValue(jsonstr,["testspacing"]);
-    integer pathid = (integer)llJsonGetValue(jsonstr,["pathid"]);
-    integer msglev = (integer)llJsonGetValue(jsonstr,["msglev"]);
-    pathMsg(PATH_MSG_INFO,"Path request: " + jsonstr); 
-    //  Call the planner 
-    pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, chartype, testspacing, pathid, msglev);    
-}
+
 
 
 //
@@ -666,48 +642,6 @@ pathUpdateCallback(integer status, key hitobj)
 {   
     llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, hitobj);  // status to client
 }
-//
-//  pathdeliversegment -- path planner has a segment to be executed
-//
-//  Maze segments must be two points. The maze solver will fill in more points.
-//  Other segments must be one or more points.
-//
-pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, integer status)
-{   DEBUGPRINT1("Pathdeliversegment: maze: " + (string)ismaze + " done: " + (string)isdone + " status: " + (string)status + " path: " + llDumpList2String(path,","));
-    if (pathid != gPathId)                                  // starting a new path 
-    {   gPathId = pathid;                                   // this is new pathid
-        gSegmentId = 0;                                     // segment ID resets
-    }
-    integer length = llGetListLength(path);
-    if (ismaze)                                             // maze, add to the to-do list
-    {   assert(length == 2);                                // maze must have two endpoints
-        vector bp0 = llList2Vector(path,0);
-        vector bp1 = llList2Vector(path,1);
-        //  Start the maze solver
-        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathWidth, gPathId, gSegmentId, gPathMsgLevel); 
-        if (status) 
-        {   pathMsg(PATH_MSG_ERROR,"Unable to start maze solver. Status: " + (string)status); 
-            //  Create a dummy maze solve result and send it to path execution just to transmit the status.
-            llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT,
-            ["reply", "mazesolve", "pathid", pathid, "segmentid", gSegmentId, "status", status,
-                "pos", ZERO_VECTOR, "rot", ZERO_ROTATION, "cellsize", 0.0,
-                "points",llList2Json(JSON_ARRAY,[])]),"");
-            return;
-        }
-    }
-    else                                                    // non-maze
-    {
-        llMessageLinked(LINK_THIS,MAZEPATHREPLY,
-            llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId, "status",status, "points",
-            llList2Json(JSON_ARRAY,path)]),"");
-    }
-    gSegmentId++;                                           // next segment
-    if (isdone)
-    {
-        llMessageLinked(LINK_THIS,MAZEPATHREPLY,
-            llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId, "status",status, "points",
-            llList2Json(JSON_ARRAY,[ZERO_VECTOR])]),"");    // send one ZERO_VECTOR segment as an EOF.
-    }
-}
+
 #endif // PATHBUILDUTILSLSL
 

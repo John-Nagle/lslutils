@@ -48,8 +48,6 @@
 //
 //  Globals
 //                                
-float gMaxTurnRate = 0.2;                                   // (radians/sec) max turn rate
-float gMaxSpeed = 2.0;                                      // (meters/sec) max speed
 integer gPathExeId = 0;                                     // current path ID
 integer gPathExeNextsegid;                                  // current segment
 integer gPathExeMoving = FALSE;                             // true if KFM movement in progress
@@ -61,11 +59,15 @@ integer gPathExeFreemem;                                    // amount of free me
 integer gPathLastTimetick = 0;                              // last time we tested for motion
 
 //  Avatar params
-float gPathExeWidth;
-float gPathExeHeight;
-float gPathExeProbespacing;
-integer gPathExeChartype;
+float gPathExeWidth = 1.0;                                  // defaults, overridden by messages
+float gPathExeHeight = 1.0;
+integer gPathExeChartype = CHARACTER_TYPE_A;
+float gPathExeMaxTurnspeed = 0.2;                           // (radians/sec) max turn rate - overridden
+float gPathExeMaxSpeed = 2.0;                               // (meters/sec) max speed
+
 float gPathExeDisttoend = 1.5;                              // (m) distance to begin turn ahead of corner
+float gPathExeProbespacing = 0.333;                         // (m) cast ray spacing when looking for obstacles
+
 //
 //  Segment storage
 //  Each segment list is of the form [segmentid, pntcount, pnt, pnt ... segmentid, pntcount, pnt, pnt ...]
@@ -129,7 +131,7 @@ placesegmentmarker(string markername, vector p0, vector p1, rotation rgba, float
     
     vector color = <rgba.x, rgba.y, rgba.z>;
     float alpha = rgba.s;
-    vector scale = <length,CHARRADIUS*2,thickness>;    // size of marker
+    vector scale = <length,gPathExeWidth,thickness>;    // size of marker
     list params = [ "pos", midpoint, "rot", rotperpenonground(p0,p1), "scale", scale, "color", color, "alpha", alpha];
     llMessageLinked(LINK_THIS, LINKMSGMARKER, llList2Json(JSON_OBJECT,params), markername);   // ask marker service to place a marker.   
 }
@@ -138,17 +140,11 @@ placesegmentmarker(string markername, vector p0, vector p1, rotation rgba, float
 //
 //  pathexeinit -- set up path execute parameters
 //
-pathexeinit(float speed, float turnrate, float width, float height, float probespacing, integer chartype, integer msglev)
+pathexeinit(float probespacing)
 {   gPathSelfObject = llGetKey();                           // us
     pathexestop(0);                                         // stop any operation in progress
-    gMaxSpeed = speed;
-    gMaxTurnRate = turnrate; 
-    gPathExeWidth = width;
-    gPathExeHeight = height;
     gPathExeProbespacing = probespacing;
-    gPathExeChartype = chartype;
     gPathExeNextsegid = 0;
-    gPathMsgLevel = msglev;
     gPathExeFreemem = llGetFreeMemory();   
 }
 
@@ -272,8 +268,8 @@ list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
     rr = NormRot(rr);                           // why is this necessary?
     //  Time computation. Speed is limited by rotation rate.
     float angle = llFabs(llAngleBetween(ZERO_ROTATION, rr));    // how much rotation is this?
-    float rsecs = angle / gMaxTurnRate;         // minimum time for this move per rotation limit
-    float rt = inveclen / gMaxSpeed;           // minimum time for this move per speed limit
+    float rsecs = angle / gPathExeMaxTurnspeed; // minimum time for this move per rotation limit
+    float rt = inveclen / gPathExeMaxSpeed;     // minimum time for this move per speed limit
     if (rsecs > rt) { rt = rsecs; }             // choose longer time
     if (rt < 0.15) { rt = 0.15; }               // minimum time for KFM step
     DEBUGPRINT1("angle: " + (string)angle + " inveclen: " + (string)inveclen + " rt: " + (string)rt); // ***TEMP***
@@ -404,7 +400,7 @@ pathobstacleraycast(vector p, vector p1)
     list castanalysis = pathanalyzecastresult(castresult, FALSE);
     if (castanalysis == []) return;                         // no problem
     if (llGetListLength(castanalysis) == 1)                 // error status
-    {   pathexestop(llList2Integer(castanalysis,0)); }      // report error
+    {   pathexestop(llList2Integer(castanalysis,0)); return; }  // report error
     key hitobj = llList2Key(castanalysis,0);                // result is [obj, hitpt]
     vector hitpt = llList2Vector(castanalysis,1);
     pathMsg(PATH_MSG_WARN,"Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
@@ -496,6 +492,7 @@ pathexestopkey(integer status, key hitobj)
 //
 pathexestop(integer status)
 {   pathexestopkey(status, NULL_KEY); }
+
 //
 //  pathexemazedeliver  -- incoming maze result
 //
@@ -535,13 +532,20 @@ pathexemazedeliver(string jsn)
 //
 //  pathexepathdeliver  -- JSON from path planner
 //
-//
 pathexepathdeliver(string jsn) 
 {   pathMsg(PATH_MSG_INFO,"Path deliver received: " + jsn);
     string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
     if (requesttype != "path") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
+    //  Results from the path planner also contain some misc, parameter updates.
+    gPathExeMaxSpeed = (float)llJsonGetValue(jsn,["speed"]); 
+    gPathExeMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
+    gPathExeWidth = (float)llJsonGetValue(jsn,["width"]);
+    gPathExeHeight = (float)llJsonGetValue(jsn,["height"]);
+    gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
+    llOwnerSay("Path exe params: width: " + (string)gPathExeWidth + " height: " + (string)gPathExeHeight + " speed: " + (string)gPathExeMaxSpeed + " turnspeed: " + (string)gPathExeMaxTurnspeed); // ***TEMP***
+
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) 
     {   pathMsg(PATH_MSG_WARN,"Path deliver with status " + (string)status); 

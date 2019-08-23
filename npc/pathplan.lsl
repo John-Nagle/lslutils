@@ -29,8 +29,8 @@
 //  This is best-effort; moves will be reported even if the destination cannot be
 //  fully reached.
 //
-pathplan(vector startpos, vector endpos, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid, integer msglev)
-{   gPathMsgLevel = msglev;                                 // set error msg print level
+pathplan(vector startpos, vector endpos, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid)
+{                              
     //  Use the system's GetStaticPath to get an initial path
     ////list pts = llGetStaticPath(startpos, endpos, width + PATHSTATICTOL, [CHARACTER_TYPE, chartype]);  // generate path
     list pts = pathtrimmedstaticpath(startpos, endpos, stopshort, width + PATHSTATICTOL, chartype);
@@ -205,6 +205,86 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
         }
     }
     return([]);                                                     // unreachable  
+}
+//
+//  pathdeliversegment -- path planner has a segment to be executed
+//
+//  Maze segments must be two points. The maze solver will fill in more points.
+//  Other segments must be one or more points.
+//
+pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, integer status)
+{   DEBUGPRINT1("Pathdeliversegment: maze: " + (string)ismaze + " done: " + (string)isdone + " status: " + (string)status + " path: " + llDumpList2String(path,","));
+    if (pathid != gPathId)                                  // starting a new path 
+    {   gPathId = pathid;                                   // this is new pathid
+        gSegmentId = 0;                                     // segment ID resets
+    }
+    integer length = llGetListLength(path);
+    if (ismaze)                                             // maze, add to the to-do list
+    {   assert(length == 2);                                // maze must have two endpoints
+        vector bp0 = llList2Vector(path,0);
+        vector bp1 = llList2Vector(path,1);
+        //  Start the maze solver
+        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathWidth, gPathId, gSegmentId, gPathMsgLevel); 
+        if (status) 
+        {   pathMsg(PATH_MSG_ERROR,"Unable to start maze solver. Status: " + (string)status); 
+            //  Create a dummy maze solve result and send it to path execution just to transmit the status.
+            llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT,
+            ["reply", "mazesolve", "pathid", pathid, "segmentid", gSegmentId, "status", status,
+                "pos", ZERO_VECTOR, "rot", ZERO_ROTATION, "cellsize", 0.0,
+                "points",llList2Json(JSON_ARRAY,[])]),"");
+            return;
+        }
+    }
+    else                                                    // non-maze, send to execution
+    {
+        llMessageLinked(LINK_THIS,MAZEPATHREPLY,
+            llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId, "status", status, 
+            "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,               // pass speed setting to execution module
+            "width", gPathWidth, "height", gPathHeight, "chartype", gPathplanChartype, "msglev", gPathMsgLevel,
+            "points", llList2Json(JSON_ARRAY,path)]),"");
+    }
+    gSegmentId++;                                           // next segment
+    if (isdone)
+    {
+        llMessageLinked(LINK_THIS,MAZEPATHREPLY,
+            llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId,
+            "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,               // pass speed setting to execution module
+            "width", gPathWidth, "height", gPathHeight, "chartype", gPathplanChartype, "msglev", gPathMsgLevel,
+            "status",status, "points",
+            llList2Json(JSON_ARRAY,[ZERO_VECTOR])]),"");    // send one ZERO_VECTOR segment as an EOF.
+    }
+}
+//
+//  Globals for message interface
+integer gPathId = 0;                                // serial number of path
+integer gSegmentId = 0;                             // segment number of path
+float gPathplanSpeed = 1.0;                         // defaults usually overridden
+float gPathplanTurnspeed = 0.1;
+integer gPathplanChartype = CHARACTER_TYPE_A;         
+//
+//  Message interface
+//
+//  pathRequestRecv -- link message starts action here.
+//
+pathRequestRecv(string jsonstr)
+{   
+    //  Starting position and goal position must be on a walkable surface, not at character midpoint.
+    vector startpos = (vector)llJsonGetValue(jsonstr,["startpos"]);   // get starting position
+    vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);   // get goal
+    gPathWidth = (float)llJsonGetValue(jsonstr,["width"]);
+    gPathHeight = (float)llJsonGetValue(jsonstr,["height"]);
+    float stopshort = (float)llJsonGetValue(jsonstr,["stopshort"]);
+    gPathplanChartype = (integer)llJsonGetValue(jsonstr,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
+    float testspacing = (float)llJsonGetValue(jsonstr,["testspacing"]);
+    integer pathid = (integer)llJsonGetValue(jsonstr,["pathid"]);
+    gPathMsgLevel = (integer)llJsonGetValue(jsonstr,["msglev"]);
+    gPathplanSpeed = (float)llJsonGetValue(jsonstr,["speed"]);
+    gPathplanTurnspeed = (float)llJsonGetValue(jsonstr,["turnspeed"]);
+    pathMsg(PATH_MSG_INFO,"Path request: " + jsonstr); 
+    llOwnerSay("Path plan params: width: " + (string)gPathWidth + " height: " + (string)gPathHeight + " speed: " + (string)gPathplanSpeed + " turnspeed: " + (string)gPathplanTurnspeed); // ***TEMP***
+
+    //  Call the planner 
+    pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, gPathplanChartype, testspacing, pathid);    
 }
 
 

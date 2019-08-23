@@ -21,7 +21,14 @@ integer PATH_MIN_IM_INTERVAL = 3600;                            // seconds betwe
 
 //  Constants
 float REGION_SIZE = 256.0;                                      // size of a region   
-
+//
+//  Globals
+//  Character parameters
+float gPathcallWidth = 1.0;                                     // these are overrridden at init
+float gPathcallHeight = 1.0;
+float gPathcallSpeed = 1.0;                                     // speed defaults are very slow
+float gPathcallTurnspeed = 0.1;
+integer gPathcallChartype = CHARACTER_TYPE_A;                   // humanoid
 
 //
 //   pathLinearInterpolate  -- simple linear interpolation
@@ -82,6 +89,9 @@ pathFaceInDirection(vector lookdir)
 pathInit(float width, float height, integer chartype, integer msglev)
 {
     gPathMsgLevel = msglev;                     // set error message level (PATH_MSG_INFO, etc.)
+    gPathcallWidth = width;                         // character params
+    gPathcallHeight = height;
+    gPathcallChartype = chartype;
 }
 
 //
@@ -97,7 +107,10 @@ pathInit(float width, float height, integer chartype, integer msglev)
 //  So characters slow down when turning corners.
 //
 pathSpeed(float speed, float turnspeed)
-{}
+{   gPathcallSpeed = speed;
+    gPathcallTurnspeed = turnspeed;
+}
+
 
 //
 //  pathStop -- stop current operation
@@ -107,6 +120,8 @@ pathSpeed(float speed, float turnspeed)
 //  Sending a command while one is already running will stop 
 //  the current movement, although not instantly.
 //
+//  ***UNIMPLEMENTED***
+//
 pathStop()
 {}
 
@@ -115,9 +130,9 @@ pathStop()
 //
 //  This is used only for a stall timer.
 //
+//  ***UNIMPLEMENTED***
+//
 pathTick(){}
-
-
 
 //
 //  pathNavigateTo -- go to indicated point
@@ -133,14 +148,14 @@ pathNavigateTo(vector endpos, float stopshort)
     gLocalPathId++;                                     // our serial number, passed forward
     startpos.z = (startpos.z - startscale.z*0.5);       // ground level for start point
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
-    endpos = pathfindwalkable(endpos, CHARHEIGHT);      // find walkable below char
+    endpos = pathfindwalkable(endpos, gPathcallHeight);      // find walkable below char
     if (endpos == ZERO_VECTOR)
     {   pathMsg(PATH_MSG_WARN,"Error looking for walkable under goal."); 
         llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)PATHEXENOTWALKABLE, ""); // send message to self to report error
         return; 
     }
     //  Generate path.
-    pathplanstart(startpos, endpos, CHARRADIUS*2, CHARHEIGHT, stopshort, CHARACTER_TYPE_A, TESTSPACING, gLocalPathId);    
+    pathplanstart(startpos, endpos, gPathcallWidth, gPathcallHeight, stopshort, gPathcallChartype, TESTSPACING, gLocalPathId);    
     //  Output from pathcheckobstacles is via callbacks
 }
 
@@ -211,6 +226,7 @@ pathplanstart(vector startpos, vector goal, float width, float height, float sto
 {
     string params = llList2Json(JSON_OBJECT, 
         ["startpos",startpos, "goal", goal, "stopshort", stopshort, "width", width, "height", height, "chartype", chartype, "testspacing", testspacing,
+        "speed", gPathcallSpeed, "turnspeed", gPathcallTurnspeed,
         "pathid", pathid, "msglev", gPathMsgLevel]);
     llMessageLinked(LINK_THIS, PATH_DIR_REQUEST, params,"");   // send to planner  
 }
