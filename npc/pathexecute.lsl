@@ -411,16 +411,18 @@ pathobstacleraycast(vector p, vector p1)
 pathcheckdynobstacles()
 {
     //  We need to find out which segment of the path we are currently in.
-    float lookaheaddist = PATHEXELOOKAHEADDIST;    // distance to look ahead
-    vector pos = llGetPos();                    // where we are now
+    float lookaheaddist = PATHEXELOOKAHEADDIST;     // distance to look ahead
+    float PATHEXENEARSTARTTOL = 5.0;                // if slightly out of position at start OK.
+    vector pos = llGetPos();                        // where we are now
     integer i;
     integer foundseg = FALSE;
+    vector startpos = llList2Vector(gKfmSegments,0);   // start of path
     //  Start at segment where last found the position.  
     //  Stop at end of list, finished lookaheaddist, or no longer moving.
     for (i=gKfmSegmentCurrent; i<llGetListLength(gKfmSegments)-1 && lookaheaddist > 0 && gPathExeMoving != 0; i++)
     {   vector p0 = llList2Vector(gKfmSegments,i);
         vector p1 = llList2Vector(gKfmSegments,i+1);
-        if (!foundseg && pathpointinsegment(pos, p0, p1))        // if found in this segment
+        if (!foundseg && (pathpointinsegment(pos, p0, p1)))        // if found in this segment
         {   
             gKfmSegmentCurrent = i;                 // advance current segment pos
             foundseg = TRUE;                        // start checking from here
@@ -437,7 +439,7 @@ pathcheckdynobstacles()
         }   
     }
     if (!foundseg)
-    {   pathMsg(PATH_MSG_ERROR,"Unable to find segment containing current position: " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
+    {   pathMsg(PATH_MSG_WARN   ,"Unable to find segment containing current position: " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
 }
 //  
 //
