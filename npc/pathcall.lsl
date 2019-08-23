@@ -8,44 +8,20 @@
 //  License: GPLv3.
 //
 #include "npc/patherrors.lsl"
+#include "npc/pathbuildutils.lsl"
 //
-//  Error levels
-integer PATH_MSG_ERROR = 0;
-integer PATH_MSG_WARN = 1;
-integer PATH_MSG_INFO = 2;
-//
+#ifdef OBSOLETE
 //  Message direction (because both ends see a reply)
 integer PATH_DIR_REQUEST = 101;                                 // application to path finding script
 integer PATH_DIR_REPLY = 102;                                   // reply coming back
 integer PATH_DIR_REPLY_TICK = 103;                              // reply indicating other end is still alive
 //
 integer PATH_MIN_IM_INTERVAL = 3600;                            // seconds between IMs. Do not overdo.
-//                                  // Unused
-//
-//  Global
-//
-integer gPathMsgLevel = 0;                                      // debug logging off by default. Set this to change level
-integer gPathLastIMTime = 0;                                    // last instant message sent. Do this rarely.
+#endif // OBSOLETE
 
 //  Constants
 float REGION_SIZE = 256.0;                                      // size of a region   
 
-//
-//  pathMsg  -- call for pathfinding problems
-//
-pathMsg(integer level, string msg)                              // print debug message
-{   if (level > gPathMsgLevel) { return; }                      // ignore if suppressed
-    string s = "Pathfinding: " + msg;
-    llOwnerSay(s);                                              // message
-    if (level <= PATH_MSG_ERROR) 
-    {   llSay(DEBUG_CHANNEL, s);                                // serious, pop up the red message
-        integer now = llGetUnixTime();
-        if (now - gPathLastIMTime > PATH_MIN_IM_INTERVAL)       // do this very infrequently
-        {   llInstantMessage(llGetOwner(), llGetObjectName() + " in trouble at " + llGetRegionName() + " " + (string)llGetPos() + ": " + s);     // send IM to owner
-            gPathLastIMTime = now;
-        } 
-    }                            
-}
 
 //
 //   pathLinearInterpolate  -- simple linear interpolation
@@ -103,8 +79,10 @@ pathFaceInDirection(vector lookdir)
 //  around the character's center. The character's collision model must fit within cylinder. 
 //  If it does not, the character will bump into obstacles and stop.
 //
-pathInit(float width, float height, integer chartype, integer verbose)
-{}
+pathInit(float width, float height, integer chartype, integer msglev)
+{
+    gPathMsgLevel = msglev;                     // set error message level (PATH_MSG_INFO, etc.)
+}
 
 //
 //  pathSpeed -- set linear and turn speed for future moves
@@ -152,18 +130,17 @@ pathNavigateTo(vector endpos, float stopshort)
 {
     vector startpos = llGetPos();
     vector startscale = llGetScale();
-    integer verbose = TRUE;                             // messages on
     gLocalPathId++;                                     // our serial number, passed forward
     startpos.z = (startpos.z - startscale.z*0.5);       // ground level for start point
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
     endpos = pathfindwalkable(endpos, CHARHEIGHT);      // find walkable below char
     if (endpos == ZERO_VECTOR)
-    {   llOwnerSay("Error looking for walkable under goal."); // ***TEMP***
+    {   pathMsg(PATH_MSG_WARN,"Error looking for walkable under goal."); 
         llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)PATHEXENOTWALKABLE, ""); // send message to self to report error
         return; 
     }
     //  Generate path.
-    pathplanstart(startpos, endpos, CHARRADIUS*2, CHARHEIGHT, stopshort, CHARACTER_TYPE_A, TESTSPACING, gLocalPathId, verbose);    
+    pathplanstart(startpos, endpos, CHARRADIUS*2, CHARHEIGHT, stopshort, CHARACTER_TYPE_A, TESTSPACING, gLocalPathId);    
     //  Output from pathcheckobstacles is via callbacks
 }
 
@@ -189,7 +166,7 @@ pathLinkMsg(integer sender_num, integer num, string msg, key hitobj)
 {   
     if (num == PATH_DIR_REPLY)
     {   integer status = (integer)msg;
-        llOwnerSay("Path complete, status " + (string)status + " Time: " + (string)llGetTime());
+        pathMsg(PATH_MSG_WARN,"Path complete, status " + (string)status + " Time: " + (string)llGetTime());
         integer callbackstat = PU_GOAL_REACHED;         // normal status
         if (status != 0) { callbackstat =  PU_FAILURE_UNREACHABLE; } // for now, not analyzing why
         pathUpdateCallback(callbackstat, hitobj);
@@ -208,10 +185,10 @@ vector pathfindwalkable(vector startpos, float height)
 {   //  Look downward twice the height, because of seat mispositioning issues.
     list hits = llCastRay(startpos, startpos - <0,0,height*3>, 
             [RC_MAX_HITS,10, RC_REJECT_TYPES, RC_REJECT_PHYSICAL]); // go down up to 5 objs
-    llOwnerSay("Walkable hits looking down from " + (string)startpos + ": " + llDumpList2String(hits,",")); // ***TEMP***
+    pathMsg(PATH_MSG_WARN,"Walkable hits looking down from " + (string)startpos + ": " + llDumpList2String(hits,",")); // ***TEMP***
     integer hitstatus = llList2Integer(hits,-1);        // < 0 is error
     if (hitstatus < 0)
-    {   llSay(DEBUG_CHANNEL,"Error looking for walkable below " + (string)startpos); return(ZERO_VECTOR); }
+    {   pathMsg(PATH_MSG_ERROR,"Error looking for walkable below " + (string)startpos); return(ZERO_VECTOR); }
     integer i;
     for (i=0; i<hitstatus*2; i = i + 2)                         // search hits
     {   key hitobj = llList2Key(hits,i);
@@ -219,7 +196,7 @@ vector pathfindwalkable(vector startpos, float height)
         string name = "Ground"; // ***TEMP***
         if (hitobj != NULL_KEY) // ***TEMP***
         {   name = llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0);} // ***TEMP***
-        llOwnerSay("Walkable test: " + (string)hitpt + " (" + name + ")");         // ***TEMP***
+        pathMsg(PATH_MSG_INFO,"Walkable test: " + (string)hitpt + " (" + name + ")");         // ***TEMP***
         if (hitobj == NULL_KEY) { return(hitpt); }               // found ground
         list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
         integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
@@ -230,12 +207,11 @@ vector pathfindwalkable(vector startpos, float height)
 //
 //  pathplanstart -- start the path planner task
 //
-pathplanstart(vector startpos, vector goal, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid, integer verbose)
+pathplanstart(vector startpos, vector goal, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid)
 {
     string params = llList2Json(JSON_OBJECT, 
         ["startpos",startpos, "goal", goal, "stopshort", stopshort, "width", width, "height", height, "chartype", chartype, "testspacing", testspacing,
-        "pathid", pathid, "verbose", verbose]);
-    ////llOwnerSay("Path request: " + params);
+        "pathid", pathid, "msglev", gPathMsgLevel]);
     llMessageLinked(LINK_THIS, PATH_DIR_REQUEST, params,"");   // send to planner  
 }
 

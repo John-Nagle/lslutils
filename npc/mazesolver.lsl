@@ -63,7 +63,7 @@ list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
 #define MAZEEDGEFOLLOWDX(n) llList2Integer(MAZEEDGEFOLLOWDXTAB,(n))
 #define MAZEEDGEFOLLOWDY(n) llList2Integer(MAZEEDGEFOLLOWDYTAB,(n))
 
-#define MAZEPRINTVERBOSE(s) { if (verbose) { llOwnerSay((s)); } }
+#define MAZEPRINTVERBOSE(s) { pathMsg(PATH_MSG_INFO,(s)); }
 
 //
 //  abs -- absolute value, integer
@@ -129,7 +129,6 @@ integer gMazeStartY;
 integer gMazeEndX;                  // end position 
 integer gMazeEndY; 
 integer gMazeStatus;                // status code - MAZESTATUS...
-integer gMazeVerbose;               // verbose mode
        
 
 //
@@ -177,8 +176,8 @@ mazecellset(integer x, integer y, integer newval)
 //
 //  mazesolve  -- find a path through a maze
 //         
-list mazesolve(integer xsize, integer ysize, integer startx, integer starty, integer endx, integer endy, integer verbose)
-{   gMazeVerbose = verbose;
+list mazesolve(integer xsize, integer ysize, integer startx, integer starty, integer endx, integer endy)
+{   
     gMazeStatus = 0;                        // OK so far
     gMazeXsize = xsize;                     // set size of map
     gMazeYsize = ysize;
@@ -778,7 +777,7 @@ float gMazeWidth;                               // character diameter
 //  mazerequestjson -- request a maze solve via JSON
 //
 //  Format:
-//  { "request" : "mazesolve",  "verbose" : INTEGER, "serial": INTEGER,
+//  { "request" : "mazesolve",  "msglevG" : INTEGER, "serial": INTEGER,
 //      "regioncorner" : VECTOR, "pos": VECTOR, "rot" : QUATERNION, "cellsize": FLOAT, "probespacing" : FLOAT, 
 //      "width" : FLOAT, "height" : FLOAT, 
 //      "sizex", INTEGER, "sizey", INTEGER, 
@@ -797,7 +796,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     if (requesttype != "mazesolve") { return; }              // ignore, not our msg
     integer pathid = (integer) llJsonGetValue(jsn, ["pathid"]); 
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
-    integer verbose = (integer)llJsonGetValue(jsn,["verbose"]);
+    gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
     vector regioncorner = (vector)llJsonGetValue(jsn,["regioncorner"]);
     gMazePos = (vector)llJsonGetValue(jsn,["pos"]);
     gMazeRot = (rotation)llJsonGetValue(jsn,["rot"]);
@@ -811,12 +810,11 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     integer starty = (integer)llJsonGetValue(jsn,["starty"]);
     integer endx = (integer)llJsonGetValue(jsn,["endx"]);
     integer endy = (integer)llJsonGetValue(jsn,["endy"]);
-    if (verbose) 
-    {   llOwnerSay("Request to maze solver: " + jsn); }            // verbose mode
+    pathMsg(PATH_MSG_INFO,"Request to maze solver: " + jsn);            // verbose mode
     if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = MAZESTATUSBADSIZE; } // too big
     list path = [];
     if (status == 0)                                    // if params sane enough to start
-    {   path = mazesolve(sizex, sizey, startx, starty, endx, endy, verbose); // solve the maze
+    {   path = mazesolve(sizex, sizey, startx, starty, endx, endy); // solve the maze
         if (llGetListLength(path) == 0 || gMazeStatus != 0)       // failed to find a path
         {   path = [];                                  // clear path
             status = gMazeStatus;                       // failed for known reason, report
@@ -825,8 +823,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
             ////path = mazeoptimizeroute(path);             // do simple optimizations
         } 
     }
-    if (verbose) 
-    {   llOwnerSay("Maze solver done. Free memory " + (string)llGetFreeMemory()); } 
+    {   pathMsg(PATH_MSG_WARN,"Maze solver done. Free memory " + (string)llGetFreeMemory()); } 
     //  Send reply                  
     llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "pathid", pathid, "segmentid", segmentid, "status", status,
         "pos", gMazePos, "rot", gMazeRot, "cellsize", gMazeCellSize,

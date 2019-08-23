@@ -33,7 +33,7 @@ float gMazeCellSize;                                // cell size of maze
 //  p0-p1 distance must be an integral number of widths.
 //
 //
-integer mazesolverstart(vector p0, vector p1, float width, float height, float probespacing, integer pathid, integer segmentid, integer verbose) 
+integer mazesolverstart(vector p0, vector p1, float width, float height, float probespacing, integer pathid, integer segmentid, integer msglev) 
 {
     //  Lay out the rectangle for the maze
     integer MAXMAZESIZE = 41;                       // ***TEMP*** belongs elsewhere
@@ -83,8 +83,9 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
         panic("Maze geometry incorrect. Distance between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
     }
+    //  This happens sometimes, due to some numeric error not yet found.
     if ((llVecMag(p0chk-p0) > 0.02) || (llVecMag(p1chk-p1) > 0.02))        
-    {   panic("Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
+    {   pathMsg(PATH_MSG_ERROR,"Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
     }
 #endif // GEOMCHECK
@@ -92,7 +93,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     gMazeSerial++;                                  // next maze number
     llMessageLinked(LINK_THIS, MAZESOLVEREQUEST, llList2Json(JSON_OBJECT, [
         "request", "mazesolve",                     // type of request
-        "verbose", verbose,                         // debug use - maze solver will print messages
+        "msglev", msglev,                         // debug use - maze solver will print messages
         "probespacing", probespacing,               // distance between ray casts in height dir
         "cellsize", gMazeCellSize,                  // size of a maze cell. Typically 0.333 meter
         "pathid", pathid,                           // path we are working on

@@ -25,11 +25,12 @@
 //  6. Add ray casting to detect obstacles when moving.
 //  7. Add timer handing.
 //
-#ifndef PATHEXECUTE                                         // include guard, like C/C++
-#define PATHEXECUTE
+#ifndef PATHEXECUTELSL                                        // include guard, like C/C++
+#define PATHEXECUTELSL
 #include "npc/assert.lsl"                                   // assert
 #include "npc/patherrors.lsl"
 #include "npc/mazedefs.lsl"
+#include "npc/pathbuildutils.lsl"
 //
 //  Constants
 //
@@ -55,7 +56,6 @@ integer gPathExeActive = FALSE;                             // path system is do
 integer gPathExeEOF;                                        // EOF seen
 integer gPathExePendingStatus;                              // pending error, to be reported at end of motion
 vector  gPathExeLastPos;                                    // last position, for stall check
-integer gPathExeVerbose;                                    // verbose mode
 integer gPathExeFreemem;                                    // amount of free memory left
 integer gPathLastTimetick = 0;                              // last time we tested for motion
 
@@ -137,7 +137,7 @@ placesegmentmarker(string markername, vector p0, vector p1, rotation rgba, float
 //
 //  pathexeinit -- set up path execute parameters
 //
-pathexeinit(float speed, float turnrate, float width, float height, float probespacing, integer chartype, integer verbose)
+pathexeinit(float speed, float turnrate, float width, float height, float probespacing, integer chartype, integer msglev)
 {   gPathSelfObject = llGetKey();                           // us
     pathexestop(0);                                         // stop any operation in progress
     gMaxSpeed = speed;
@@ -147,7 +147,7 @@ pathexeinit(float speed, float turnrate, float width, float height, float probes
     gPathExeProbespacing = probespacing;
     gPathExeChartype = chartype;
     gPathExeNextsegid = 0;
-    gPathExeVerbose = verbose;
+    gPathMsgLevel = msglev;
     gPathExeFreemem = llGetFreeMemory();   
 }
 
@@ -254,7 +254,7 @@ list pathexebuildkfm(vector startpos, rotation startrot, list pts)
 list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
 {
 #ifdef MARKERS
-    if (gPathExeVerbose)
+    if (gPathMsgLevel >= PATH_MSG_INFO)
     {   placesegmentmarker(MARKERLINE, pprev, p0, TRANSGREEN, 0.20); }   // place a temporary line on the ground in-world.
 #endif // MARKERS
     vector rp = p0 - pos;                       // p0 in relative coords - advances us to p0
@@ -348,12 +348,11 @@ pathexedomove()
     pathexeassemblesegs();                              // have work to do?
     //// if (gAllSegments == [ZERO_VECTOR])                  // if EOF signal
     if (llGetListLength(gAllSegments) == 1 && llList2Vector(gAllSegments,0) == ZERO_VECTOR) // if EOF signal
-    {   if (gPathExeVerbose)
-        {   llOwnerSay("Normal end of path. Free mem: " + (string)gPathExeFreemem); }
+    {   pathMsg(PATH_MSG_WARN,"Normal end of path. Free mem: " + (string)gPathExeFreemem); 
         pathexestop(0);                                 // all done, normal stop
     }
     else if (gAllSegments != [])                             // if work
-    {   DEBUGPRINT1("Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
+    {   pathMsg(PATH_MSG_INFO,"Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
         list kfmmoves = pathexebuildkfm(llGetPos(), llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
         if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
@@ -367,7 +366,7 @@ pathexedomove()
         }
         gAllSegments = [];                              // segments have been consumed
     } else {
-        DEBUGPRINT1("Waiting for maze solver to catch up.");    // solver running behind action
+        pathMsg(PATH_MSG_WARN,"Waiting for maze solver to catch up.");    // solver running behind action
     }
 }
 
@@ -379,7 +378,7 @@ pathexemovementend()
     gKfmSegments = [];                                      // no current segments
     gPathExeLastPos = ZERO_VECTOR;                          // no last moving pos
     
-    DEBUGPRINT1("Movement end");
+    pathMsg(PATH_MSG_INFO,"Movement end");
     pathexedomove();
 }
 
@@ -400,7 +399,7 @@ pathobstacleraycast(vector p, vector p1)
     {   pathexestop(llList2Integer(castanalysis,0)); }      // report error
     key hitobj = llList2Key(castanalysis,0);                // result is [obj, hitpt]
     vector hitpt = llList2Vector(castanalysis,1);
-    if (gPathExeVerbose) { llOwnerSay("Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
+    pathMsg(PATH_MSG_WARN,"Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
                     + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);} 
     pathexestopkey(PATHEXEOBSTRUCTED, hitobj);  // report trouble
 }
@@ -438,7 +437,7 @@ pathcheckdynobstacles()
         }   
     }
     if (!foundseg)
-    {   DEBUGPRINT1("Unable to find segment containing current position: " + (string)pos); } // are we off the path?
+    {   pathMsg(PATH_MSG_ERROR,"Unable to find segment containing current position: " + (string)pos); } // are we off the path?
 }
 //  
 //
@@ -513,7 +512,7 @@ pathexemazedeliver(string jsn)
         ptsworld += [cellpos];                              // accum list of waypoints
     }
 #ifdef MARKERS  
-    if (gPathExeVerbose)
+    if (gPathMsgLevel >= PATH_MSG_INFO)
     {   integer i;
         for (i=0; i < llGetListLength(ptsworld)-1; i++)
         {   placesegmentmarker(MARKERLINE, llList2Vector(ptsworld,i), llList2Vector(ptsworld,i+1), TRANSYELLOW, 0.20); }   // place a temporary line on the ground in-world.
@@ -528,14 +527,14 @@ pathexemazedeliver(string jsn)
 //
 //
 pathexepathdeliver(string jsn) 
-{   DEBUGPRINT1("Path deliver received: " + jsn);
+{   pathMsg(PATH_MSG_WARN,"Path deliver received: " + jsn);
     string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
     if (requesttype != "path") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) 
-    {   if (gPathExeVerbose) { llOwnerSay("Path deliver with status " + (string)status); }
+    {   pathMsg(PATH_MSG_WARN,"Path deliver with status " + (string)status); 
         if (gPathExePendingStatus == 0) { gPathExePendingStatus = status; }   // save any error status sent for later
     }
     list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
@@ -550,7 +549,7 @@ pathexepathdeliver(string jsn)
 //  pathexecollision -- collided with something
 //
 pathexecollision(integer num_detected)
-{   ////llOwnerSay("Collision");    // ***TEMP***
+{   
     if (!gPathExeMoving) { return; }    // not moving, not our fault
     integer i;
     for (i=0; i<num_detected; i++)
@@ -559,11 +558,11 @@ pathexecollision(integer num_detected)
         {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                    // hit a non-walkable
-            {   if (gPathExeVerbose) { llOwnerSay("Hit " + llDetectedName(i)); }
+            {   pathMsg(PATH_MSG_INFO,"Collided with " + llDetectedName(i));
                 pathexestopkey(PATHEXECOLLISION, llDetectedKey(i)); // stop
                 return;
             }
         }
     }
 }
-#endif // PATHEXECUTE
+#endif // PATHEXECUTELSL
