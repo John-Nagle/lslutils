@@ -284,7 +284,7 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
     integer status = llList2Integer(path,-1);                   // last item is status
     path = llList2List(path,0,-2);                              // remove last item
     if (status != 0 || (llGetListLength(path) > 2 && !checkcollinear(path)))
-    {   pathMsg(PATH_MSG_WARN,"Path static check failed for " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
+    {   pathMsg(PATH_MSG_INFO,"Path static check found static obstacle between " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
         return(FALSE);
     }
     //  Don't test against land, because the static path check did that already.
