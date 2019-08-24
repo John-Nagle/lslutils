@@ -416,7 +416,7 @@ pathcheckdynobstacles()
 {
     //  We need to find out which segment of the path we are currently in.
     float lookaheaddist = PATHEXELOOKAHEADDIST;     // distance to look ahead
-    float PATHEXESEGDISTTOL = 0.10;                 // how close to segment to be in it.
+    float PATHEXESEGDISTTOL = 0.20;                 // how close to segment to be in it. Keyframe error causes trouble here.
     float HUGE = 99999999999.0;                     // huge number, but INFINITY is bigger
     vector posoffset = <0,0,gPathExeHeight*0.5>;    // pos is at object midpoint, points are at ground
     vector pos = llGetPos() - posoffset;            // where we are now
@@ -431,7 +431,6 @@ pathcheckdynobstacles()
         vector p1 = llList2Vector(gKfmSegments,i+1);
         if (!foundseg) 
         {   float distalongseg = pathdistalongseg(pos, p0, p1, PATHEXESEGDISTTOL); // distance along seg, or INFINITY
-            ////llOwnerSay("Looking for seg: " + (string)distalongseg + " at " + (string)pos + " pts " + (string)p0 + (string)p1);
             if (distalongseg < HUGE)    
             {   
                 gKfmSegmentCurrent = i;                 // advance current segment pos
@@ -439,17 +438,13 @@ pathcheckdynobstacles()
             }
         }
         if (foundseg)                                   // if pos is in this or a previous segment
-        {   ////vector dv = p1 - pos;                       // next cast dir
-            float distalongseg = pathdistalongseg(pos, p0, p1, PATHEXESEGDISTTOL); // distance along seg, or NAN
-            ////llOwnerSay("Distalongseg: " + (string)distalongseg + " at " + (string)pos + " pts " + (string)p0 + (string)p1);
+        {   float distalongseg = pathdistalongseg(pos, p0, p1, PATHEXESEGDISTTOL); // distance along seg, or NAN
             if (distalongseg < HUGE)                    // point is in capsule around segment
             {   
                 float seglength = llVecMag(p0-p1);
                 if (distalongseg < 0) { distalongseg = 0; } // bound to segment
                 if (distalongseg > seglength) { distalongseg = seglength; }
                 float castdist = seglength - distalongseg;  // cast to end of segment
-                ////float castdist = dv * llVecNorm(p1-p0);     // distance 
-                ////float castdist = llVecMag(dv);
                 if (lookaheaddist < castdist) { castdist = lookaheaddist; } // if running out of cast distance
                 if  (castdist <= 0) { return; };        // at end
                 vector pos2 = pos + llVecNorm(p1-p0)*castdist; // how far to cast            
