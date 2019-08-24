@@ -115,6 +115,24 @@ float distpointtoline(vector p, vector p0, vector p1)
      }
      return (llVecMag(p - pb));             // return distance
 }
+
+//
+//  pathdistalongseg -- distance along segment
+//  
+//  Returns INFINITY if outside tolerance.
+//  So this is actually a capsule check.
+//
+float pathdistalongseg(vector p, vector p0, vector p1, float tol)
+{   vector line = p1-p0;                // the line
+    vector linedir = llVecNorm(line);   // the line's direction
+    vector v = p - p0;                  // segment start to p.
+    float d = v*linedir;                // distance along line from p0
+    vector ponline = p0 + linedir * d;  // closest point on line
+    float disttoline = llVecMag(p-ponline); // distance to line
+    if (disttoline > tol) { return(INFINITY); }   // too far from line
+    if (d < -tol || d > llVecMag(line) + tol) { return(INFINITY); } // too far outside endpoints
+    return(d);                          // return distance along segment, which can be <0
+}
 //  
 //  checkcollinear -- are points on list collinear?
 //

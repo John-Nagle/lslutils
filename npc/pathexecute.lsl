@@ -355,7 +355,7 @@ pathexedomove()
         if (llVecMag(<kfmstart.x, kfmstart.y, 0> - <pos.x, pos.y, 0>) > PATHEXEMAXCREEP)     // we are out of position
         {   pathMsg(PATH_MSG_ERROR, "Out of position. At " + (string)pos + ". Should be at " + (string)kfmstart); // probably user doing an edit
         }
-        gAllSegments = llListReplaceList(gAllSegments,[pos],0,0);   // always start from current position
+        gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
         pathMsg(PATH_MSG_INFO,"Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
         list kfmmoves = pathexebuildkfm(pos, llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
@@ -416,30 +416,47 @@ pathcheckdynobstacles()
 {
     //  We need to find out which segment of the path we are currently in.
     float lookaheaddist = PATHEXELOOKAHEADDIST;     // distance to look ahead
-    float PATHEXENEARSTARTTOL = 5.0;                // if slightly out of position at start OK.
-    vector pos = llGetPos();                        // where we are now
+    float PATHEXESEGDISTTOL = 0.10;                 // how close to segment to be in it.
+    float HUGE = 99999999999.0;                     // huge number, but INFINITY is bigger
+    vector posoffset = <0,0,gPathExeHeight*0.5>;    // pos is at object midpoint, points are at ground
+    vector pos = llGetPos() - posoffset;            // where we are now
     integer i;
     integer foundseg = FALSE;
     vector startpos = llList2Vector(gKfmSegments,0);   // start of path
     //  Start at segment where last found the position.  
     //  Stop at end of list, finished lookaheaddist, or no longer moving.
+    //  pos and all segment points are at ground level.
     for (i=gKfmSegmentCurrent; i<llGetListLength(gKfmSegments)-1 && lookaheaddist > 0 && gPathExeMoving != 0; i++)
     {   vector p0 = llList2Vector(gKfmSegments,i);
         vector p1 = llList2Vector(gKfmSegments,i+1);
-        if (!foundseg && (pathpointinsegment(pos, p0, p1)))        // if found in this segment
-        {   
-            gKfmSegmentCurrent = i;                 // advance current segment pos
-            foundseg = TRUE;                        // start checking from here
+        if (!foundseg) 
+        {   float distalongseg = pathdistalongseg(pos, p0, p1, PATHEXESEGDISTTOL); // distance along seg, or INFINITY
+            ////llOwnerSay("Looking for seg: " + (string)distalongseg + " at " + (string)pos + " pts " + (string)p0 + (string)p1);
+            if (distalongseg < HUGE)    
+            {   
+                gKfmSegmentCurrent = i;                 // advance current segment pos
+                foundseg = TRUE;                        // start checking from here                
+            }
         }
-        if (foundseg)                               // if pos is in this or a previous segment
-        {   vector dv = (p1 + <0,0,gPathExeHeight*0.5>) - pos; // next cast dir
-            float castdist = llVecMag(dv);
-            if (lookaheaddist < castdist) { castdist = lookaheaddist; }
-            if  (castdist <= 0) { return; };        // at end
-            vector pos2 = pos + llVecNorm(dv)*castdist; // how far to cast            
-            pathobstacleraycast(pos,pos2);          // look ahead horizontally       
-            lookaheaddist -= castdist;              // reduce distance ahead
-            pos = p1 + <0,0,gPathExeHeight*0.5>;    // start of next segment is start of next cast
+        if (foundseg)                                   // if pos is in this or a previous segment
+        {   ////vector dv = p1 - pos;                       // next cast dir
+            float distalongseg = pathdistalongseg(pos, p0, p1, PATHEXESEGDISTTOL); // distance along seg, or NAN
+            ////llOwnerSay("Distalongseg: " + (string)distalongseg + " at " + (string)pos + " pts " + (string)p0 + (string)p1);
+            if (distalongseg < HUGE)                    // point is in capsule around segment
+            {   
+                float seglength = llVecMag(p0-p1);
+                if (distalongseg < 0) { distalongseg = 0; } // bound to segment
+                if (distalongseg > seglength) { distalongseg = seglength; }
+                float castdist = seglength - distalongseg;  // cast to end of segment
+                ////float castdist = dv * llVecNorm(p1-p0);     // distance 
+                ////float castdist = llVecMag(dv);
+                if (lookaheaddist < castdist) { castdist = lookaheaddist; } // if running out of cast distance
+                if  (castdist <= 0) { return; };        // at end
+                vector pos2 = pos + llVecNorm(p1-p0)*castdist; // how far to cast            
+                pathobstacleraycast(pos+posoffset, pos2+posoffset);          // look ahead horizontally       
+                lookaheaddist -= castdist;              // reduce distance ahead
+                pos = p1;                               // start of next segment is start of next cast
+            }
         }   
     }
     if (!foundseg)
