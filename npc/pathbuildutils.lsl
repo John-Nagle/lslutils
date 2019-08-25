@@ -184,9 +184,10 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
     vector startscale = llGetScale();
     startpos.z = (startpos.z - startscale.z*0.5);           // ground level for start point
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
+    vector endposorig = endpos;
     endpos = pathfindwalkable(endpos, startscale.z);        // find walkable below dest
     if (endpos == ZERO_VECTOR)
-    {   pathMsg(PATH_MSG_WARN, "No walkable below path distance goal at " + (string)endpos); 
+    {   pathMsg(PATH_MSG_WARN, "No walkable below path distance goal at " + (string)endposorig); 
         return(-1.0);
     }
     list path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);
