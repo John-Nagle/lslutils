@@ -219,6 +219,8 @@ vector pathfindwalkable(vector startpos, float height)
     }     
     return(ZERO_VECTOR);                                        // no find
 }
+
+
 //
 //  pathplanstart -- start the path planner task
 //

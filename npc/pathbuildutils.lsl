@@ -173,6 +173,36 @@ list pathstraighten(list pts, float width, float height, float probespacing, int
 }
 
 //
+//  pathdistance -- distance measured along a static path
+//
+//  Used to check if progress is being made.
+//
+//  Returns < 0 if fail
+//
+float pathdistance(vector startpos, vector endpos, float width, integer chartype)
+{
+    vector startscale = llGetScale();
+    startpos.z = (startpos.z - startscale.z*0.5);           // ground level for start point
+    //  Find walkable under avatar. Look straight down. Startpos must be on ground.
+    endpos = pathfindwalkable(endpos, startscale.z);        // find walkable below dest
+    if (endpos == ZERO_VECTOR)
+    {   pathMsg(PATH_MSG_WARN, "No walkable below path distance goal at " + (string)endpos); 
+        return(-1.0);
+    }
+    list path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);
+    integer status = llList2Integer(path,-1);               // status is last value
+    if (status != 0) 
+    {   pathMsg(PATH_MSG_WARN, "Static path error: " + (string)status); 
+        return(-1.0);                                       // fails
+    }
+    integer i;
+    integer pntcnt = llGetListLength(path) - 1;             // don't count endpoint
+    float pathlength = 0.0;                                 // add up path length
+    for (i=0; i<pntcnt-1; i++)                              // for all segments
+    {   pathlength += llVecMag(llList2Vector(path,i+1)-llList2Vector(path,i)); }
+    return(pathlength);                                     // return positive pathlength
+}
+//
 //  rotperpenonground  -- rotation to get line on ground perpendicular to vector
 //
 //  Used to construct the end lines of path segments.
