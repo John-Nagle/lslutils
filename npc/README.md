@@ -60,10 +60,13 @@ current position and try to follow the new plan.
 ## Path planning system usage
 ### Calls
 ### pathinit
-    pathInit(float width, float height, integer chartype, integer verbose)
+    pathInit(float width, float height, integer chartype, integer msglev)
     
 Sets up the path planning system. **width** and **height** are the dimensions of the character. **chartype**
 is the pathfinding type of the character, usually **CHARACTER_TYPE_A** for humanoid forms taller than they are wide.
+The **msglev** parameter turns on debugging information. Values are PATH_MSG_ERROR (which is zero). 
+PATH_MSG_WARN, PATH_MSG_INFO, and PATH_MSG_DEBUG, which turn on increasing levels of debug information. 
+Just put a zero there for normal operation.
 
 The width and height define a vertical cylinder
 around the character's center. The character's collision model must fit within cylinder. If it does not,
@@ -152,7 +155,7 @@ Movement is smooth and fast but has stalls. When movement is first requested, no
 Then movement starts. The maze solver runs concurrently with movement, but may not have finished when the first obstacle needs to be
 avoided. Movement will stop for several seconds while the maze solver finishes. In overloaded sims, planning takes longer, but movement is always full speed.
 
-Animations can help with this. We have an animesh "animation overrider" (AO).
+Animations can help with this. We have our own animesh "animation overrider" (AO).
 This causes our animesh characters to perform walk, run, turn, and stand animations as they move, switching based on velocity and turn rate. 
 A "stand" animation of "looking around for where to go next" can be set, so that, during stalls while the planner catches up, the character
 looks like it's trying to figure out where to go. Which it is. When no path planning and movement is in progress, the stand animation should be changed to something else.
