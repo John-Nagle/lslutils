@@ -18,12 +18,12 @@
 //
 //  TODO:
 //  1. Handle end of list with a ZERO_VECTOR at the end.        [DONE]
-//  2. Report completion via link msg
-//  3. Proper status handling.
-//  4. Smooth slow to stop at end.
-//  5. Prevent rotation and position error accumulation between segs.
-//  6. Add ray casting to detect obstacles when moving.
-//  7. Add timer handing.
+//  2. Report completion via link msg.                          [DONE]
+//  3. Proper status handling.                                  [DONE]
+//  4. Smooth slow to stop at end.                              [DONE]
+//  5. Prevent rotation and position error accum between segs.  [DONE]
+//  6. Add ray casting to detect obstacles when moving.         [DONE]
+//  7. Add timer handing.                                       [DONE]
 //
 #ifndef PATHEXECUTELSL                                        // include guard, like C/C++
 #define PATHEXECUTELSL
@@ -515,6 +515,12 @@ pathexemazedeliver(string jsn)
     if (requesttype != "mazesolve") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
+    //  If a move is stopped, the maze solver may still be running and sending maze solves.
+    //  Discard such stale maze solves.
+    if (pathid != gPathExeId && segmentid != 0)                     // if stale result
+    {   pathMsg(PATH_MSG_WARN,"Discarding stale maze solve result.");
+        return;
+    }
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) { pathexestop(status); return; }                  // error status from other side
     float cellsize = (float)llJsonGetValue(jsn,["cellsize"]); // get maze coords to world coords info
