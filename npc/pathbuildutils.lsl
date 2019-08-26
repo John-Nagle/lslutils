@@ -154,7 +154,7 @@ integer checkcollinear(list pts)
 //  Works in 3D world, not maze cell space.
 //
 list pathstraighten(list pts, float width, float height, float probespacing, integer chartype)
-{   return(pts);    // ***TEMP TEST*** NOT WORKING PROPERLY?
+{   ////return(pts);    // ***TEMP TEST*** NOT WORKING PROPERLY?
     integer n = 0;
     //   Advance through route. On each iteration, either the route gets shorter, or n gets
     //   larger, so this should always terminate.
