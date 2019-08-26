@@ -8,7 +8,6 @@
 integer MARKERCHANNEL = -3938235;                                // arbitrary channel number
 integer MARKERREPLYCHANNEL = -3938236;                              // reply channel
 string MARKERNAME = "Path marker, rounded (TEMP)";                        // rez this
-integer ITEMSPERMARKER = 12;                                     // list items per marker 
 integer LINKMSGMARKER = 1001;                                   // link message for marker                   
 //
 //  Globals
@@ -27,7 +26,7 @@ list gPendingMarkers = [];                                      // list of marke
 //
 handlemsg(integer channel, string name, key id, string message)
 {
-    llOwnerSay("Marker reply: " + message);               // ***TEMP***
+    ////llOwnerSay("Marker reply: " + message);               // ***TEMP***
     if (channel != MARKERREPLYCHANNEL) { return; }   // not ours
     string reply = llJsonGetValue(message, ["reply"]);       // what to do
     if (reply != "marker")                            // not valid 
@@ -37,20 +36,21 @@ handlemsg(integer channel, string name, key id, string message)
     integer i;
     for (i=0; i<length; i += 2)            // for all markers waiting for info
     {   if (id == llList2Integer(gPendingMarkers,i))   // if ID matches
-        {   list msg = ["id",id] +  llJson2List(llList2String(gPendingMarkers,i+1));    // add ID to params
+        {   list msg = ["request", "marker", "id",id] +  llJson2List(llList2String(gPendingMarkers,i+1));    // add ID to params
             llSay(MARKERCHANNEL, llList2Json(JSON_OBJECT,msg)); // tell marker what to do
             gPendingMarkers = llListReplaceList(gPendingMarkers,[], i, i+1);   // remove from list
         }
     }
     if (llGetListLength(gPendingMarkers) == 0)
-    {   llOwnerSay("All markers rezzed");
+    {   ////llOwnerSay("All markers rezzed");
         llListenRemove(gListenHandle);                              // no need to keep listening
         gListenHandle = 0; 
     }
 }
 
-
-
+//
+//  The main program of the marker task.
+//
 default
 {
     state_entry()
@@ -69,7 +69,8 @@ default
     }
     
     link_message(integer sender_num, integer num, string json, key name)
-    {   if (sender_num != LINKMSGMARKER) { return; }                        // not ours
+    {   ////llOwnerSay("Link msg #" + (string)num + ": " + json);               // ***TEMP***
+        if (num != LINKMSGMARKER) { return; }                               // not ours
         if (gListenHandle == 0) { gListenHandle = llListen(MARKERREPLYCHANNEL, "", NULL_KEY, ""); } // listen for marker replies
         gMarkerSerial++;
         gPendingMarkers += [gMarkerSerial,json];                      // save params for later reply

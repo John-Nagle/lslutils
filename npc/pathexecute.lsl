@@ -25,8 +25,6 @@
 //  6. Add ray casting to detect obstacles when moving.         [DONE]
 //  7. Add timer handing.                                       [DONE]
 //
-#ifndef PATHEXECUTELSL                                        // include guard, like C/C++
-#define PATHEXECUTELSL
 #include "npc/assert.lsl"                                   // assert
 #include "npc/patherrors.lsl"
 #include "npc/mazedefs.lsl"
@@ -595,4 +593,36 @@ pathexecollision(integer num_detected)
         }
     }
 }
-#endif // PATHEXECUTELSL
+
+//
+float TESTSPACING = 0.33;                                   // 3 test points per meter in height
+float PATHSTARTTOL = 0.5;                                   // if we are out of position, can't start 
+//
+//  The main program of the execute task.
+//
+default
+{
+    state_entry()
+    {  pathexeinit(TESTSPACING);                            // init our KFM system        
+    }
+
+    link_message(integer status, integer num, string jsn, key id )
+    {   if (num == MAZESOLVERREPLY)                     // maze solve result
+        {   DEBUGPRINT1("Maze solver deliver: " + jsn);
+            pathexemazedeliver(jsn);
+        } else if (num == MAZEPATHREPLY)
+        {   DEBUGPRINT1("Path deliver: " + jsn);
+            pathexepathdeliver(jsn); 
+        }
+    }
+    
+    timer()
+    {   pathexetimer();                                         // pass timer event
+    }
+    
+    moving_end()
+    {   pathexemovementend(); }   
+    
+    collision_start(integer num_detected)
+    {   pathexecollision(num_detected); }
+}

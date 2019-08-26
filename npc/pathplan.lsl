@@ -8,10 +8,12 @@
 //  Animats
 //  June, 2019
 //
-#ifndef PATHPLANLSL                                     // include guard, like C/C++
-#define PATHPLANLSL
+#include "npc/mazesolvercall.lsl"
 #include "npc/pathbuildutils.lsl"                           // common functions
-
+//
+//  Constants
+//
+float MINSEGMENTLENGTH = 0.025; /// 0.10;                   // minimum path segment length (m)
 
 //
 //  pathplan -- plan an obstacle-free path.
@@ -286,5 +288,17 @@ pathRequestRecv(string jsonstr)
     pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, gPathplanChartype, testspacing, pathid);    
 }
 
+//
+//  Main program of the path planning task
+//
+default
+{
+    link_message(integer status, integer num, string jsn, key id )
+    {   if (num == PATH_DIR_REQUEST)                        // if request for this task
+        {   pathRequestRecv(jsn); }                         // run the path planner
+    }
+    
+    on_rez(integer rezarg)
+    {   llResetScript(); }
+}
 
-#endif // PATHPLANLSL
