@@ -26,9 +26,10 @@ float GOAL_DIST = 1.75;                      // get this close to talk
 //  Character dimensions
 float CHARACTER_WIDTH = 0.5;
 float CHARACTER_HEIGHT = 2.2;
-float CHARACTER_SPEED = 3.0;                    // (m/sec) speed
-string IDLE_ANIM = "stand 2";    // idle or chatting         
-string STAND_ANIM = "stand 2"; // just when stopped
+float CHARACTER_SPEED = 2.5;                // (m/sec) speed
+string IDLE_ANIM = "stand 2";               // idle or chatting         
+string STAND_ANIM = "stand 2";              // just when stopped
+string WAITING_ANIM = "impatient";          // during planning delays
 float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                   // will stick around for this long
 float MIN_MOVE_FOR_RETRY = 0.25;             // must move at least this far before we recheck on approach
@@ -184,6 +185,7 @@ restart_patrol()
     gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
     pathMsg(PATH_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
     gPathDistance = pathdistance(llGetPos(), gPatrolDestination, CHARACTER_WIDTH, CHARACTER_TYPE_A);  // measure distance to goal
+    start_anim(WAITING_ANIM);                     // applies only when stalled during movement
     pathNavigateTo(gPatrolDestination,0);           // head for next pos
     gAction = ACTION_PATROL;                        // patrolling
 }
@@ -196,6 +198,7 @@ restart_pursue()
     list details = llGetObjectDetails(gTarget, [OBJECT_POS]);       // Where is avatar?
     vector goalpos = llList2Vector(details,0);                      // get object position
     gPathDistance = pathdistance(llGetPos(), goalpos, CHARACTER_WIDTH, CHARACTER_TYPE_A);  // measure distance to goal
+    start_anim(WAITING_ANIM);                     // applies only when stalled during movement
     pathPursue(gTarget, GOAL_DIST*2);
     gAction = ACTION_PURSUE;
     llSetTimerEvent(1.0);                   // fast poll while moving
