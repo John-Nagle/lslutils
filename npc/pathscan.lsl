@@ -37,14 +37,12 @@
 //
 //  Globals
 //
-integer gPathScanMsgLevel = 0;                              // message level for debug                             
 integer gPathScanId = 0;                                    // current path ID
 integer gPathScanActive = FALSE;                            // scan system active
 integer gPathScanMoving = FALSE;                            // character should be moving
 integer gPathScanFreemem;                                   // amount of free memory left
 integer gPathScanTimetick = 0;                              // last time we tested for motion
 vector gPathScanLastpos = ZERO_VECTOR;                      // last place we tested for motion
-key gPathScanSelfObject;                                    // our own key, needed for raycast test
 
 //  Avatar params
 float gPathScanWidth = 1.0;                                  // defaults, overridden by messages
@@ -62,7 +60,7 @@ integer gKfmSegmentCurrent = 0;                             // which segment we 
 //  pathscaninit -- set up path execute parameters
 //
 pathscaninit()
-{   gPathScanSelfObject = llGetKey();                       // us
+{   gPathSelfObject = llGetKey();                           // us
     gPathScanFreemem = llGetFreeMemory();   
 }
 
@@ -162,7 +160,7 @@ pathcheckdynobstacles()
         }   
     }
     if (!foundseg)
-    {   pathMsg(PATH_MSG_ERROR,"Unable to find " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
+    {   pathMsg(PATH_MSG_WARN,"Unable to find " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
 }
 //  
 //
@@ -198,14 +196,15 @@ pathscantimer()
 pathscanrequest(string jsn) 
 {   pathMsg(PATH_MSG_INFO,"Path scan request: " + jsn);
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type  
-    if (requesttype == "startscan") 
+    if (requesttype == "startscan")                         // start scanning
     {   //  Set up for ray casting.
         gPathScanId = (integer)llJsonGetValue(jsn, ["pathid"]);
         gPathScanWidth = (float)llJsonGetValue(jsn,["width"]);
         gPathScanHeight = (float)llJsonGetValue(jsn,["height"]);
-        gPathScanMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
+        gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
         list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
-        gKfmSegments = [];
+        gKfmSegments = [];                                  // clear stored path used for ray cast direction
+        gKfmSegmentCurrent = 0;
         integer i;
         integer len = llGetListLength(ptsstr);
         for (i=0; i<len; i++) { gKfmSegments += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors
