@@ -27,7 +27,9 @@
 //
 //  Constants
 //
-
+//  ***MOVE TO COMMON FILE***
+#define LINKMSGSCANREQUEST  1010                            // message types
+#define LINKMSGSCANREPLY    1011
 //
 //  Idle timer timeout
 //
@@ -40,11 +42,14 @@
 
 //
 //  Globals
-//                                
-integer gPathScanId = 0;                                     // current path ID
-integer gPathScanActive = FALSE;                             // path system is doing something
-integer gPathScanFreemem;                                    // amount of free memory left
-integer gPathScanTimetick = 0;                               // last time we tested for motion
+//
+integer gPathScanMsgLevel = 0;                              // message level for debug                             
+integer gPathScanId = 0;                                    // current path ID
+integer gPathScanActive = FALSE;                            // path system is doing something
+integer gPathScanFreemem;                                   // amount of free memory left
+integer gPathScanTimetick = 0;                              // last time we tested for motion
+vector gPathScanLastpos = ZERO_VECTOR;                      // last place we tested for motion
+key gPathScanSelfObject;                                    // our own key, needed for raycast test
 
 //  Avatar params
 float gPathScanWidth = 1.0;                                  // defaults, overridden by messages
@@ -61,7 +66,7 @@ list gKfmSegments = [];                                     // segments being ex
 integer gKfmSegmentCurrent = 0;                             // which segment we are currently on
 
 //
-//  pathexeinit -- set up path execute parameters
+//  pathscaninit -- set up path execute parameters
 //
 pathscaninit()
 {   gPathScanSelfObject = llGetKey();                       // us
@@ -79,19 +84,19 @@ pathscandone(integer status, key hitobj)
         pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);    
     }
     //  Return "scandone" to exec module
-    list params = ["reply", "scandone", "status", status, "pathid", gPathScanId, "hitobj", hitobj);
-    llMessageLinked(LINK_THIS, LINKMSGSTOPREPLY, llList2Json(JSON_OBJECT,params), "");   // Return result to execute task
+    list params = ["reply", "scandone", "status", status, "pathid", gPathScanId, "hitobj", hitobj];
+    llMessageLinked(LINK_THIS, LINKMSGSCANREPLY, llList2Json(JSON_OBJECT,params), "");   // Return result to execute task
     gPathScanActive = FALSE;                                // no longer active
 }
 //
-//  pathexemovementend -- movement has finished, feed in next section if any
+//  pathscanmovementend -- movement has finished, feed in next section if any
 //
 pathscanmovementend()
-{   gPathScanActive = FALSE;                                 // not moving
-    gKfmSegments = [];                                      // no current segments
-    gPathExeLastPos = ZERO_VECTOR;                          // no last moving pos   
+{   gPathScanActive = FALSE;                                    // not moving
+    gKfmSegments = [];                                          // no current segments
+    gPathScanLastpos = ZERO_VECTOR;                             // no last moving pos   
     pathMsg(PATH_MSG_INFO,"Movement end");
-    pathscandone(PATHMOVEMENTEND, "");                      // report back to execute task
+    pathscandone(0, "");                                        // normal event
 }
 
 //
@@ -108,12 +113,12 @@ pathobstacleraycast(vector p, vector p1)
     list castanalysis = pathanalyzecastresult(castresult, FALSE);
     if (castanalysis == []) return;                         // no problem
     if (llGetListLength(castanalysis) == 1)                 // error status
-    {   pathexestop(llList2Integer(castanalysis,0)); return; }  // report error
+    {   pathscandone(llList2Integer(castanalysis,0), NULL_KEY); return; }  // report error
     key hitobj = llList2Key(castanalysis,0);                // result is [obj, hitpt]
     vector hitpt = llList2Vector(castanalysis,1);
     pathMsg(PATH_MSG_WARN,"Move stopped by obstacle: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
                     + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);
-    pathstopdone(PATHEXEOBSTRUCTED, hitobj);  // report trouble
+    pathscandone(PATHEXEOBSTRUCTED, hitobj);  // report trouble
 }
 //
 //  pathcheckdynobstacles  -- check for dynamic obstacles encountered while moving.
@@ -126,7 +131,7 @@ pathcheckdynobstacles()
     float lookaheaddist = PATHEXELOOKAHEADDIST;     // distance to look ahead
     float PATHEXESEGDISTTOL = 0.20;                 // how close to segment to be in it. Keyframe error causes trouble here.
     float HUGE = 99999999999.0;                     // huge number, but INFINITY is bigger
-    vector posoffset = <0,0,gPathExeHeight*0.5>;    // pos is at object midpoint, points are at ground
+    vector posoffset = <0,0,gPathScanHeight*0.5>;    // pos is at object midpoint, points are at ground
     vector pos = llGetPos() - posoffset;            // where we are now
     integer i;
     integer foundseg = FALSE;
@@ -134,7 +139,7 @@ pathcheckdynobstacles()
     //  Start at segment where last found the position.  
     //  Stop at end of list, finished lookaheaddist, or no longer moving.
     //  pos and all segment points are at ground level.
-    for (i=gKfmSegmentCurrent; i<llGetListLength(gKfmSegments)-1 && lookaheaddist > 0 && gPathExeMoving != 0; i++)
+    for (i=gKfmSegmentCurrent; i<llGetListLength(gKfmSegments)-1 && lookaheaddist > 0 && gPathScanActive; i++)
     {   vector p0 = llList2Vector(gKfmSegments,i);
         vector p1 = llList2Vector(gKfmSegments,i+1);
         if (!foundseg) 
@@ -175,10 +180,10 @@ pathscantimer()
     if (gPathScanActive)                                         // if we are supposed to be moving
     {   
         integer now = llGetUnixTime();                          // time now
-        if (now - gPathLastTimetick > PATHMOVECHECKSECS)
-        {   gPathLastTimetick = now;                            // update last check time
+        if (now - gPathScanTimetick > PATHMOVECHECKSECS)
+        {   gPathScanTimetick = now;                            // update last check time
             vector pos = llGetPos();
-            if (llVecMag(pos - gPathExeLastPos) > 0.01)         // if moving at all
+            if (llVecMag(pos - gPathScanLastpos) > 0.01)         // if moving at all
             {   return; }                                       // OK
             //  No KFM movement. Something has gone wrong. 
             pathscandone(MAZESTATUSKFMSTALL, NULL_KEY);         // stalled
@@ -242,11 +247,11 @@ pathscancollision(integer num_detected)
 default
 {
     state_entry()
-    {  pathscaninit(TESTSPACING);                                // init our KFM system        
+    {  pathscaninit();                                // init our KFM system        
     }
 
     link_message(integer status, integer num, string jsn, key id )
-    {   if (num == PATHSTOPREQUEST)                             // maze solve result
+    {   if (num == LINKMSGSCANREQUEST)                           // maze solve result
         {   pathscanrequest(jsn);
         }
     }
