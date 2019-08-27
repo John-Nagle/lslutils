@@ -45,7 +45,8 @@
 //
 integer gPathScanMsgLevel = 0;                              // message level for debug                             
 integer gPathScanId = 0;                                    // current path ID
-integer gPathScanActive = FALSE;                            // path system is doing something
+integer gPathScanActive = FALSE;                            // scan system active
+integer gPathScanMoving = FALSE;                            // character should be moving
 integer gPathScanFreemem;                                   // amount of free memory left
 integer gPathScanTimetick = 0;                              // last time we tested for motion
 vector gPathScanLastpos = ZERO_VECTOR;                      // last place we tested for motion
@@ -79,20 +80,21 @@ pathscaninit()
 //  Zero status here means ordinary movement end, no problems.
 //
 pathscandone(integer status, key hitobj)
-{   if (gPathScanActive && status != 0)                     // if something bad happened
+{   if (!gPathScanActive) { return; }                       // we are not running, ignore
+    if (gPathScanMoving && status != 0)                     // if something bad happened
     {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
         pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);    
     }
     //  Return "scandone" to exec module
     list params = ["reply", "scandone", "status", status, "pathid", gPathScanId, "hitobj", hitobj];
     llMessageLinked(LINK_THIS, LINKMSGSCANREPLY, llList2Json(JSON_OBJECT,params), "");   // Return result to execute task
-    gPathScanActive = FALSE;                                // no longer active
+    gPathScanMoving = FALSE;                                    // no longer active
 }
 //
 //  pathscanmovementend -- movement has finished, feed in next section if any
 //
 pathscanmovementend()
-{   gPathScanActive = FALSE;                                    // not moving
+{   gPathScanMoving = FALSE;                                    // not moving
     gKfmSegments = [];                                          // no current segments
     gPathScanLastpos = ZERO_VECTOR;                             // no last moving pos   
     pathMsg(PATH_MSG_INFO,"Movement end");
@@ -175,15 +177,15 @@ pathcheckdynobstacles()
 //  pathscantimer  -- timer event, check progress and do ray casts
 //
 pathscantimer()
-{   if (gPathScanActive && gKfmSegments != [])                   // if we are moving and have a path
+{   if (gPathScanActive && gKfmSegments != [])                  // if we are moving and have a path
     {   pathcheckdynobstacles(); }                              // ray cast for obstacles
-    if (gPathScanActive)                                         // if we are supposed to be moving
+    if (gPathScanActive)                                        // if we are turned on
     {   
         integer now = llGetUnixTime();                          // time now
         if (now - gPathScanTimetick > PATHMOVECHECKSECS)
         {   gPathScanTimetick = now;                            // update last check time
             vector pos = llGetPos();
-            if (llVecMag(pos - gPathScanLastpos) > 0.01)         // if moving at all
+            if (llVecMag(pos - gPathScanLastpos) > 0.01)        // if moving at all
             {   return; }                                       // OK
             //  No KFM movement. Something has gone wrong. 
             pathscandone(MAZESTATUSKFMSTALL, NULL_KEY);         // stalled
@@ -196,6 +198,10 @@ pathscantimer()
 //
 //  We get a list of the points the character is currently following. 
 //  That tells us what direction to look for obstacles.
+//
+//  Protocol is to send a "startscan" as each KFM segment starts.
+//  Send a "stopscan" when the entire path is finished or when not moving.
+//  This will result in a "stall" event being sent if something goes wrong.
 //
 pathscanrequest(string jsn) 
 {   pathMsg(PATH_MSG_INFO,"Path scan request: " + jsn);
@@ -211,10 +217,15 @@ pathscanrequest(string jsn)
         integer i;
         integer len = llGetListLength(ptsstr);
         for (i=0; i<len; i++) { gKfmSegments += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors
+        gPathScanActive = TRUE;                             // scan system is active
+        gPathScanMoving = TRUE;                             // character is moving
+        gPathScanTimetick = llGetUnixTime();                // reset stall timer
         llSetTimerEvent(PATHSCANRAYTIME);                   // switch to fast timer for ray casts for obstructions
     } else if (requesttype == "stopscan")                   // stop scanning
     {   gKfmSegments = [];
         llSetTimerEvent(0.0);                               // shut down and stop timer
+        gPathScanActive = FALSE;                            // scan system is active
+        gPathScanMoving = FALSE;                            // character is moving
     } else {
         pathMsg(PATH_MSG_ERROR,"Path stop rcvd bad msg: " + jsn);
     }
@@ -225,7 +236,7 @@ pathscanrequest(string jsn)
 //
 pathscancollision(integer num_detected)
 {   
-    if (!gPathScanActive) { return; }    // not moving, not our fault
+    if (!gPathScanMoving) { return; }    // not moving, not our fault
     integer i;
     for (i=0; i<num_detected; i++)
     {   key hitobj = llDetectedKey(i);
@@ -250,10 +261,12 @@ default
     {  pathscaninit();                                // init our KFM system        
     }
 
+    on_rez(integer rezparam) 
+    {   llResetScript(); }
+
     link_message(integer status, integer num, string jsn, key id )
     {   if (num == LINKMSGSCANREQUEST)                           // maze solve result
-        {   pathscanrequest(jsn);
-        }
+        {   pathscanrequest(jsn); }
     }
     
     timer()
