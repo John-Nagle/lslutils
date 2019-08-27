@@ -29,6 +29,7 @@
 #include "npc/patherrors.lsl"
 #include "npc/mazedefs.lsl"
 #include "npc/pathbuildutils.lsl"
+#include "npc/pathscancall.lsl"
 //
 //  Constants
 //
@@ -52,7 +53,7 @@ integer gPathExeMoving = FALSE;                             // true if KFM movem
 integer gPathExeActive = FALSE;                             // path system is doing something
 integer gPathExeEOF;                                        // EOF seen
 integer gPathExePendingStatus;                              // pending error, to be reported at end of motion
-vector  gPathExeLastPos;                                    // last position, for stall check
+////vector  gPathExeLastPos;                                    // last position, for stall check
 integer gPathExeFreemem;                                    // amount of free memory left
 integer gPathLastTimetick = 0;                              // last time we tested for motion
 
@@ -74,8 +75,8 @@ list gClearSegments = [];                                   // path segment list
 list gMazeSegments = [];                                    // maze segment list
 
 list gAllSegments = [];                                     // combined segments from above, points only
-list gKfmSegments = [];                                     // segments being executed by current KFM operation
-integer gKfmSegmentCurrent = 0;                             // which segment we are currently on
+////list gKfmSegments = [];                                     // segments being executed by current KFM operation
+////integer gKfmSegmentCurrent = 0;                             // which segment we are currently on
 
 
 //  Segment storage functions. If only we could pass references.
@@ -360,11 +361,12 @@ pathexedomove()
         list kfmmoves = pathexebuildkfm(pos, llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
         if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
-        {   llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);             // begin motion
+        {   pathscanstart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeId, gPathMsgLevel);         // start obstacle detection
+            llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion           
             gPathExeMoving = TRUE;                          // movement in progress
-            llSetTimerEvent(PATHEXERAYTIME);                // switch to fast timer for ray casts for obstructions
-            gKfmSegments = gAllSegments;                    // what we are currently doing
-            gKfmSegmentCurrent = 0;                         // we are at the beginning
+            ////llSetTimerEvent(PATHEXERAYTIME);                // switch to fast timer for ray casts for obstructions
+            ////gKfmSegments = gAllSegments;                    // what we are currently doing
+            ////gKfmSegmentCurrent = 0;                         // we are at the beginning
             integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
             if (freemem < gPathExeFreemem) { gPathExeFreemem = freemem; }   // record free memory
         }
@@ -379,13 +381,13 @@ pathexedomove()
 //
 pathexemovementend()
 {   gPathExeMoving = FALSE;                                 // not moving
-    gKfmSegments = [];                                      // no current segments
-    gPathExeLastPos = ZERO_VECTOR;                          // no last moving pos
+    ////gKfmSegments = [];                                      // no current segments
+    ////gPathExeLastPos = ZERO_VECTOR;                          // no last moving pos
     
     pathMsg(PATH_MSG_INFO,"Movement end");
     pathexedomove();
 }
-
+#ifdef OBSOLETE
 //
 //  pathobstacleraycast -- check for obstacle ahead
 //
@@ -477,7 +479,7 @@ pathexetimer()
         }
     }
 }
-
+#endif // OBSOLETE
 //
 //  pathexestopkey -- trouble, stop and abort keyframe motion, with key
 //
@@ -488,15 +490,16 @@ pathexestopkey(integer status, key hitobj)
     gClearSegments = [];                                    // reset state
     gMazeSegments = [];
     gAllSegments = [];
-    gKfmSegments = [];
+    ////gKfmSegments = [];
     gPathExeNextsegid = 0; 
     gPathExeMoving = FALSE;                                 // not moving
-    gPathExeLastPos = ZERO_VECTOR;                          // no last position
+    ////gPathExeLastPos = ZERO_VECTOR;                          // no last position
     llSetTimerEvent(0.0);                                   // stop timing 
     if (gPathExeActive)                                     // if we are active
     {   if (status == 0) { status = gPathExePendingStatus; }// send back any stored status
         pathUpdateCallback(status,hitobj);                  // tell caller about result
         gPathExeActive = FALSE;                             // no longer active
+        pathscanstop();                                     // turn off path scanning
     }
 }
 //
@@ -574,7 +577,7 @@ pathexepathdeliver(string jsn)
     for (i=0; i<len; i++) { pts += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors  
     pathexedeliver(pts, pathid, segmentid, FALSE, status);      // deliver path segment
 }
-
+#ifdef OBSOLETE
 //
 //  pathexecollision -- collided with something
 //
@@ -594,6 +597,24 @@ pathexecollision(integer num_detected)
             }
         }
     }
+}
+#endif // OBSOLETE
+
+//
+//  pathexescanreply -- reply from path scanner
+//
+//  Move ending, collisons, and ray cast obstacle detections come in this way
+//
+pathexescanreply(string jsn)
+{
+    string replytype = llJsonGetValue(jsn,["reply"]);   // request type
+    if (replytype != "scandone") {  return; }              // ignore, not our msg
+    integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
+    integer status = (integer)llJsonGetValue(jsn, ["status"]);
+    key hitobj = (key)llJsonGetValue(jsn,["hitobj"]);       // what was hit, if anything
+    if (status == 0)                                        // status zero, no problem
+    {   pathexemovementend(); return; }                     // normal movement end   
+    pathexestopkey(status, hitobj);                         // otherwise hit something   
 }
 
 //
@@ -615,16 +636,19 @@ default
         } else if (num == MAZEPATHREPLY)
         {   DEBUGPRINT1("Path deliver: " + jsn);
             pathexepathdeliver(jsn); 
+        } else if (num == LINKMSGSCANREPLY)
+        {   DEBUGPRINT1("Scan reply: " + jsn);
+            pathexescanreply(jsn);
         }
     }
-    
+#ifdef OBSOLETE        
     timer()
     {   pathexetimer();                                         // pass timer event
     }
-    
     moving_end()
     {   pathexemovementend(); }   
     
     collision_start(integer num_detected)
     {   pathexecollision(num_detected); }
+#endif // OBSOLETE
 }

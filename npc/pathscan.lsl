@@ -1,5 +1,5 @@
 //
-//  patscan.lsl -- component of a path building system
+//  pathscan.lsl -- component of a path building system
 //
 //  Part of a system for doing pathfinding in Second Life
 //
@@ -24,21 +24,15 @@
 #include "npc/patherrors.lsl"
 #include "npc/mazedefs.lsl"
 #include "npc/pathbuildutils.lsl"
+#include "npc/pathscancall.lsl"
 //
 //  Constants
 //
-//  ***MOVE TO COMMON FILE***
-#define LINKMSGSCANREQUEST  1010                            // message types
-#define LINKMSGSCANREPLY    1011
+//  Look ahead constants
 //
-//  Idle timer timeout
-//
-#define PATHEXETIMEOUT      2.0                             // check this often for progress
 #define PATHSCANRAYTIME      0.2                            // do a cast ray for obstacles this often
-#define PATHMINTURNSECTION  0.5                             // first section of path this length, for a starting turn
 #define PATHMOVECHECKSECS   2.0                             // check this often for progress
 #define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
-#define PATHEXEMAXCREEP     0.10                            // (m) max positional error allowed after keyframe motion
 
 //
 //  Globals
@@ -56,8 +50,6 @@ key gPathScanSelfObject;                                    // our own key, need
 float gPathScanWidth = 1.0;                                  // defaults, overridden by messages
 float gPathScanHeight = 1.0;
 integer gPathScanChartype = CHARACTER_TYPE_A;
-
-////float gPathScanProbespacing = 0.333;                         // (m) cast ray spacing when looking for obstacles
 
 //
 //  Segment storage

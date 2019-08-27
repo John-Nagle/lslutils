@@ -34,8 +34,8 @@ string WAITING_ANIM = "impatient";          // during planning delays
 float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                   // will stick around for this long
 float MIN_MOVE_FOR_RETRY = 0.25;             // must move at least this far before we recheck on approach
-integer VERBOSITY = PATH_MSG_WARN;               // debug output control
-////integer VERBOSITY = PATH_MSG_INFO;              // verbose
+////integer VERBOSITY = PATH_MSG_WARN;               // debug output control
+integer VERBOSITY = PATH_MSG_INFO;              // verbose
 
 //  Configuration
 string PATROL_NOTECARD = "Patrol points";   // read this notecard for patrol points
