@@ -351,7 +351,7 @@ pathexedomove()
         vector kfmstart = llList2Vector(gAllSegments,0);    // first point, which is where we should be
         vector pos = llGetPos();                            // we are here
         if (llVecMag(<kfmstart.x, kfmstart.y, 0> - <pos.x, pos.y, 0>) > PATHEXEMAXCREEP)     // we are out of position
-        {   pathMsg(PATH_MSG_ERROR, "Out of position. At " + (string)pos + ". Should be at " + (string)kfmstart); // probably user doing an edit
+        {   pathMsg(PATH_MSG_WARN, "Out of position. At " + (string)pos + ". Should be at " + (string)kfmstart); // not serious, but happens occasionally
         }
         gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
         pathMsg(PATH_MSG_INFO,"Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in

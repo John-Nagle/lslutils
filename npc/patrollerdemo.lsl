@@ -27,6 +27,7 @@ float GOAL_DIST = 1.75;                      // get this close to talk
 float CHARACTER_WIDTH = 0.5;
 float CHARACTER_HEIGHT = 2.2;
 float CHARACTER_SPEED = 2.5;                // (m/sec) speed
+float CHARACTER_TURNSPEED_DEG = 90.0;       // (deg/sec) turn rate
 string IDLE_ANIM = "stand 2";               // idle or chatting         
 string STAND_ANIM = "stand 2";              // just when stopped
 string WAITING_ANIM = "impatient";          // during planning delays
@@ -75,7 +76,6 @@ float gFaceDir;                 // direction to face next
 integer CHARTYPE = CHARACTER_TYPE_A;                        // humanoid
 float CHARRADIUS = 0.25;                                    // radius 
 float CHARHEIGHT = 1.8;                                     // height 1.8m
-float MARKRTHICKNESS = 0.10;                                // thickness of marker objects 
 float TESTSPACING = 0.33;                                   // 3 test points per meter in height
 
 
@@ -98,9 +98,12 @@ add_patrol_point(string s)
     gPatrolPointDir += facedir;
 }
 
-pathUpdateCallback(integer type, key hitobj )
-    {   pathMsg(PATH_MSG_INFO, "Path update: : " + (string) type);
-        if (type == MAZESTATUSOK)          // success
+//
+//  pathUpdateCallback -- pathfinding is done. Analyze the result and start the next action.
+//
+pathUpdateCallback(integer status, key hitobj )
+    {   pathMsg(PATH_MSG_INFO, "Path update: : " + (string) status);
+        if (status == MAZESTATUSOK)          // success
         {   ////llOwnerSay("Pathfinding task completed.");
             if (gAction == ACTION_PURSUE)               
             {
@@ -131,8 +134,8 @@ pathUpdateCallback(integer type, key hitobj )
                 pathMsg(PATH_MSG_INFO,"Patrol point reached.");
             }  
             return;
-        } else if (type == PATHEXEOBSTRUCTED || type == PATHEXECOLLISION)                   // obstruction ahead, must avoid
-        {   if (type == PATHEXECOLLISION)                                                   // need to check for avatar
+        } else if (status == PATHEXEOBSTRUCTED || status == PATHEXECOLLISION)                   // obstruction ahead, must avoid
+        {   if (status == PATHEXECOLLISION)                                                   // need to check for avatar
             {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
                 integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
                 pathMsg(PATH_MSG_WARN, "Collided with " + llList2String(details,1));
@@ -163,7 +166,7 @@ pathUpdateCallback(integer type, key hitobj )
             }
 
             if (gTarget != NULL_KEY)
-            {   pathMsg(PATH_MSG_INFO,"Unable to reach " + llKey2Name(gTarget));
+            {   pathMsg(PATH_MSG_WARN,"Unable to reach " + llKey2Name(gTarget) + " status: " + (string)status);
                 gDeferredTargets += gTarget;    // defer action on this target
                 gDeferredPositions += target_pos(gTarget);  // where they are
                 gTarget = NULL_KEY;
@@ -171,7 +174,7 @@ pathUpdateCallback(integer type, key hitobj )
             
             //  Failed, back to idle.
             gAction = ACTION_IDLE;            
-            pathMsg(PATH_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)type);
+            pathMsg(PATH_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
             start_anim(IDLE_ANIM);
             return;
         }
@@ -222,11 +225,12 @@ start_patrol()
     }  
 }
 
+//
+//  startup - initialization
 startup()
-{   //  Constant intitialization
-    pathInit(CHARACTER_WIDTH, CHARACTER_HEIGHT, CHARACTER_TYPE_A, VERBOSITY);
-    float CHARACTER_TURNRATE = DEG_TO_RAD*90;   // (rad/sec) turn rate
-    pathSpeed(CHARACTER_SPEED, CHARACTER_TURNRATE);
+{   
+    pathInit(CHARACTER_WIDTH, CHARACTER_HEIGHT, CHARACTER_TYPE_A, VERBOSITY);   // set up pathfinding system
+    pathSpeed(CHARACTER_SPEED, CHARACTER_TURNSPEED_DEG*DEG_TO_RAD); // how fast to go
     gAction = ACTION_IDLE;
     gAnim = "";
     gScale = llGetScale();                  // scale of animesh
@@ -244,7 +248,7 @@ startup()
     gName = llGetObjectName();
     integer spaceIndex = llSubStringIndex(gName, " ");
     gName  = llGetSubString(gName, 0, spaceIndex - 1);       // first name of character
-    if (llGetInventoryKey(PATROL_NOTECARD) == NULL_KEY)
+    if (llGetInventoryKey(PATROL_NOTECARD) == NULL_KEY)     // waypoints file no good
     {
         llSay(DEBUG_CHANNEL, "Notecard '" + PATROL_NOTECARD + "' missing or empty. Will not patrol.");
         return;
@@ -273,7 +277,7 @@ default
 
     timer()                                     // timer tick
     {   pathTick();                             // timers in path library get updated
-        //  Name above character
+        //  Put name above character
         string msg = gName;                     // name of character
         vector color = <1.0,1.0,1.0>;
         llSetText(msg, color, 1.0);             // set text
