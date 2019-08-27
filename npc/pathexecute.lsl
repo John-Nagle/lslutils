@@ -344,9 +344,8 @@ pathexedomove()
 {   if (gPathExeMoving) { return; }                     // we are moving, do nothing
     if (!gPathExeActive) { return; }                    // system is idle, do nothing
     pathexeassemblesegs();                              // have work to do?
-    //// if (gAllSegments == [ZERO_VECTOR])                  // if EOF signal
     if (llGetListLength(gAllSegments) == 1 && llList2Vector(gAllSegments,0) == ZERO_VECTOR) // if EOF signal
-    {   pathMsg(PATH_MSG_WARN,"Normal end of path. Free mem: " + (string)gPathExeFreemem); 
+    {   pathMsg(PATH_MSG_WARN,"End of path. Free mem: " + (string)gPathExeFreemem); 
         pathexestop(0);                                 // all done, normal stop
     }
     else if (gAllSegments != [])                             // if work
@@ -371,7 +370,7 @@ pathexedomove()
         }
         gAllSegments = [];                              // segments have been consumed
     } else {
-        pathMsg(PATH_MSG_WARN,"Waiting for maze solver to catch up.");    // solver running behind action
+        pathMsg(PATH_MSG_WARN,"Waiting for maze solver.");    // solver running behind action
     }
 }
 
@@ -404,7 +403,7 @@ pathobstacleraycast(vector p, vector p1)
     {   pathexestop(llList2Integer(castanalysis,0)); return; }  // report error
     key hitobj = llList2Key(castanalysis,0);                // result is [obj, hitpt]
     vector hitpt = llList2Vector(castanalysis,1);
-    pathMsg(PATH_MSG_WARN,"Stopped by obstacle while moving: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
+    pathMsg(PATH_MSG_WARN,"Move stopped by obstacle: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
                     + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);
     pathexestopkey(PATHEXEOBSTRUCTED, hitobj);  // report trouble
 }
@@ -456,7 +455,7 @@ pathcheckdynobstacles()
         }   
     }
     if (!foundseg)
-    {   pathMsg(PATH_MSG_ERROR,"Unable to find segment containing current position: " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
+    {   pathMsg(PATH_MSG_ERROR,"Unable to find " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
 }
 //  
 //
@@ -519,7 +518,7 @@ pathexemazedeliver(string jsn)
     //  If a move is stopped, the maze solver may still be running and sending maze solves.
     //  Discard such stale maze solves.
     if (pathid != gPathExeId && segmentid != 0)                     // if stale result
-    {   pathMsg(PATH_MSG_WARN,"Discarding stale maze solve result.");
+    {   ////pathMsg(PATH_MSG_WARN,"Discarding stale maze solve result.");
         return;
     }
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
