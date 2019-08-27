@@ -197,11 +197,14 @@ restart_patrol()
 //
 restart_pursue()
 {   pathMsg(PATH_MSG_WARN,"Pursuing " + llKey2Name(gTarget));
+    //  Temporary way to stop whatever is going on.
+    llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);           // stop whatever is going on ***TEMP***
     gDwell = 0.0;
     list details = llGetObjectDetails(gTarget, [OBJECT_POS]);       // Where is avatar?
     vector goalpos = llList2Vector(details,0);                      // get object position
     gPathDistance = pathdistance(llGetPos(), goalpos, CHARACTER_WIDTH, CHARACTER_TYPE_A);  // measure distance to goal
-    start_anim(WAITING_ANIM);                     // applies only when stalled during movement
+    start_anim(WAITING_ANIM);                                       // applies only when stalled during movement
+    llSleep(2.0);                                                   // allow stop time
     pathPursue(gTarget, GOAL_DIST*2);
     gAction = ACTION_PURSUE;
     llSetTimerEvent(1.0);                   // fast poll while moving

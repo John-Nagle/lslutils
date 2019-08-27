@@ -170,10 +170,13 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
     {   DEBUGPRINT1("Starting new path."); // ***TEMP***
         if (gClearSegments != [] || gMazeSegments != [])    // so why do we have stored segments?
         {   pathexestop(PATHEXESEGOUTOFSEQ2); return; }     // bad
-        DEBUGPRINT1("First point: " + (string)llList2Vector(pts,0) + " Current pos: " + (string)llGetPos());
+        
         vector verr = llList2Vector(pts,0) - llGetPos();    // get starting point
         if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL)     // if too far from current pos
-        {   pathexestop(PATHEXEBADSTARTPOS); return; }      // bad start position
+        {   pathMsg(PATH_MSG_WARN,"First point: " + (string)llList2Vector(pts,0) + " Current pos: " + (string)llGetPos());
+            pathexestop(PATHEXEBADSTARTPOS);                // we are not where we are supposed to be.
+            return; 
+        }    
     }
     if (gPathExePendingStatus == 0) { gPathExePendingStatus = status; }   // save any error status sent for later
     if (ismaze)                                             // add to maze or path list
