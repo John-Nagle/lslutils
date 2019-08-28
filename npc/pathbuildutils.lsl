@@ -661,8 +661,10 @@ list pathclean(list path)
 //
 list pathtrimmedstaticpath(vector startpos, vector endpos, float stopshort, float width, integer chartype)
 {   list path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);    // plan a static path
-    if (stopshort <= 0) return(path);                       // no need to trim
     integer status = llList2Integer(path,-1);               // static path status
+    ////if (status == PU_GOAL_REACHED && llGetListLength(path) == 1)    // if we got an empty path because at goal
+    ////{   path = [startpos, endpos, 0]; status = 0;}          // create a dummy path between start and end
+    if (stopshort <= 0) return(path);                       // no need to trim
     if (status != 0) { return([status]); }                  // fails
     path = llList2List(path,0,-2);                          // path without status
     integer i = llGetListLength(path);
@@ -680,7 +682,7 @@ list pathtrimmedstaticpath(vector startpos, vector endpos, float stopshort, floa
         stopshort -= dvmag;                                 // decrease trim dist by last segment
         i = llGetListLength(path);                          // path has been trimmed
     }
-    return([PU_GOAL_REACHED]);                              // we're so close we're there. 
+    return([startpos, endpos, 0]);                          // we're so close we're there. 
 }
 
 
