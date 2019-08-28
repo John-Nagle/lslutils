@@ -22,12 +22,14 @@
 
 //  Link message types
 //
-#define MAZESOLVEREQUEST 201                    // to maze solver
-#define MAZESOLVERREPLY 202                     // from maze solver
-#define MAZEPATHREPLY 203                       // from maze solver to path planner
+#define MAZESOLVEREQUEST 201                    // from path planner to maze solver
+#define MAZESOLVERREPLY 202                     // from maze solver to execution
+#define MAZEPATHREPLY 203                       // from path planner to execution
+#define MAZEPATHSTOP 204                        // from path planner to execution
 
 #define PATH_DIR_REQUEST 101                    // character controller to path planner                  
 #define PATH_DIR_REPLY 102                      // path planner to character controller
+
 
 
 #define MAZEMAXSIZE (41)                                    // maximum size of maze

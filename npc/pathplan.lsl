@@ -270,8 +270,25 @@ integer gPathplanChartype = CHARACTER_TYPE_A;
 //
 pathRequestRecv(string jsonstr)
 {   
-    //  Starting position and goal position must be on a walkable surface, not at character midpoint.
-    vector startpos = (vector)llJsonGetValue(jsonstr,["startpos"]);   // get starting position
+    //  First, get stopped before we start planning the next move.
+    llMessageLinked(LINK_THIS,MAZEPATHSTOP, "",NULL_KEY);       // tell execution system to stop
+    integer i = 100;                                            // keep testing for 100 sleeps
+    vector startpos = llGetPos();
+    float poserr = INFINITY;                                    // position error, if still moving
+    do                                                          // until character stops
+    {   llSleep(0.3);                                           // allow time for message to execute task to stop KFM
+        vector pos = llGetPos();
+        poserr = llVecMag(startpos - pos);                      // how far did we move
+        startpos = pos;
+        pathMsg(PATH_MSG_INFO,"Waiting for character to stop moving.");
+    } while (i-- > 0 && poserr > 0.001);                        // until position stablizes 
+    if (i <= 0) { pathMsg(PATH_MSG_WARN, "Character not stopping on command, at " + (string)startpos); }       
+    //  Starting position and goal position must be on a walkable surface, not at character midpoint. 
+    //  We just go down slightly less than half the character height.
+    //  We're assuming a box around the character.      
+    startpos = llGetPos();                                      // startpos is where we are now
+    vector startscale = llGetScale();
+    startpos.z = (startpos.z - startscale.z*0.45);            // approximate ground level for start point
     vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);   // get goal
     gPathWidth = (float)llJsonGetValue(jsonstr,["width"]);
     gPathHeight = (float)llJsonGetValue(jsonstr,["height"]);
