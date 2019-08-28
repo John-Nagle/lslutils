@@ -63,7 +63,7 @@ list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
 #define MAZEEDGEFOLLOWDX(n) llList2Integer(MAZEEDGEFOLLOWDXTAB,(n))
 #define MAZEEDGEFOLLOWDY(n) llList2Integer(MAZEEDGEFOLLOWDYTAB,(n))
 
-#define MAZEPRINTVERBOSE(s) { pathMsg(PATH_MSG_INFO,(s)); }
+#define MAZEPRINTVERBOSE(s) { pathMsg(PATH_MSG_DEBUG,(s)); }
 
 //
 //  abs -- absolute value, integer
@@ -301,7 +301,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             if (!founduseful)                                                       // stopped following, but no result
             {   gMazePath = [];                                                     // failed, release memory and return
                 gMazeCells = [];
-                MAZEPRINTVERBOSE("No solution. Status: " + (string)gMazeStatus);
+                pathMsg(PATH_MSG_WARN,"No maze solution. Status: " + (string)gMazeStatus);
                 return([]);                                                         // no path possible
             }
 

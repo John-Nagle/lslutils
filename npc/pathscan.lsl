@@ -11,9 +11,6 @@
 //  Communicates with pathexecute.lsl, which got too big, so
 //  it had to be split.
 //
-//  ***UNTESTED***
-//
-//
 //  Animats
 //  August, 2019
 //
@@ -235,7 +232,7 @@ pathscancollision(integer num_detected)
         {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                    // hit a non-walkable
-            {   pathMsg(PATH_MSG_INFO,"Collided with " + llDetectedName(i));
+            {   pathMsg(PATH_MSG_WARN,"Collided with " + llDetectedName(i));
                 pathscandone(PATHEXECOLLISION, llDetectedKey(i)); // stop
                 return;
             }

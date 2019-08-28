@@ -51,7 +51,9 @@ integer gPathLastIMTime = 0;                                    // last instant 
 //
 //  pathMsg  -- call for pathfinding problems
 //
-pathMsg(integer level, string msg)                              // print debug message
+#define pathMsg(level, msg) { if (level <= gPathMsgLevel) { pathMsgFn((level),(msg)); }} // as macro, to prevent building message that will never print
+
+pathMsgFn(integer level, string msg)                            // print debug message
 {   if (level > gPathMsgLevel) { return; }                      // ignore if suppressed
     string s = "Path planning: " + msg;
     llOwnerSay(s);                                              // message
@@ -256,7 +258,7 @@ list castray(vector p0, vector p1, list params)
     while (tries-- > 0)
     {   
         castresult = llCastRay(p0, p1, params);             // try cast ray
-        DEBUGPRINT1("Cast ray: p0: " + (string)p0 + "  p1: " + (string)p1 + " result: " + llDumpList2String(castresult,","));  
+        pathMsg(PATH_MSG_DEBUG,"Cast ray: p0: " + (string)p0 + "  p1: " + (string)p1 + " result: " + llDumpList2String(castresult,","));  
         if (llList2Integer(castresult,-1) >= 0)             // if good status
         {   return(castresult); }                           // non-error, return
         pathMsg(PATH_MSG_WARN,"Cast delayed: " + (string) llList2Integer(castresult,-1)); 
@@ -422,7 +424,7 @@ integer mazecasthitonlywalkable(list castresult, integer nohitval)
 {
     integer status = llList2Integer(castresult, -1);        // status is last element in list
     if (status < 0)
-    {   DEBUGPRINT1("Cast ray error status: " + (string)status);
+    {   pathMsg(PATH_MSG_WARN,"Cast ray error status: " + (string)status);
         return(FALSE);                                      // fails, unlikely       
     }
     if (status == 0) { return(nohitval); }                  // hit nothing, use no hit value
@@ -441,7 +443,7 @@ integer mazecasthitonlywalkable(list castresult, integer nohitval)
             list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
-            {   DEBUGPRINT1("Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
+            {   pathMsg(PATH_MSG_DEBUG,"Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
                 return(FALSE);                              // hit non-walkable, obstructed
             }
             return(TRUE);                                   // we hit a walkable - good.

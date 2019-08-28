@@ -357,7 +357,7 @@ pathexedomove()
         {   pathMsg(PATH_MSG_WARN, "Out of position. At " + (string)pos + ". Should be at " + (string)kfmstart); // not serious, but happens occasionally
         }
         gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
-        pathMsg(PATH_MSG_INFO,"Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
+        pathMsg(PATH_MSG_DEBUG,"Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
         list kfmmoves = pathexebuildkfm(pos, llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
         if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
@@ -387,99 +387,7 @@ pathexemovementend()
     pathMsg(PATH_MSG_INFO,"Movement end");
     pathexedomove();
 }
-#ifdef OBSOLETE
-//
-//  pathobstacleraycast -- check for obstacle ahead
-//
-//  Cast ray from p to p1.
-//
-pathobstacleraycast(vector p, vector p1)
-{   
-    //  One simple ahead ray cast for now.
-    list castresult = castray(p, p1, PATHCASTRAYOPTSOBS);
-    //  We have to do the whole analysis drill. Ground or walkable, OK. Self, OK.
-    //  Anything else is an obstacle
-    list castanalysis = pathanalyzecastresult(castresult, FALSE);
-    if (castanalysis == []) return;                         // no problem
-    if (llGetListLength(castanalysis) == 1)                 // error status
-    {   pathexestop(llList2Integer(castanalysis,0)); return; }  // report error
-    key hitobj = llList2Key(castanalysis,0);                // result is [obj, hitpt]
-    vector hitpt = llList2Vector(castanalysis,1);
-    pathMsg(PATH_MSG_WARN,"Move stopped by obstacle: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
-                    + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);
-    pathexestopkey(PATHEXEOBSTRUCTED, hitobj);  // report trouble
-}
-//
-//  pathcheckdynobstacles  -- check for dynamic obstacles encountered while moving.
-//
-//  Such as other KFM characters, which are not collidable.
-//
-pathcheckdynobstacles()
-{
-    //  We need to find out which segment of the path we are currently in.
-    float lookaheaddist = PATHEXELOOKAHEADDIST;     // distance to look ahead
-    float PATHEXESEGDISTTOL = 0.20;                 // how close to segment to be in it. Keyframe error causes trouble here.
-    float HUGE = 99999999999.0;                     // huge number, but INFINITY is bigger
-    vector posoffset = <0,0,gPathExeHeight*0.5>;    // pos is at object midpoint, points are at ground
-    vector pos = llGetPos() - posoffset;            // where we are now
-    integer i;
-    integer foundseg = FALSE;
-    vector startpos = llList2Vector(gKfmSegments,0);   // start of path
-    //  Start at segment where last found the position.  
-    //  Stop at end of list, finished lookaheaddist, or no longer moving.
-    //  pos and all segment points are at ground level.
-    for (i=gKfmSegmentCurrent; i<llGetListLength(gKfmSegments)-1 && lookaheaddist > 0 && gPathExeMoving != 0; i++)
-    {   vector p0 = llList2Vector(gKfmSegments,i);
-        vector p1 = llList2Vector(gKfmSegments,i+1);
-        if (!foundseg) 
-        {   float distalongseg = pathdistalongseg(pos, p0, p1, PATHEXESEGDISTTOL); // distance along seg, or INFINITY
-            if (distalongseg < HUGE)    
-            {   
-                gKfmSegmentCurrent = i;                 // advance current segment pos
-                foundseg = TRUE;                        // start checking from here                
-            }
-        }
-        if (foundseg)                                   // if pos is in this or a previous segment
-        {   float distalongseg = pathdistalongseg(pos, p0, p1, PATHEXESEGDISTTOL); // distance along seg, or NAN
-            if (distalongseg < HUGE)                    // point is in capsule around segment
-            {   
-                float seglength = llVecMag(p0-p1);
-                if (distalongseg < 0) { distalongseg = 0; } // bound to segment
-                if (distalongseg > seglength) { distalongseg = seglength; }
-                float castdist = seglength - distalongseg;  // cast to end of segment
-                if (lookaheaddist < castdist) { castdist = lookaheaddist; } // if running out of cast distance
-                if  (castdist <= 0) { return; };        // at end
-                vector pos2 = pos + llVecNorm(p1-p0)*castdist; // how far to cast            
-                pathobstacleraycast(pos+posoffset, pos2+posoffset);          // look ahead horizontally       
-                lookaheaddist -= castdist;              // reduce distance ahead
-                pos = p1;                               // start of next segment is start of next cast
-            }
-        }   
-    }
-    if (!foundseg)
-    {   pathMsg(PATH_MSG_ERROR,"Unable to find " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
-}
-//  
-//
-//  pathexetimer  -- timer event, check progress and do ray casts
-//
-pathexetimer()
-{   if (gPathExeMoving && gKfmSegments != [])                   // if we are moving and have a path
-    {   pathcheckdynobstacles(); }                              // ray cast for obstacles
-    if (gPathExeMoving)                                         // if we are supposed to be moving
-    {   
-        integer now = llGetUnixTime();                          // time now
-        if (now - gPathLastTimetick > PATHMOVECHECKSECS)
-        {   gPathLastTimetick = now;                            // update last check time
-            vector pos = llGetPos();
-            if (llVecMag(pos - gPathExeLastPos) > 0.01)         // if moving at all
-            {   return; }                                       // OK
-            //  No KFM movement. Something has gone wrong
-            pathexestop(MAZESTATUSKFMSTALL);                    // stalled
-        }
-    }
-}
-#endif // OBSOLETE
+
 //
 //  pathexestopkey -- trouble, stop and abort keyframe motion, with key
 //
@@ -554,7 +462,7 @@ pathexemazedeliver(string jsn)
 //  pathexepathdeliver  -- JSON from path planner
 //
 pathexepathdeliver(string jsn) 
-{   pathMsg(PATH_MSG_INFO,"Path deliver received: " + jsn);
+{   pathMsg(PATH_MSG_DEBUG,"Path deliver received: " + jsn);
     string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
     if (requesttype != "path") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
@@ -577,28 +485,6 @@ pathexepathdeliver(string jsn)
     for (i=0; i<len; i++) { pts += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors  
     pathexedeliver(pts, pathid, segmentid, FALSE, status);      // deliver path segment
 }
-#ifdef OBSOLETE
-//
-//  pathexecollision -- collided with something
-//
-pathexecollision(integer num_detected)
-{   
-    if (!gPathExeMoving) { return; }    // not moving, not our fault
-    integer i;
-    for (i=0; i<num_detected; i++)
-    {   key hitobj = llDetectedKey(i);
-        if (hitobj != NULL_KEY)              // null key is land
-        {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
-            integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-            if (pathfindingtype != OPT_WALKABLE)                    // hit a non-walkable
-            {   pathMsg(PATH_MSG_INFO,"Collided with " + llDetectedName(i));
-                pathexestopkey(PATHEXECOLLISION, llDetectedKey(i)); // stop
-                return;
-            }
-        }
-    }
-}
-#endif // OBSOLETE
 
 //
 //  pathexescanreply -- reply from path scanner
