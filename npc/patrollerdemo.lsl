@@ -30,7 +30,7 @@ float CHARACTER_SPEED = 2.5;                // (m/sec) speed
 float CHARACTER_TURNSPEED_DEG = 90.0;       // (deg/sec) turn rate
 string IDLE_ANIM = "stand 2";               // idle or chatting         
 string STAND_ANIM = "stand 2";              // just when stopped
-string WAITING_ANIM = "impatient";          // during planning delays
+string WAITING_ANIM = "stand arms folded";  // during planning delays
 float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                  // will stick around for this long
 float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far before we recheck on approach
@@ -119,12 +119,14 @@ pathUpdateCallback(integer status, key hitobj )
                     llResetTime();
                 } else {
                     pathMsg(PATH_MSG_WARN,"Can't get in front of avatar due to obstacle.");
+                    start_anim(IDLE_ANIM);
                     face_and_greet();
                 }                             
                 return;
             }
             if (gAction == ACTION_FACE)
             {   //  Turn to face avatar.
+                start_anim(IDLE_ANIM);
                 face_and_greet();
             } 
             if (gAction == ACTION_PATROL)
@@ -135,7 +137,7 @@ pathUpdateCallback(integer status, key hitobj )
                 pathMsg(PATH_MSG_INFO,"Patrol point reached.");
             }  
             return;
-        } else if (status == PATHEXEOBSTRUCTED || status == PATHEXECOLLISION)                   // obstruction ahead, must avoid
+        } else if (status == PATHEXEOBSTRUCTED || status == PATHEXECOLLISION || status == PATHEXEBADMOVEEND)   // recoverable problem
         {   if (status == PATHEXECOLLISION)                                                   // need to check for avatar
             {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
                 integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
@@ -146,11 +148,11 @@ pathUpdateCallback(integer status, key hitobj )
             float dist = pathdistance(llGetPos(), gPatrolDestination, CHARACTER_WIDTH, CHARACTER_TYPE_A);  // measure distance to goal
             if (dist < gPathDistance)                                   // if we are making progress
             {   if (gAction == ACTION_PATROL)                       // if patrolling
-                {   pathMsg(PATH_MSG_WARN,"Patrol stopped by obstruction, retrying.");
+                {   pathMsg(PATH_MSG_WARN,"Patrol stopped by error, retrying.");
                     restart_patrol();
                     return;
                 } else if (gAction == ACTION_PURSUE)
-                {   pathMsg(PATH_MSG_WARN,"Pursue stopped by obstruction, retrying.");
+                {   pathMsg(PATH_MSG_WARN,"Pursue stopped by error, retrying.");
                     restart_pursue();
                     return;
                 }
@@ -162,6 +164,7 @@ pathUpdateCallback(integer status, key hitobj )
         {          
             if (gAction == ACTION_FACE)             // Can't get in front of avatar, greet anyway.
             {   pathMsg(PATH_MSG_WARN, "Can't navigate to point in front of avatar.");
+                start_anim(IDLE_ANIM);
                 face_and_greet();
                 return;
             }
