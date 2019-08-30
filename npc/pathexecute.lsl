@@ -158,8 +158,14 @@ pathexeinit(float probespacing)
 pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, integer status)
 {   DEBUGPRINT1("patheexedeliver, segment #" + (string)segmentid + " points: " + llDumpList2String(pts,","));
     integer length = llGetListLength(pts);
-    if (length == 0) { pathexestop(PATHEXEEMPTYPATH); return; } // empty path
-    if (length == 1 && llList2Vector(pts,0) != ZERO_VECTOR) { pathexestop(PATHEXEBADPATH1); return; } // bogus 1 point path
+    if (length == 0 || (length == 1 && llList2Vector(pts,0) != ZERO_VECTOR))    // not enough points and not an EOF marker - why is this happening?
+    {   pathMsg(PATH_MSG_WARN,"Bogus path segment delivered, pathid: " + (string)pathid + " ismaze: " + (string)ismaze + 
+            " segmentid: " + (string)segmentid + " pts: " +
+            llDumpList2String(pts,","));
+        gPathExeActive = TRUE;                              // so stop will return an error 
+        pathexestop(PATHEXEBADPATH1); 
+        return; 
+    } // bogus 1 point path
     if (pathid != gPathExeId)                                // starting a new segment, kill any movement
     {   if (segmentid != 0) { pathMsg(PATH_MSG_WARN,"Stale path segment ignored."); return; }// segment out of sequence
         pathexestop(0);                                     // normal start
