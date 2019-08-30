@@ -75,8 +75,7 @@ list gClearSegments = [];                                   // path segment list
 list gMazeSegments = [];                                    // maze segment list
 
 list gAllSegments = [];                                     // combined segments from above, points only
-////list gKfmSegments = [];                                     // segments being executed by current KFM operation
-////integer gKfmSegmentCurrent = 0;                             // which segment we are currently on
+vector gPathExeMovegoal;                                    // where we are currently headed
 
 
 //  Segment storage functions. If only we could pass references.
@@ -97,6 +96,7 @@ rotation NormRot(rotation Q)
     return Q;
 }
 
+float pathvecmagxy(vector v) { return(llVecMag(<v.x, v.y, 0>));}            // vector magnitude, XY plane only
 //
 //  Debug marker generation
 //
@@ -157,14 +157,17 @@ pathexeinit(float probespacing)
 //
 pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, integer status)
 {   DEBUGPRINT1("patheexedeliver, segment #" + (string)segmentid + " points: " + llDumpList2String(pts,","));
-    if (llGetListLength(pts) < 2 && pts != [ZERO_VECTOR]) { pathexestop(PATHEXEBADPATH1); return; } // bogus path
-    if (pathid != gPathExeId)                                // starting a new segment, kill any movement
+    integer length = llGetListLength(pts);
+    if (length == 0) { pathexestop(PATHEXEBADPATH1); return; } // empty path
+    if (length == 1 && llList2Vector(pts,0) != ZERO_VECTOR) { pathexestop(PATHEXEBADPATH1); return; } // bogus 1 point path
+     if (pathid != gPathExeId)                                // starting a new segment, kill any movement
     {   if (segmentid != 0) { pathexestop(PATHEXESEGOUTOFSEQ1); return; }// segment out of sequence
         pathexestop(0);                                     // normal start
         gPathExeId = pathid;                                // reset state to empty
         gPathExeEOF = FALSE;                                // not at EOF
         gPathExeActive = TRUE;                              // we are running
         gPathExePendingStatus = 0;                          // no stored status yet
+        gPathExeMovegoal = ZERO_VECTOR;                     // no stored goal yet
         llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
     }
     if (segmentid == 0)                                     // starting a new path
@@ -352,8 +355,9 @@ pathexedomove()
     else if (gAllSegments != [])                             // if work
     {   
         vector kfmstart = llList2Vector(gAllSegments,0);    // first point, which is where we should be
+        assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker         
         vector pos = llGetPos();                            // we are here
-        if (llVecMag(<kfmstart.x, kfmstart.y, 0> - <pos.x, pos.y, 0>) > PATHEXEMAXCREEP)     // we are out of position
+        if (pathvecmagxy(kfmstart - pos) > PATHEXEMAXCREEP)     // we are out of position
         {   pathMsg(PATH_MSG_WARN, "Out of position. At " + (string)pos + ". Should be at " + (string)kfmstart); // not serious, but happens occasionally
             ////pathexestop(PATHEXEBADMOVEEND);                 // error, must start a new operation to recover
             ////return; 
@@ -364,7 +368,9 @@ pathexedomove()
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
         if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
         {   pathscanstart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeId, gPathMsgLevel);         // start obstacle detection
-            llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion           
+            llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion  
+            gPathExeMovegoal = llList2Vector(gAllSegments,-1);  // where we are supposed to be going
+            assert(gPathExeMovegoal != ZERO_VECTOR);        // must not be EOF marker         
             gPathExeMoving = TRUE;                          // movement in progress
             ////llSetTimerEvent(PATHEXERAYTIME);                // switch to fast timer for ray casts for obstructions
             ////gKfmSegments = gAllSegments;                    // what we are currently doing
@@ -382,12 +388,20 @@ pathexedomove()
 //  pathexemovementend -- movement has finished, feed in next section if any
 //
 pathexemovementend()
-{   gPathExeMoving = FALSE;                                 // not moving
-    ////gKfmSegments = [];                                      // no current segments
-    ////gPathExeLastPos = ZERO_VECTOR;                          // no last moving pos
-    
-    pathMsg(PATH_MSG_INFO,"Movement end");
-    pathexedomove();
+{   if (gPathExeMoving)                                     // if was moving (KFM operation in progress)
+    {
+        gPathExeMoving = FALSE;                             // not moving now
+        vector pos = llGetPos();
+        if (pathvecmagxy(pos - gPathExeMovegoal) > PATHEXEMAXCREEP)     // if not where supposed to be
+        {   pathMsg(PATH_MSG_WARN, "Out of position at movement end. At " + (string)pos + ". Should be at " + (string)gPathExeMovegoal); // Happens occasionally
+            pathexestop(PATHEXEBADMOVEEND);                 // error, must start a new operation to re-plan and recover
+            return; 
+        }           
+        pathMsg(PATH_MSG_INFO,"Movement end");
+        pathexedomove();                                    // get next KFM section if any and keep going
+    } else {                                                // movement end event but we were not moving
+        pathMsg(PATH_MSG_WARN,"Bogus movement end.");
+    }
 }
 
 //
@@ -400,10 +414,8 @@ pathexestopkey(integer status, key hitobj)
     gClearSegments = [];                                    // reset state
     gMazeSegments = [];
     gAllSegments = [];
-    ////gKfmSegments = [];
     gPathExeNextsegid = 0; 
     gPathExeMoving = FALSE;                                 // not moving
-    ////gPathExeLastPos = ZERO_VECTOR;                          // no last position
     llSetTimerEvent(0.0);                                   // stop timing 
     if (gPathExeActive)                                     // if we are active
     {   if (status == 0) { status = gPathExePendingStatus; }// send back any stored status

@@ -114,7 +114,7 @@ pathUpdateCallback(integer status, key hitobj )
                 if (clear_sightline(gTarget, finaltarget))
                 {            
                     pathMsg(PATH_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
-                    gPathDistance = pathdistance(llGetPos(), gPatrolDestination, CHARACTER_WIDTH, CHARACTER_TYPE_A);  // measure distance to goal
+                    gPathDistance = INFINITY;
                     pathNavigateTo(finaltarget, 0);
                     llResetTime();
                 } else {
@@ -145,19 +145,12 @@ pathUpdateCallback(integer status, key hitobj )
                 if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
                 {   llSay(0,"Excuse me."); }
             }
-            float dist = pathdistance(llGetPos(), gPatrolDestination, CHARACTER_WIDTH, CHARACTER_TYPE_A);  // measure distance to goal
-            if (dist < gPathDistance)                                   // if we are making progress
-            {   if (gAction == ACTION_PATROL)                       // if patrolling
-                {   pathMsg(PATH_MSG_WARN,"Patrol stopped by error, retrying.");
-                    restart_patrol();
-                    return;
-                } else if (gAction == ACTION_PURSUE)
-                {   pathMsg(PATH_MSG_WARN,"Pursue stopped by error, retrying.");
-                    restart_pursue();
-                    return;
-                }
-            } else {                                                    // not getting better, do not retry
-                pathMsg(PATH_MSG_WARN, "Distance to goal did not decrease. Now " + (string)dist + " was " + (string)gPathDistance);
+            if (gAction == ACTION_PATROL)                       // if patrolling
+            {   pathMsg(PATH_MSG_WARN,"Patrol stopped by error, retrying.");
+                if (restart_patrol()) { return; }               // try to restart
+            } else if (gAction == ACTION_PURSUE)
+            {   pathMsg(PATH_MSG_WARN,"Pursue stopped by error, retrying.");
+                if (restart_pursue()) { return; }                    // successful restart
             }
         }
         //  Default - errors we don't special case.
@@ -183,35 +176,52 @@ pathUpdateCallback(integer status, key hitobj )
             return;
         }
     }
+    
 //
-//  restart_patrol -- start or restart patrol
+//  restart_progress_check -- are we getting closer to the goal?
 //
-restart_patrol()
+integer restart_progress_check(vector goal) 
 {
+    float dist = pathdistance(llGetPos(), goal, CHARACTER_WIDTH, CHARACTER_TYPE_A);  // measure distance to goal
+    if (dist >= gPathDistance)              // not getting closer to goal
+    {   
+        pathMsg(PATH_MSG_WARN, "Distance to goal did not decrease. Now " + (string)dist + " was " + (string)gPathDistance);
+        return(FALSE);
+    }    
+    gPathDistance = dist;                  
+    return(TRUE);                                   // success
+}
+
+//
+//  restart_patrol -- start or restart patrol.  Returns TRUE if restartable
+//
+integer restart_patrol()
+{   if (!restart_progress_check(gPatrolDestination)) { return(FALSE); } // not getting closer, do not try again
     gDwell = llList2Float(gPatrolPointDwell, gNextPatrolPoint);
     gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
     pathMsg(PATH_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
-    gPathDistance = pathdistance(llGetPos(), gPatrolDestination, CHARACTER_WIDTH, CHARACTER_TYPE_A);  // measure distance to goal
     start_anim(WAITING_ANIM);                     // applies only when stalled during movement
     pathNavigateTo(gPatrolDestination,0);           // head for next pos
     gAction = ACTION_PATROL;                        // patrolling
+    return(TRUE);
 }
 //
-//  restart_pursue -- start or restart pursue
+//  restart_pursue -- start or restart pursue  -- returns TRUE if restartable
 //
-restart_pursue()
+integer restart_pursue()
 {   pathMsg(PATH_MSG_WARN,"Pursuing " + llKey2Name(gTarget));
-    //  Temporary way to stop whatever is going on.
-    llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);           // stop whatever is going on ***TEMP***
+    //  Temporary way to stop whatever is going on.   
     gDwell = 0.0;
     list details = llGetObjectDetails(gTarget, [OBJECT_POS]);       // Where is avatar?
     vector goalpos = llList2Vector(details,0);                      // get object position
-    gPathDistance = pathdistance(llGetPos(), goalpos, CHARACTER_WIDTH, CHARACTER_TYPE_A);  // measure distance to goal
+    if (!restart_progress_check(goalpos)) { return(FALSE); } // not getting closer, do not try again
+    llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);           // stop whatever is going on ***TEMP***
     start_anim(WAITING_ANIM);                                       // applies only when stalled during movement
     llSleep(2.0);                                                   // allow stop time
     pathPursue(gTarget, GOAL_DIST*2);
     gAction = ACTION_PURSUE;
     llSetTimerEvent(1.0);                   // fast poll while moving
+    return(TRUE);
 }
 
 start_patrol()
@@ -228,6 +238,7 @@ start_patrol()
         while (newpnt == gNextPatrolPoint);
         gNextPatrolPoint = newpnt;
         gPatrolDestination = llList2Vector(gPatrolPoints, gNextPatrolPoint);
+        gPathDistance = INFINITY;                                       // first try, can't be in a loop yet
         restart_patrol();
     }  
 }
@@ -351,9 +362,8 @@ default
                 //  New target found. Go to them.
                 gAction = ACTION_PURSUE;
                 gDwell = 0.0;                             // not relevant in this mode
-                ////pathUpdateCharacter(CHAR_PARAMS + CHAR_AVOID_DISTANT); // avatar avoidance
+                gPathDistance = INFINITY;               // cannot be in loop, first try
                 restart_pursue();
-               ////pathPursue(gTarget, GOAL_DIST*2);
                 llSetTimerEvent(1.0);                   // fast poll while moving
                 // Remove pursue target from to-do list.
                 gDeferredTargets = llDeleteSubList(gDeferredTargets, targetix, targetix);
