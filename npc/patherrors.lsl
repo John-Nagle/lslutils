@@ -49,5 +49,6 @@
 #define PATHEXENOTWALKABLE  -2006               // can't find walkable surface under point
 #define PATHEXEOBSTRUCTED   -2007               // obstruction ahead
 #define PATHEXEBADMOVEEND   -2008               // out of position at end of move
+#define PATHEXEEMPTYPATH    -2009               // empty path - how did that happen?
 
 #endif // PATHERRORS

@@ -158,10 +158,10 @@ pathexeinit(float probespacing)
 pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, integer status)
 {   DEBUGPRINT1("patheexedeliver, segment #" + (string)segmentid + " points: " + llDumpList2String(pts,","));
     integer length = llGetListLength(pts);
-    if (length == 0) { pathexestop(PATHEXEBADPATH1); return; } // empty path
+    if (length == 0) { pathexestop(PATHEXEEMPTYPATH); return; } // empty path
     if (length == 1 && llList2Vector(pts,0) != ZERO_VECTOR) { pathexestop(PATHEXEBADPATH1); return; } // bogus 1 point path
-     if (pathid != gPathExeId)                                // starting a new segment, kill any movement
-    {   if (segmentid != 0) { pathexestop(PATHEXESEGOUTOFSEQ1); return; }// segment out of sequence
+    if (pathid != gPathExeId)                                // starting a new segment, kill any movement
+    {   if (segmentid != 0) { pathMsg(PATH_MSG_WARN,"Stale path segment ignored."); return; }// segment out of sequence
         pathexestop(0);                                     // normal start
         gPathExeId = pathid;                                // reset state to empty
         gPathExeEOF = FALSE;                                // not at EOF
@@ -478,7 +478,7 @@ pathexemazedeliver(string jsn)
 //  pathexepathdeliver  -- JSON from path planner
 //
 pathexepathdeliver(string jsn) 
-{   pathMsg(PATH_MSG_DEBUG,"Path deliver received: " + jsn);
+{   pathMsg(PATH_MSG_INFO,"Path deliver received: " + jsn);
     string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
     if (requesttype != "path") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
