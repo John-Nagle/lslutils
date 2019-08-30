@@ -391,12 +391,14 @@ pathexemovementend()
 {   if (gPathExeMoving)                                     // if was moving (KFM operation in progress)
     {
         gPathExeMoving = FALSE;                             // not moving now
+#ifdef OBSOLETE // no, don't check here. Can legitimately be out of position if a move was aborted.
         vector pos = llGetPos();
         if (pathvecmagxy(pos - gPathExeMovegoal) > PATHEXEMAXCREEP)     // if not where supposed to be
         {   pathMsg(PATH_MSG_WARN, "Out of position at movement end. At " + (string)pos + ". Should be at " + (string)gPathExeMovegoal); // Happens occasionally
             pathexestop(PATHEXEBADMOVEEND);                 // error, must start a new operation to re-plan and recover
             return; 
-        }           
+        }
+#endif // OBSOLETE           
         pathMsg(PATH_MSG_INFO,"Movement end");
         pathexedomove();                                    // get next KFM section if any and keep going
     } else {                                                // movement end event but we were not moving
