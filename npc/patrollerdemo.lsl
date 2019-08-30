@@ -215,7 +215,7 @@ integer restart_pursue()
     list details = llGetObjectDetails(gTarget, [OBJECT_POS]);       // Where is avatar?
     vector goalpos = llList2Vector(details,0);                      // get object position
     if (!restart_progress_check(goalpos)) { return(FALSE); } // not getting closer, do not try again
-    llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);           // stop whatever is going on ***TEMP***
+    ////llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);           // stop whatever is going on ***TEMP***
     start_anim(WAITING_ANIM);                                       // applies only when stalled during movement
     llSleep(2.0);                                                   // allow stop time
     pathPursue(gTarget, GOAL_DIST*2);

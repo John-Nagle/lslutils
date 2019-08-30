@@ -69,7 +69,7 @@ pathscaninit()
 pathscandone(integer status, key hitobj)
 {   if (!gPathScanActive) { return; }                       // we are not running, ignore
     if (gPathScanMoving && status != 0)                     // if something bad happened
-    {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
+    {   ////llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
         pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);    
     }
     //  Return "scandone" to exec module
