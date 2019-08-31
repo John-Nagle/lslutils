@@ -823,7 +823,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
             ////path = mazeoptimizeroute(path);             // do simple optimizations
         } 
     }
-    {   pathMsg(PATH_MSG_WARN,"Maze solver done. Free memory " + (string)llGetFreeMemory()); } 
+    {   pathMsg(PATH_MSG_WARN,"Maze solver finished task, pathid " + (string)pathid + ", segment " + (string)segmentid + ". Free memory " + (string)llGetFreeMemory()); } 
     //  Send reply                  
     llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "pathid", pathid, "segmentid", segmentid, "status", status,
         "pos", gMazePos, "rot", gMazeRot, "cellsize", gMazeCellSize,
