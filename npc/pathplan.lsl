@@ -63,7 +63,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
         float fulllength = llVecMag(p1-p0);                 // full segment length
         vector dir = llVecNorm(p1-p0);                      // direction of segment
         vector pos = p0 + dir*distalongseg;                 // current working position
-        DEBUGPRINT1("Checking " + (string)pos + " to " + (string)p1 + " for obstacles.");
+        pathMsg(PATH_MSG_INFO,"Checking " + (string)pos + " to " + (string)p1 + " for obstacles.");
         float hitdist = castbeam(pos, p1, width, height, testspacing, TRUE,
                     PATHCASTRAYOPTS);
         if (hitdist < 0)
