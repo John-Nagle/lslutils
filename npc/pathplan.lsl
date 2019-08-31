@@ -128,9 +128,9 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
             //  Output points so far, then a maze.
             if (pathPoints != [] && llVecMag(llList2Vector(pathPoints,-1) - interpt0) >= 0.0001) // avoid zero length and divide by zero
             {
-                pathPoints += [interpt0];                       // segment up to start of maze
+                pathPoints += [interpt0];                       // segment up to start of maze is non-null
+                pathdeliversegment(pathPoints, FALSE, FALSE, pathid, 0);       // points so far, no maze, not done.
             }
-            pathdeliversegment(pathPoints, FALSE, FALSE, pathid, 0);       // points so far, no maze, not done.
             pathdeliversegment([interpt0, interpt1], TRUE, FALSE, pathid, 0);// bounds of a maze area, maze, not done
             pathPoints = [interpt1];                            // path clears and continues after maze
             if (llVecMag(interpt1 - llList2Vector(pts,len-1)) < 0.01)  // if at final destination
