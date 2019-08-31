@@ -20,7 +20,6 @@
 //
 //  Globals
 //
-integer gMazeSerial = 0;                            // serial number of request.
 vector gMazePos;                                    // position of current maze
 rotation gMazeRot;                                  // rotation of current maze
 float gMazeCellSize;                                // cell size of maze
@@ -90,7 +89,6 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
     }
 #endif // GEOMCHECK
 
-    gMazeSerial++;                                  // next maze number
     llMessageLinked(LINK_THIS, MAZESOLVEREQUEST, llList2Json(JSON_OBJECT, [
         "request", "mazesolve",                     // type of request
         "msglev", msglev,                         // debug use - maze solver will print messages

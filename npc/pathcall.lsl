@@ -145,7 +145,8 @@ pathNavigateTo(vector endpos, float stopshort)
 {
     vector startpos = llGetPos();
     vector startscale = llGetScale();
-    gLocalPathId++;                                     // our serial number, passed forward
+    ////gLocalPathId++;                                     // our serial number, passed forward
+    gLocalPathId = (gLocalPathId+1)%(PATHMAXUNSIGNED-1);// our serial number, nonnegative
     startpos.z = (startpos.z - startscale.z*0.5);       // ground level for start point
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
     endpos = pathfindwalkable(endpos, gPathcallHeight);      // find walkable below char

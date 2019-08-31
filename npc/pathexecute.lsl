@@ -166,27 +166,22 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
         pathexestop(PATHEXEBADPATH1); 
         return; 
     } // bogus 1 point path
-    if (pathid != gPathExeId)                                // starting a new segment, kill any movement
-    {   if (segmentid != 0) { pathMsg(PATH_MSG_WARN,"Stale path segment ignored."); return; }// segment out of sequence
-        pathexestop(0);                                     // normal start
-        gPathExeId = pathid;                                // reset state to empty
+    if (pathid != gPathExeId)                                // starting a new path, kill any movement
+    {   //  Check for stale path ID.  Path ID wraps around but is always positive.
+        if (pathid < gPathExeId || pathid > gPathExeId+1000) { pathMsg(PATH_MSG_WARN,"Stale path segment ignored."); return; }// segment out of sequence
+        pathexestop(0);                                     // normal start, reset to clear state.
+        gPathExeId = pathid;                                // now working on this pathid
         gPathExeEOF = FALSE;                                // not at EOF
         gPathExeActive = TRUE;                              // we are running
         gPathExePendingStatus = 0;                          // no stored status yet
         gPathExeMovegoal = ZERO_VECTOR;                     // no stored goal yet
         llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
-    }
-    if (segmentid == 0)                                     // starting a new path
-    {   DEBUGPRINT1("Starting new path."); // ***TEMP***
-        if (gClearSegments != [] || gMazeSegments != [])    // so why do we have stored segments?
-        {   pathexestop(PATHEXESEGOUTOFSEQ2); return; }     // bad
-        
         vector verr = llList2Vector(pts,0) - llGetPos();    // get starting point
         if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL)     // if too far from current pos
         {   pathMsg(PATH_MSG_WARN,"Bad start pos. Should be at: " + (string)llList2Vector(pts,0) + " Current pos: " + (string)llGetPos());
             pathexestop(PATHEXEBADSTARTPOS);                // we are not where we are supposed to be.
             return; 
-        }    
+        }
     }
     if (gPathExePendingStatus == 0) { gPathExePendingStatus = status; }   // save any error status sent for later
     if (ismaze)                                             // add to maze or path list
@@ -555,10 +550,5 @@ default
     timer()
     {   pathexetimer();                                         // pass timer event
     }
-    moving_end()
-    {   pathexemovementend(); }   
-    
-    collision_start(integer num_detected)
-    {   pathexecollision(num_detected); }
 #endif // OBSOLETE
 }

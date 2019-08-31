@@ -19,6 +19,7 @@
 #ifndef INFINITY                                // should be an LSL builtin
 #define INFINITY ((float)"inf")                             // is there a better way?
 #endif // INFINITY
+#define PATHMAXUNSIGNED 2147483647              // 2^31-1, largest positive integer
 
 //  Link message types
 //
