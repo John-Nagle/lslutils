@@ -56,7 +56,6 @@ vector gScale;                  // scale of character
 key gOwner;                     // owner of character
 key gGroup;                     // group of character
 string gName;                   // our name
-float gPathDistance = 0.0;      // how far to goal, for stuck detection
 
 //  Patrol points
 integer gPatrolEnabled;
@@ -114,7 +113,6 @@ pathUpdateCallback(integer status, key hitobj )
                 if (clear_sightline(gTarget, finaltarget))
                 {            
                     pathMsg(PATH_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
-                    gPathDistance = INFINITY;
                     pathNavigateTo(finaltarget, 0);
                     llResetTime();
                 } else {
@@ -180,25 +178,10 @@ pathUpdateCallback(integer status, key hitobj )
     }
     
 //
-//  restart_progress_check -- are we getting closer to the goal?
-//
-integer restart_progress_check(vector goal) 
-{
-    float dist = pathdistance(llGetPos(), goal, CHARACTER_WIDTH, CHARACTER_TYPE_A);  // measure distance to goal
-    if (dist >= gPathDistance)              // not getting closer to goal
-    {   
-        pathMsg(PATH_MSG_WARN, "Distance to goal did not decrease. Now " + (string)dist + " was " + (string)gPathDistance);
-        return(FALSE);
-    }    
-    gPathDistance = dist;                  
-    return(TRUE);                                   // success
-}
-
-//
 //  restart_patrol -- start or restart patrol.  Returns TRUE if restartable
 //
 integer restart_patrol()
-{   if (!restart_progress_check(gPatrolDestination)) { return(FALSE); } // not getting closer, do not try again
+{   
     gDwell = llList2Float(gPatrolPointDwell, gNextPatrolPoint);
     gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
     pathMsg(PATH_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
@@ -213,9 +196,6 @@ integer restart_patrol()
 integer restart_pursue()
 {   pathMsg(PATH_MSG_WARN,"Pursuing " + llKey2Name(gTarget));
     gDwell = 0.0;
-    list details = llGetObjectDetails(gTarget, [OBJECT_POS]);       // Where is avatar?
-    vector goalpos = llList2Vector(details,0);                      // get object position
-    if (!restart_progress_check(goalpos)) { return(FALSE); } // not getting closer, do not try again
     start_anim(WAITING_ANIM);                                       // applies only when stalled during movement
     llSleep(2.0);                                                   // allow stop time
     pathPursue(gTarget, GOAL_DIST*2, TRUE);
@@ -238,7 +218,6 @@ start_patrol()
         while (newpnt == gNextPatrolPoint);
         gNextPatrolPoint = newpnt;
         gPatrolDestination = llList2Vector(gPatrolPoints, gNextPatrolPoint);
-        gPathDistance = INFINITY;                                       // first try, can't be in a loop yet
         restart_patrol();
     }  
 }
@@ -362,7 +341,6 @@ default
                 //  New target found. Go to them.
                 gAction = ACTION_PURSUE;
                 gDwell = 0.0;                             // not relevant in this mode
-                gPathDistance = INFINITY;               // cannot be in loop, first try
                 restart_pursue();
                 llSetTimerEvent(1.0);                   // fast poll while moving
                 // Remove pursue target from to-do list.
