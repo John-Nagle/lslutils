@@ -369,7 +369,7 @@ pathexedomove()
         list kfmmoves = pathexebuildkfm(pos, llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
         if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
-        {   pathscanstart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeId, gPathMsgLevel);         // start obstacle detection
+        {   pathscanstart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeTarget, gPathExeId, gPathMsgLevel);         // start obstacle detection
             llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion  
             gPathExeMovegoal = llList2Vector(gAllSegments,-1);  // where we are supposed to be going
             assert(gPathExeMovegoal != ZERO_VECTOR);        // must not be EOF marker         
