@@ -27,9 +27,11 @@
 //
 //  Look ahead constants
 //
-#define PATHSCANRAYTIME      0.2                            // do a cast ray for obstacles this often
-#define PATHMOVECHECKSECS   2.0                             // check this often for progress
+#define PATHSCANRAYTIME      0.2                            // (secs) do a cast ray for obstacles this often
+#define PATHMOVECHECKSECS   2.0                             // (secs) check this often for progress
 #define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
+#define PATHSCANMINTARGETMOVE   4.0                         // (m) target must move this much to be re-chased
+#define PATHSCANMINTARGETFRACT  0.5                         // (fraction) target must move this much as fract of dist to go to be re-chased.
 
 //
 //  Globals
@@ -45,6 +47,8 @@ vector gPathScanLastpos = ZERO_VECTOR;                      // last place we tes
 float gPathScanWidth = 1.0;                                  // defaults, overridden by messages
 float gPathScanHeight = 1.0;
 integer gPathScanChartype = CHARACTER_TYPE_A;
+key gPathScanTarget = NULL_KEY;                             // who we are chasing, if anybody
+vector gPathScanTargetPos = ZERO_VECTOR;                    // last loc of target
 
 //
 //  Segment storage
@@ -159,6 +163,29 @@ pathcheckdynobstacles()
     if (!foundseg)
     {   pathMsg(PATH_MSG_WARN,"Unable to find " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
 }
+//
+//  pathchecktargetmoved -- check if pursuit target moved.
+//
+//  This makes the character chase the target. 
+//  Must not replan too often; replanning is slow.
+//
+pathchecktargetmoved()
+{   if (gPathScanTarget == NULL_KEY) { return; }                // not in pursuit, no check
+    list details = llGetObjectDetails(gPathScanTarget, [OBJECT_POS]);   // get object position
+    if (details == [])
+    {   pathMsg(PATH_MSG_WARN, "Pursue target left sim."); 
+        pathscandone(PATHEXETARGETGONE, gPathScanTarget);       // target is gone, abort pursue
+        return;
+    }
+    //  If pursue target moved more than half the distance to the goal, but at least 2m, replan.
+    vector pos = llGetPos();                                    // where we are
+    vector targetpos = llList2Vector(details,0);                // where target is
+    float disttotarget = llVecMag(targetpos - pos);
+    float distmoved = llVecMag(gPathScanTargetPos - targetpos); // distance target moved since replan
+    if (distmoved < PATHSCANMINTARGETMOVE) { return; }          // has not moved enough to replan
+    if (distmoved < disttotarget * PATHSCANMINTARGETFRACT) { return; } // has not moved enough to replan
+    pathscandone(PATHEXETARGETMOVED, gPathScanTarget);          // target moved, must replan and chase
+}
 //  
 //
 //  pathscantimer  -- timer event, check progress and do ray casts
@@ -166,6 +193,8 @@ pathcheckdynobstacles()
 pathscantimer()
 {   if (gPathScanActive && gKfmSegments != [])                  // if we are moving and have a path
     {   pathcheckdynobstacles(); }                              // ray cast for obstacles
+    if (gPathScanActive && gKfmSegments != [])                  // if we are moving and have a path
+    {   pathchecktargetmoved(); }                               // check if pursuit target moved
     if (gPathScanActive)                                        // if we are turned on
     {   
         integer now = llGetUnixTime();                          // time now
@@ -196,6 +225,7 @@ pathscanrequest(string jsn)
     if (requesttype == "startscan")                         // start scanning
     {   //  Set up for ray casting.
         gPathScanId = (integer)llJsonGetValue(jsn, ["pathid"]);
+        gPathScanTarget = (key)llJsonGetValue(jsn, ["target"]); // who we are chasing, if anybody
         gPathScanWidth = (float)llJsonGetValue(jsn,["width"]);
         gPathScanHeight = (float)llJsonGetValue(jsn,["height"]);
         gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
@@ -205,6 +235,14 @@ pathscanrequest(string jsn)
         integer i;
         integer len = llGetListLength(ptsstr);
         for (i=0; i<len; i++) { gKfmSegments += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors
+        //  Get position of pursuit target if tracking
+        if (gPathScanTarget != NULL_KEY) 
+        {   list details = llGetObjectDetails(gPathScanTarget, [OBJECT_POS]);   // get object position
+            if (details == [])                              // avatar not found
+            {   pathMsg(PATH_MSG_WARN, "Pursue target not found."); gPathScanTargetPos = ZERO_VECTOR; }   // gone from sim, timer will detect
+            else
+            {   gPathScanTargetPos = llList2Vector(details,0);   }   // where target is
+        }        
         gPathScanActive = TRUE;                             // scan system is active
         gPathScanMoving = TRUE;                             // character is moving
         gPathScanTimetick = llGetUnixTime();                // reset stall timer

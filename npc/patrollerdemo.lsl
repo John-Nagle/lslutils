@@ -145,6 +145,7 @@ pathUpdateCallback(integer status, key hitobj )
                 if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
                 {   llSay(0,"Excuse me."); }
             }
+#ifdef OBSOLETE // retry moved to pathcall.lsl
             if (gAction == ACTION_PATROL)                       // if patrolling
             {   pathMsg(PATH_MSG_WARN,"Patrol stopped by error, retrying.");
                 if (restart_patrol()) { return; }               // try to restart
@@ -152,6 +153,7 @@ pathUpdateCallback(integer status, key hitobj )
             {   pathMsg(PATH_MSG_WARN,"Pursue stopped by error, retrying.");
                 if (restart_pursue()) { return; }                    // successful restart
             }
+#endif // OBSOLETE
         }
         //  Default - errors we don't special case.
         {          
@@ -210,17 +212,15 @@ integer restart_patrol()
 //
 integer restart_pursue()
 {   pathMsg(PATH_MSG_WARN,"Pursuing " + llKey2Name(gTarget));
-    //  Temporary way to stop whatever is going on.   
     gDwell = 0.0;
     list details = llGetObjectDetails(gTarget, [OBJECT_POS]);       // Where is avatar?
     vector goalpos = llList2Vector(details,0);                      // get object position
     if (!restart_progress_check(goalpos)) { return(FALSE); } // not getting closer, do not try again
-    ////llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);           // stop whatever is going on ***TEMP***
     start_anim(WAITING_ANIM);                                       // applies only when stalled during movement
     llSleep(2.0);                                                   // allow stop time
-    pathPursue(gTarget, GOAL_DIST*2);
+    pathPursue(gTarget, GOAL_DIST*2, TRUE);
     gAction = ACTION_PURSUE;
-    llSetTimerEvent(1.0);                   // fast poll while moving
+    llSetTimerEvent(1.0);                                           // fast poll while moving
     return(TRUE);
 }
 

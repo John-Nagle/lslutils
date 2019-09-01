@@ -63,6 +63,7 @@ float gPathExeHeight = 1.0;
 integer gPathExeChartype = CHARACTER_TYPE_A;
 float gPathExeMaxTurnspeed = 0.2;                           // (radians/sec) max turn rate - overridden
 float gPathExeMaxSpeed = 2.0;                               // (meters/sec) max speed
+key   gPathExeTarget = NULL_KEY;                            // who we are chasing, if anybody
 
 float gPathExeDisttoend = 1.5;                              // (m) distance to begin turn ahead of corner
 float gPathExeProbespacing = 0.333;                         // (m) cast ray spacing when looking for obstacles
@@ -485,6 +486,7 @@ pathexepathdeliver(string jsn)
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
     //  Results from the path planner also contain some misc, parameter updates.
+    gPathExeTarget = (key)llJsonGetValue(jsn,["target"]);                               // used by scan task to check if pursue target moves
     gPathExeMaxSpeed = (float)llJsonGetValue(jsn,["speed"]); 
     gPathExeMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
     gPathExeWidth = (float)llJsonGetValue(jsn,["width"]);

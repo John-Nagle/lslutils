@@ -10,14 +10,6 @@
 #include "npc/patherrors.lsl"
 #include "npc/pathbuildutils.lsl"
 //
-#ifdef OBSOLETE
-//  Message direction (because both ends see a reply)
-integer PATH_DIR_REQUEST = 101;                                 // application to path finding script
-integer PATH_DIR_REPLY = 102;                                   // reply coming back
-integer PATH_DIR_REPLY_TICK = 103;                              // reply indicating other end is still alive
-//
-integer PATH_MIN_IM_INTERVAL = 3600;                            // seconds between IMs. Do not overdo.
-#endif // OBSOLETE
 
 //  Constants
 float REGION_SIZE = 256.0;                                      // size of a region   
@@ -29,6 +21,9 @@ float gPathcallHeight = 1.0;
 float gPathcallSpeed = 1.0;                                     // speed defaults are very slow
 float gPathcallTurnspeed = 0.1;
 integer gPathcallChartype = CHARACTER_TYPE_A;                   // humanoid
+//  Retry state
+float gPathcallLastDistance = 0.0;                              // distance to goal on last try
+list  gPathcallLastParams = [];                                 // params at last try
 
 //
 //   pathLinearInterpolate  -- simple linear interpolation
@@ -134,6 +129,7 @@ pathStop()
 //
 pathTick(){}
 
+
 //
 //  pathNavigateTo -- go to indicated point
 //
@@ -143,48 +139,36 @@ pathTick(){}
 //
 pathNavigateTo(vector endpos, float stopshort)
 {
-    vector startpos = llGetPos();
-    vector startscale = llGetScale();
-    ////gLocalPathId++;                                     // our serial number, passed forward
-    gLocalPathId = (gLocalPathId+1)%(PATHMAXUNSIGNED-1);// our serial number, nonnegative
-    startpos.z = (startpos.z - startscale.z*0.5);       // ground level for start point
-    //  Find walkable under avatar. Look straight down. Startpos must be on ground.
-    endpos = pathfindwalkable(endpos, gPathcallHeight);      // find walkable below char
-    if (endpos == ZERO_VECTOR)
-    {   pathMsg(PATH_MSG_WARN,"Error looking for walkable under goal."); 
-        llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)PATHEXENOTWALKABLE, ""); // send message to self to report error
-        return; 
-    }
-    //  Generate path.
-    pathplanstart(startpos, endpos, gPathcallWidth, gPathcallHeight, stopshort, gPathcallChartype, TESTSPACING, gLocalPathId);    
-    //  Output from pathcheckobstacles is via callbacks
+    pathstart(NULL_KEY, endpos, stopshort, FALSE);             // common for pathNavigateTo and pathPursue
 }
 
+
 //
-//  pathPursue -- go to target avatar. No real pursuit for now.
+//  pathPursue -- go to target avatar. 
 //
 //
 //  Pursue the object target, usually an avatar.
 //  Stop short of the target by the distance stopshort, so as not to get in the avatar's face.
 //  1.75 to 2.0 meters is a reasonable social distance for stopshort.
-//  This just does a pathNavigateTo to the target's current location.
-//  If the target moves, the character's course does not change. 
-//  (This may be improved in later versions.)
 //
-pathPursue(key target, float stopshort)
+//  Pursue works by navigating to the target, while the scan task checks if the target moves much.
+//  If the target moves, the navigate operation is terminated with an error, causing a retry.
+//  The retry heads for the new target position.
+//
+pathPursue(key target, float stopshort, integer dogged)
 {
-    list details = llGetObjectDetails(target, [OBJECT_POS]);    // get object position
-    vector endpos = llList2Vector(details,0);
-    pathNavigateTo(endpos, stopshort);                          // head there
+    pathstart(target, ZERO_VECTOR, stopshort, dogged);          // start pursuit.
 }
+//
+//  End of user API
+//
 
 pathLinkMsg(integer sender_num, integer num, string msg, key hitobj)
 {   
     if (num == PATH_DIR_REPLY)
     {   integer status = (integer)msg;
         pathMsg(PATH_MSG_WARN,"Path complete, status " + (string)status + " Time: " + (string)llGetTime());
-        ////integer callbackstat = PU_GOAL_REACHED;         // normal status
-        ////if (status != 0) { callbackstat =  PU_FAILURE_UNREACHABLE; } // for now, not analyzing why
+        if (pathretry(status, hitobj)) { return; }          // attempt a retry
         pathUpdateCallback(status, hitobj);
     }
 }
@@ -225,13 +209,73 @@ vector pathfindwalkable(vector startpos, float height)
 //
 //  pathplanstart -- start the path planner task
 //
-pathplanstart(vector startpos, vector goal, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid)
+pathplanstart(key target, vector goal, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid)
 {
     string params = llList2Json(JSON_OBJECT, 
-        ["startpos",startpos, "goal", goal, "stopshort", stopshort, "width", width, "height", height, "chartype", chartype, "testspacing", testspacing,
+        ["target",target, "goal", goal, "stopshort", stopshort, "width", width, "height", height, "chartype", chartype, "testspacing", testspacing,
         "speed", gPathcallSpeed, "turnspeed", gPathcallTurnspeed,
         "pathid", pathid, "msglev", gPathMsgLevel]);
     llMessageLinked(LINK_THIS, PATH_DIR_REQUEST, params,"");   // send to planner  
+}
+//
+//  pathstart -- go to indicated point or target. Internal fn.
+//
+//  Go to the indicated location, in the current region, avoiding obstacles.
+//
+//  Stop short of the target by the distance stopshort. This can be zero. 
+//
+pathstart(key target, vector endpos, float stopshort, integer dogged)
+{
+    gLocalPathId = (gLocalPathId+1)%(PATHMAXUNSIGNED-1);// our serial number, nonnegative
+    gPathcallLastParams = [target, endpos, stopshort, dogged];      // save params for restart
+    if (target != NULL_KEY)                                         // if chasing a target
+    {   list details = llGetObjectDetails(target, [OBJECT_POS]);    // get object position
+        if (details == [])                                          // target has disappeared
+        {   llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)PATHEXETARGETGONE, "");  // send message to self and quit
+            return;
+        }
+        endpos = llList2Vector(details,0);                          // use this endpos
+    }
+    //  Find walkable under avatar. Look straight down. Startpos must be on ground.
+    if (!valid_dest(endpos))
+    {   pathMsg(PATH_MSG_WARN,"Destination " + (string)endpos + " not allowed."); 
+        llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)PATHEXEBADDEST, ""); // send message to self to report error
+        return; 
+    }
+
+    endpos = pathfindwalkable(endpos, gPathcallHeight);      // find walkable below char
+    if (endpos == ZERO_VECTOR)
+    {   pathMsg(PATH_MSG_WARN,"Error looking for walkable under goal."); 
+        llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)PATHEXENOTWALKABLE, ""); // send message to self to report error
+        return; 
+    }
+    //  Get rough path to target for progress check
+    gPathcallLastDistance = pathdistance(llGetPos(), endpos, gPathcallWidth, CHARACTER_TYPE_A);  // measure distance to goal
+    //  Generate path
+    pathplanstart(target, endpos, gPathcallWidth, gPathcallHeight, stopshort, gPathcallChartype, TESTSPACING, gLocalPathId);    
+    //  Output from pathcheckobstacles is via callbacks
+}
+//
+//  pathretry -- check if path can be retried
+//
+integer pathretry(integer status, key hitobj)
+{
+    if (llListFindList(PATHRETRYABLES, [status]) < 0) { return(FALSE); }  // not retryable
+    if (gPathcallLastParams == []) { return(FALSE); }                   // no retry params
+    key target = llList2Key(gPathcallLastParams,0);                     // get retry params back
+    vector endpos = llList2Vector(gPathcallLastParams,1);               // this language needs structures
+    float shortstop = llList2Float(gPathcallLastParams, 2);
+    integer dogged = llList2Integer(gPathcallLastParams,3);
+    if (!dogged || status != PATHEXETARGETMOVED)                        // dogged pursue mode, keep trying even if not getting closer
+    {
+        float dist = pathdistance(llGetPos(), endpos, gPathcallWidth, CHARACTER_TYPE_A);  // measure distance to goal
+        if (dist >= gPathcallLastDistance) 
+        {   pathMsg(PATH_MSG_WARN, "No retry, did not get closer."); return(FALSE); }   // cannot retry
+    }
+    //  Must do a retry
+    pathMsg(PATH_MSG_WARN, "Retrying...");                              // retry
+    pathstart(target, endpos, shortstop, dogged);                       // trying again
+    return(TRUE);                                                       // doing retry, do not tell user we are done.
 }
 
 

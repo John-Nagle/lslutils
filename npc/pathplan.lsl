@@ -241,6 +241,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
     {
         llMessageLinked(LINK_THIS,MAZEPATHREPLY,
             llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId, "status", status, 
+            "target", gPathplanTarget,
             "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,               // pass speed setting to execution module
             "width", gPathWidth, "height", gPathHeight, "chartype", gPathplanChartype, "msglev", gPathMsgLevel,
             "points", llList2Json(JSON_ARRAY,path)]),"");
@@ -250,6 +251,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
     {
         llMessageLinked(LINK_THIS,MAZEPATHREPLY,
             llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId,
+            "target", gPathplanTarget,
             "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,               // pass speed setting to execution module
             "width", gPathWidth, "height", gPathHeight, "chartype", gPathplanChartype, "msglev", gPathMsgLevel,
             "status",status, "points",
@@ -262,7 +264,8 @@ integer gPathId = 0;                                // serial number of path
 integer gSegmentId = 0;                             // segment number of path
 float gPathplanSpeed = 1.0;                         // defaults usually overridden
 float gPathplanTurnspeed = 0.1;
-integer gPathplanChartype = CHARACTER_TYPE_A;         
+integer gPathplanChartype = CHARACTER_TYPE_A; 
+key gPathplanTarget = NULL_KEY;                     // who we are chasing, if not null        
 //
 //  Message interface
 //
@@ -289,7 +292,8 @@ pathRequestRecv(string jsonstr)
     startpos = llGetPos();                                      // startpos is where we are now
     vector startscale = llGetScale();
     startpos.z = (startpos.z - startscale.z*0.45);            // approximate ground level for start point
-    vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);   // get goal
+    vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);   // get goal point
+    gPathplanTarget = (key)llJsonGetValue(jsonstr,["target"]);// get target if pursue
     gPathWidth = (float)llJsonGetValue(jsonstr,["width"]);
     gPathHeight = (float)llJsonGetValue(jsonstr,["height"]);
     float stopshort = (float)llJsonGetValue(jsonstr,["stopshort"]);

@@ -82,10 +82,11 @@ path planning system.
 
 Stop short of the target by the distance **stopshort**. This can be zero. Used mostly when approaching an avatar.
 ### pathPursue
-    pathPursue(key target, float stopshort)
+    pathPursue(key target, float stopshort, integer dogged)
     
 Pursue the object **target**, usually an avatar. Stop short of the target by the distance **stopshort**, so as not to get in the avatar's face.
-1.75 to 2.0 meters is a reasonable value for **stopshort**.
+1.75 to 2.0 meters is a reasonable value for **stopshort**. Setting **dogged** to TRUE makes the pursuit more determined and less polite.
+The character will keep pursuing even if the target avatar runs away.
 
 This just does a pathNavigateTo to the target's current location. If the target moves, it won't 
 change the character's course. (This may be improved in later versions.)

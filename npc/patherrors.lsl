@@ -50,5 +50,13 @@
 #define PATHEXEOBSTRUCTED   -2007               // obstruction ahead
 #define PATHEXEBADMOVEEND   -2008               // out of position at end of move
 #define PATHEXEEMPTYPATH    -2009               // empty path - how did that happen?
+#define PATHEXETARGETMOVED  -2010               // target avatar moved during pursue
+#define PATHEXETARGETGONE   -2011               // target avatar disappeared.
+#define PATHEXEBADDEST      -2012               // bad destination - out of parcel, etc.
+
+//
+//  List of retryable errors.  For these, try again, if there was progress on the previous try.
+//
+#define PATHRETRYABLES [PATHEXEOBSTRUCTED, PATHEXECOLLISION, PATHEXEBADMOVEEND, PATHEXEBADSTARTPOS, PATHEXETARGETMOVED]
 
 #endif // PATHERRORS
