@@ -664,31 +664,25 @@ list pathclean(list path)
 list pathtrimmedstaticpath(vector startpos, vector endpos, float stopshort, float width, integer chartype)
 {   list path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);    // plan a static path
     integer status = llList2Integer(path,-1);               // static path status
-    ////if (status == PU_GOAL_REACHED && llGetListLength(path) == 1)    // if we got an empty path because at goal
-    ////{   path = [startpos, endpos, 0]; status = 0;}          // create a dummy path between start and end
     if (stopshort <= 0) return(path);                       // no need to trim
     if (status != 0) { return([status]); }                  // fails
     path = llList2List(path,0,-2);                          // path without status
-    integer i = llGetListLength(path);
-    while (i > 1)                                           // while at least two points
+    while (llGetListLength(path) > 1)                       // while at least two points
     {   vector p0 = llList2Vector(path,-1);                 // last two points, reverse order
         vector p1 = llList2Vector(path,-2);
-        DEBUGPRINT1("Stopshort test, at " + (string)p0);    // ***TEMP***
+        ////DEBUGPRINT1("Stopshort test, at " + (string)p0);    // ***TEMP***
         vector dv = p1-p0;
         float dvmag = llVecMag(dv);
         if (dvmag > 0.001 && dvmag - stopshort > 0.001)     // trim is in this segment
         {   vector p = p0 + llVecNorm(dv) * stopshort;      //
+            ////pathMsg(PATH_MSG_WARN,"Short stop path trimmed from " + (string)endpos + " to " + (string)p); // ***TEMP***
             return(llListReplaceList(path,[p, 0],-1,-1));   // replace last point, add status             
         }
         path = llList2List(path,0,-2);                      // drop last point
         stopshort -= dvmag;                                 // decrease trim dist by last segment
-        i = llGetListLength(path);                          // path has been trimmed
     }
     return([startpos, endpos, 0]);                          // we're so close we're there. 
 }
-
-
-
 
 //
 //  pathUpdateCallback -- pathfinding is done, tell requesting script

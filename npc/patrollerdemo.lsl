@@ -114,7 +114,7 @@ pathUpdateCallback(integer status, key hitobj )
             {            
                 pathMsg(PATH_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
                 pathNavigateTo(finaltarget, 0);
-                    llResetTime();
+                llResetTime();
             } else {
                 pathMsg(PATH_MSG_WARN,"Can't get in front of avatar due to obstacle.");
                 start_anim(IDLE_ANIM);
