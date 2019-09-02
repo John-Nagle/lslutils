@@ -59,7 +59,7 @@ current position and try to follow the new plan.
 
 ## Path planning system usage
 ### Calls
-### pathinit
+### pathInit
     pathInit(float width, float height, integer chartype, integer msglev)
     
 Sets up the path planning system. **width** and **height** are the dimensions of the character. **chartype**
@@ -87,14 +87,10 @@ Stop short of the target by the distance **stopshort**. This can be zero. Used m
 Pursue the object **target**, usually an avatar. Stop short of the target by the distance **stopshort**, so as not to get in the avatar's face.
 1.75 to 2.0 meters is a reasonable value for **stopshort**. Setting **dogged** to TRUE makes the pursuit more determined and less polite.
 The character will keep pursuing even if the target avatar runs away.
-
-This just does a pathNavigateTo to the target's current location. If the target moves, it won't 
-change the character's course. (This may be improved in later versions.)
 ### pathStop
     pathStop()
     
-Stop any current motion. A new command can then be sent. 
-This is not usually necessary; sending a command while one is already running will stop the current movement, although not instantly.
+Stop any current motion. This is not usually necessary; sending a command while one is already running will stop the current movement.
 
 ## pathSpeed
     pathSpeed(float speed, float turnspeed)
@@ -142,15 +138,7 @@ It's up to the calling script to decide where to go, and what to do when an obst
 This system just takes care of getting the character there.
 
 The system stops movement as soon as an obstruction is detected or the character has a collision. 
-The calling script has to decide what to do then. Apologise? Yell at the avatar? Shoot at them? Try the movement operation again
-to try to route around the new obstruction? It's up to the creator of the calling script.
-
-A useful basic policy is to say "Excuse me" to avatars, then try the movement operation again if the path distance
-to the goal is shorter than on the previous try. If you're not making forward progress, pick a new destination and go do something else.
-
-When pursuing an avatar, the avatar may move, and you have to check, upon movement completion, that the avatar is still where it was when pursuit started. If the avatar
-has moved but is still nearby, you can then pursue them again, or do something else. This doesn't really work for chasing someone, because
-the original planned move runs to the original destination before detecting that the avatar has moved. (This may change.)
+The system then tries to route around the obstruction. So the system can deal with a dynamic environment.
 
 Movement is smooth and fast but has stalls. When movement is first requested, nothing happens while the initial planning takes place.
 Then movement starts. The maze solver runs concurrently with movement, but may not have finished when the first obstacle needs to be
@@ -173,6 +161,9 @@ reach that size.
 
 * If you need a walkable surface inside a building that's not set up for it, you can add a rug, at least 0.2m thick, and make it
 walkable. An "invisible rug" will work, too. Transparent is OK, but phantom will not work.
+
+* For at least some buildings, setting the entire building to "walkable" works. Floors, and even stair ramps, become walkable, and walls act as
+static obstacles. This is undocumented but seems to work.
 
 * Many automatic doors will not react to keyframed characters. We have a script for this and will publish it separately.
 The trick is to detect objects with llSensor, then check to see if they have nonzero velocity. That detectes avatars,
