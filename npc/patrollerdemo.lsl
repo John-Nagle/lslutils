@@ -229,6 +229,7 @@ start_patrol()
         start_anim(WAITING_ANIM);                     // applies only when stalled during movement
         pathNavigateTo(gPatrolDestination,0);           // head for next pos
         gAction = ACTION_PATROL;                        // patrolling
+        llSetTimerEvent(1.0);                       // fast poll while moving
     }  
 }
 
@@ -349,10 +350,9 @@ default
                 start_patrol();                         // consider patrolling
             } else {
                 //  New target found. Go to them.
-                gAction = ACTION_PURSUE;
+                ///gAction = ACTION_PURSUE;
                 gDwell = 0.0;                             // not relevant in this mode
                 start_pursue();
-                llSetTimerEvent(1.0);                   // fast poll while moving
                 // Remove pursue target from to-do list.
                 gDeferredTargets = llDeleteSubList(gDeferredTargets, targetix, targetix);
                 gDeferredPositions =llDeleteSubList(gDeferredPositions, targetix, targetix);                   
