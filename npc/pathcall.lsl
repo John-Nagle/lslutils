@@ -73,7 +73,7 @@ pathFaceInDirection(vector lookdir)
 //  Sets up the path planning system. 
 //  width and height are the dimensions of the character. 
 //  chartype is the pathfinding type of the character,
-//  usually **CHARACTER_TYPE_A** for humanoid forms taller than they are wide.
+//  usually CHARACTER_TYPE_A for humanoid forms taller than they are wide.
 
 //  The width and height define a vertical cylinder
 //  around the character's center. The character's collision model must fit within cylinder. 
