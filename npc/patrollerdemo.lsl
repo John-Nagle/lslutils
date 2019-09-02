@@ -102,98 +102,103 @@ add_patrol_point(string s)
 //  pathUpdateCallback -- pathfinding is done. Analyze the result and start the next action.
 //
 pathUpdateCallback(integer status, key hitobj )
-    {   pathMsg(PATH_MSG_INFO, "Path update: : " + (string) status);
-        if (status == MAZESTATUSOK)          // success
-        {   ////llOwnerSay("Pathfinding task completed.");
-            if (gAction == ACTION_PURSUE)               
-            {
-                gAction = ACTION_FACE;  
-                vector offset = dir_from_target(gTarget) * GOAL_DIST; 
-                vector finaltarget = target_pos(gTarget) + offset;
-                if (clear_sightline(gTarget, finaltarget))
-                {            
-                    pathMsg(PATH_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
-                    pathNavigateTo(finaltarget, 0);
+{   pathMsg(PATH_MSG_INFO, "Path update: : " + (string) status);
+    if (status == MAZESTATUSOK)          // success
+    {   ////llOwnerSay("Pathfinding task completed.");
+        if (gAction == ACTION_PURSUE)               
+        {
+            gAction = ACTION_FACE;  
+            vector offset = dir_from_target(gTarget) * GOAL_DIST; 
+            vector finaltarget = target_pos(gTarget) + offset;
+            if (clear_sightline(gTarget, finaltarget))
+            {            
+                pathMsg(PATH_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
+                pathNavigateTo(finaltarget, 0);
                     llResetTime();
-                } else {
-                    pathMsg(PATH_MSG_WARN,"Can't get in front of avatar due to obstacle.");
-                    start_anim(IDLE_ANIM);
-                    face_and_greet();
-                }                             
-                return;
-            }
-            if (gAction == ACTION_FACE)
-            {   //  Turn to face avatar.
+            } else {
+                pathMsg(PATH_MSG_WARN,"Can't get in front of avatar due to obstacle.");
                 start_anim(IDLE_ANIM);
                 face_and_greet();
-            } 
-            if (gAction == ACTION_PATROL)
-            {   face_dir(<llSin(gFaceDir), llCos(gFaceDir), 0.0>);   // face in programmed direction
-                start_anim(IDLE_ANIM);
-                gAction = ACTION_IDLE;
-                llResetTime();                          // reset timeout timer but keep dwell time
-                pathMsg(PATH_MSG_INFO,"Patrol point reached.");
-            }  
+            }                             
             return;
-        } else if (status == PATHEXEOBSTRUCTED || status == PATHEXECOLLISION || status == PATHEXEBADMOVEEND)   // recoverable problem
-        {   if (status == PATHEXECOLLISION)                                                   // need to check for avatar
-            {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
-                integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-                pathMsg(PATH_MSG_WARN, "Collided with " + llList2String(details,1));
-                if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
-                {   llSay(0,"Excuse me."); }
-            }
-#ifdef OBSOLETE // retry moved to pathcall.lsl
-            if (gAction == ACTION_PATROL)                       // if patrolling
-            {   pathMsg(PATH_MSG_WARN,"Patrol stopped by error, retrying.");
-                if (restart_patrol()) { return; }               // try to restart
-            } else if (gAction == ACTION_PURSUE)
-            {   pathMsg(PATH_MSG_WARN,"Pursue stopped by error, retrying.");
-                if (restart_pursue()) { return; }                    // successful restart
-            }
-#endif // OBSOLETE
         }
-        //  Default - errors we don't special case.
-        {          
-            if (gAction == ACTION_FACE)             // Can't get in front of avatar, greet anyway.
-            {   pathMsg(PATH_MSG_WARN, "Can't navigate to point in front of avatar.");
-                start_anim(IDLE_ANIM);
-                face_and_greet();
-                return;
-            }
-
-            if (gTarget != NULL_KEY)
-            {   pathMsg(PATH_MSG_WARN,"Unable to reach " + llKey2Name(gTarget) + " status: " + (string)status);
-                gDeferredTargets += gTarget;    // defer action on this target
-                gDeferredPositions += target_pos(gTarget);  // where they are
-                gTarget = NULL_KEY;
-            }
-            
-            //  Failed, back to idle.
-            gAction = ACTION_IDLE;            
-            pathMsg(PATH_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
+        if (gAction == ACTION_FACE)
+        {   //  Turn to face avatar.
             start_anim(IDLE_ANIM);
+            face_and_greet();
+        } 
+        if (gAction == ACTION_PATROL)
+        {   face_dir(<llSin(gFaceDir), llCos(gFaceDir), 0.0>);   // face in programmed direction
+            start_anim(IDLE_ANIM);
+            gAction = ACTION_IDLE;
+            llResetTime();                          // reset timeout timer but keep dwell time
+            pathMsg(PATH_MSG_INFO,"Patrol point reached.");
+        }  
+        return;
+    } else if (status == PATHEXECOLLISION)                      // be nice
+    {                                                           // need to check for avatar
+        list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
+        integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+        pathMsg(PATH_MSG_WARN, "Collided with " + llList2String(details,1));
+        if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
+        {   llSay(0,"Excuse me."); }
+    }
+    //  Default - errors we don't special case.
+    {          
+        if (gAction == ACTION_FACE)             // Can't get in front of avatar, greet anyway.
+        {   pathMsg(PATH_MSG_WARN, "Can't navigate to point in front of avatar.");
+            start_anim(IDLE_ANIM);
+            face_and_greet();
             return;
         }
+
+        if (gTarget != NULL_KEY)
+        {   pathMsg(PATH_MSG_WARN,"Unable to reach " + llKey2Name(gTarget) + " status: " + (string)status);
+            gDeferredTargets += gTarget;    // defer action on this target
+            gDeferredPositions += target_pos(gTarget);  // where they are
+            gTarget = NULL_KEY;
+        }
+            
+        //  Failed, back to idle.
+        gAction = ACTION_IDLE;            
+        pathMsg(PATH_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
+        start_anim(IDLE_ANIM);
+        return;
     }
-    
-//
-//  restart_patrol -- start or restart patrol.  Returns TRUE if restartable
-//
-integer restart_patrol()
-{   
-    gDwell = llList2Float(gPatrolPointDwell, gNextPatrolPoint);
-    gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
-    pathMsg(PATH_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
-    start_anim(WAITING_ANIM);                     // applies only when stalled during movement
-    pathNavigateTo(gPatrolDestination,0);           // head for next pos
-    gAction = ACTION_PATROL;                        // patrolling
-    return(TRUE);
 }
+ 
 //
-//  restart_pursue -- start or restart pursue  -- returns TRUE if restartable
+//  face_dir -- face in indicated direction
 //
-integer restart_pursue()
+face_dir(vector lookdir)                        // face this way
+{
+    lookdir = llVecNorm(lookdir);
+    vector currentlookdir = <1,0,0>*llGetRot();
+    if (currentlookdir * lookdir < 0.95)             // if need to turn to face
+    {
+        start_anim(STAND_ANIM);
+        pathFaceInDirection(lookdir);       // face avatar
+        start_anim(IDLE_ANIM);
+    }
+} 
+
+//  
+//  face_and_greet -- face in indicated direction and say hello
+//
+face_and_greet()                            // turn to face avi
+{
+    face_dir(vec_to_target(gTarget));                   // turn to face avi
+    gGreetedTargets += gTarget;                         
+    gAction = ACTION_IDLE;
+    llResetTime();              // start attention span timer.
+    gDwell = ATTENTION_SPAN;    // wait this long
+    llSay(0,"Hello");
+}    
+
+//
+//  start_pursue -- start pursuing avatar.
+//
+start_pursue()
 {   pathMsg(PATH_MSG_WARN,"Pursuing " + llKey2Name(gTarget));
     gDwell = 0.0;
     start_anim(WAITING_ANIM);                                       // applies only when stalled during movement
@@ -201,7 +206,7 @@ integer restart_pursue()
     pathPursue(gTarget, GOAL_DIST*2, TRUE);
     gAction = ACTION_PURSUE;
     llSetTimerEvent(1.0);                                           // fast poll while moving
-    return(TRUE);
+
 }
 
 start_patrol()
@@ -218,7 +223,12 @@ start_patrol()
         while (newpnt == gNextPatrolPoint);
         gNextPatrolPoint = newpnt;
         gPatrolDestination = llList2Vector(gPatrolPoints, gNextPatrolPoint);
-        restart_patrol();
+        gDwell = llList2Float(gPatrolPointDwell, gNextPatrolPoint);
+        gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
+        pathMsg(PATH_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
+        start_anim(WAITING_ANIM);                     // applies only when stalled during movement
+        pathNavigateTo(gPatrolDestination,0);           // head for next pos
+        gAction = ACTION_PATROL;                        // patrolling
     }  
 }
 
@@ -341,7 +351,7 @@ default
                 //  New target found. Go to them.
                 gAction = ACTION_PURSUE;
                 gDwell = 0.0;                             // not relevant in this mode
-                restart_pursue();
+                start_pursue();
                 llSetTimerEvent(1.0);                   // fast poll while moving
                 // Remove pursue target from to-do list.
                 gDeferredTargets = llDeleteSubList(gDeferredTargets, targetix, targetix);

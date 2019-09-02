@@ -68,8 +68,6 @@ pathFaceInDirection(vector lookdir)
 //
 //  User API functions
 //
-//  ***SOME NOT YET IMPLEMENTED***
-//
 //  pathInit -- sets up the path planning system
 //
 //  Sets up the path planning system. 
@@ -115,10 +113,9 @@ pathSpeed(float speed, float turnspeed)
 //  Sending a command while one is already running will stop 
 //  the current movement, although not instantly.
 //
-//  ***UNIMPLEMENTED***
-//
 pathStop()
-{}
+{   pathNavigateTo(llGetPos(), 100.0);              // stop by navigating to where we are
+}
 
 //
 //  pathTick -- call every few seconds when running the path system.
@@ -352,27 +349,7 @@ integer clear_sightline(key id, vector lookatpos)
     pathMsg(PATH_MSG_WARN, "Clear sightline status " + (string)status + " hits: " + (string)obstacles);
     return(FALSE);                          // fails
 }
-face_dir(vector lookdir)                        // face this way
-{
-    lookdir = llVecNorm(lookdir);
-    vector currentlookdir = <1,0,0>*llGetRot();
-    if (currentlookdir * lookdir < 0.95)             // if need to turn to face
-    {
-        start_anim(STAND_ANIM);
-        pathFaceInDirection(lookdir);       // face avatar
-        start_anim(IDLE_ANIM);
-    }
-} 
 
-face_and_greet()                            // turn to face avi
-{
-    face_dir(vec_to_target(gTarget));                   // turn to face avi
-    gGreetedTargets += gTarget;                         
-    gAction = ACTION_IDLE;
-    llResetTime();              // start attention span timer.
-    gDwell = ATTENTION_SPAN;    // wait this long
-    llSay(0,"Hello");
-}
 
 
 
