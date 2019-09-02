@@ -517,6 +517,10 @@ pathexescanreply(string jsn)
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer status = (integer)llJsonGetValue(jsn, ["status"]);
     key hitobj = (key)llJsonGetValue(jsn,["hitobj"]);       // what was hit, if anything
+    if (pathid != gPathExeId)                               // ignore stale event
+    {   pathMsg(PATH_MSG_WARN, "Stale reply from path scan, status " + (string)status); 
+        return;
+    }
     if (status == 0)                                        // status zero, no problem
     {   pathexemovementend(); return; }                     // normal movement end   
     pathexestopkey(status, hitobj);                         // otherwise hit something   
