@@ -25,46 +25,10 @@ integer gPathcallChartype = CHARACTER_TYPE_A;                   // humanoid
 float gPathcallLastDistance = 0.0;                              // distance to goal on last try
 list  gPathcallLastParams = [];                                 // params at last try
 
-//
-//   pathLinearInterpolate  -- simple linear interpolation
-//
-float pathLinearInterpolate(float n1 , float n2 , float fract )
-{   return n1 + ( (n2-n1) * fract );    } 
-
-//
-//  easeineaseout  --  interpolate from 0 to 1 with ease in and ease out using cubic Bezier.
-//
-//  ease = 0: no smoothing
-//  ease = 0.5: reasonable smoothing
-//
-float easeineaseout(float ease, float fract)
-{   float ym = pathLinearInterpolate( 0 , fract, fract );
-    float yn = pathLinearInterpolate(fract , 1 , fract );
-    float y = pathLinearInterpolate( ym , yn , fract);
-    return(y);
-}
+integer gLocalPathId = 0;                                       // path serial number
 
 
-//
-//  pathFaceInDirection  --  face in desired direction
-//
-//  Uses llSetRot. OK to use on characters when no pathfinding operation is in progress.
-//
-pathFaceInDirection(vector lookdir)
-{   float TURNRATE = 90*DEG_TO_RAD;                             // (deg/sec) turn rate
-    float   PATH_ROTATION_EASE = 0.5;                           // (0..1) Rotation ease-in/ease out strength
-    lookdir.z = 0.0;                                            // rotate about XY axis only
-    rotation endrot = llRotBetween(<1,0,0>,llVecNorm(lookdir)); // finish here
-    rotation startrot = llGetRot();                             // starting from here
-    float turntime = llFabs(llAngleBetween(startrot, endrot)) / TURNRATE;  // how much time to spend turning
-    integer steps = llCeil(turntime/0.200 + 0.001);             // number of steps 
-    integer i;
-    for (i=0; i<= steps; i++)                                   // turn in 200ms steps, which is llSetRot delay
-    {   float fract = ((float)i) / steps;                       // fraction of turn (0..1)
-        float easefract = easeineaseout(PATH_ROTATION_EASE, fract); // smooth acceleration
-        llSetRot(slerp(startrot, endrot, easefract));           // interpolate rotation
-    }
-}
+
 //
 //  User API functions
 //
@@ -160,17 +124,22 @@ pathPursue(key target, float stopshort, integer dogged)
 //  End of user API
 //
 
-pathLinkMsg(integer sender_num, integer num, string msg, key hitobj)
+//
+//  pathLinkMsg -- reply coming back from path execution
+//
+pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
 {   
     if (num == PATH_DIR_REPLY)
-    {   integer status = (integer)msg;
+    {   integer status = (integer)llJsonGetValue(jsn, ["status"]);  // status and pathid via JSON.
+        integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);  // hitobj as key param in link message
+        if (pathid != gLocalPathId)                         // result from a cancelled operation
+        {   pathMsg(PATH_MSG_WARN, "Stale path completed msg discarded."); return; }
         pathMsg(PATH_MSG_WARN,"Path complete, status " + (string)status + " Time: " + (string)llGetTime());
         if (pathretry(status, hitobj)) { return; }          // attempt a retry
         pathUpdateCallback(status, hitobj);
     }
 }
 
-integer gLocalPathId = 0;                                   // path serial number
 
 //
 //  pathfindwalkable -- find walkable below avatar
@@ -228,7 +197,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
     if (target != NULL_KEY)                                         // if chasing a target
     {   list details = llGetObjectDetails(target, [OBJECT_POS]);    // get object position
         if (details == [])                                          // target has disappeared
-        {   llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)PATHEXETARGETGONE, "");  // send message to self and quit
+        {   pathdonereply(PATHEXETARGETGONE,target,gLocalPathId);  // send message to self and quit
             return;
         }
         endpos = llList2Vector(details,0);                          // use this endpos
@@ -236,14 +205,14 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
     if (!valid_dest(endpos))
     {   pathMsg(PATH_MSG_WARN,"Destination " + (string)endpos + " not allowed."); 
-        llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)PATHEXEBADDEST, ""); // send message to self to report error
+        pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
         return; 
     }
 
-    endpos = pathfindwalkable(endpos, gPathcallHeight);      // find walkable below char
+    endpos = pathfindwalkable(endpos, gPathcallHeight);             // find walkable below char
     if (endpos == ZERO_VECTOR)
     {   pathMsg(PATH_MSG_WARN,"Error looking for walkable under goal."); 
-        llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)PATHEXENOTWALKABLE, ""); // send message to self to report error
+        pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
         return; 
     }
     //  Get rough path to target for progress check
@@ -275,7 +244,9 @@ integer pathretry(integer status, key hitobj)
     return(TRUE);                                                       // doing retry, do not tell user we are done.
 }
 
-
+//
+//  Misc. support functions.
+//
 //  Usual SLERP function for quaternion interpolation
 rotation slerp(rotation a, rotation b, float t) {
    return llAxisAngle2Rot( llRot2Axis(b /= a), t * llRot2Angle(b)) * a;
@@ -334,11 +305,48 @@ integer valid_dest(vector pos)
     return(TRUE);  // OK to enter destination parcel
 }
 
-start_anim(string anim)
-{
-    llMessageLinked(LINK_THIS, 1,anim,"");    // tell our AO what we want
+
+
+//
+//   pathLinearInterpolate  -- simple linear interpolation
+//
+float pathLinearInterpolate(float n1 , float n2 , float fract )
+{   return n1 + ( (n2-n1) * fract );    } 
+
+//
+//  easeineaseout  --  interpolate from 0 to 1 with ease in and ease out using cubic Bezier.
+//
+//  ease = 0: no smoothing
+//  ease = 0.5: reasonable smoothing
+//
+float easeineaseout(float ease, float fract)
+{   float ym = pathLinearInterpolate( 0 , fract, fract );
+    float yn = pathLinearInterpolate(fract , 1 , fract );
+    float y = pathLinearInterpolate( ym , yn , fract);
+    return(y);
 }
 
+
+//
+//  pathFaceInDirection  --  face in desired direction
+//
+//  Uses llSetRot. OK to use on characters when no pathfinding operation is in progress.
+//
+pathFaceInDirection(vector lookdir)
+{   float TURNRATE = 90*DEG_TO_RAD;                             // (deg/sec) turn rate
+    float   PATH_ROTATION_EASE = 0.5;                           // (0..1) Rotation ease-in/ease out strength
+    lookdir.z = 0.0;                                            // rotate about XY axis only
+    rotation endrot = llRotBetween(<1,0,0>,llVecNorm(lookdir)); // finish here
+    rotation startrot = llGetRot();                             // starting from here
+    float turntime = llFabs(llAngleBetween(startrot, endrot)) / TURNRATE;  // how much time to spend turning
+    integer steps = llCeil(turntime/0.200 + 0.001);             // number of steps 
+    integer i;
+    for (i=0; i<= steps; i++)                                   // turn in 200ms steps, which is llSetRot delay
+    {   float fract = ((float)i) / steps;                       // fraction of turn (0..1)
+        float easefract = easeineaseout(PATH_ROTATION_EASE, fract); // smooth acceleration
+        llSetRot(slerp(startrot, endrot, easefract));           // interpolate rotation
+    }
+}
 
 //  Check if point is directly visible in a straight line.
 //  Used when trying to get in front of an avatar.

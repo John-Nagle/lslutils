@@ -374,9 +374,6 @@ pathexedomove()
             gPathExeMovegoal = llList2Vector(gAllSegments,-1);  // where we are supposed to be going
             assert(gPathExeMovegoal != ZERO_VECTOR);        // must not be EOF marker         
             gPathExeMoving = TRUE;                          // movement in progress
-            ////llSetTimerEvent(PATHEXERAYTIME);                // switch to fast timer for ray casts for obstructions
-            ////gKfmSegments = gAllSegments;                    // what we are currently doing
-            ////gKfmSegmentCurrent = 0;                         // we are at the beginning
             integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
             if (freemem < gPathExeFreemem) { gPathExeFreemem = freemem; }   // record free memory
         }
@@ -393,14 +390,14 @@ pathexemovementend()
 {   if (gPathExeMoving)                                     // if was moving (KFM operation in progress)
     {
         gPathExeMoving = FALSE;                             // not moving now
-#ifdef OBSOLETE // no, don't check here. Can legitimately be out of position if a move was aborted.
+////#ifdef OBSOLETE // no, don't check here. Can legitimately be out of position if a move was aborted.
         vector pos = llGetPos();
         if (pathvecmagxy(pos - gPathExeMovegoal) > PATHEXEMAXCREEP)     // if not where supposed to be
         {   pathMsg(PATH_MSG_WARN, "Out of position at movement end. At " + (string)pos + ". Should be at " + (string)gPathExeMovegoal); // Happens occasionally
             pathexestop(PATHEXEBADMOVEEND);                 // error, must start a new operation to re-plan and recover
             return; 
         }
-#endif // OBSOLETE           
+////#endif // OBSOLETE           
         pathMsg(PATH_MSG_INFO,"Movement end");
         pathexedomove();                                    // get next KFM section if any and keep going
     } else {                                                // movement end event but we were not moving
@@ -423,7 +420,7 @@ pathexestopkey(integer status, key hitobj)
     llSetTimerEvent(0.0);                                   // stop timing 
     if (gPathExeActive)                                     // if we are active
     {   if (status == 0) { status = gPathExePendingStatus; }// send back any stored status
-        pathUpdateCallback(status,hitobj);                  // tell caller about result
+        pathdonereply(status,hitobj, gPathExeId);           // tell caller about result
         gPathExeActive = FALSE;                             // no longer active
         pathscanstop();                                     // turn off path scanning
     }

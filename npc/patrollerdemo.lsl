@@ -193,6 +193,11 @@ face_and_greet()                            // turn to face avi
     llResetTime();              // start attention span timer.
     gDwell = ATTENTION_SPAN;    // wait this long
     llSay(0,"Hello");
+}
+
+start_anim(string anim)
+{
+    llMessageLinked(LINK_THIS, 1,anim,"");    // tell our AO what we want
 }    
 
 //

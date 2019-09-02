@@ -685,11 +685,11 @@ list pathtrimmedstaticpath(vector startpos, vector endpos, float stopshort, floa
 }
 
 //
-//  pathUpdateCallback -- pathfinding is done, tell requesting script
+//  pathdonereply -- pathfinding is done, tell requesting script
 //
-pathUpdateCallback(integer status, key hitobj)
+pathdonereply(integer status, key hitobj, integer pathid)
 {   
-    llMessageLinked(LINK_THIS, PATH_DIR_REPLY, (string)status, hitobj);  // status to client
+    llMessageLinked(LINK_THIS, PATH_DIR_REPLY, llList2Json(JSON_OBJECT,["status",status,"pathid",pathid]), hitobj);  // status to client
 }
 
 #endif // PATHBUILDUTILSLSL
