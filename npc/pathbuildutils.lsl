@@ -184,7 +184,8 @@ list pathstraighten(list pts, float width, float height, float probespacing, int
 float pathdistance(vector startpos, vector endpos, float width, integer chartype)
 {
     vector startscale = llGetScale();
-    startpos.z = (startpos.z - startscale.z*0.5);           // ground level for start point
+    vector startposorig = startpos;                         // ***TEMP***
+    startpos.z = (startpos.z - startscale.z*0.45);          // approx ground level for start point
 #ifdef OBSOLETE // endpos is already at ground level. We did this already.
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
     vector endposorig = endpos;
@@ -197,7 +198,7 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
     list path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);
     integer status = llList2Integer(path,-1);               // status is last value
     if (status != 0) 
-    {   pathMsg(PATH_MSG_WARN, "Static path error: " + (string)status); 
+    {   pathMsg(PATH_MSG_WARN, "Static path error: " + (string)status +  (string)startpos + " to " + (string)endpos + " orig startpos: " + (string)startposorig); 
         return(-1.0);                                       // fails
     }
     integer i;
