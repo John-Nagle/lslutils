@@ -201,6 +201,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
             return;
         }
         endpos = llList2Vector(details,0);                          // use this endpos
+        llOwnerSay("Position of target " + llKey2Name(target) + " is " + (string)endpos); // ***TEMP***
     }
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
     if (!valid_dest(endpos))

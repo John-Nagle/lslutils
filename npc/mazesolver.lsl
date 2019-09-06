@@ -37,7 +37,7 @@
 //  to 45x45 cells. 
 //
 //  TODO:
-//  1. Add checking for getting close to space limits, and return failure before a stack/heap collision.
+//  1. Add checking for getting close to space limits, and return failure before a stack/heap collision. [DONE]
 //  2. Add backup counter to detect runaways now that collinear point optimization is in. 
 //
 //
@@ -128,6 +128,7 @@ integer gMazeStartX;                // start position
 integer gMazeStartY;           
 integer gMazeEndX;                  // end position 
 integer gMazeEndY; 
+integer gMazeStartclear;            // assume start pt is clear if set
 integer gMazeStatus;                // status code - MAZESTATUS...
        
 
@@ -375,7 +376,12 @@ integer mazetestcell(integer fromx, integer fromy, integer x, integer y)
     {   DEBUGPRINT1("Checked cell (" + (string)x + "," + (string)y + ") : " + (string)(v & MAZEBARRIER));
         return(v & MAZEBARRIER);                // already have this one
     }
-    integer barrier = gBarrierFn(fromx, fromy, x,y); // check this location
+    //  This cell is not in the bitmap yet. Must do the expensive test.
+    integer barrier = FALSE;                    // no barrier yet
+    if (gMazeStartclear && x == gMazeStartX &&  y == gMazeStartY) // special case where start pt is assumed clear
+    {   barrier = FALSE; }                      // needed to get character out of very tight spots.
+    else
+    {   barrier = gBarrierFn(fromx, fromy, x,y); } // check this location
     v = MAZEEXAMINED | barrier;
     mazecellset(x,y,v);                         // update cells checked
     if (barrier && (x == gMazeEndX) && (y == gMazeEndY))    // if the end cell is blocked
@@ -808,6 +814,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     integer sizey = (integer)llJsonGetValue(jsn,["sizey"]);
     integer startx = (integer)llJsonGetValue(jsn,["startx"]);
     integer starty = (integer)llJsonGetValue(jsn,["starty"]);
+    gMazeStartclear = (integer)llJsonGetValue(jsn,["startclear"]);   // true if we assume start is clear
     integer endx = (integer)llJsonGetValue(jsn,["endx"]);
     integer endy = (integer)llJsonGetValue(jsn,["endy"]);
     pathMsg(PATH_MSG_INFO,"Request to maze solver: " + jsn);            // verbose mode

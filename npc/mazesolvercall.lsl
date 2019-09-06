@@ -16,7 +16,7 @@
 //      "regioncorner" : VECTOR, "pos": VECTOR, "rot" : QUATERNION, "cellsize": FLOAT, "probespacing" : FLOAT, 
 //      "width" : FLOAT, "height" : FLOAT, 
 //      "sizex", INTEGER, "sizey", INTEGER, 
-//      "startx" : INTEGER, "starty" : INTEGER, "endx" : INTEGER, "endy" : INTEGER }
+//      "startx" : INTEGER, "starty" : INTEGER, "startclear": BOOLEAN, "endx" : INTEGER, "endy" : INTEGER }
 //
 //  Globals
 //
@@ -32,7 +32,7 @@ float gMazeCellSize;                                // cell size of maze
 //  p0-p1 distance must be an integral number of widths.
 //
 //
-integer mazesolverstart(vector p0, vector p1, float width, float height, float probespacing, integer pathid, integer segmentid, integer msglev) 
+integer mazesolverstart(vector p0, vector p1, float width, float height, float probespacing, integer startclear, integer pathid, integer segmentid, integer msglev) 
 {
     //  Lay out the rectangle for the maze
     integer MAXMAZESIZE = 41;                       // ***TEMP*** belongs elsewhere
@@ -91,7 +91,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
 
     llMessageLinked(LINK_THIS, MAZESOLVEREQUEST, llList2Json(JSON_OBJECT, [
         "request", "mazesolve",                     // type of request
-        "msglev", msglev,                         // debug use - maze solver will print messages
+        "msglev", msglev,                           // debug use - maze solver will print messages
         "probespacing", probespacing,               // distance between ray casts in height dir
         "cellsize", gMazeCellSize,                  // size of a maze cell. Typically 0.333 meter
         "pathid", pathid,                           // path we are working on
@@ -99,11 +99,12 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
         "pos", gMazePos,                            // corner of maze in world space
         "rot", gMazeRot,                            // rotation of maze in world space
         "width", width,                             // avatar dimension
-        "height", height,
+        "height", height,                        
         "sizex", MAXMAZESIZE,                       // maze dimensions in cells
         "sizey", MAXMAZESIZE,
         "startx", startx,                           // start, cell coords
         "starty", starty,
+        "startclear", startclear,                   // assume start point is unobstructed
         "endx", endx,                               // goal, cell coords
         "endy", endy]),"");
     return(0);
