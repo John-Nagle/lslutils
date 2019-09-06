@@ -193,7 +193,6 @@ pathplanstart(key target, vector goal, float width, float height, float stopshor
 pathstart(key target, vector endpos, float stopshort, integer dogged)
 {
     gLocalPathId = (gLocalPathId+1)%(PATHMAXUNSIGNED-1);// our serial number, nonnegative
-    gPathcallLastParams = [target, endpos, stopshort, dogged];      // save params for restart
     if (target != NULL_KEY)                                         // if chasing a target
     {   list details = llGetObjectDetails(target, [OBJECT_POS]);    // get object position
         if (details == [])                                          // target has disappeared
@@ -203,6 +202,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
         endpos = llList2Vector(details,0);                          // use this endpos
         llOwnerSay("Position of target " + llKey2Name(target) + " is " + (string)endpos); // ***TEMP***
     }
+    gPathcallLastParams = [target, endpos, stopshort, dogged];      // save params for restart
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
     if (!valid_dest(endpos))
     {   pathMsg(PATH_MSG_WARN,"Destination " + (string)endpos + " not allowed."); 
