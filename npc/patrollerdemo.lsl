@@ -135,13 +135,6 @@ pathUpdateCallback(integer status, key hitobj )
             pathMsg(PATH_MSG_INFO,"Patrol point reached.");
         }  
         return;
-    } else if (status == PATHEXECOLLISION)                      // be nice
-    {                                                           // need to check for avatar
-        list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
-        integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-        pathMsg(PATH_MSG_WARN, "Collided with " + llList2String(details,1));
-        if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
-        {   llSay(0,"Excuse me."); }
     }
     //  Default - errors we don't special case.
     {          
@@ -367,6 +360,15 @@ default
     
     link_message(integer sender_num, integer num, string str, key id)
     {   pathLinkMsg(sender_num, num, str, id); }
+    
+    collision_start(integer num_detected)
+    {   key hitobj = llDetectedKey(0);                       // first object hit
+        list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
+        integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+        pathMsg(PATH_MSG_WARN, "Collided with " + llList2String(details,1));
+        if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
+        {   llSay(0,"Excuse me."); }
+    }
    
     
     listen( integer channel, string name, key id, string msg)
