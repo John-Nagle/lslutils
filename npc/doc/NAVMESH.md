@@ -19,8 +19,8 @@ or keep-out areas. All this is documented.
 
 (PICTURE)
 
-What the documentation doesn't tell you is that the static navmesh is a coarse approximation to the obstacles in the
-virtual world. It does not match it exactly. It does not follow every little detail.
+What the documentation doesn't tell you is that the static navmesh is only a coarse approximation to the obstacles in the
+virtual world. It does not match them exactly. It does not follow every little detail.
 The navmesh seems to be a low level of detail approximation 
 of the world. That makes it fast to use. 
 Because of this, it can only be used as a starting point for where to go.
@@ -31,7 +31,7 @@ If an block is placed on flat Linden ground, with the top of the block about 0.2
 and the block is made walkable, something strange happens.
 The navmesh becomes be a flat plane, above the ground and below the top of the block.
 
-(sandboxnavmesh0250.png)
+![Block above ground by 0.25m](sandboxnavmesh0250.png)
 
 This looks strange. Note the avatar's feet, on the ground but below the navmesh.
 
@@ -39,7 +39,7 @@ Along the Z axis, the static navmesh seems to be within 0.25 to 0.35 meter of ac
 
 If the top of the block is 0.375m above ground, something quite different happens.
 
-(sandboxnavmesh0375.png)
+![Block above ground by 0.375m](sandboxnavmesh0375.png)
 
 Now the top of the block is a separate piece of navmesh from the ground.
 
