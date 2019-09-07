@@ -29,7 +29,7 @@ Because of this, it can only be used as a starting point for where to go.
 
 If an block is placed on flat Linden ground, with the top of the block about 0.25m above ground,
 and the block is made walkable, something strange happens.
-The navmesh becomes be a flat plane, above the ground and below the top of the block.
+The navmesh becomes a flat plane, above the ground and right through the middle of the block.
 
 ![Block above ground by 0.25m](sandboxnavmesh0250.png)
 
@@ -41,16 +41,27 @@ If the top of the block is 0.375m above ground, something quite different happen
 
 ![Block above ground by 0.375m](sandboxnavmesh0375.png)
 
-Now the top of the block is a separate piece of navmesh from the ground.
+The navmesh over the ground is now at ground level.
+The navmesh over the block is at the level of the top
+of the block.
+Those pieces of navmesh do not connect.
 
-This is how the navmesh represents level changes which can be stepped over, and
-those which cannot. A discontinuity in the navmesh cannot be crossed by a path.
+This is how the navmesh represents level changes which can be stepped over, versus
+those which cannot.
+The navmesh tester in the viewer, **llGetStaticPath**, and SL pathfinding will not cross such a break.
 
 Calling **llGetStaticPath** returns elevations on the navmesh.
-These are only an approximation to the ground level, and are not good food positions.
+These are only an approximation to the ground level, and are not good foot positions.
 Using them as foot positions will sometimes result in feet below the ground and above the ground.
 Users of the navmesh must use **llCastRay** to find the ground for each point returned
-by **llGetStaticPath**.
+by **llGetStaticPath**. As a starting point, we're doing ray casts from 0.40 above the navmesh
+to 0.40 below it, looking for a walkable. 
+
+### X and Y axis issues
+
+The navmesh can clip the corners of obstacles.
+
+(MORE)
 
 
 
