@@ -293,10 +293,12 @@ default
     link_message(integer status, integer num, string jsn, key id )
     {   if (num == LINKMSGSCANREQUEST)                           // maze solve result
         {   pathscanrequest(jsn); }
+        else if (num == PATHMASTERRESET)                         // if master reset
+        {   llResetScript(); }                                   // full reset
     }
     
     timer()
-    {   pathscantimer();   }                                      // pass timer event
+    {   pathscantimer();   }                                     // pass timer event
     
     moving_end()
     {   pathscanmovementend(); }   

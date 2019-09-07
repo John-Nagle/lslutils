@@ -690,7 +690,7 @@ list pathtrimmedstaticpath(vector startpos, vector endpos, float stopshort, floa
 //
 pathdonereply(integer status, key hitobj, integer pathid)
 {   
-    llMessageLinked(LINK_THIS, PATH_DIR_REPLY, llList2Json(JSON_OBJECT,["status",status,"pathid",pathid]), hitobj);  // status to client
+    llMessageLinked(LINK_THIS, PATHPLANREPLY, llList2Json(JSON_OBJECT,["status",status,"pathid",pathid]), hitobj);  // status to client
 }
 
 #endif // PATHBUILDUTILSLSL

@@ -25,6 +25,8 @@ integer gPathcallChartype = CHARACTER_TYPE_A;                   // humanoid
 float gPathcallLastDistance = 0.0;                              // distance to goal on last try
 list  gPathcallLastParams = [];                                 // params at last try
 
+integer gPathcallReset = FALSE;                                 // have we reset the system since startup?
+
 integer gLocalPathId = 0;                                       // path serial number
 
 
@@ -45,10 +47,15 @@ integer gLocalPathId = 0;                                       // path serial n
 //
 pathInit(float width, float height, integer chartype, integer msglev)
 {
-    gPathMsgLevel = msglev;                     // set error message level (PATH_MSG_INFO, etc.)
+    gPathMsgLevel = msglev;                         // set error message level (PATH_MSG_INFO, etc.)
     gPathcallWidth = width;                         // character params
     gPathcallHeight = height;
     gPathcallChartype = chartype;
+    if (!gPathcallReset)
+    {   llMessageLinked(LINK_THIS, PATHMASTERRESET,"","");    // reset all other scripts
+        llSleep(5.0);                               // wait for reset
+        gPathcallReset = TRUE; 
+    } // everybody has been reset
 }
 
 //
@@ -129,7 +136,7 @@ pathPursue(key target, float stopshort, integer dogged)
 //
 pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
 {   
-    if (num == PATH_DIR_REPLY)
+    if (num == PATHPLANREPLY)
     {   integer status = (integer)llJsonGetValue(jsn, ["status"]);  // status and pathid via JSON.
         integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);  // hitobj as key param in link message
         if (pathid != gLocalPathId)                         // result from a cancelled operation
@@ -181,7 +188,7 @@ pathplanstart(key target, vector goal, float width, float height, float stopshor
         ["target",target, "goal", goal, "stopshort", stopshort, "width", width, "height", height, "chartype", chartype, "testspacing", testspacing,
         "speed", gPathcallSpeed, "turnspeed", gPathcallTurnspeed,
         "pathid", pathid, "msglev", gPathMsgLevel]);
-    llMessageLinked(LINK_THIS, PATH_DIR_REQUEST, params,"");   // send to planner  
+    llMessageLinked(LINK_THIS, PATHPLANREQUEST, params,"");   // send to planner  
 }
 //
 //  pathstart -- go to indicated point or target. Internal fn.

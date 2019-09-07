@@ -315,9 +315,11 @@ pathRequestRecv(string jsonstr)
 //
 default
 {
-    link_message(integer status, integer num, string jsn, key id )
-    {   if (num == PATH_DIR_REQUEST)                        // if request for this task
+    link_message(integer status, integer num, string jsn, key id)
+    {   if (num == PATHPLANREQUEST)                         // if request for this task
         {   pathRequestRecv(jsn); }                         // run the path planner
+        else if (num == PATHMASTERRESET)                    // if master reset
+        {   llResetScript(); }
     }
     
     on_rez(integer rezarg)

@@ -20,20 +20,22 @@
 #define INFINITY ((float)"inf")                             // is there a better way?
 #endif // INFINITY
 #define PATHMAXUNSIGNED 2147483647              // 2^31-1, largest positive integer
-
+//
 //  Link message types
 //
+#define PATHMASTERRESET 100                     // reset all path scripts
+#define PATHPLANREQUEST 101                     // character controller to path planner                  
+#define PATHPLANREPLY 102                       // path planner to character controller
+
 #define MAZESOLVEREQUEST 201                    // from path planner to maze solver
 #define MAZESOLVERREPLY 202                     // from maze solver to execution
 #define MAZEPATHREPLY 203                       // from path planner to execution
 #define MAZEPATHSTOP 204                        // from path planner to execution
 
-#define PATH_DIR_REQUEST 101                    // character controller to path planner                  
-#define PATH_DIR_REPLY 102                      // path planner to character controller
 
 
 
-#define MAZEMAXSIZE (41)                                    // maximum size of maze
+#define MAZEMAXSIZE (41)                        // maximum size of maze
 
 
 

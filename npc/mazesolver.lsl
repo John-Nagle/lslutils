@@ -887,6 +887,9 @@ integer gBarrierFn(integer fromx, integer fromy, integer x, integer y)
 default
 {   
     link_message( integer sender_num, integer num, string jsn, key id )
-    {   mazerequestjson(sender_num, num, jsn, id); } // handle request
+    {   if (num == PATHMASTERRESET)                 // if master reset
+        {   llResetScript(); }                      // full reset
+        mazerequestjson(sender_num, num, jsn, id); 
+    } // handle request
 }
 

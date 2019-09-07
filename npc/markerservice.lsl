@@ -4,7 +4,7 @@
 //  Animats
 //  July, 2019
 //
-
+#include "npc/mazedefs.lsl"
 integer MARKERCHANNEL = -3938235;                                // arbitrary channel number
 integer MARKERREPLYCHANNEL = -3938236;                              // reply channel
 string MARKERNAME = "Path marker, rounded (TEMP)";                        // rez this
@@ -70,6 +70,8 @@ default
     
     link_message(integer sender_num, integer num, string json, key name)
     {   ////llOwnerSay("Link msg #" + (string)num + ": " + json);               // ***TEMP***
+        if (num == PATHMASTERRESET)                 // if master reset
+        {   llResetScript(); }                      // full reset
         if (num != LINKMSGMARKER) { return; }                               // not ours
         if (gListenHandle == 0) { gListenHandle = llListen(MARKERREPLYCHANNEL, "", NULL_KEY, ""); } // listen for marker replies
         gMarkerSerial++;

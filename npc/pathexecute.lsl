@@ -169,7 +169,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
     } // bogus 1 point path
     if (pathid != gPathExeId)                                // starting a new path, kill any movement
     {   //  Check for stale path ID.  Path ID wraps around but is always positive.
-        if (pathid < gPathExeId || pathid > gPathExeId+1000) { pathMsg(PATH_MSG_WARN,"Stale path segment ignored."); return; }// segment out of sequence
+        if (pathid < gPathExeId || pathid-1000 > gPathExeId) { pathMsg(PATH_MSG_WARN,"Stale path segment " + (string)pathid + " ignored."); return; }// segment out of sequence
         pathexestop(0);                                     // normal start, reset to clear state.
         gPathExeId = pathid;                                // now working on this pathid
         gPathExeEOF = FALSE;                                // not at EOF
@@ -547,6 +547,8 @@ default
             pathexescanreply(jsn);
         } else if (num == MAZEPATHSTOP)                 // planner wants us to stop
         {   pathexestop(0);                             // normal stop commanded
+        } else if (num == PATHMASTERRESET)              // if master reset
+        {   llResetScript();                            // full reset
         }
     }
 #ifdef OBSOLETE        
