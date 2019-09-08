@@ -117,21 +117,21 @@ objects need to open a door.
 
 Requests for a door:
 
-   {"request" : "info", "serial" : INTEGER, "id", KEY, "language" : "en" } 
+    {"request" : "info", "serial" : INTEGER, "id", KEY, "language" : "en" } 
    
 sent to a door should return
 
-   {"reply" : "info", "serial" : INTEGER, "objectclass": "door", "name" : STRING, "requesttypes" : ["status", "open", "close"]}
+    {"reply" : "info", "serial" : INTEGER, "objectclass": "door", "name" : STRING, "requesttypes" : ["status", "open", "close"]}
    
 which tells you that the door will reply to those requests. Note that a single request may result in several responses
 where there are multiple doors.
 
-   {"request" : status", "serial" : INTEGER, "id", KEY, "name", STRING, "language" : "en" } 
+    {"request" : status", "serial" : INTEGER, "id", KEY, "name", STRING, "language" : "en" } 
    
 returns some door info:
 
-   {"reply" : status", "serial" : INTEGER, "state": STRING, "pos": VECTOR, "rot": ROTATION, "size" : VECTOR,
-    "rpos": BOOLEAN, "regioncorner": VECTOR, doortype" : STRING, "name" : STRING, "error" : STRING, "msg" : STRING }
+    {"reply" : status", "serial" : INTEGER, "state": STRING, "pos": VECTOR, "rot": ROTATION, "size" : VECTOR,
+     "rpos": BOOLEAN, "regioncorner": VECTOR, doortype" : STRING, "name" : STRING, "error" : STRING, "msg" : STRING }
     
 Only one door should respond to a status message that contains a name. Each door of an object needs a unique name.
     
@@ -189,28 +189,28 @@ We should distribute a door script which talks this protocol.
 
 Find a rez zone within 200m:
 
-   {"request" : "search", "serial" : 1234, "range": 200.0, "objectclass" : "rez"}
+    {"request" : "search", "serial" : 1234, "range": 200.0, "objectclass" : "rez"}
    
 Reply:
 
-   {"reply" : "search", "serial" :1234, "objectclass" : "rez", "pos" : <134,455,22>, "regioncorner" : <64000.0, 192000.0, 0.0> }
+    {"reply" : "search", "serial" :1234, "objectclass" : "rez", "pos" : <134,455,22>, "regioncorner" : <64000.0, 192000.0, 0.0> }
    
 Multiple replies are possible.
    
 Find a GTFO hub (reply): 
 
-   {"reply" : "search", "serial" :1234, "objectclass" : "hub", "pos" : <134,455,22>, "regioncorner" : <64000.0, 192000.0, 0.0>,
-    "name" : "GTFO World HQ"}
+    {"reply" : "search", "serial" :1234, "objectclass" : "hub", "pos" : <134,455,22>, "regioncorner" : <64000.0, 192000.0, 0.0>,
+     "name" : "GTFO World HQ"}
     
 Open a door:
 
-   {"request" : "open", "serial" : 1234, "id", "16c59568-4edc-49a9-91ab-7e393f3431dd" } 
+    {"request" : "open", "serial" : 1234, "id", "16c59568-4edc-49a9-91ab-7e393f3431dd" } 
    
 Rejected door opens:
 
-   {"reply" : "open" , "serial" : 1234, "state" : "closed", "error" : "rejected", "msg" : "You are not allowed to open this door." }
+    {"reply" : "open" , "serial" : 1234, "state" : "closed", "error" : "rejected", "msg" : "You are not allowed to open this door." }
    
-   {"reply" : "open" , "serial" : 1234, "state" : "closed", "name" : "cargodoor", "error" : "rejected", "msg" : "Please turn off engine before loading." }
+    {"reply" : "open" , "serial" : 1234, "state" : "closed", "name" : "cargodoor", "error" : "rejected", "msg" : "Please turn off engine before loading." }
    
 ## Security
 
