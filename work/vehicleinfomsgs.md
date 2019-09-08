@@ -18,12 +18,13 @@ to talk to each other.
 
 ### Basic format
 
-Everything is in JSON, because LSL has a built-in JSON parser. No need to parse in LSL.
+Everything is in [JSON](http://wiki.secondlife.com/wiki/Json_usage_in_LSL), because LSL has a built-in JSON parser
+which will turn JSON into LSL lists.
 
 All keywords are in lower case and contain only ASCII letters and numbers.
 String fields for messages are full Unicode in any relevant language.
 
-All string fields have no leading or trailing blanks.
+All string fields have no leading or trailing blanks. This simplfies testing for keywords.
 
 Messages are sent on channel -673645769, which is a random number from a random number generator.
 That will be a standardized channel number used grid-wide for this. It is not a secret.
@@ -36,9 +37,9 @@ Positive numbers are for humans.)
 
 The **search** message asks nearby objects of a given class to speak up and identify themselves. 
 
-    {"request" : "search", "serial" : INTEGER, "range", FLOAT, "objectclass" : STRING}
+    {"request" : "search", "serial" : INTEGER, "range": FLOAT, "objectclass" : STRING}
     
-Any cooperating object of type **objectclass** hearing this within RANGE of the sending object replies with
+Any cooperating object of type **objectclass** hearing this within **range** of the sending object replies with
 
     {"reply" : "search", "serial": INTEGER, "version": INTEGER}
     
@@ -52,7 +53,7 @@ objects reply to **search** without a version, so we can still find obsolete obj
     
 This is used to locate nearby objects of interest.
     
-"objectclass" values are few and standardized:
+**objectclass** values are few and standardized:
 
     "vehicle" - some kind of vehicle
 
@@ -72,29 +73,42 @@ This is used to locate nearby objects of interest.
     
     "avatar" - an avatar equipped for this system (unusual, but allowed)
     
- This is just finding something that will talk to you.
- There's just enough detail here to find things to talk to and filter out
- things you don't care about. More details can be requested for each object.
+These are intended to be very general. Just enough to make search work.
+This section is just finding something that will talk to you.
+There's just enough detail here to find things to talk to and filter out
+things you don't care about. More details can be requested for each object.
  
- All objects using this channel have to 
+All objects using this channel should understand these messages.
+These are fixed responses for each object, except for echoing back the **serial** field. 
+
+Tools for building maps can easily query entire regions and find all cooperating transportation-related objects.
  
 ### Querying objects
 
     {"request" : "info", "serial" : INTEGER, "id", KEY }
     
-This gets basic info about an object, including what queries an object understands.
+This asks for basic info about an object, including what queries an object understands.
 
     {"reply" : "info", "serial" : INTEGER, "objectclass": STRING, "name" : STRING, "fields" : [STRING, STRING ...]}
     
 The values in the "fields" list indicate what can be asked for. Those
 values can be used in a "request".
 
-This is a fixed response for each object, except for echoing back the "serial" field. 
+This is a fixed response for each object, except for echoing back the **serial** field. 
+
+This message is mostly for querying more complex objects to find out what they can do. 
+For example, a hub with few requests available might do its loading with the usual
+sit and wait for a minute while nothing happens system. A more elaborate hub might
+ask a trucker to back to a specific loading door, open the door, open the truck's
+door, use an automated forklift to place crates in the truck, close everything up,
+and have a animesh NPC hand the driver the paperwork. The idea here is to allow
+for lots of expansion capability while retaining backwards compatibility. 
     
 ### An example: "door"
 
 Anything that is openable on command is a "door". A gate, a drawbridge,
-a loading dock a vehicle door, etc. This is useful when several
+a loading dock a vehicle door, etc. Also, possibly, a gas cap or a
+vehicle hood. This is useful when several
 objects need to coordinate loading a truck, and is also useful when non-player
 objects need to open a door.
 
