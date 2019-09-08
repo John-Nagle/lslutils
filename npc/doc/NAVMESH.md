@@ -59,9 +59,18 @@ to 0.40 below it, looking for a walkable.
 
 ### X and Y axis issues
 
-The navmesh can clip the corners of obstacles.
+The navmesh can clip the corners of obstacles. Not by much. 
+Paths computed by llGetStaticPath can cut about 0.20m into objects.
+That's not a reliable number.
+Users of the static navmesh must have at least basic
+obstacle avoidance based on something other than the static navmesh.
 
 (MORE)
+
+### Size issues
+
+Only large objects become part of the navmesh. The minimum size seems to be slightly greater than 10m x 10m.
+The size of the linkset is what matters, not the individual object.
 
 
 
