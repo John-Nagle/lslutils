@@ -92,7 +92,7 @@ Tools for building maps can easily query entire regions and find all cooperating
     
 This asks for basic info about an object, including what queries an object understands.
 
-    {"reply" : "info", "serial" : INTEGER, "objectclass": STRING, "name" : STRING, "fields" : [STRING, STRING ...]}
+    {"reply" : "info", "serial" : INTEGER, "objectclass": STRING, "name" : STRING, "requesttypes" : [STRING, STRING ...]}
     
 The values in the "fields" list indicate what can be asked for. Those
 values can be used in a "request".
@@ -110,7 +110,7 @@ for lots of expansion capability while retaining backwards compatibility.
 ### An example: "door"
 
 Anything that is openable on command is a "door". A gate, a drawbridge,
-a loading dock a vehicle door, etc. Also, possibly, a gas cap or a
+a loading dock a vehicle door, etc. Also a gas cap or a
 vehicle hood. This is useful when several
 objects need to coordinate loading a truck, and is also useful when non-player
 objects need to open a door.
@@ -121,16 +121,16 @@ Requests for a door:
    
 sent to a door should return
 
-   {"reply" : "info", "serial" : INTEGER, "objectclass": "door", "fields" : ["status", "open", "close"]}
+   {"reply" : "info", "serial" : INTEGER, "objectclass": "door", "requesttypes" : ["status", "open", "close"]}
    
-which tells you that the door will reply to those commands. 
+which tells you that the door will reply to those requests. 
 
    {"request" : status", "serial" : INTEGER, "id", KEY, "language" : "en" } 
    
 returns some door info:
 
    {"reply" : status", "serial" : INTEGER, "state": STRING, "pos": VECTOR, "rot": ROTATION, "size" : VECTOR,
-    "rpos": BOOLEAN, "regioncorner": VECTOR, doortype" : STRING, "error" : STRING, "msg" : STRING }
+    "rpos": BOOLEAN, "regioncorner": VECTOR, doortype" : STRING, "name" : STRING, "error" : STRING, "msg" : STRING }
     
 **language** in the request is the language for the "msg" field, if the object has multiple language options.
 The keywords are fixed for all language options.
@@ -157,16 +157,20 @@ This identifies the region, which may needed near a region boundary. Omit  if **
 
 The pos/rpos/regioncorner set of data is the way all positions will be represented. 
 
+**name** is the name of the door. Objects with more than one door must return this. 
+
 **error**, if present, means something went wrong. Meanings for error strings are not defined here.
 If **error** is not present, the request was executed. 
 
 **msg**, if present, is a message for users. It doesn't indicate an error; it can be a welcome message.
 
-**doortype**, if present, is the type of door. Meaning is not defined here.
+**doortype**, if present, is the type of door. Meaning is not defined yet. May need to distinguish
+between the rear door on a truck, the cab doors, the hood, and the gas cap. 
 
-    {"request" : "open", "serial" : INTEGER, "id", KEY }
+    {"request" : "open", "serial" : INTEGER, "id", KEY, "name" : STRING }
     
-is a request to open the door. The reply is the same as for **status**.
+is a request to open the door. The reply is the same as for **status**. **name** is only required if
+there is more than one door associated with the UUID.
 
     {"request" : "close", "serial" : INTEGER, "id", KEY } does what you think it does.
     
@@ -199,9 +203,11 @@ Open a door:
 
    {"request" : "open", "serial" : 1234, "id", "16c59568-4edc-49a9-91ab-7e393f3431dd" } 
    
-Rejected door open:
+Rejected door opens:
 
    {"reply" : "open" , "serial" : 1234, "state" : "closed", "error" : "rejected", "msg" : "You are not allowed to open this door." }
+   
+   {"reply" : "open" , "serial" : 1234, "state" : "closed", "name" : "cargodoor", "error" : "rejected", "msg" : "Please turn off engine before loading." }
    
 ## Security
 
