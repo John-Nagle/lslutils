@@ -4,6 +4,9 @@ From a conversation between John Nagle (Animats resident) and Cinn Bouchard.
 This is an outline for a general way for SL objects associated with transportation
 to talk to each other.
 
+This is very preliminary. It's written as a protocol specification so there's something
+concrete to discuss. It's a skeleton to be filled in and changed as necessary.
+
 ## Goals
 
 - Standardized way for vehicles, loaders, and other vehicle support facilities to communicate
@@ -130,8 +133,9 @@ returns some door info:
     "rpos": BOOLEAN, "regioncorner": VECTOR, doortype" : STRING, "error" : STRING, "msg" : STRING }
     
 **language** in the request is the language for the "msg" field, if the object has multiple language options.
-The keywords are fixed for all language options. Language codes are per ISO 639-1, the 2-letter language
-codes used on the Web.
+The keywords are fixed for all language options.
+Language codes are per [ISO 639-1](https://www.loc.gov/standards/iso639-2/php/code_list.php), the 2-letter language
+codes used on the Web, similar to the country suffixes on domains.
     
 **state** - "open", "closed", "locked", "auto", or "moving", as you'd expect. "locked" implies "closed".
 "auto" means it will open when approached and you don't need to request an open. Doors which say they
@@ -201,7 +205,7 @@ Rejected door open:
    
 ## Security
 
-Anyone can make requests. Objects can refuse them. "open" for example, might involve checking a list of authorized
+Anyone can make requests. Objects can refuse them. An object receiving an "open" for example, might check a list of authorized
 users.
 
 Objects get the UUID of the sender from the LSL "listen" event, and
@@ -210,9 +214,13 @@ An "id" there is for the destination object.
     
 Objects can check whether something is close enough to execute a command. Most SL fuel pumps, and some doors, do this now.
 Rejecting a request from a source too far away makes griefing a very short range operation. Probably short range enough
-that the griefer is on your parcel and can be banned. 
+that the griefer is on your parcel and can be banned. For many requests, checking if the sender is on the same parcel
+is a good idea.
 
-Anybody can do parcel-wide "search", but that has limited griefing potential.
+Anybody should be allowed to do parcel-wide "search", but that has limited griefing potential.
+
+In severe cases, consider counting the number of messages per minute from the most active sender and, if it
+is excessive, ignore them.
 
     
     
