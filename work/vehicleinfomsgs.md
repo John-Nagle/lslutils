@@ -94,7 +94,7 @@ This asks for basic info about an object, including what queries an object under
 
     {"reply" : "info", "serial" : INTEGER, "objectclass": STRING, "name" : STRING, "requesttypes" : [STRING, STRING ...]}
     
-The values in the "fields" list indicate what can be asked for. Those
+The values in the "requesttypes" list indicate what can be asked for. Those
 values can be used in a "request".
 
 This is a fixed response for each object, except for echoing back the **serial** field. 
@@ -121,16 +121,19 @@ Requests for a door:
    
 sent to a door should return
 
-   {"reply" : "info", "serial" : INTEGER, "objectclass": "door", "requesttypes" : ["status", "open", "close"]}
+   {"reply" : "info", "serial" : INTEGER, "objectclass": "door", "name" : STRING, "requesttypes" : ["status", "open", "close"]}
    
-which tells you that the door will reply to those requests. 
+which tells you that the door will reply to those requests. Note that a single request may result in several responses
+where there are multiple doors.
 
-   {"request" : status", "serial" : INTEGER, "id", KEY, "language" : "en" } 
+   {"request" : status", "serial" : INTEGER, "id", KEY, "name", STRING, "language" : "en" } 
    
 returns some door info:
 
    {"reply" : status", "serial" : INTEGER, "state": STRING, "pos": VECTOR, "rot": ROTATION, "size" : VECTOR,
     "rpos": BOOLEAN, "regioncorner": VECTOR, doortype" : STRING, "name" : STRING, "error" : STRING, "msg" : STRING }
+    
+Only one door should respond to a status message that contains a name. Each door of an object needs a unique name.
     
 **language** in the request is the language for the "msg" field, if the object has multiple language options.
 The keywords are fixed for all language options.
@@ -140,8 +143,8 @@ codes used on the Web, similar to the country suffixes on domains.
 **state** - "open", "closed", "locked", "auto", or "moving", as you'd expect. "locked" implies "closed".
 "auto" means it will open when approached and you don't need to request an open. Doors which say they
 are "auto" must open for vehicles, avatars, pathfinding objects, and keyframed NPCs such as
-forklifts. Many older open
-scripts don't do that. "moving" is for slow moving large doors, drawbridges, and such, where you may
+forklifts. Many older open scripts don't do that.
+"moving" is for slow moving large doors, drawbridges, and such, where you may
 have to start the open process and keep polling while the massive object does its thing.
 
 A door has the UUID of the object requesting the open; that comes with the message and is not forgeable.
@@ -153,7 +156,7 @@ will fit through the door. The +X direction for the prim is the vector to travel
 doors and gates, the box should cover the area of swing, so that's understood as a keep-out area during opening.
 **rpos**, if TRUE, means these coordinates are relative to the ID queried. That's for vehicles. All that
 is fixed information, set once during setup. **regioncorner** is the corner of the region, from **llGetRegionCorner()**.
-This identifies the region, which may needed near a region boundary. Omit  if **rpos** is true. 
+This identifies the region, which may needed near a region boundary. Omit if **rpos** is true. 
 
 The pos/rpos/regioncorner set of data is the way all positions will be represented. 
 
