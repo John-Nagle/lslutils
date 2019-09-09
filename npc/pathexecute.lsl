@@ -170,7 +170,6 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
     if (pathid != gPathExeId)                                // starting a new path, kill any movement
     {   //  Check for stale path ID.  Path ID wraps around but is always positive.
         if (pathid < gPathExeId || pathid-1000 > gPathExeId) { pathMsg(PATH_MSG_WARN,"Stale path segment " + (string)pathid + " ignored."); return; }// segment out of sequence
-        if (segmentid != 0) { pathMsg(PATH_MSG_WARN,"New pathid " + (string)pathid + " but nonzero segment #" + (string)segmentid + " points: " + llDumpList2String(pts,","));  return; } // stale or out of sequence        // Should not be happening
         pathexestop(0);                                     // normal start, reset to clear state.
         gPathExeId = pathid;                                // now working on this pathid
         gPathExeEOF = FALSE;                                // not at EOF
@@ -179,8 +178,8 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
         gPathExeMovegoal = ZERO_VECTOR;                     // no stored goal yet
         llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
         vector verr = llList2Vector(pts,0) - llGetPos();    // get starting point
-        if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL)     // if too far from current pos
-        {   pathMsg(PATH_MSG_WARN,"Bad start pos. Should be at: " + (string)llList2Vector(pts,0) + " Current pos: " + (string)llGetPos());
+        if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL || segmentid != 0)     // if too far from current pos or bad segment ID
+        {   pathMsg(PATH_MSG_WARN,"Bad start pos or nonzero segment " + (string)segmentid + " Should be at: " + (string)llList2Vector(pts,0) + " Current pos: " + (string)llGetPos());
             pathexestop(PATHEXEBADSTARTPOS);                // we are not where we are supposed to be.
             return; 
         }
