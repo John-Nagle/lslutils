@@ -19,6 +19,9 @@ float GROUNDCLEARANCE = 0.05;                               // (m) avoid false g
 float PATHCHECKTOL = 0.02;                                  // (m) allow 2cm collinearity error
 float PATHPOINTONSEGDIST = 0.10;                            // (m) allow point up to 10cm off line when checking for what seg contains a point
 float PATHSTATICTOL = 0.10;                                 // (m) allow extra space on either side of path 
+
+#define PATHZTOL (0.35)                                     // (m) allow this much error from llGetStaticPath
+
 list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2]; // 2 hits, because we can hit ourself and must ignore that.
 list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2];                  // 2 hits, because we can hit ourselves and must ignore that
 
@@ -156,8 +159,7 @@ integer checkcollinear(list pts)
 //  Works in 3D world, not maze cell space.
 //
 list pathstraighten(list pts, float width, float height, float probespacing, integer chartype)
-{   ////return(pts);    // ***TEMP TEST*** NOT WORKING PROPERLY?
-    integer n = 0;
+{   integer n = 0;
     //   Advance through route. On each iteration, either the route gets shorter, or n gets
     //   larger, so this should always terminate.
     while (n < llGetListLength(pts)-3)                          // advancing through route
@@ -208,6 +210,54 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
     {   pathlength += llVecMag(llList2Vector(path,i+1)-llList2Vector(path,i)); }
     return(pathlength);                                     // return positive pathlength
 }
+//
+//  pathfindwalkable -- find walkable below point
+//
+//  Looks straight down.
+//  Returns ZERO_VECTOR if fail.
+//
+vector pathfindwalkable(vector startpos, float abovetol, float belowtol)
+{   //  Look downward twice the height, because of seat mispositioning issues.
+    ////list hits = llCastRay(startpos, startpos - <0,0,height*3>, 
+    list hits = castray(startpos+<0,0,abovetol>, startpos-<0,0,belowtol>,      // look within allowed search range
+            [RC_MAX_HITS,10, RC_REJECT_TYPES, RC_REJECT_PHYSICAL]); // go down up to 5 objs
+    pathMsg(PATH_MSG_INFO,"Walkable hits looking down from " + (string)startpos + ": " + llDumpList2String(hits,",")); // ***TEMP***
+    integer hitstatus = llList2Integer(hits,-1);        // < 0 is error
+    if (hitstatus < 0)
+    {   pathMsg(PATH_MSG_ERROR,"Error looking for walkable below " + (string)startpos + ", status " + (string)hitstatus); return(ZERO_VECTOR); }
+    integer i;
+    for (i=0; i<hitstatus*2; i = i + 2)                         // search hits
+    {   key hitobj = llList2Key(hits,i);
+        vector hitpt = llList2Vector(hits, i+1);
+        if (hitobj == NULL_KEY) { return(hitpt); }               // found ground
+        list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
+        integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+        if (pathfindingtype == OPT_WALKABLE) { return(hitpt); } // found walkable
+    }     
+    return(ZERO_VECTOR);                                        // no find
+}
+
+//
+//  pathptstowalkable -- move path points down to walkable surface
+//
+//  Used on the output of llGetStaticPath, which can be off by up to 0.35m.
+//
+list pathptstowalkable(list path)
+{   list pts = [];
+    integer length = llGetListLength(path);
+    integer i;
+    for (i=0; i<length; i++)                                    // for all points
+    {   vector p = llList2Vector(path,i);
+        vector pfloor = pathfindwalkable(p, PATHZTOL, PATHZTOL);// look near the 
+        if (pfloor == ZERO_VECTOR)                              // can't find walkable surface
+        {   pathMsg(PATH_MSG_WARN, "Can't find walkable below pnt " + (string)p);   // where's the ground or floor?
+            pfloor = p;                                         // use unfixed value
+        }
+        pts += pfloor;                                          // add this point
+    }
+    return(pts);                                                // points on floor
+}
+
 //
 //  rotperpenonground  -- rotation to get line on ground perpendicular to vector
 //

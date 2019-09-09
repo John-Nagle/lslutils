@@ -44,7 +44,8 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     }
     //  Got path
     pts = llList2List(pts,0,-2);                            // drop status from end of points list
-    pts = pathclean(pts);                                   // 
+    pts = pathclean(pts);                                   // remove dups and ultra short segments
+    pts = pathptstowalkable(pts);                           // project points onto walkable surface
     integer len = llGetListLength(pts);
     if (len < 2)
     {   

@@ -147,7 +147,7 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
     }
 }
 
-
+#ifdef OBSOLETE
 //
 //  pathfindwalkable -- find walkable below avatar
 //
@@ -177,6 +177,7 @@ vector pathfindwalkable(vector startpos, float height)
     }     
     return(ZERO_VECTOR);                                        // no find
 }
+#endif // OBSOLETE
 
 
 //
@@ -217,7 +218,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
         return; 
     }
 
-    endpos = pathfindwalkable(endpos, gPathcallHeight);             // find walkable below char
+    endpos = pathfindwalkable(endpos, 0, gPathcallHeight*3);             // find walkable below char
     if (endpos == ZERO_VECTOR)
     {   pathMsg(PATH_MSG_WARN,"Error looking for walkable under goal."); 
         pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
