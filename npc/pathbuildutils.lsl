@@ -417,10 +417,19 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 //
 //  
 //
-integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float height, integer dobackcorners)
+integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners)
 {
     if (gPathSelfObject == NULL_KEY)
     {   gPathSelfObject = llGetKey(); }                     // our own key, for later
+    //  Do static path check. We have to, or we will go through static obstacles which are vertical parts of walkables.
+    list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, chartype]);
+    integer status = llList2Integer(path,-1);                   // last item is status
+    path = llList2List(path,0,-2);                              // remove last item
+    if (status != 0 || (llGetListLength(path) > 2 && !checkcollinear(path)))
+    {   pathMsg(PATH_MSG_INFO,"Path static check found static obstacle between " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
+        return(TRUE);                                       // obstacle found
+    }
+    //  Static check OK, do ray casts.  
     float MAZEBELOWGNDTOL = 0.40;                           // cast downwards to just below ground
     vector dv = p1-p0;                                      // direction, unnormalized
     vector dvnorm = llVecNorm(dv);                          // 3D direction, normalized.
@@ -646,9 +655,7 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
 //  Returns [pnt,ix], where ix is the point index previous, in the direction of scan, to the
 //  scan, of the point found.
 //
-//
-//
-list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float height)
+list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float height, integer chartype)
 {
     assert(fwd == 1 || fwd == -1);
     DEBUGPRINT1("Looking for unobstructed point on segment #" + (string)ix + " fwd " + (string)fwd); 
@@ -676,7 +683,7 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
 
         } else {                                // did not hit end of segment
             DEBUGPRINT1("Trying point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
-            if (!obstaclecheckcelloccupied(p0, pos, width, height, TRUE))
+            if (!obstaclecheckcelloccupied(p0, pos, width, height, chartype, TRUE))
             {   DEBUGPRINT1("Found clear point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd); 
                 return([pos,ix]);               // found an open spot
             }

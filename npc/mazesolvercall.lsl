@@ -32,7 +32,7 @@ float gMazeCellSize;                                // cell size of maze
 //  p0-p1 distance must be an integral number of widths.
 //
 //
-integer mazesolverstart(vector p0, vector p1, float width, float height, float probespacing, integer startclear, integer pathid, integer segmentid, integer msglev) 
+integer mazesolverstart(vector p0, vector p1, float width, float height, integer chartype, float probespacing, integer startclear, integer pathid, integer segmentid, integer msglev) 
 {
     //  Lay out the rectangle for the maze
     integer MAXMAZESIZE = 41;                       // ***TEMP*** belongs elsewhere
@@ -100,6 +100,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, float p
         "rot", gMazeRot,                            // rotation of maze in world space
         "width", width,                             // avatar dimension
         "height", height,                        
+        "chartype", chartype,                       // character type, for static path use
         "sizex", MAXMAZESIZE,                       // maze dimensions in cells
         "sizey", MAXMAZESIZE,
         "startx", startx,                           // start, cell coords

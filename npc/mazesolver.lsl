@@ -779,13 +779,14 @@ float gMazeCellSize;                            // size of cell in world
 float gMazeProbeSpacing;                        // probe spacing for llCastRay
 float gMazeHeight;                              // character height
 float gMazeWidth;                               // character diameter
+integer gMazeChartype;                          // character type (static path)
 //
 //  mazerequestjson -- request a maze solve via JSON
 //
 //  Format:
 //  { "request" : "mazesolve",  "msglevG" : INTEGER, "serial": INTEGER,
 //      "regioncorner" : VECTOR, "pos": VECTOR, "rot" : QUATERNION, "cellsize": FLOAT, "probespacing" : FLOAT, 
-//      "width" : FLOAT, "height" : FLOAT, 
+//      "width" : FLOAT, "height" : FLOAT, chartype: INTEGER,
 //      "sizex", INTEGER, "sizey", INTEGER, 
 //      "startx" : INTEGER, "starty" : INTEGER, "endx" : INTEGER, "endy" : INTEGER }
 //      
@@ -810,6 +811,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     gMazeProbeSpacing = (float)llJsonGetValue(jsn,["probespacing"]);
     gMazeHeight = (float)llJsonGetValue(jsn,["height"]);
     gMazeWidth = (float)llJsonGetValue(jsn,["width"]);
+    gMazeChartype = (integer)llJsonGetValue(jsn,["chartype"]);
     integer sizex = (integer)llJsonGetValue(jsn,["sizex"]);
     integer sizey = (integer)llJsonGetValue(jsn,["sizey"]);
     integer startx = (integer)llJsonGetValue(jsn,["startx"]);
@@ -844,7 +846,7 @@ integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
 {   
     vector p0 = mazecelltopoint(prevx, prevy);          // centers of the start and end test cells
     vector p1 = mazecelltopoint(x,y);
-    return(obstaclecheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, FALSE));    // test whether cell occupied, assuming prev cell was OK
+    return(obstaclecheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE));    // test whether cell occupied, assuming prev cell was OK
 }
 //
 //  mazecelltopoint -- convert maze coordinates to point in world space

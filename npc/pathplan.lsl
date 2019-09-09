@@ -92,7 +92,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
             if (distalongseg + hitbackup < 0)               // too close to beginning of current segment to back up
             {                                               // must search in previous segments
                 if ((llVecMag(llList2Vector(pts,0) - interpt0)) > (width))  // if we are not very close to the starting point
-                {   list pinfo =  pathfindunobstructed(pts, currentix, -1, width, height);
+                {   list pinfo =  pathfindunobstructed(pts, currentix, -1, width, height, chartype);
                     interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
                     integer newix = llList2Integer(pinfo,1);    // segment in which we found point, counting backwards
                     pathMsg(PATH_MSG_INFO,"Pathcheckobstacles backing up from segment #" + (string)currentix + " to #" + (string) newix);
@@ -115,7 +115,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
             }
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for open space on far side of obstacle.");
-            list obsendinfo = pathfindclearspace(pts, interpt0, currentix, width, height);    // find far side of obstacle
+            list obsendinfo = pathfindclearspace(pts, interpt0, currentix, width, height, chartype);    // find far side of obstacle
             if (llGetListLength(obsendinfo) < 2)
             {   pathMsg(PATH_MSG_INFO,"Cannot find open space after obstacle at " + (string)interpt0 + " on segment #" + (string)(currentix-1));
                 pathPoints += [interpt0];                       // best effort resul
@@ -158,7 +158,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
 //  llCastRay will not tell us if the starting position is inside an obstacle. So there's some guessing involved.
 //  If we guess wrong, the problem will be detected when the character follows the path.
 //
-list pathfindclearspace(list pts, vector startpos, integer obstacleix, float width, float height)
+list pathfindclearspace(list pts, vector startpos, integer obstacleix, float width, float height, integer chartype)
 {
     //  Dumb version. Just try the same check the maze solver uses, advancing along the path, until we find open space.
     integer len = llGetListLength(pts);
@@ -200,7 +200,7 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
             {
                 //  Test the new point.  This test is not airtight because we are not testing from open space.
                 //  May need further checks here.
-                if (!obstaclecheckcelloccupied(prevpos, pos, width, height, TRUE))
+                if (!obstaclecheckcelloccupied(prevpos, pos, width, height, chartype, TRUE))
                 {   
                     return([pos,currentix]);                                // success, found open space
                 }
@@ -228,7 +228,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
         vector bp1 = llList2Vector(path,1);
         //  Start the maze solver
         integer startclear = (gSegmentId == 0);             // for the very first segment, assume start cell is clear. We're there, after all.
-        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathWidth, startclear, gPathId, gSegmentId, gPathMsgLevel); 
+        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathplanChartype, gPathWidth, startclear, gPathId, gSegmentId, gPathMsgLevel); 
         if (status) 
         {   pathMsg(PATH_MSG_ERROR,"Unable to start maze solver. Status: " + (string)status); 
             //  Create a dummy maze solve result and send it to path execution just to transmit the status.
