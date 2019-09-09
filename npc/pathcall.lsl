@@ -199,7 +199,7 @@ pathplanstart(key target, vector goal, float width, float height, float stopshor
 //  Stop short of the target by the distance stopshort. This can be zero. 
 //
 pathstart(key target, vector endpos, float stopshort, integer dogged)
-{
+{   gPathcallLastParams = [];                                       // no params for retry stored yet.
     gLocalPathId = (gLocalPathId+1)%(PATHMAXUNSIGNED-1);// our serial number, nonnegative
     if (target != NULL_KEY)                                         // if chasing a target
     {   list details = llGetObjectDetails(target, [OBJECT_POS]);    // get object position
@@ -235,12 +235,13 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
 //
 integer pathretry(integer status, key hitobj)
 {
-    if (llListFindList(PATHRETRYABLES, [status]) < 0) { return(FALSE); }  // not retryable
+    if (llListFindList(PATHRETRYABLES, [status]) < 0) { return(FALSE); }// not retryable
     if (gPathcallLastParams == []) { return(FALSE); }                   // no retry params
     key target = llList2Key(gPathcallLastParams,0);                     // get retry params back
     vector endpos = llList2Vector(gPathcallLastParams,1);               // this language needs structures
     float shortstop = llList2Float(gPathcallLastParams, 2);
     integer dogged = llList2Integer(gPathcallLastParams,3);
+    gPathcallLastParams = [];                                           // consume retry params to prevent loop
     if (!dogged || status != PATHEXETARGETMOVED)                        // dogged pursue mode, keep trying even if not getting closer
     {   
         vector testendpos = endpos;
