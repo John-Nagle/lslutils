@@ -5,7 +5,7 @@
 //
 #define SOUND "fountainsound"
 
-#define VOLHI 0.50                                  // lound sound, with nobody nearby
+#define VOLHI 0.40                                  // loud sound, with nobody nearby
 #define VOLLO 0.10                                  // soft sound, with someone nearby
 #define RANGE 15.0                                  // someone this close
 
@@ -16,7 +16,7 @@ float gVolume = VOLHI;                              // current audio volume
 default
 {
     state_entry()
-    {
+    {   llStopSound();
         llLoopSound(SOUND,gVolume);
         llSetTimerEvent(TIMEINTERVAL);              // long timer
     }
