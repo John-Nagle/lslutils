@@ -316,6 +316,9 @@ pathRequestRecv(string jsonstr)
 //
 default
 {
+    state_entry()
+    {   llOwnerSay("Path planner reset"); }                 // ***TEMP***
+        
     link_message(integer status, integer num, string jsn, key id)
     {   if (num == PATHPLANREQUEST)                         // if request for this task
         {   pathRequestRecv(jsn); }                         // run the path planner

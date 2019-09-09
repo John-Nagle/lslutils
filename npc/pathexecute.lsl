@@ -170,6 +170,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
     if (pathid != gPathExeId)                                // starting a new path, kill any movement
     {   //  Check for stale path ID.  Path ID wraps around but is always positive.
         if (pathid < gPathExeId || pathid-1000 > gPathExeId) { pathMsg(PATH_MSG_WARN,"Stale path segment " + (string)pathid + " ignored."); return; }// segment out of sequence
+        if (segmentid != 0) { pathMsg(PATH_MSG_WARN,"New pathid " + (string)pathid + " but nonzero segment #" + (string)segmentid + " points: " + llDumpList2String(pts,","));  return; } // stale or out of sequence        // Should not be happening
         pathexestop(0);                                     // normal start, reset to clear state.
         gPathExeId = pathid;                                // now working on this pathid
         gPathExeEOF = FALSE;                                // not at EOF
@@ -532,7 +533,8 @@ float PATHSTARTTOL = 0.5;                                   // if we are out of 
 default
 {
     state_entry()
-    {  pathexeinit(TESTSPACING);                            // init our KFM system        
+    {   llOwnerSay("Path execute reset");                   // ***TEMP***
+        pathexeinit(TESTSPACING);                            // init our KFM system        
     }
 
     link_message(integer status, integer num, string jsn, key id )
