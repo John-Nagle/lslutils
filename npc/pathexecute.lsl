@@ -55,7 +55,7 @@ integer gPathExeEOF;                                        // EOF seen
 integer gPathExePendingStatus;                              // pending error, to be reported at end of motion
 ////vector  gPathExeLastPos;                                    // last position, for stall check
 integer gPathExeFreemem;                                    // amount of free memory left
-integer gPathLastTimetick = 0;                              // last time we tested for motion
+////integer gPathLastTimetick = 0;                              // last time we tested for motion
 
 //  Avatar params
 float gPathExeWidth = 1.0;                                  // defaults, overridden by messages
@@ -137,9 +137,8 @@ pathexeinit(float probespacing)
     pathexestop(0);                                         // stop any operation in progress
     gPathExeProbespacing = probespacing;
     gPathExeNextsegid = 0;
-    gPathExeFreemem = llGetFreeMemory();   
+    gPathExeFreemem = llGetFreeMemory();
 }
-
 
 //
 //  pathexedeliver -- incoming path segment
@@ -377,7 +376,7 @@ pathexedomove()
         }
         gAllSegments = [];                              // segments have been consumed
     } else {
-        pathMsg(PATH_MSG_WARN,"Waiting for maze solver.");    // solver running behind action
+        pathMsg(PATH_MSG_WARN,"Waiting for maze solver/planner.");    // solver running behind action
     }
 }
 
@@ -551,9 +550,7 @@ default
         {   llResetScript();                            // full reset
         }
     }
-#ifdef OBSOLETE        
     timer()
-    {   pathexetimer();                                         // pass timer event
+    {   if (gPathExeMoving) { return; }                 // we are doing something, don't need to restart planner
     }
-#endif // OBSOLETE
 }

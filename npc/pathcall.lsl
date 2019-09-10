@@ -184,7 +184,7 @@ vector pathfindwalkable(vector startpos, float height)
 //  pathplanstart -- start the path planner task
 //
 pathplanstart(key target, vector goal, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid)
-{
+{   pathMsg(PATH_MSG_INFO,"Path plan start req, pathid: " + (string)pathid);
     string params = llList2Json(JSON_OBJECT, 
         ["target",target, "goal", goal, "stopshort", stopshort, "width", width, "height", height, "chartype", chartype, "testspacing", testspacing,
         "speed", gPathcallSpeed, "turnspeed", gPathcallTurnspeed,

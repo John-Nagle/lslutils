@@ -15,6 +15,11 @@
 //
 float MINSEGMENTLENGTH = 0.025; /// 0.10;                   // minimum path segment length (m)
 
+//  Globals
+
+integer gPathPlanFreemem = 999999999;                       // amount of free memory left
+
+
 //
 //  pathplan -- plan an obstacle-free path.
 //
@@ -64,6 +69,10 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     integer currentix = 0;                                  // working on segment 0
     while (TRUE)                                            // until return
     {   //  Check segment for obstacles, going forward.
+        if (llGetFreeMemory() < gPathPlanFreemem)           // if free memory decreasing
+        {   gPathPlanFreemem = llGetFreeMemory();
+            pathMsg(PATH_MSG_WARN, "Planner: free mem: " + (string)gPathPlanFreemem);
+        }
         float fulllength = llVecMag(p1-p0);                 // full segment length
         vector dir = llVecNorm(p1-p0);                      // direction of segment
         vector pos = p0 + dir*distalongseg;                 // current working position
@@ -148,6 +157,13 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
             p0 = llList2Vector(pts,currentix);                  // starting position in new segment
             p1 = llList2Vector(pts,currentix+1);                // next position
             distalongseg = llVecMag(interpt1 - p0);             // how far along seg 
+            //  Memory check
+            if (llGetFreeMemory() < gPathPlanFreemem)           // if free memory decreasing
+            {   gPathPlanFreemem = llGetFreeMemory();
+                pathMsg(PATH_MSG_WARN, "Path planner: free memory " + (string)gPathPlanFreemem);
+            }
+
+
         }
     }
     //  Not reached.

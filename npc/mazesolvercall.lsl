@@ -88,7 +88,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
     }
 #endif // GEOMCHECK
-
+    pathMsg(PATH_MSG_INFO, "Sending job to maze solver, pathid: " + (string)pathid + " segmentid: " + (string)segmentid);
     llMessageLinked(LINK_THIS, MAZESOLVEREQUEST, llList2Json(JSON_OBJECT, [
         "request", "mazesolve",                     // type of request
         "msglev", msglev,                           // debug use - maze solver will print messages

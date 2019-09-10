@@ -234,7 +234,7 @@ vector pathfindwalkable(vector startpos, float abovetol, float belowtol)
     ////list hits = llCastRay(startpos, startpos - <0,0,height*3>, 
     list hits = castray(startpos+<0,0,abovetol>, startpos-<0,0,belowtol>,      // look within allowed search range
             [RC_MAX_HITS,10, RC_REJECT_TYPES, RC_REJECT_PHYSICAL]); // go down up to 5 objs
-    pathMsg(PATH_MSG_INFO,"Walkable hits looking down from " + (string)startpos + ": " + llDumpList2String(hits,",")); // ***TEMP***
+    pathMsg(PATH_MSG_DEBUG,"Walkable hits looking down from " + (string)startpos + ": " + llDumpList2String(hits,",")); // ***TEMP***
     integer hitstatus = llList2Integer(hits,-1);        // < 0 is error
     if (hitstatus < 0)
     {   pathMsg(PATH_MSG_ERROR,"Error looking for walkable below " + (string)startpos + ", status " + (string)hitstatus); return(ZERO_VECTOR); }
