@@ -122,6 +122,19 @@ float distpointtoline(vector p, vector p0, vector p1)
 }
 
 //
+//  NormRot -- normalize a quaternion
+//
+rotation NormRot(rotation Q)
+{    
+    float MagQ = llSqrt(Q.x*Q.x + Q.y*Q.y +Q.z*Q.z + Q.s*Q.s);    
+    Q.x = Q.x/MagQ;    
+    Q.y = Q.y/MagQ;    
+    Q.z = Q.z/MagQ;    
+    Q.s = Q.s/MagQ;
+    return Q;
+}
+
+//
 //  pathdistalongseg -- distance along segment
 //  
 //  Returns INFINITY if outside tolerance.
@@ -268,7 +281,7 @@ rotation rotperpenonground(vector p0, vector p1)
     vector dir = llVecNorm(p1-p0);                          // direction for line
     rotation azimuthrot = llRotBetween(<1,0,0>, llVecNorm(<dir.x, dir.y, 0>));
     rotation elevrot = llRotBetween(llVecNorm(<dir.x, dir.y, 0>), dir); // elevation
-    return(azimuthrot * elevrot);                           // apply in proper order
+    return(NormRot(azimuthrot * elevrot));                  // apply in proper order
 }
 
 //
@@ -287,7 +300,7 @@ vector mazecellto3d(integer x, integer y, float mazecellsize, vector mazepos, ro
     //  Calc X and Y in 2D space.
     vector azimuthvec = <1,0,0>*mazerot;           // rotation 
     azimuthvec = llVecNorm(<azimuthvec.x, azimuthvec.y,0.0>);   
-    rotation azimuthrot = llRotBetween(<1,0,0>,azimuthvec);
+    rotation azimuthrot = NormRot(llRotBetween(<1,0,0>,azimuthvec));
     vector p = vflat*azimuthrot;             // vector in XY plane
     //  Vflatrot has correct X and Y. Now we need Z.
     vector planenormal = <0,0,1>*mazerot;          // normal to rotated plane. Plane is through origin here.

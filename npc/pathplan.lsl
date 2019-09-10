@@ -44,6 +44,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     }
     //  Got path
     pts = llList2List(pts,0,-2);                            // drop status from end of points list
+    ////vector tfirstp = llList2Vector(pts,0);                  // ***TEMP*** first point
     pts = pathclean(pts);                                   // remove dups and ultra short segments
     pts = pathptstowalkable(pts);                           // project points onto walkable surface
     integer len = llGetListLength(pts);
@@ -56,6 +57,8 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     pathMsg(PATH_MSG_INFO,"Path check for obstacles. Segments: " + (string)len); 
     vector p0 = llList2Vector(pts,0);                       // starting position
     list pathPoints = [p0];                                 // output points
+    ////{ if (llVecMag(<tfirstp.x, tfirstp.y,0> - <p0.x,p0.y,0>) > 0.001) {pathMsg(PATH_MSG_WARN, "Pathplan prelim adjustment broke 1st pt: " + (string)tfirstp + " -> " + (string)p0);}} // ***TEMP***
+
     vector p1 = llList2Vector(pts,1);                       // next position
     float distalongseg = 0.0;                               // starting position, one extra width
     integer currentix = 0;                                  // working on segment 0
@@ -109,7 +112,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
                         //  ***WRONG*** looks like an off by one error. 
                     } while ( llGetListLength(pathPoints) > 0 && !pathpointinsegment(interpt0,droppedpoint,llList2Vector(pathPoints,-1)));
                 } else {                                    // we're at the segment start, and can't back up. Assume start of path is clear. We got there, after all.
-                    pathMsg(PATH_MSG_INFO,"Assuming start point of path is clear at " + (string)interpt0);
+                    pathMsg(PATH_MSG_INFO,"Assuming start point of path is clear at " + (string)p0);
                     interpt0 = p0;                              // zero length
                 }
             }
@@ -118,7 +121,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
             list obsendinfo = pathfindclearspace(pts, interpt0, currentix, width, height, chartype);    // find far side of obstacle
             if (llGetListLength(obsendinfo) < 2)
             {   pathMsg(PATH_MSG_INFO,"Cannot find open space after obstacle at " + (string)interpt0 + " on segment #" + (string)(currentix-1));
-                pathPoints += [interpt0];                       // best effort resul
+                pathPoints += [interpt0];                       // best effort result
                 pathdeliversegment(pathPoints, FALSE, TRUE, pathid, MAZESTATUSBADOBSTACLE);    // final set of points
                 return;                                         // partial result
             }

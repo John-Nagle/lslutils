@@ -87,15 +87,7 @@ vector gPathExeMovegoal;                                    // where we are curr
 //  Remove first segment of list. llList2List has strange semantics for start > end, so we have to test.
 #define pathexedelseg(lst) { if (llList2Integer(lst,1) + 2 >= llGetListLength(lst)) { lst = []; } else { lst = llList2List(lst, llList2Integer(lst,1) + 2,-1); }}
 
-rotation NormRot(rotation Q)
-{    
-    float MagQ = llSqrt(Q.x*Q.x + Q.y*Q.y +Q.z*Q.z + Q.s*Q.s);    
-    Q.x = Q.x/MagQ;    
-    Q.y = Q.y/MagQ;    
-    Q.z = Q.z/MagQ;    
-    Q.s = Q.s/MagQ;
-    return Q;
-}
+
 
 float pathvecmagxy(vector v) { return(llVecMag(<v.x, v.y, 0>));}            // vector magnitude, XY plane only
 //
@@ -170,6 +162,11 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
     if (pathid != gPathExeId)                                // starting a new path, kill any movement
     {   //  Check for stale path ID.  Path ID wraps around but is always positive.
         if (pathid < gPathExeId || pathid-1000 > gPathExeId) { pathMsg(PATH_MSG_WARN,"Stale path segment " + (string)pathid + " ignored."); return; }// segment out of sequence
+        if (segmentid == 0 && llList2Vector(pts,0) == ZERO_VECTOR)  // if this is an error situation
+        {   pathMsg(PATH_MSG_WARN, "Path is an error only, status " + (string)status); // ***TEMP*** 
+            pathexestop(status);
+            return; 
+        }
         pathexestop(0);                                     // normal start, reset to clear state.
         gPathExeId = pathid;                                // now working on this pathid
         gPathExeEOF = FALSE;                                // not at EOF
@@ -178,8 +175,9 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
         gPathExeMovegoal = ZERO_VECTOR;                     // no stored goal yet
         llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
         vector verr = llList2Vector(pts,0) - llGetPos();    // get starting point
-        if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL || segmentid != 0)     // if too far from current pos or bad segment ID
-        {   pathMsg(PATH_MSG_WARN,"Bad start pos or nonzero segment " + (string)segmentid + " Should be at: " + (string)llList2Vector(pts,0) + " Current pos: " + (string)llGetPos());
+        if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL && segmentid == 0)     // if too far from current pos 
+        {   pathMsg(PATH_MSG_WARN,"Bad start pos, segment " + (string)segmentid +
+             " Should be at: " + (string)llList2Vector(pts,0) + " Current pos: " + (string)llGetPos());
             pathexestop(PATHEXEBADSTARTPOS);                // we are not where we are supposed to be.
             return; 
         }
@@ -462,6 +460,7 @@ pathexemazedeliver(string jsn)
         vector cellpos = mazecellto3d(mazepathx(val), mazepathy(val), cellsize, pos, rot);                        // convert back to 3D coords 
         ptsworld += [cellpos];                              // accum list of waypoints
     }
+    pathMsg(PATH_MSG_INFO, "Maze solve pts: " + llDumpList2String(ptsworld,","));       // ***TEMP*** detailed debug
 #ifdef MARKERS  
     if (gPathMsgLevel >= PATH_MSG_INFO)
     {   integer i;
