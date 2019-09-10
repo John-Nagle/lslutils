@@ -152,7 +152,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
 {   DEBUGPRINT1("patheexedeliver, segment #" + (string)segmentid + " points: " + llDumpList2String(pts,","));
     integer length = llGetListLength(pts);
     if (length == 0 || (length == 1 && llList2Vector(pts,0) != ZERO_VECTOR))    // not enough points and not an EOF marker - why is this happening?
-    {   pathMsg(PATH_MSG_WARN,"Bogus path segment delivered, pathid: " + (string)pathid + " ismaze: " + (string)ismaze + 
+    {   pathMsg(PATH_MSG_WARN,"Bogus path segment, pathid: " + (string)pathid + " ismaze: " + (string)ismaze + 
             " segmentid: " + (string)segmentid + " pts: " +
             llDumpList2String(pts,","));
         gPathExeActive = TRUE;                              // so stop will return an error 
@@ -163,7 +163,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
     {   //  Check for stale path ID.  Path ID wraps around but is always positive.
         if (pathid < gPathExeId || pathid-1000 > gPathExeId) { pathMsg(PATH_MSG_WARN,"Stale path segment " + (string)pathid + " ignored."); return; }// segment out of sequence
         if (segmentid == 0 && llList2Vector(pts,0) == ZERO_VECTOR)  // if this is an error situation
-        {   pathMsg(PATH_MSG_WARN, "Path is an error only, status " + (string)status); // ***TEMP*** 
+        {   ////pathMsg(PATH_MSG_WARN, "Path is an error only, status " + (string)status); // ***TEMP*** 
             pathexestop(status);
             return; 
         }
@@ -460,7 +460,7 @@ pathexemazedeliver(string jsn)
         vector cellpos = mazecellto3d(mazepathx(val), mazepathy(val), cellsize, pos, rot);                        // convert back to 3D coords 
         ptsworld += [cellpos];                              // accum list of waypoints
     }
-    pathMsg(PATH_MSG_INFO, "Maze solve pts: " + llDumpList2String(ptsworld,","));       // ***TEMP*** detailed debug
+    ////pathMsg(PATH_MSG_INFO, "Maze solve pts: " + llDumpList2String(ptsworld,","));       // ***TEMP*** detailed debug
 #ifdef MARKERS  
     if (gPathMsgLevel >= PATH_MSG_INFO)
     {   integer i;
@@ -531,7 +531,7 @@ float PATHSTARTTOL = 0.5;                                   // if we are out of 
 default
 {
     state_entry()
-    {   llOwnerSay("Path execute reset");                   // ***TEMP***
+    {   ////llOwnerSay("Path execute reset");                   // ***TEMP***
         pathexeinit(TESTSPACING);                            // init our KFM system        
     }
 
