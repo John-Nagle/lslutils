@@ -434,6 +434,7 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
 {
     if (gPathSelfObject == NULL_KEY)
     {   gPathSelfObject = llGetKey(); }                     // our own key, for later
+#ifdef OBSOLETE
     //  Do static path check. We have to, or we will go through static obstacles which are vertical parts of walkables.
     list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, chartype]);
     integer status = llList2Integer(path,-1);                   // last item is status
@@ -442,6 +443,7 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     {   pathMsg(PATH_MSG_INFO,"Path static check found static obstacle between " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
         return(TRUE);                                       // obstacle found
     }
+#endif // OBSOLETE
     //  Static check OK, do ray casts.  
     float MAZEBELOWGNDTOL = 0.40;                           // cast downwards to just below ground
     vector dv = p1-p0;                                      // direction, unnormalized
@@ -525,12 +527,12 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
 //
 //  obstacleraycast0 -- test for horizontal ray casts.  Must find open space.  Returns TRUE if obstacle.
 //
-//  ***NEEDS WORK*** walkable is not acceptable.
+//  ////***NEEDS WORK*** walkable is not acceptable.
 //
 integer obstacleraycast0(vector p0, vector p1)
 {
     list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS); // Horizontal cast at full height, any hit is bad
-    return(!mazecasthitonlywalkable(castresult, TRUE));     // if any non-walkable hits, fail
+    return(!mazecasthitonlywalkable(castresult, TRUE, FALSE));     // if any hits at all, other than self, fail
 }
 
 //
@@ -539,12 +541,12 @@ integer obstacleraycast0(vector p0, vector p1)
 integer obstacleraycast1(vector p0, vector p1)
 {
     list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS); // cast downwards, must hit walkable
-    return(!mazecasthitonlywalkable(castresult, FALSE));     // if any non-walkable hits, fail
+    return(!mazecasthitonlywalkable(castresult, FALSE, TRUE));     // if any non-walkable hits, fail
 }
 //
 //  mazecasthitonlywalkable  -- true if cast ray hit a walkable, only. Used for downward casts
 //
-integer mazecasthitonlywalkable(list castresult, integer nohitval)
+integer mazecasthitonlywalkable(list castresult, integer nohitval, integer walkableval)
 {
     integer status = llList2Integer(castresult, -1);        // status is last element in list
 #ifdef OBSOLETE
@@ -563,7 +565,7 @@ integer mazecasthitonlywalkable(list castresult, integer nohitval)
     for (i=0; i<2*status; i+=2)                             // check objects hit. Check two, because the first one might be ourself
     {
         key hitobj = llList2Key(castresult, i+0);           // get object hit
-        if (hitobj == NULL_KEY) { return(TRUE); }           // land is walkable, so, OK
+        if (hitobj == NULL_KEY) { return(walkableval); }           // land is walkable, so, OK
         if (hitobj != gPathSelfObject)                      // if hit something other than self.
         {   vector hitpt = llList2Vector(castresult, i+1);            // get point of hit
             list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
@@ -571,8 +573,8 @@ integer mazecasthitonlywalkable(list castresult, integer nohitval)
             if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
             {   ////pathMsg(PATH_MSG_DEBUG,"Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
                 return(FALSE);                              // hit non-walkable, obstructed
-            }
-            return(TRUE);                                   // we hit a walkable - good.
+            } 
+            return(walkableval);                            // we hit a walkable - good, maybe
         }
     }
     return(nohitval);                                       // hit nothing of interest   
