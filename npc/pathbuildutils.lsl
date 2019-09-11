@@ -460,6 +460,7 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS);    // probe center of cell, looking down
     if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }  // must hit walkable   
     //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
+    //  ***THESE NEED TO CONSIDER EVEN WALKABLES AS OBSTACLES***
     castresult = castray(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>,PATHCASTRAYOPTSOBS); // Horizontal cast at mid height, any non walkable hit is bad
     if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
     castresult = castray(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>,PATHCASTRAYOPTSOBS); // Horizontal cast near ground level, any non walkable hit is bad
@@ -498,10 +499,12 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
 integer mazecasthitonlywalkable(list castresult, integer nohitval)
 {
     integer status = llList2Integer(castresult, -1);        // status is last element in list
+#ifdef OBSOLETE
     if (status < 0)
     {   pathMsg(PATH_MSG_WARN,"Cast ray error status: " + (string)status);
         return(FALSE);                                      // fails, unlikely       
     }
+#endif // OBSOLETE
     if (status == 0) { return(nohitval); }                  // hit nothing, use no hit value
     if (status < 0)  { return(FALSE); }                     // problem, fails
     //  Hit something. Must analyze.
@@ -518,7 +521,7 @@ integer mazecasthitonlywalkable(list castresult, integer nohitval)
             list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
-            {   pathMsg(PATH_MSG_DEBUG,"Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
+            {   ////pathMsg(PATH_MSG_DEBUG,"Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
                 return(FALSE);                              // hit non-walkable, obstructed
             }
             return(TRUE);                                   // we hit a walkable - good.
