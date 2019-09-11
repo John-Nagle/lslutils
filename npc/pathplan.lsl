@@ -41,18 +41,22 @@ integer gPathPlanFreemem = 999999999;                       // amount of free me
 pathplan(vector startpos, vector endpos, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid)
 {                              
     //  Use the system's GetStaticPath to get an initial path
-    ////list pts = llGetStaticPath(startpos, endpos, width + PATHSTATICTOL, [CHARACTER_TYPE, chartype]);  // generate path
     list pts = pathtrimmedstaticpath(startpos, endpos, stopshort, width + PATHSTATICTOL, chartype);
-    pathMsg(PATH_MSG_INFO,"Static path: " + llDumpList2String(pts,","));     // dump list for debug
+    ////pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(pts,-1) + ", "+ (string)llGetListLength(pts) + 
+    ////    " pts: " + llDumpList2String(pts,","));             // dump list for debug
+    pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(pts,-1) + ", "+ (string)llGetListLength(pts));             // dump list for debug
     integer status = llList2Integer(pts,-1);                // last item is status
     if (status != 0)                                        // static path fail
     {   pathdeliversegment([], FALSE, TRUE, pathid, status);// report error
         return;
     }
     //  Got path
+    ////pathMsg(PATH_MSG_INFO,"Static planned");                // ***TEMP***
     pts = llList2List(pts,0,-2);                            // drop status from end of points list
     pts = pathclean(pts);                                   // remove dups and ultra short segments
+    ////pathMsg(PATH_MSG_INFO,"Cleaned");                       // ***TEMP***
     pts = pathptstowalkable(pts);                           // project points onto walkable surface
+    ////pathMsg(PATH_MSG_INFO,"Walkables");                     // ***TEMP***
     integer len = llGetListLength(pts);
     if (len < 2)
     {   
@@ -353,11 +357,6 @@ default
     link_message(integer status, integer num, string jsn, key id)
     {   if (num == PATHPLANREQUEST)                         // if request for this task
         {   pathRequestRecv(jsn); }                         // run the path planner
-        else if (num == PATHMASTERRESET)                    // if master reset
-        {   llResetScript(); }
     }
-    
-    on_rez(integer rezarg)
-    {   llResetScript(); }
 }
 

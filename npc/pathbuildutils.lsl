@@ -324,7 +324,7 @@ list castray(vector p0, vector p1, list params)
     while (tries-- > 0)
     {   
         castresult = llCastRay(p0, p1, params);             // try cast ray
-        pathMsg(PATH_MSG_DEBUG,"Cast ray: p0: " + (string)p0 + "  p1: " + (string)p1 + " result: " + llDumpList2String(castresult,","));  
+        DEBUGPRINT1("Cast ray: p0: " + (string)p0 + "  p1: " + (string)p1 + " result: " + llDumpList2String(castresult,","));  
         if (llList2Integer(castresult,-1) >= 0)             // if good status
         {   return(castresult); }                           // non-error, return
         pathMsg(PATH_MSG_WARN,"Cast delayed: " + (string) llList2Integer(castresult,-1)); 
