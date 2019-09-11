@@ -15,6 +15,8 @@
 //
 float MINSEGMENTLENGTH = 0.025; /// 0.10;                   // minimum path segment length (m)
 
+#define PATHPLANMINMEM  3000                                // less than this, quit early and retry
+
 //  Globals
 
 integer gPathPlanFreemem = 999999999;                       // amount of free memory left
@@ -158,12 +160,16 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
             p1 = llList2Vector(pts,currentix+1);                // next position
             distalongseg = llVecMag(interpt1 - p0);             // how far along seg 
             //  Memory check
-            if (llGetFreeMemory() < gPathPlanFreemem)           // if free memory decreasing
-            {   gPathPlanFreemem = llGetFreeMemory();
+            integer freemem = llGetFreeMemory();                // free memory left
+            if (freemem < gPathPlanFreemem)                     // if free memory decreasing
+            {   gPathPlanFreemem = freemem;                     // save new min
                 pathMsg(PATH_MSG_WARN, "Path planner: free memory " + (string)gPathPlanFreemem);
             }
-
-
+            if (freemem < PATHPLANMINMEM)                       // if too little memory
+            {   pathMsg(PATH_MSG_WARN, "Path planner low on memory: " + (string)freemem);
+                pathdeliversegment(pathPoints, FALSE, TRUE, pathid, MAZESTATUSNOMEM);    // early quit, return final part of path with error
+                return;
+            }
         }
     }
     //  Not reached.
