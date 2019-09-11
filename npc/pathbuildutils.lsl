@@ -455,7 +455,9 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     vector pa = p1 + (crossdir*(width*0.5));                // one edge at ground level
     vector pb = p1 - (crossdir*(width*0.5));                // other edge at ground level
     vector pc = p1 + (dir*(width*0.5));                     // ahead at ground level
-    vector pd = p1 - (dir*(width*0.5));                     // "behind" point 
+    vector pd = p1 - (dir*(width*0.5));                     // "behind" point
+#ifdef OBSOLETE
+ 
     DEBUGPRINT1("Cell occupied check: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
     list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS);    // probe center of cell, looking down
     if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }  // must hit walkable   
@@ -490,8 +492,54 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
     castresult = castray(pd+<0,0,height>,pd-<0,0,MAZEBELOWGNDTOL>,PATHCASTRAYOPTSOBS); // cast upwards, no land check
     if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }    // if any non-walkable hits, fail
-    DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
+    DEBUGPRINT1("Cell at " + (string)p1 + " empty."); 
+#endif // OBSOLETE
+    //  Initial basic downward cast.
+    if (obstacleraycast1(p1+<0,0,height>, p1-<0,0,mazedepthmargin>)) { return(TRUE); }    // probe center of cell, looking down
+    //  Horizontal casts.
+    //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
+    //  ***THESE NEED TO CONSIDER EVEN WALKABLES AS OBSTACLES***
+    if (obstacleraycast0(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>)) { return(TRUE); }// Horizontal cast at mid height, any non walkable hit is bad
+    if (obstacleraycast0(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>)) { return(TRUE); }// Horizontal cast near ground level, any non walkable hit is bad
+    if (obstacleraycast0(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>)) { return(TRUE); }   // Horizontal cast at full height, any hit is bad
+
+    //  Crosswise horizontal check.
+    if (obstacleraycast0(pa+<0,0,height*0.5>,pb+<0,0,height*0.5>)) { return(TRUE); }   // Horizontal cast, any hit is bad
+
+    //  Downward ray casts only.  Must hit a walkable.
+    //  Center of cell is clear and walkable. Now check upwards at front and side.
+    //  The idea is to check at points that are on a circle of diameter "width"
+    if (obstacleraycast1(pa+<0,0,height>,pa-<0,0,mazedepthmargin>)) { return(TRUE); }   
+    if (obstacleraycast1(pb+<0,0,height>,pb-<0,0,mazedepthmargin>)) { return(TRUE); } // cast downwards, must hit walkable
+    if (obstacleraycast1(pc+<0,0,height>,pc-<0,0,mazedepthmargin>)) { return(TRUE); } // cast downwards, must hit walkable
+    if (obstacleraycast1(pd+<0,0,height>,pc-<0,0,mazedepthmargin>)) { return(TRUE); } // cast at steep angle, must hit walkable
+    if (!dobackcorners) 
+    {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
+        return(FALSE); 
+    }
+    //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
+    if (obstacleraycast1(pd+<0,0,height>,pd-<0,0,MAZEBELOWGNDTOL>)) { return(TRUE); }; // cast upwards, no land check 
     return(FALSE);                                               // success, no obstacle
+}
+
+//
+//  obstacleraycast0 -- test for horizontal ray casts.  Must find open space.  Returns TRUE if obstacle.
+//
+//  ***NEEDS WORK*** walkable is not acceptable.
+//
+integer obstacleraycast0(vector p0, vector p1)
+{
+    list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS); // Horizontal cast at full height, any hit is bad
+    return(!mazecasthitonlywalkable(castresult, TRUE));     // if any non-walkable hits, fail
+}
+
+//
+//  obstacleraycast1 -- test for downward ray casts. Must find a walkable.  Returns TRUE if obstacle.
+//
+integer obstacleraycast1(vector p0, vector p1)
+{
+    list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS); // cast downwards, must hit walkable
+    return(!mazecasthitonlywalkable(castresult, FALSE));     // if any non-walkable hits, fail
 }
 //
 //  mazecasthitonlywalkable  -- true if cast ray hit a walkable, only. Used for downward casts
