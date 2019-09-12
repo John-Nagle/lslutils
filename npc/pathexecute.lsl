@@ -162,18 +162,18 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
     {   //  Check for stale path ID.  Path ID wraps around but is always positive.
         if (pathid < gPathExeId || pathid-1000 > gPathExeId) { pathMsg(PATH_MSG_WARN,"Stale path segment " + (string)pathid + " ignored."); return; }// segment out of sequence
         //  Legit segment. Must either do it or return a completion to the caller.
-        if (segmentid == 0 && llList2Vector(pts,0) == ZERO_VECTOR)  // if this is an error situation
-        {   ////pathMsg(PATH_MSG_WARN, "Path is an error only, status " + (string)status); // ***TEMP*** 
-            gPathExeActive = TRUE;                          // so stop will return an error to pathcall
-            pathexestop(status);
-            return; 
-        }
         pathexestop(0);                                     // normal start, reset to clear state.
         gPathExeId = pathid;                                // now working on this pathid
         gPathExeEOF = FALSE;                                // not at EOF
         gPathExeActive = TRUE;                              // we are running
         gPathExePendingStatus = 0;                          // no stored status yet
         gPathExeMovegoal = ZERO_VECTOR;                     // no stored goal yet
+        if (segmentid == 0 && llList2Vector(pts,0) == ZERO_VECTOR)  // if this is an error situation at start
+        {   pathMsg(PATH_MSG_WARN, "Path error at start: " + (string)status); // ***TEMP*** 
+            pathexestop(status);                            // and we fail out.
+            return; 
+        }
+
         llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
         vector verr = llList2Vector(pts,0) - llGetPos();    // get starting point
         if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL && segmentid == 0)     // if too far from current pos 
@@ -447,7 +447,8 @@ pathexemazedeliver(string jsn)
         return;
     }
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
-    if (status != 0) { pathexestop(status); return; }                  // error status from other side
+    ///if (status != 0) { pathexestop(status); return; }                  // error status from other side
+    if (status != 0) { pathexedeliver([ZERO_VECTOR],pathid, segmentid, TRUE, status); return; } // EOF with error, needed if first segment is bad.
     float cellsize = (float)llJsonGetValue(jsn,["cellsize"]); // get maze coords to world coords info
     vector pos = (vector)llJsonGetValue(jsn,["pos"]);
     rotation rot = (rotation)llJsonGetValue(jsn,["rot"]);
