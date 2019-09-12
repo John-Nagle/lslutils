@@ -154,15 +154,17 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
     {   pathMsg(PATH_MSG_WARN,"Bogus path segment, pathid: " + (string)pathid + " ismaze: " + (string)ismaze + 
             " segmentid: " + (string)segmentid + " pts: " +
             llDumpList2String(pts,","));
-        gPathExeActive = TRUE;                              // so stop will return an error 
+        gPathExeActive = TRUE;                              // so stop will return an error to pathcall
         pathexestop(PATHEXEBADPATH1); 
         return; 
     } // bogus 1 point path
     if (pathid != gPathExeId)                                // starting a new path, kill any movement
     {   //  Check for stale path ID.  Path ID wraps around but is always positive.
         if (pathid < gPathExeId || pathid-1000 > gPathExeId) { pathMsg(PATH_MSG_WARN,"Stale path segment " + (string)pathid + " ignored."); return; }// segment out of sequence
+        //  Legit segment. Must either do it or return a completion to the caller.
         if (segmentid == 0 && llList2Vector(pts,0) == ZERO_VECTOR)  // if this is an error situation
         {   ////pathMsg(PATH_MSG_WARN, "Path is an error only, status " + (string)status); // ***TEMP*** 
+            gPathExeActive = TRUE;                          // so stop will return an error to pathcall
             pathexestop(status);
             return; 
         }
@@ -348,7 +350,7 @@ pathexedomove()
     if (!gPathExeActive) { return; }                    // system is idle, do nothing
     pathexeassemblesegs();                              // have work to do?
     if (llGetListLength(gAllSegments) == 1 && llList2Vector(gAllSegments,0) == ZERO_VECTOR) // if EOF signal
-    {   pathMsg(PATH_MSG_WARN,"End of path. Free mem: " + (string)gPathExeFreemem); 
+    {   pathMsg(PATH_MSG_WARN,"Execute done. Lowest free mem: " + (string)gPathExeFreemem); 
         pathexestop(0);                                 // all done, normal stop
     }
     else if (gAllSegments != [])                             // if work
