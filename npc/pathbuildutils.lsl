@@ -501,10 +501,10 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     //  Horizontal casts.
     //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
     //  ***THESE NEED TO CONSIDER EVEN WALKABLES AS OBSTACLES***
-#ifdef TEMPTURNOFF
     //  ***WRONG??? - Supposed to be far side of next cell? p0 and p1 are same z value.  ****
     //  ***TEST POINTS MAY BE WRONG FOR SLOPES***
     if (obstacleraycast0(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>)) { return(TRUE); }// Horizontal cast at mid height, any non walkable hit is bad
+#ifdef TEMPTURNOFF
     if (obstacleraycast0(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>)) { return(TRUE); }// Horizontal cast near ground level, any non walkable hit is bad
     if (obstacleraycast0(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>)) { return(TRUE); }   // Horizontal cast at full height, any hit is bad
 
