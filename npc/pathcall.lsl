@@ -12,7 +12,8 @@
 //
 
 //  Constants
-float REGION_SIZE = 256.0;                                      // size of a region   
+float REGION_SIZE = 256.0;                                      // size of a region  
+#define PATHCALLSTALLTIME 120                                   // if stalled for 120 seconds, reset everything 
 //
 //  Globals
 //  Character parameters
@@ -26,6 +27,7 @@ float gPathcallLastDistance = 0.0;                              // distance to g
 list  gPathcallLastParams = [];                                 // params at last try
 
 integer gPathcallReset = FALSE;                                 // have we reset the system since startup?
+integer gPathcallStarttime = 0;                                 // time last command started
 
 integer gLocalPathId = 0;                                       // path serial number
 
@@ -52,8 +54,7 @@ pathInit(float width, float height, integer chartype, integer msglev)
     gPathcallHeight = height;
     gPathcallChartype = chartype;
     if (!gPathcallReset)
-    {   llMessageLinked(LINK_THIS, PATHMASTERRESET,"","");    // reset all other scripts
-        llSleep(5.0);                               // wait for reset
+    {   pathmasterreset();                          // reset everybody
         gPathcallReset = TRUE; 
     } // everybody has been reset
 }
@@ -93,10 +94,14 @@ pathStop()
 //
 //  This is used only for a stall timer.
 //
-//  ***UNIMPLEMENTED***
-//
-pathTick(){}
-
+pathTick()
+{   if ((gPathcallStarttime != 0) && (llGetUnixTime() - gPathcallStarttime) > PATHCALLSTALLTIME)
+    {   //  TROUBLE - the system is stalled.
+        pathMsg(PATH_MSG_ERROR, "Stalled and reset. Last command: " + llDumpList2String(gPathcallLastParams,",")); // tell owner
+        pathmasterreset();                          // reset other scripts
+        pathUpdateCallback(MAZESTATUSTIMEOUT, NULL_KEY);       // report problem to caller
+    }
+}
 
 //
 //  pathNavigateTo -- go to indicated point
@@ -143,42 +148,10 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
         {   pathMsg(PATH_MSG_WARN, "Stale path completed msg discarded."); return; }
         pathMsg(PATH_MSG_WARN,"Path complete, status " + (string)status + " Time: " + (string)llGetTime());
         if (pathretry(status, hitobj)) { return; }          // attempt a retry
+        gPathcallStarttime = 0;                             // really done, stop clock
         pathUpdateCallback(status, hitobj);
     }
 }
-
-#ifdef OBSOLETE
-//
-//  pathfindwalkable -- find walkable below avatar
-//
-//  Looks straight down.
-//  Returns ZERO_VECTOR if fail.
-//
-vector pathfindwalkable(vector startpos, float height)
-{   //  Look downward twice the height, because of seat mispositioning issues.
-    list hits = llCastRay(startpos, startpos - <0,0,height*3>, 
-            [RC_MAX_HITS,10, RC_REJECT_TYPES, RC_REJECT_PHYSICAL]); // go down up to 5 objs
-    pathMsg(PATH_MSG_INFO,"Walkable hits looking down from " + (string)startpos + ": " + llDumpList2String(hits,",")); // ***TEMP***
-    integer hitstatus = llList2Integer(hits,-1);        // < 0 is error
-    if (hitstatus < 0)
-    {   pathMsg(PATH_MSG_ERROR,"Error looking for walkable below " + (string)startpos); return(ZERO_VECTOR); }
-    integer i;
-    for (i=0; i<hitstatus*2; i = i + 2)                         // search hits
-    {   key hitobj = llList2Key(hits,i);
-        vector hitpt = llList2Vector(hits, i+1);
-        string name = "Ground"; // ***TEMP***
-        if (hitobj != NULL_KEY) // ***TEMP***
-        {   name = llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0);} // ***TEMP***
-        pathMsg(PATH_MSG_INFO,"Walkable test: " + (string)hitpt + " (" + name + ")");         // ***TEMP***
-        if (hitobj == NULL_KEY) { return(hitpt); }               // found ground
-        list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
-        integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-        if (pathfindingtype == OPT_WALKABLE) { return(hitpt); } // found walkable
-    }     
-    return(ZERO_VECTOR);                                        // no find
-}
-#endif // OBSOLETE
-
 
 //
 //  pathplanstart -- start the path planner task
@@ -227,7 +200,8 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
     //  Get rough path to target for progress check
     gPathcallLastDistance = pathdistance(llGetPos(), endpos, gPathcallWidth, CHARACTER_TYPE_A);  // measure distance to goal
     //  Generate path
-    pathplanstart(target, endpos, gPathcallWidth, gPathcallHeight, stopshort, gPathcallChartype, TESTSPACING, gLocalPathId);    
+    pathplanstart(target, endpos, gPathcallWidth, gPathcallHeight, stopshort, gPathcallChartype, TESTSPACING, gLocalPathId);
+    gPathcallStarttime = llGetUnixTime();                               // timestamp we started
     //  Output from pathcheckobstacles is via callbacks
 }
 //
@@ -255,6 +229,25 @@ integer pathretry(integer status, key hitobj)
     pathMsg(PATH_MSG_WARN, "Retrying...");                              // retry
     pathstart(target, endpos, shortstop, dogged);                       // trying again
     return(TRUE);                                                       // doing retry, do not tell user we are done.
+}
+
+//  
+//  pathmasterreset -- reset all scripts whose name begins with "path".
+//
+pathmasterreset()
+{   string myname = llGetScriptName();                                  // don't reset me
+    integer count = llGetInventoryNumber(INVENTORY_SCRIPT);             // Count of all items in prim's contents
+    while (count > 0)
+    {   string sname = llGetInventoryName(INVENTORY_SCRIPT, count);     // name of nth script
+        if (sname != myname && llSubStringIndex(llToLower(sname),"path") == 0)  // if starts with "path", and it's not us
+        {   llOwnerSay("Resetting " + sname);                           // reset everybody
+            llResetOtherScript(sname);                                  // reset other script
+        }
+        count--;
+    }
+    gLocalPathId = 0;                                                   // restart path IDs which keep scripts in sync
+    llSleep(5.0);                                                       // wait 5 secs for reset.
+    llOwnerSay("Master reset complete.");                               // OK, reset
 }
 
 //
