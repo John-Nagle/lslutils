@@ -426,9 +426,9 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 //
 //  No static path check, but it has to hit a walkable.
 //
-//  p0 and p1 must be one width apart. 
-//
+//  p0 and p1 must be one width apart. They are positions at ground level. Z values will be different on slopes.
 //  
+//  ***NEEDS WORK***
 //
 integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners)
 {
@@ -501,13 +501,16 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
     //  Horizontal casts.
     //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
     //  ***THESE NEED TO CONSIDER EVEN WALKABLES AS OBSTACLES***
+#ifdef TEMPTURNOFF
+    //  ***WRONG??? - Supposed to be far side of next cell? p0 and p1 are same z value.  ****
+    //  ***TEST POINTS MAY BE WRONG FOR SLOPES***
     if (obstacleraycast0(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>)) { return(TRUE); }// Horizontal cast at mid height, any non walkable hit is bad
     if (obstacleraycast0(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>)) { return(TRUE); }// Horizontal cast near ground level, any non walkable hit is bad
     if (obstacleraycast0(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>)) { return(TRUE); }   // Horizontal cast at full height, any hit is bad
 
     //  Crosswise horizontal check.
     if (obstacleraycast0(pa+<0,0,height*0.5>,pb+<0,0,height*0.5>)) { return(TRUE); }   // Horizontal cast, any hit is bad
-
+#endif // TEMPTURNOFF
     //  Downward ray casts only.  Must hit a walkable.
     //  Center of cell is clear and walkable. Now check upwards at front and side.
     //  The idea is to check at points that are on a circle of diameter "width"
@@ -531,8 +534,8 @@ integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float heigh
 //
 integer obstacleraycast0(vector p0, vector p1)
 {
-    list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS); // Horizontal cast at full height, any hit is bad
-    return(!mazecasthitonlywalkable(castresult, TRUE, FALSE));     // if any hits at all, other than self, fail
+    list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
+    return(pathcastfoundproblem(castresult, FALSE, TRUE));      // if any hits at all, other than self, fail
 }
 
 //
@@ -540,13 +543,13 @@ integer obstacleraycast0(vector p0, vector p1)
 //
 integer obstacleraycast1(vector p0, vector p1)
 {
-    list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS); // cast downwards, must hit walkable
-    return(!mazecasthitonlywalkable(castresult, FALSE, TRUE));     // if any non-walkable hits, fail
+    list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // cast downwards, must hit walkable
+    return(pathcastfoundproblem(castresult, TRUE, FALSE));      // if any non-walkable hits, fail
 }
 //
-//  mazecasthitonlywalkable  -- true if cast ray hit a walkable, only. Used for downward casts
+//  pathcastfoundproblem  -- true if cast ray hit a walkable, only. Used for downward casts
 //
-integer mazecasthitonlywalkable(list castresult, integer nohitval, integer walkableval)
+integer pathcastfoundproblem(list castresult, integer nohitval, integer walkableval)
 {
     integer status = llList2Integer(castresult, -1);        // status is last element in list
 #ifdef OBSOLETE
@@ -556,7 +559,7 @@ integer mazecasthitonlywalkable(list castresult, integer nohitval, integer walka
     }
 #endif // OBSOLETE
     if (status == 0) { return(nohitval); }                  // hit nothing, use no hit value
-    if (status < 0)  { return(FALSE); }                     // problem, fails
+    if (status < 0)  { return(TRUE); }                     // problem, fails
     //  Hit something. Must analyze.
     //  Hit ourself, ignore. 
     //  Hit land or walkable, return TRUE.
@@ -572,7 +575,7 @@ integer mazecasthitonlywalkable(list castresult, integer nohitval, integer walka
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
             {   ////pathMsg(PATH_MSG_DEBUG,"Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
-                return(FALSE);                              // hit non-walkable, obstructed
+                return(TRUE);                              // hit non-walkable, obstructed
             } 
             return(walkableval);                            // we hit a walkable - good, maybe
         }
