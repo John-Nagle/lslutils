@@ -46,13 +46,13 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     ////    " pts: " + llDumpList2String(pts,","));             // dump list for debug
     pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(pts,-1) + ", "+ (string)llGetListLength(pts));             // dump list for debug
     integer status = llList2Integer(pts,-1);                // last item is status
-    if (status != 0)                                        // static path fail
+    if (status != 0 || llGetListLength(pts) < 3)            // if static path fail or we're already at destination
     {   pathdeliversegment([], FALSE, TRUE, pathid, status);// report error
         return;
     }
     //  Got path
-    ////pathMsg(PATH_MSG_INFO,"Static planned");                // ***TEMP***
     pts = llList2List(pts,0,-2);                            // drop status from end of points list
+    ////pathMsg(PATH_MSG_INFO,"Static planned");                // ***TEMP***
     pts = pathclean(pts);                                   // remove dups and ultra short segments
     ////pathMsg(PATH_MSG_INFO,"Cleaned");                       // ***TEMP***
     pts = pathptstowalkable(pts);                           // project points onto walkable surface

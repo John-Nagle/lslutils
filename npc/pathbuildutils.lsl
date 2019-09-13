@@ -808,7 +808,7 @@ list pathtrimmedstaticpath(vector startpos, vector endpos, float stopshort, floa
         path = llList2List(path,0,-2);                      // drop last point
         stopshort -= dvmag;                                 // decrease trim dist by last segment
     }
-    return([startpos, endpos, 0]);                          // we're so close we're there. 
+    return([0]);                                            // we're so close we're there. No points, good status.
 }
 
 //
