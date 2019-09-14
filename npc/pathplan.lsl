@@ -166,13 +166,22 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
             integer freemem = llGetFreeMemory();                // free memory left
             if (freemem < gPathPlanFreemem)                     // if free memory decreasing
             {   gPathPlanFreemem = freemem;                     // save new min
-                pathMsg(PATH_MSG_WARN, "Path planner: free memory " + (string)gPathPlanFreemem);
+                pathMsg(PATH_MSG_WARN, "Path planner: free memory decreased: " + (string)gPathPlanFreemem);
             }
-            if (freemem < PATHPLANMINMEM)                       // if too little memory
-            {   pathMsg(PATH_MSG_WARN, "Path planner low on memory: " + (string)freemem);
+            if (freemem < PATHPLANMINMEM)
+            {   pathMsg(PATH_MSG_WARN, "Path planner possibly low on memory. Free mem: " + (string)freemem + ". Forcing GC.");
+                integer memlimit = llGetMemoryLimit();          // how much are we allowed?
+                llSetMemoryLimit(memlimit-1);                   // reduce by 1 to force GC
+                llSetMemoryLimit(memlimit);                     // set it back
+                freemem = llGetFreeMemory();                    // get free memory left after GC, hopefully larger.
+                gPathPlanFreemem = 99999999;                    // so we get the message again
+            }
+            if (freemem < PATHPLANMINMEM)                       // if still too little memory
+            {   pathMsg(PATH_MSG_WARN, "Path planner low on memory. Free mem: " + (string)freemem);
                 pathdeliversegment([], FALSE, TRUE, pathid, MAZESTATUSNOMEM);    // early quit, return final part of path with error
                 return;
             }
+            //  End memory check.
         }
     }
     //  Not reached.
@@ -295,6 +304,8 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
         gSegmentId++;                                           // created a segment
     }
 }
+
+
 //
 //  Globals for message interface
 integer gPathId = 0;                                // serial number of path

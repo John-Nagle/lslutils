@@ -254,11 +254,11 @@ pathscanrequest(string jsn)
             else
             {   gPathScanTargetPos = llList2Vector(details,0);   }   // where target is
         }
-        pathexedokfm();                                     // actually do the avatar movement      
         gPathScanActive = TRUE;                             // scan system is active
         gPathScanMoving = TRUE;                             // character is moving
         gPathScanTimetick = llGetUnixTime();                // reset stall timer
         llSetTimerEvent(PATHSCANRAYTIME);                   // switch to fast timer for ray casts for obstructions
+        pathexedokfm();                                     // actually do the avatar movement      
     } else if (requesttype == "stopscan")                   // stop scanning
     {   gKfmSegments = [];
         llSetTimerEvent(0.0);                               // shut down and stop timer
