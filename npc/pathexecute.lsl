@@ -90,44 +90,7 @@ vector gPathExeMovegoal;                                    // where we are curr
 
 
 float pathvecmagxy(vector v) { return(llVecMag(<v.x, v.y, 0>));}            // vector magnitude, XY plane only
-//
-//  Debug marker generation
-//
-#ifdef MARKERS
-string MARKERLINE = "Path marker, rounded (TEMP)";
-integer LINKMSGMARKER = 1001;                               // for sending to marker service
 
-//  Colors (RGBA)
-rotation TRANSGREEN = <0,0.35,0,0.5>;                          // translucent green
-rotation TRANSRED   = <1,0,0,0.5>;
-rotation TRANSYELLOW = <1,1,0,0.5>;
-
-
-
-//
-//  Create a marker with the requested parameters
-//
-//  Rez now, wait for message, send details to marker.
-//  We can't send enough data during the rez. We have to use a message for the params.
-//
-//
-//  placesegmentmarker - mark one segment of a path
-//
-//  "Color" is RGBA.
-//
-placesegmentmarker(string markername, vector p0, vector p1, rotation rgba, float thickness)
-{
-    //  Draw marker for segment
-    vector midpoint = (p0+p1)*0.5;          // midpoint
-    float length = llVecMag(p1-p0);         // how long
-    
-    vector color = <rgba.x, rgba.y, rgba.z>;
-    float alpha = rgba.s;
-    vector scale = <length,gPathExeWidth,thickness>;    // size of marker
-    list params = [ "pos", midpoint, "rot", rotperpenonground(p0,p1), "scale", scale, "color", color, "alpha", alpha];
-    llMessageLinked(LINK_THIS, LINKMSGMARKER, llList2Json(JSON_OBJECT,params), markername);   // ask marker service to place a marker.   
-}
-#endif // MARKERS
 
 //
 //  pathexeinit -- set up path execute parameters
@@ -226,61 +189,7 @@ list pathexeextrapoints(list pts, float distfromends, integer first)
     return(newpts);
 }
 
-//
-//  pathexebuildkfm  -- build keyframe motion list from points
-//
-list pathexebuildkfm(vector startpos, rotation startrot, list pts)
-{
-    list kfmdata = [];                          // [pos, rot, time ... ]
-    integer i;
-    integer length = llGetListLength(pts);
-    vector pos = startpos;
-    rotation rot = startrot;
-    //  Vectors off the end are ZERO_VECTOR. Code relies on this.
-    for (i=1; i<length; i++)                    // skip 1, we are already there.
-    {   vector pprev = llList2Vector(pts,i-1);  // previous point
-        vector p0 = llList2Vector(pts,i);       // point we are going to
-        vector p1 = llList2Vector(pts,i+1);
-        kfmdata += pathexecalckfm(pos, rot, pprev, p0, p1);
-        pos += llList2Vector(kfmdata,-3);       // update pos in world coords
-        rot *= llList2Rot(kfmdata,-2);          // update rot in world coords      
-        pprev = p0;
-    }
-    return(kfmdata);                            // list ready for KFM
-}
 
-//
-//  pathexecalckfm -- calc the keyframe parameters for one point
-//
-//  We are moving from pprev to p0.
-//
-list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
-{
-#ifdef MARKERS
-    if (gPathMsgLevel >= PATH_MSG_INFO)
-    {   placesegmentmarker(MARKERLINE, pprev, p0, TRANSGREEN, 0.20); }   // place a temporary line on the ground in-world.
-#endif // MARKERS
-    vector rp = p0 - pos;                       // p0 in relative coords - advances us to p0
-    rp.z += gPathExeHeight * 0.5;               // add half-height, because path is at ground level
-    //  Rotation is to the average direction of the previous and next sections in the XY plane.
-    vector invec = p0-pprev;                    // incoming direction
-    vector outvec = p1-p0;                      // outgoing direction
-    float inveclen = llVecMag(invec);           // distance of this move
-    vector invecnorm = llVecNorm(<invec.x, invec.y, 0>);
-    vector outvecnorm = llVecNorm(<outvec.x,outvec.y,0>);
-    if (p1 == ZERO_VECTOR) { outvecnorm = invecnorm; } // last section, no turn
-    vector dir = llVecNorm(invecnorm+outvecnorm);// next direction
-    rotation rr = llRotBetween(<1,0,0>, dir) / rot; // relative rotation
-    rr = NormRot(rr);                           // why is this necessary?
-    //  Time computation. Speed is limited by rotation rate.
-    float angle = llFabs(llAngleBetween(ZERO_ROTATION, rr));    // how much rotation is this?
-    float rsecs = angle / gPathExeMaxTurnspeed; // minimum time for this move per rotation limit
-    float rt = inveclen / gPathExeMaxSpeed;     // minimum time for this move per speed limit
-    if (rsecs > rt) { rt = rsecs; }             // choose longer time
-    if (rt < 0.15) { rt = 0.15; }               // minimum time for KFM step
-    DEBUGPRINT1("angle: " + (string)angle + " inveclen: " + (string)inveclen + " rt: " + (string)rt); // ***TEMP***
-    return([rp, rr, rt]);                       // [rel pos, rel rot, rel time]
-} 
 
 //
 //  pathexegetsegment -- get next segment from either queue.
@@ -364,12 +273,14 @@ pathexedomove()
             ////return; 
         }
         gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
-        pathMsg(PATH_MSG_DEBUG,"Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
-        list kfmmoves = pathexebuildkfm(pos, llGetRot(), gAllSegments);   // build list of commands to do
+        ////pathMsg(PATH_MSG_DEBUG,"Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
+        ////list kfmmoves = pathexebuildkfm(pos, llGetRot(), gAllSegments);   // build list of commands to do
         DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
-        if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
-        {   pathscanstart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeTarget, gPathExeId, gPathMsgLevel);         // start obstacle detection
-            llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion  
+        ////if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
+        {   //  Start keyframe motion and obstacle detection.
+            //  Offloads the space explosion of keyframe generation to another script with more free space.
+            pathscanstart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId, gPathMsgLevel);      
+            ////llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion  
             gPathExeMovegoal = llList2Vector(gAllSegments,-1);  // where we are supposed to be going
             assert(gPathExeMovegoal != ZERO_VECTOR);        // must not be EOF marker         
             gPathExeMoving = TRUE;                          // movement in progress

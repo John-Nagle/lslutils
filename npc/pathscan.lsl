@@ -8,6 +8,10 @@
 //  Handles stopping when there's a problem - obstacle or collision.
 //  Also handles movement_end messages.
 //
+//  Also starts the actual keyframe movement operation, because thatg
+//  involves generating a very large list, one pathexecute does not
+//  have space for.
+//
 //  Communicates with pathexecute.lsl, which got too big, so
 //  it had to be split.
 //
@@ -39,13 +43,16 @@
 integer gPathScanId = 0;                                    // current path ID
 integer gPathScanActive = FALSE;                            // scan system active
 integer gPathScanMoving = FALSE;                            // character should be moving
-integer gPathScanFreemem;                                   // amount of free memory left
 integer gPathScanTimetick = 0;                              // last time we tested for motion
 vector gPathScanLastpos = ZERO_VECTOR;                      // last place we tested for motion
+integer gPathScanFreemem = 9999999;                         // smallest free memory seen
 
 //  Avatar params
 float gPathScanWidth = 1.0;                                  // defaults, overridden by messages
 float gPathScanHeight = 1.0;
+float gPathScanMaxTurnspeed = 0.2;                           // (radians/sec) max turn rate - overridden
+float gPathScanMaxSpeed = 2.0;                               // (meters/sec) max speed
+
 integer gPathScanChartype = CHARACTER_TYPE_A;
 key gPathScanTarget = NULL_KEY;                             // who we are chasing, if anybody
 vector gPathScanTargetPos = ZERO_VECTOR;                    // last loc of target
@@ -229,11 +236,15 @@ pathscanrequest(string jsn)
         gPathScanWidth = (float)llJsonGetValue(jsn,["width"]);
         gPathScanHeight = (float)llJsonGetValue(jsn,["height"]);
         gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
+        gPathScanMaxSpeed = (float)llJsonGetValue(jsn,["speed"]); 
+        gPathScanMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
+
         list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
         gKfmSegments = [];                                  // clear stored path used for ray cast direction
         gKfmSegmentCurrent = 0;
         integer i;
         integer len = llGetListLength(ptsstr);
+        assert(len >= 2);                                   // required to have a start point and a dest at least
         for (i=0; i<len; i++) { gKfmSegments += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors
         //  Get position of pursuit target if tracking
         if (gPathScanTarget != NULL_KEY) 
@@ -242,7 +253,8 @@ pathscanrequest(string jsn)
             {   pathMsg(PATH_MSG_WARN, "Pursue target not found."); gPathScanTargetPos = ZERO_VECTOR; }   // gone from sim, timer will detect
             else
             {   gPathScanTargetPos = llList2Vector(details,0);   }   // where target is
-        }        
+        }
+        pathexedokfm();                                     // actually do the avatar movement      
         gPathScanActive = TRUE;                             // scan system is active
         gPathScanMoving = TRUE;                             // character is moving
         gPathScanTimetick = llGetUnixTime();                // reset stall timer
@@ -254,6 +266,130 @@ pathscanrequest(string jsn)
         gPathScanMoving = FALSE;                            // character is moving
     } else {
         pathMsg(PATH_MSG_ERROR,"Path stop rcvd bad msg: " + jsn);
+    }
+}
+
+//
+//  Debug marker generation
+//
+#ifdef MARKERS
+string MARKERLINE = "Path marker, rounded (TEMP)";
+integer LINKMSGMARKER = 1001;                               // for sending to marker service
+
+//  Colors (RGBA)
+rotation TRANSGREEN = <0,0.35,0,0.5>;                          // translucent green
+rotation TRANSRED   = <1,0,0,0.5>;
+rotation TRANSYELLOW = <1,1,0,0.5>;
+
+
+
+//
+//  Create a marker with the requested parameters
+//
+//  Rez now, wait for message, send details to marker.
+//  We can't send enough data during the rez. We have to use a message for the params.
+//
+//
+//  placesegmentmarker - mark one segment of a path
+//
+//  "Color" is RGBA.
+//
+placesegmentmarker(string markername, vector p0, vector p1, rotation rgba, float thickness)
+{
+    //  Draw marker for segment
+    vector midpoint = (p0+p1)*0.5;          // midpoint
+    float length = llVecMag(p1-p0);         // how long
+    
+    vector color = <rgba.x, rgba.y, rgba.z>;
+    float alpha = rgba.s;
+    vector scale = <length,gPathExeWidth,thickness>;    // size of marker
+    list params = [ "pos", midpoint, "rot", rotperpenonground(p0,p1), "scale", scale, "color", color, "alpha", alpha];
+    llMessageLinked(LINK_THIS, LINKMSGMARKER, llList2Json(JSON_OBJECT,params), markername);   // ask marker service to place a marker.   
+}
+#endif // MARKERS
+//
+//  pathexebuildkfm  -- build keyframe motion list from points
+//
+list pathexebuildkfm(vector startpos, rotation startrot, list pts)
+{
+    list kfmdata = [];                          // [pos, rot, time ... ]
+    integer i;
+    integer length = llGetListLength(pts);
+    vector pos = startpos;
+    rotation rot = startrot;
+    //  Vectors off the end are ZERO_VECTOR. Code relies on this.
+    for (i=1; i<length; i++)                    // skip 1, we are already there.
+    {   vector pprev = llList2Vector(pts,i-1);  // previous point
+        vector p0 = llList2Vector(pts,i);       // point we are going to
+        vector p1 = llList2Vector(pts,i+1);
+        kfmdata += pathexecalckfm(pos, rot, pprev, p0, p1);
+        pos += llList2Vector(kfmdata,-3);       // update pos in world coords
+        rot *= llList2Rot(kfmdata,-2);          // update rot in world coords      
+        pprev = p0;
+    }
+    return(kfmdata);                            // list ready for KFM
+}
+
+//
+//  pathexecalckfm -- calc the keyframe parameters for one point
+//
+//  We are moving from pprev to p0.
+//
+list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
+{
+#ifdef MARKERS
+    if (gPathMsgLevel >= PATH_MSG_INFO)
+    {   placesegmentmarker(MARKERLINE, pprev, p0, TRANSGREEN, 0.20); }   // place a temporary line on the ground in-world.
+#endif // MARKERS
+    vector rp = p0 - pos;                       // p0 in relative coords - advances us to p0
+    rp.z += gPathScanHeight * 0.5;              // add half-height, because path is at ground level
+    //  Rotation is to the average direction of the previous and next sections in the XY plane.
+    vector invec = p0-pprev;                    // incoming direction
+    vector outvec = p1-p0;                      // outgoing direction
+    float inveclen = llVecMag(invec);           // distance of this move
+    vector invecnorm = llVecNorm(<invec.x, invec.y, 0>);
+    vector outvecnorm = llVecNorm(<outvec.x,outvec.y,0>);
+    if (p1 == ZERO_VECTOR) { outvecnorm = invecnorm; } // last section, no turn
+    vector dir = llVecNorm(invecnorm+outvecnorm);// next direction
+    rotation rr = llRotBetween(<1,0,0>, dir) / rot; // relative rotation
+    rr = NormRot(rr);                           // why is this necessary?
+    //  Time computation. Speed is limited by rotation rate.
+    float angle = llFabs(llAngleBetween(ZERO_ROTATION, rr));    // how much rotation is this?
+    float rsecs = angle / gPathScanMaxTurnspeed; // minimum time for this move per rotation limit
+    float rt = inveclen / gPathScanMaxSpeed;     // minimum time for this move per speed limit
+    if (rsecs > rt) { rt = rsecs; }             // choose longer time
+    if (rt < 0.15) { rt = 0.15; }               // minimum time for KFM step
+    DEBUGPRINT1("angle: " + (string)angle + " inveclen: " + (string)inveclen + " rt: " + (string)rt); // ***TEMP***
+    return([rp, rr, rt]);                       // [rel pos, rel rot, rel time]
+} 
+
+//
+//  pathexedokfm -- start the keyframe movement operation
+//
+//  Finally, the real movement gets done.
+//
+pathexedokfm()
+{   
+    vector kfmstart = llList2Vector(gKfmSegments,0);    // first point, which is where we should be
+    assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker  
+    vector pos = llGetPos();                            // we are here
+#ifdef OBSOLETE       
+    if (pathvecmagxy(kfmstart - pos) > PATHEXEMAXCREEP)     // we are out of position
+    {   pathMsg(PATH_MSG_WARN, "KFM out of position. At " + (string)pos + ". Should be at " + (string)kfmstart); // not serious, but happens occasionally
+            ////pathexestop(PATHEXEBADMOVEEND);                 // error, must start a new operation to recover
+            ////return; 
+    }
+    ////gKfmSegments = llListReplaceList(gKfmSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
+#endif // OBSOLETE
+    pathMsg(PATH_MSG_DEBUG,"Input to KFM: " + llDumpList2String(gKfmSegments,","));     // what to take in
+    list kfmmoves = pathexebuildkfm(pos, llGetRot(), gKfmSegments);   // build list of commands to do
+    if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
+    {   llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion  
+        integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
+        if (freemem < gPathScanFreemem) 
+        {   gPathScanFreemem = freemem; 
+            pathMsg(PATH_MSG_WARN, "Scan task free memory: " + (string)freemem);
+        }   // record free memory
     }
 }
 
@@ -293,8 +429,6 @@ default
     link_message(integer status, integer num, string jsn, key id )
     {   if (num == LINKMSGSCANREQUEST)                           // maze solve result
         {   pathscanrequest(jsn); }
-        else if (num == PATHMASTERRESET)                         // if master reset
-        {   llResetScript(); }                                   // full reset
     }
     
     timer()
