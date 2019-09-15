@@ -849,7 +849,15 @@ integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
 {   
     vector p0 = mazecelltopoint(prevx, prevy);          // centers of the start and end test cells
     vector p1 = mazecelltopoint(x,y);
-    return(obstaclecheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE));    // test whether cell occupied, assuming prev cell was OK
+    ////return(obstaclecheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE));    // test whether cell occupied, assuming prev cell was OK
+    
+    integer occupied = obstaclecheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE);  // test whether cell occupied
+#ifdef MARKERS                                                      // debug markers
+    rotation color = TRANSYELLOW;                                   // yellow if unoccupied
+    if (occupied) { color = TRANSRED; }                             // red if occupied
+    placesegmentmarker(MARKERLINE, p0, p1, gMazeWidth, color, 0.20);// place a temporary line on the ground in-world.
+#endif // MARKERS
+    return(occupied);
 }
 //
 //  mazecelltopoint -- convert maze coordinates to point in world space

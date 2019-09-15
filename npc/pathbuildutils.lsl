@@ -71,6 +71,44 @@ pathMsgFn(integer level, string msg)                            // print debug m
 }
 
 //
+//  Debug marker generation
+//
+#ifdef MARKERS
+string MARKERLINE = "Path marker, rounded (TEMP)";
+integer LINKMSGMARKER = 1001;                               // for sending to marker service
+
+//  Colors (RGBA)
+rotation TRANSGREEN = <0,0.35,0,0.5>;                          // translucent green
+rotation TRANSRED   = <1,0,0,0.5>;
+rotation TRANSYELLOW = <1,1,0,0.5>;
+
+
+
+//
+//  Create a marker with the requested parameters
+//
+//  Rez now, wait for message, send details to marker.
+//  We can't send enough data during the rez. We have to use a message for the params.
+//
+//
+//  placesegmentmarker - mark one segment of a path
+//
+//  "Color" is RGBA.
+//
+placesegmentmarker(string markername, vector p0, vector p1, float width, rotation rgba, float thickness)
+{
+    //  Draw marker for segment
+    vector midpoint = (p0+p1)*0.5;          // midpoint
+    float length = llVecMag(p1-p0);         // how long
+    
+    vector color = <rgba.x, rgba.y, rgba.z>;
+    float alpha = rgba.s;
+    vector scale = <length,width,thickness>;    // size of marker
+    list params = [ "pos", midpoint, "rot", rotperpenonground(p0,p1), "scale", scale, "color", color, "alpha", alpha];
+    llMessageLinked(LINK_THIS, LINKMSGMARKER, llList2Json(JSON_OBJECT,params), markername);   // ask marker service to place a marker.   
+}
+#endif // MARKERS
+//
 //  Globals
 //
 float gPathWidth = 0.5;                                     // dimensions of character
