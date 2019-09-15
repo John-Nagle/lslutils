@@ -302,7 +302,7 @@ placesegmentmarker(string markername, vector p0, vector p1, rotation rgba, float
     
     vector color = <rgba.x, rgba.y, rgba.z>;
     float alpha = rgba.s;
-    vector scale = <length,gPathExeWidth,thickness>;    // size of marker
+    vector scale = <length,gPathScanWidth,thickness>;    // size of marker
     list params = [ "pos", midpoint, "rot", rotperpenonground(p0,p1), "scale", scale, "color", color, "alpha", alpha];
     llMessageLinked(LINK_THIS, LINKMSGMARKER, llList2Json(JSON_OBJECT,params), markername);   // ask marker service to place a marker.   
 }
@@ -338,8 +338,7 @@ list pathexebuildkfm(vector startpos, rotation startrot, list pts)
 list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
 {
 #ifdef MARKERS
-    if (gPathMsgLevel >= PATH_MSG_INFO)
-    {   placesegmentmarker(MARKERLINE, pprev, p0, TRANSGREEN, 0.20); }   // place a temporary line on the ground in-world.
+    placesegmentmarker(MARKERLINE, pprev, p0, TRANSGREEN, 0.20);      // place a temporary line on the ground in-world.
 #endif // MARKERS
     vector rp = p0 - pos;                       // p0 in relative coords - advances us to p0
     rp.z += gPathScanHeight * 0.5;              // add half-height, because path is at ground level

@@ -58,7 +58,7 @@ integer gPathLastIMTime = 0;                                    // last instant 
 
 pathMsgFn(integer level, string msg)                            // print debug message
 {   if (level > gPathMsgLevel) { return; }                      // ignore if suppressed
-    string s = "Path planning: " + msg;
+    string s = llGetScriptName() + ": " + msg;                  // add name of script
     llOwnerSay(s);                                              // message
     if (level <= PATH_MSG_ERROR) 
     {   llSay(DEBUG_CHANNEL, s);                                // serious, pop up the red message
@@ -371,9 +371,9 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
                 {   key hitobj = llList2Key(castresult, i+0);       // get object hit
                     if (hitobj != ownkey)                           // ignore hits with self
                     {   vector hitpt = llList2Vector(castresult, i+1); // get point of hit
-                        list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
-                        integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-                        if (pathfindingtype != OPT_WALKABLE)        // if it's not a walkable
+                        ////list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
+                        ////integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+                        ////if (pathfindingtype != OPT_WALKABLE)        // if it's not a walkable
                         {   float dist = (hitpt-p0) * dir;          // distance to hit
                             if (dist < 0) { dist = 0; }             // can potentially be small and negative, from geometry. Treat as zero.
                             if (!wantnearest)                       // if don't need nearest
