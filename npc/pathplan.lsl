@@ -354,8 +354,10 @@ pathRequestRecv(string jsonstr)
     gPathplanTurnspeed = (float)llJsonGetValue(jsonstr,["turnspeed"]);
     pathMsg(PATH_MSG_INFO,"Path request: " + jsonstr); 
 
-    //  Call the planner 
-    pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, gPathplanChartype, testspacing, pathid);    
+    //  Call the planner
+    pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " starting."); 
+    pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, gPathplanChartype, testspacing, pathid); 
+    pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " done.");   
 }
 
 //
