@@ -156,14 +156,17 @@ Our dynamic system takes care of minor obstacles.
 
 A few hints:
 
+* For at least some buildings, setting the entire building to "walkable" works. 
+Floors, and even stair ramps, become walkable, and walls act as
+static obstacles. This is undocumented but seems to work. 
+For walkable objects, anything steeper than about 65° is a static obstacle; anything below that is a walkable surface. 
+So simply marking buildings as walkable objects using Build->Pathfinding->Region Objects usually works.
+
 * Walkable objects must be larger than 10m x 10m. That's for the linkset; you can link multiple walkable areas together to 
 reach that size.
 
 * If you need a walkable surface inside a building that's not set up for it, you can add a rug, at least 0.2m thick, and make it
 walkable. An "invisible rug" will work, too. Transparent is OK, but phantom will not work.
-
-* For at least some buildings, setting the entire building to "walkable" works. Floors, and even stair ramps, become walkable, and walls act as
-static obstacles. This is undocumented but seems to work.
 
 * Many automatic doors will not react to keyframed characters. We have a script for this and will publish it separately.
 The trick is to detect objects with llSensor, then check to see if they have nonzero velocity. That detectes avatars,
@@ -178,14 +181,13 @@ is limited to 20 character widths on either side of the static path, which is us
 *Green is the static path. Red is where the static path was blocked. Yellow is the result from the maze solver.*
 
 * Some objects, especially furniture, come with poorly chosen collision volumes. If you can walk though it with
-an avatar, this path planning system will go through it.
+an avatar, this path planning system will go through it. Check buildings for holes in the walls, too.
 
 * Thin horizontal objects, such as tables, may not be detected by this system, because it's using llCastRay, and
 all the rays might miss the edge of the table. If this is a problem, put an invisible solid under the table and
 make it a static obstacle.
 
-* This system can climb stairs, if there is a flat walkable surface just above them. The "invisible rug" trick works for this.
-Make sure the top and bottom of the physics models fit well with the floors above and below.
+* This system can climb most stairs that avatars can climb by walking.
 
 ## License
 

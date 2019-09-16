@@ -289,7 +289,7 @@ pathexedomove()
         }
         gAllSegments = [];                              // segments have been consumed
     } else {
-        pathMsg(PATH_MSG_WARN,"Waiting for maze solver/planner.");    // solver running behind action
+        pathMsg(PATH_MSG_WARN,"Waiting for maze solver/planner to deliver pathid: " + (string)gPathExeId + " segid: " + (string)gPathExeNextsegid);    // solver running behind action
     }
 }
 
