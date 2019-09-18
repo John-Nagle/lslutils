@@ -115,6 +115,25 @@ float gPathWidth = 0.5;                                     // dimensions of cha
 float gPathHeight = 1.8;                                    // defaults, overridden in JSON
 key   gPathSelfObject = NULL_KEY;                           // my own key
 
+//
+//  pathneedmem -- need at least this much free memory. Return TRUE if tight on memory.
+//
+integer pathneedmem(integer minfree)
+{
+    integer freemem = llGetFreeMemory();                // free memory left
+    if (freemem < minfree)                              // tight, but a GC might help.
+    {   pathMsg(PATH_MSG_WARN, "Possibly low on memory. Free mem: " + (string)freemem + ". Forcing GC.");
+        integer memlimit = llGetMemoryLimit();          // how much are we allowed?
+        llSetMemoryLimit(memlimit-1);                   // reduce by 1 to force GC
+        llSetMemoryLimit(memlimit);                     // set it back
+        freemem = llGetFreeMemory();                    // get free memory left after GC, hopefully larger.
+    }
+    if (freemem < minfree)                              // if still too little memory
+    {   pathMsg(PATH_MSG_WARN, "Low on memory after GC. Free mem: " + (string)freemem);
+        return(TRUE);
+    }
+    return(FALSE);                                      // no problem
+}           
 
 
 //  True if v between a and b within tolerance tol.

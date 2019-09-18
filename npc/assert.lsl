@@ -1,8 +1,6 @@
 //
 //  assert.lsl -- general assert include
 //
-//  Define DEBUG to enable this, and to enable DEBUGPRINT
-//
 #ifndef ASSERTLSL                                           // compile guard
 #define ASSERTLSL
 //
@@ -17,14 +15,15 @@ panic(string msg)
     llResetScript();                                        // reset this script
 }
 
+#define assert(exp) { if (!(exp)) { panic("Assertion failed at " + __SHORTFILE__ + " line " + (string) __LINE__); }}
+
+//  Obsolete, remove once calls are gone.
 #ifdef DEBUG
 #define DEBUGPRINT(s) // Nothing for now
 #define DEBUGPRINT1(s) llOwnerSay((s))
-#define assert(exp) { if (!(exp)) { panic("Assertion failed at " + __SHORTFILE__ + " line " + (string) __LINE__); }}
 #else // not debugging
 #define DEBUGPRINT(s) {}
 #define DEBUGPRINT1(s) {}
-#define assert(exp) {}
 #endif // DEBUG
 
 #endif // ASSERTLSL
