@@ -798,6 +798,7 @@ integer gMazeChartype;                          // character type (static path)
 //  
 mazerequestjson(integer sender_num, integer num, string jsn, key id) 
 {   if (num != MAZESOLVEREQUEST) { return; }                // message not for us
+    pathMsg(PATH_MSG_INFO,"Request to maze solver: " + jsn);            // verbose mode
     integer status = 0;                                     // so far, so good
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type
     if (requesttype != "mazesolve") { return; }              // ignore, not our msg
@@ -819,7 +820,6 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     gMazeStartclear = (integer)llJsonGetValue(jsn,["startclear"]);   // true if we assume start is clear
     integer endx = (integer)llJsonGetValue(jsn,["endx"]);
     integer endy = (integer)llJsonGetValue(jsn,["endy"]);
-    pathMsg(PATH_MSG_INFO,"Request to maze solver: " + jsn);            // verbose mode
     if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = MAZESTATUSBADSIZE; } // too big
     list path = [];
     if (status == 0)                                    // if params sane enough to start
@@ -900,9 +900,7 @@ integer gBarrierFn(integer fromx, integer fromy, integer x, integer y)
 default
 {   
     link_message( integer sender_num, integer num, string jsn, key id )
-    {   if (num == PATHMASTERRESET)                 // if master reset
-        {   llResetScript(); }                      // full reset
-        mazerequestjson(sender_num, num, jsn, id); 
+    {   mazerequestjson(sender_num, num, jsn, id); 
     } // handle request
 }
 

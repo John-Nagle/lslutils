@@ -19,8 +19,8 @@ string BLINK_ANIM = "Benato Blink";         // eye blink cycling animation
 list PERM_ANIMS = [BLINK_ANIM];               // anims we always run
 
 float POLL_TIME = 0.5;
-float IDLE_TICKS = 10;                          // 5 secs to shutdown
-integer DEBUG = FALSE; /// TRUE;                          // messages on/off
+float IDLE_TICKS = 30;                          // 15 secs to shutdown
+integer DEBUG = FALSE; /// TRUE;                // messages on/off
 
 float SPEED_WALK = 0.7;                         // faster than this, walking
 float ROTRATE_TURN = 0.3;                       // medium speed turn
