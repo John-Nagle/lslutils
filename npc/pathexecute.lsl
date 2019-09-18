@@ -238,7 +238,9 @@ pathexeassemblesegs()
             DEBUGPRINT1("Adding to gAllSegments: " + llDumpList2String(gAllSegments,",")); // ***TEMP***
             vector lastpt = llList2Vector(gAllSegments,-1);
             vector firstpt = llList2Vector(nextseg,0);
-            assert(llVecMag(lastpt-firstpt) < 0.01);    // endpoints should match
+            vector errvec = lastpt-firstpt;
+            assert(llVecMag(lastpt-firstpt) < 1.00);            // 1m sanity check
+            assert(llVecMag(<errvec.x,errvec.y,0.0>) < 0.20);   // 2D endpoints should match
             nextseg = llList2List(nextseg,1,-1);        // discard new duplicate point
             //  If we can take a short-cut at the join between two segments, do so.
             //  Also add "extra points" on long segments here for speed control.
@@ -273,10 +275,6 @@ pathexedomove()
             ////return; 
         }
         gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
-        ////pathMsg(PATH_MSG_DEBUG,"Input to KFM: " + llDumpList2String(gAllSegments,","));   // what to take in
-        ////list kfmmoves = pathexebuildkfm(pos, llGetRot(), gAllSegments);   // build list of commands to do
-        DEBUGPRINT1("KFM: " + llDumpList2String(kfmmoves,","));  // dump the commands
-        ////if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
         {   //  Start keyframe motion and obstacle detection.
             //  Offloads the space explosion of keyframe generation to another script with more free space.
             pathscanstart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId, gPathMsgLevel);      
@@ -373,7 +371,7 @@ pathexemazedeliver(string jsn)
         vector cellpos = mazecellto3d(mazepathx(val), mazepathy(val), cellsize, pos, rot);                        // convert back to 3D coords 
         ptsworld += [cellpos];                              // accum list of waypoints
     }
-    ////pathMsg(PATH_MSG_INFO, "Maze solve pts: " + llDumpList2String(ptsworld,","));       // ***TEMP*** detailed debug
+    pathMsg(PATH_MSG_INFO, "Maze solve pts: " + llDumpList2String(ptsworld,","));       // ***TEMP*** detailed debug
 #ifdef MARKERS  
     if (gPathMsgLevel >= PATH_MSG_INFO)
     {   integer i;
