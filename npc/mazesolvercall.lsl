@@ -65,7 +65,6 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
     vector p0inmaze = mazecellto3d(startx, starty, gMazeCellSize, ZERO_VECTOR, gMazeRot);      // convert back to 3D coords relative to maze space 
 
     //  Calculate base pos of maze.
-    //  ***MAY BE WRONG***
     gMazePos = p0 - p0inmaze;                       // position of cell (0,0)
 ////#define GEOMCHECK
 #ifdef GEOMCHECK

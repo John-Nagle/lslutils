@@ -62,14 +62,15 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     gHeight = height;
     gChartype = chartype;
     gTestspacing = testspacing;
-    gReqPathid = pathid;                           
+    gReqPathid = pathid; 
     //  Use the system's GetStaticPath to get an initial path
     gPts = pathtrimmedstaticpath(startpos, endpos, stopshort, width + PATHSTATICTOL, chartype);
+    integer len = llGetListLength(gPts);                          
     ////pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(pts,-1) + ", "+ (string)llGetListLength(pts) + 
     ////    " pts: " + llDumpList2String(pts,","));             // dump list for debug
-    pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(gPts,-1) + ", "+ (string)llGetListLength(gPts) + " points.");  // dump list for debug
+    pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(gPts,-1) + ", "+ (string)len + " points.");  // dump list for debug
     integer status = llList2Integer(gPts,-1);                // last item is status
-    if (status != 0 || llGetListLength(gPts) < 3)            // if static path fail or we're already at destination
+    if (status != 0 || len < 3)            // if static path fail or we're already at destination
     {   pathdeliversegment([], FALSE, TRUE, gReqPathid, status);// report error
         return;
     }
@@ -80,7 +81,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     ////pathMsg(PATH_MSG_INFO,"Cleaned");                       // ***TEMP***
     gPts = pathptstowalkable(gPts);                           // project points onto walkable surface
     ////pathMsg(PATH_MSG_INFO,"Walkables");                     // ***TEMP***
-    integer len = llGetListLength(gPts);
+    len = llGetListLength(gPts);                                // update number of points after cleanup
     if (len < 2)
     {   
         pathdeliversegment([], FALSE, TRUE, gReqPathid, MAZESTATUSNOPTS);        // empty set of points, no maze, done.
@@ -105,7 +106,6 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
 //  pathmazesolverdone -- the maze solver is done.
 //
 //  So we have to start it again, if there's more work.
-//  ***NEED MORE DEBUG PRINT***
 //
 pathmazesolverdone(integer pathid, integer segmentid, integer status)
 {   pathMsg(PATH_MSG_INFO, "Maze solver done with pathid: " + (string)pathid + " segment: " + (string)segmentid + " status: " + (string)status);
@@ -180,7 +180,8 @@ integer pathplanadvance()
                     do {
                     ////pathMsg(PATH_MSG_INFO,"Dropping point " + (string)llList2Vector(gPathPoints,-1) + " from gPathPoints looking for " + (string)interpt0);
                         droppedpoint = llList2Vector(gPathPoints,-1);
-                        gPathPoints = llListReplaceList(gPathPoints,[],llGetListLength(gPathPoints)-1, llGetListLength(gPathPoints)-1);
+                        ////gPathPoints = llListReplaceList(gPathPoints,[],llGetListLength(gPathPoints)-1, llGetListLength(gPathPoints)-1);
+                        gPathPoints = llListReplaceList(gPathPoints,[],-1, -1);
                     } while ( llGetListLength(gPathPoints) > 0 && !pathpointinsegment(interpt0,droppedpoint,llList2Vector(gPathPoints,-1)));
                 } else {                                   // we're at the segment start, and can't back up. Assume start of path is clear. We got there, after all.
                     pathMsg(PATH_MSG_INFO,"Assuming start point of path is clear at " + (string)gP0);
@@ -200,7 +201,7 @@ integer pathplanadvance()
             //  Found point on far side, we have something for the maze solver.
             vector interpt1 = llList2Vector(obsendinfo,0);      // clear position on far side
             integer interp1ix = llList2Integer(obsendinfo,1);   // in this segment
-            pathMsg(PATH_MSG_INFO,"Found open space at segment #" + (string) interp1ix + " " + (string)interpt1); 
+            pathMsg(PATH_MSG_INFO,"Open space at seg #" + (string) interp1ix + " " + (string)interpt1); 
             //  Output points so far, then a maze.
             if (gPathPoints != [] && llVecMag(llList2Vector(gPathPoints,-1) - interpt0) >= 0.0001) // avoid zero length and divide by zero
             {
@@ -229,7 +230,7 @@ integer pathplanadvance()
             //  End memory check.
         }
     }
-    pathMsg(PATH_MSG_INFO, "Path advance done, more to do.");
+    pathMsg(PATH_MSG_INFO, "Path advance end, more to do.");
     return(FALSE);                                          // not done, will do another advance later.
 }
 
@@ -403,7 +404,7 @@ pathRequestRecv(string jsonstr)
     //  Call the planner
     pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " starting."); 
     pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, gPathplanChartype, testspacing, pathid); 
-    pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " done.");   
+    pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " req done.");   
 }
 
 //
