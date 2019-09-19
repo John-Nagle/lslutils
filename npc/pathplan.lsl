@@ -357,7 +357,8 @@ integer gSegmentId = 0;                             // segment number of path
 float gPathplanSpeed = 1.0;                         // defaults usually overridden
 float gPathplanTurnspeed = 0.1;
 integer gPathplanChartype = CHARACTER_TYPE_A; 
-key gPathplanTarget = NULL_KEY;                     // who we are chasing, if not null        
+key gPathplanTarget = NULL_KEY;                     // who we are chasing, if not null  
+#ifdef OBSOLETE      
 //
 //  Message interface
 //
@@ -396,29 +397,67 @@ pathRequestRecv(string jsonstr)
     gPathplanSpeed = (float)llJsonGetValue(jsonstr,["speed"]);
     gPathplanTurnspeed = (float)llJsonGetValue(jsonstr,["turnspeed"]);
     pathMsg(PATH_MSG_INFO,"Path request: " + jsonstr); 
+    jsonstr = "";                                               // Release string. We are that tight on space.
 
     //  Call the planner
     pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " starting."); 
     pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, gPathplanChartype, testspacing, pathid); 
     pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " req done.");   
 }
-
+#endif // OBSOLETE
 //
 //  Main program of the path planning task
 //
 default
 {
-    state_entry()
-    {  
-    }
-        
-    link_message(integer status, integer num, string jsn, key id)
-    {   if (num == PATHPLANREQUEST)                         // if request for this task
-        {   pathRequestRecv(jsn); }                         // run the path planner
-        else if (num == MAZESOLVERREPLY)                    // just snooping on this to see if we should do more planning
-        {   integer pathid = (integer) llJsonGetValue(jsn, ["pathid"]); 
-            integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
-            integer status = (integer) llJsonGetValue(jsn, ["status"]); 
+    //
+    //  Incoming link message - will be a plan job request, or a notification of a maze solve completion
+    //    
+    link_message(integer status, integer num, string jsonstr, key id)
+    {   if (num == PATHPLANREQUEST)                                     // if request for a planning job
+        {   
+            //  First, get stopped before we start planning the next move.
+            llMessageLinked(LINK_THIS,MAZEPATHSTOP, "",NULL_KEY);       // tell execution system to stop
+            integer i = 100;                                            // keep testing for 100 sleeps
+            vector startpos = llGetPos();
+            float poserr = INFINITY;                                    // position error, if still moving
+            do                                                          // until character stops
+            {   llSleep(0.3);                                           // allow time for message to execute task to stop KFM
+                vector pos = llGetPos();
+                poserr = llVecMag(startpos - pos);                      // how far did we move
+                startpos = pos;
+                pathMsg(PATH_MSG_INFO,"Waiting for character to stop moving.");
+            } while (i-- > 0 && poserr > 0.001);                        // until position stabilizes 
+            if (i <= 0) { pathMsg(PATH_MSG_WARN, "Character not stopping on command, at " + (string)startpos); }       
+            //  Starting position and goal position must be on a walkable surface, not at character midpoint. 
+            //  We just go down slightly less than half the character height.
+            //  We're assuming a box around the character.      
+            startpos = llGetPos();                                      // startpos is where we are now
+            vector startscale = llGetScale();
+            startpos.z = (startpos.z - startscale.z*0.45);              // approximate ground level for start point
+            vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);     // get goal point
+            gPathplanTarget = (key)llJsonGetValue(jsonstr,["target"]);  // get target if pursue
+            gPathWidth = (float)llJsonGetValue(jsonstr,["width"]);
+            gPathHeight = (float)llJsonGetValue(jsonstr,["height"]);
+            float stopshort = (float)llJsonGetValue(jsonstr,["stopshort"]);
+            gPathplanChartype = (integer)llJsonGetValue(jsonstr,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
+            float testspacing = (float)llJsonGetValue(jsonstr,["testspacing"]);
+            integer pathid = (integer)llJsonGetValue(jsonstr,["pathid"]);
+            gPathMsgLevel = (integer)llJsonGetValue(jsonstr,["msglev"]);
+            gPathplanSpeed = (float)llJsonGetValue(jsonstr,["speed"]);
+            gPathplanTurnspeed = (float)llJsonGetValue(jsonstr,["turnspeed"]);
+            pathMsg(PATH_MSG_INFO,"Path request: " + jsonstr); 
+            jsonstr = "";                                               // Release string. We are that tight on space.
+            //  Call the planner
+            pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " starting."); 
+            pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, gPathplanChartype, testspacing, pathid); 
+            pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " req done.");   
+        }             
+        else if (num == MAZESOLVERREPLY)                    // just snooping on maze solves to see if we should do more planning
+        {   integer pathid = (integer) llJsonGetValue(jsonstr, ["pathid"]); 
+            integer segmentid = (integer)llJsonGetValue(jsonstr,["segmentid"]);
+            integer status = (integer) llJsonGetValue(jsonstr, ["status"]);
+            jsonstr = "";                                   // Release string, which is big here. 
             pathmazesolverdone(pathid, segmentid, status);  // maze solver is done, can do some more planning
         }
     }
