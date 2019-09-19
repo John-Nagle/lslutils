@@ -307,6 +307,11 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
         gSegmentId = 0;                                     // segment ID resets
     }
     integer length = llGetListLength(path);
+    //  Fixed part of the reply. Just add "points" at the end.
+    list fixedreplypart = ["reply","path", "pathid", gPathId, "status", status, 
+                "target", gPathplanTarget, "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,               // pass speed setting to execution module
+                "width", gPathWidth, "height", gPathHeight, "chartype", gPathplanChartype, "msglev", gPathMsgLevel,
+                "points"];                                  // just add points at the end
     if (ismaze)                                             // maze, add to the to-do list
     {   assert(length == 2);                                // maze must have two endpoints
         vector bp0 = llList2Vector(path,0);
@@ -318,7 +323,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
         {   pathMsg(PATH_MSG_ERROR,"Unable to start maze solver. Status: " + (string)status); 
             //  Create a dummy maze solve result and send it to path execution just to transmit the status.
             llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT,
-            ["reply", "mazesolve", "pathid", pathid, "segmentid", gSegmentId, "status", status,
+            ["reply", "mazesolve", "pathid", pathid, "status", status,
                 "pos", ZERO_VECTOR, "rot", ZERO_ROTATION, "cellsize", 0.0,
                 "points",llList2Json(JSON_ARRAY,[])]),"");
             return;
@@ -329,11 +334,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
     {
         if (path != [])                                     // if not the special EOF case
         {   llMessageLinked(LINK_THIS,MAZEPATHREPLY,
-                llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId, "status", status, 
-                "target", gPathplanTarget,
-                "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,               // pass speed setting to execution module
-                "width", gPathWidth, "height", gPathHeight, "chartype", gPathplanChartype, "msglev", gPathMsgLevel,
-                "points", llList2Json(JSON_ARRAY,path)]),"");
+                llList2Json(JSON_OBJECT, ["segmentid", gSegmentId] + fixedreplypart + [llList2Json(JSON_ARRAY,path)]),"");
              gSegmentId++;                                           // created a segment
 
         } else {
@@ -343,12 +344,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
     if (isdone)
     {
         llMessageLinked(LINK_THIS,MAZEPATHREPLY,
-            llList2Json(JSON_OBJECT, ["reply","path", "pathid", gPathId, "segmentid", gSegmentId,
-            "target", gPathplanTarget,
-            "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,               // pass speed setting to execution module
-            "width", gPathWidth, "height", gPathHeight, "chartype", gPathplanChartype, "msglev", gPathMsgLevel,
-            "status",status, "points",
-            llList2Json(JSON_ARRAY,[ZERO_VECTOR])]),"");    // send one ZERO_VECTOR segment as an EOF.
+            llList2Json(JSON_OBJECT, ["segmentid", gSegmentId] + fixedreplypart + [llList2Json(JSON_ARRAY,[ZERO_VECTOR])]),"");    // send one ZERO_VECTOR segment as an EOF.
         gSegmentId++;                                           // created a segment
     }
 }

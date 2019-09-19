@@ -238,9 +238,12 @@ pathexeassemblesegs()
             DEBUGPRINT1("Adding to gAllSegments: " + llDumpList2String(gAllSegments,",")); // ***TEMP***
             vector lastpt = llList2Vector(gAllSegments,-1);
             vector firstpt = llList2Vector(nextseg,0);
-            vector errvec = lastpt-firstpt;
+            //  Points are supposed to match, but because of adjustments to make mazes fit,
+            //  they sometimes differ for the maze followed by maze case. But bigger than
+            //  1m and something is badly broken.
+            ////vector errvec = lastpt-firstpt;
             assert(llVecMag(lastpt-firstpt) < 1.00);            // 1m sanity check
-            assert(llVecMag(<errvec.x,errvec.y,0.0>) < 0.20);   // 2D endpoints should match
+            ////assert(llVecMag(<errvec.x,errvec.y,0.0>) < 0.20);   // 2D endpoints should match
             nextseg = llList2List(nextseg,1,-1);        // discard new duplicate point
             //  If we can take a short-cut at the join between two segments, do so.
             //  Also add "extra points" on long segments here for speed control.
