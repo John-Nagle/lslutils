@@ -56,6 +56,12 @@ start_anim(string anim)
     gCurrentAnim = anim;                        // current anim
 }
 
+//
+//  update_anim -- pick which animation to use, based on current movement.
+//
+//  Velocity from llGetVel is not reliable if being moved with llSetPos,
+//  which the behavior controller can do if it wants.
+//
 update_anim()                                   // called periodically and when movement starts
 {
     float elapsed = llGetAndResetTime();        // time since last tick
@@ -74,6 +80,7 @@ update_anim()                                   // called periodically and when 
     float posspeed = 0;
     if (elapsed > 0)
     {   posspeed = llVecMag(posdiff) / elapsed; }
+    if (speed > posspeed) { posspeed = speed; }
     ////llSetText((string)speed + " m/sec  " +  (string)posspeed + " m/sec", <0,1,1>, 1.0);  // ***TEMP***
     if (posspeed < SPEED_WALK)                 // just stand or walk for now
     {   if (rotspeed > ROTRATE_TURN)
@@ -130,6 +137,7 @@ default
     moving_end()
     {   
         gMoving = FALSE;
+        update_anim();
         gIdleTicks = 0;                         // begin shutdown timing
     } 
     
