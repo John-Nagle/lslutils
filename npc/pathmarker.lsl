@@ -1,5 +1,5 @@
 //
-//  Marker service - makes debug markers to show path planning.
+//  pathmarker.lsl - makes debug markers to show path planning.
 //
 //  Animats
 //  July, 2019

@@ -1,18 +1,18 @@
 //
-//  pathscan.lsl -- component of a path building system
+//  pathmove.lsl -- component of a path building system
 //
 //  Part of a system for doing pathfinding in Second Life
+//
+//  Starts the actual keyframe movement operation, because that
+//  involves generating a very large list, one pathexecute does not
+//  have space for.
 //
 //  Raycasts for obstacles while character is moving.
 //
 //  Handles stopping when there's a problem - obstacle or collision.
 //  Also handles movement_end messages.
 //
-//  Also starts the actual keyframe movement operation, because thatg
-//  involves generating a very large list, one pathexecute does not
-//  have space for.
-//
-//  Communicates with pathexecute.lsl, which got too big, so
+//  Communicates with pathassemble.lsl, which got too big, so
 //  it had to be split.
 //
 //  Animats
@@ -25,7 +25,7 @@
 #include "npc/patherrors.lsl"
 #include "npc/mazedefs.lsl"
 #include "npc/pathbuildutils.lsl"
-#include "npc/pathscancall.lsl"
+#include "npc/pathmovecall.lsl"
 //
 //  Constants
 //

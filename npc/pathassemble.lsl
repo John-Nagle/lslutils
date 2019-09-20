@@ -1,10 +1,10 @@
 //
-//  pathexecute.lsl -- component of a path building system
+//  pathassemble.lsl -- component of a path building system
 //
 //  Part of a system for doing pathfinding in Second Life
 //
-//  This is where the path components are assembled and keyframe
-//  animation lists are created and executed.
+//  This is where the path components are assembled and 
+//  sent to pathmove, which does the actual keyframe generation.
 //
 //  Speed and turning rate are set here, too.
 //
@@ -29,7 +29,7 @@
 #include "npc/patherrors.lsl"
 #include "npc/mazedefs.lsl"
 #include "npc/pathbuildutils.lsl"
-#include "npc/pathscancall.lsl"
+#include "npc/pathmovecall.lsl"
 //
 //  Constants
 //
