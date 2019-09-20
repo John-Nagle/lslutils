@@ -1,99 +1,84 @@
 //
-//  pathmarker.lsl -- move marker to given location, resize, and color.
-//
-//  The marker has a straight center section and two end caps.
-//
-//  Gets parameters over a channel via JSON.
-//
-//  This normally goes in temporary objects.
+//  Marker service - makes debug markers to show path planning.
 //
 //  Animats
 //  July, 2019
 //
-//
-//  Constants
-//
-integer MARKERCHANNEL = -3938235;                                   // arbitrary channel number
-integer MARKERREPLYCHANNEL = -3938236;                              // reply channel                         
+#include "npc/mazedefs.lsl"
+integer MARKERCHANNEL = -3938235;                                // arbitrary channel number
+integer MARKERREPLYCHANNEL = -3938236;                              // reply channel
+string MARKERNAME = "Path marker, rounded (TEMP)";                        // rez this
+integer LINKMSGMARKER = 1001;                                   // link message for marker                   
 //
 //  Globals
 integer gListenHandle = 0;                                          // our listen handle
-integer gId = 0;
-//
-//  setposlong -- llSetPos for long moves
-//
-setposlong(vector pos)
-{   integer n = 37;             //  sqrt(256^2 + 256^2)/10                                    
-    do {
-        llSetPos(pos);
-        vector newpos = llGetPos();
-        vector dv = pos - newpos;
-        if (llVecMag(dv) < 0.05) return;
-        if (llVecMag(<dv.x,dv.y,0>) < 0.05 && (llFabs(dv.z) < 1.0)) return;         // can have troubles going into ground
-        
-    } while(--n > 0);
-    llSay(DEBUG_CHANNEL, "Unable to set position to " + (string)pos + ". Stuck at " + (string) llGetPos());   // unlikely
-}
+integer gMarkerSerial;                                          // serial number of marker
+list gPendingMarkers = [];                                      // list of markers to do
+
+
+
 
 //
-//  setmarker -- set marker parameters
-//
-//  This marker has three prims. The root prim is a cube and at the center.
-//  The end prims are half-cylinders.
-//
-setmarker(vector pos, rotation rot, vector scale, vector color, float alpha)
-{
-    llSetScale(scale);
-    llSetRot(rot);
-    setposlong(pos);                            // this takes time
-    llSetColor(color,ALL_SIDES);                // 
-    llSetAlpha(alpha,ALL_SIDES);
-    vector offset = <scale.x*0.5,0,0>;          // place end caps
-    llSetLinkPrimitiveParamsFast(2,[PRIM_SIZE,<scale.y, scale.y,scale.z>, PRIM_COLOR,ALL_SIDES,color, alpha, PRIM_POS_LOCAL, offset]);
-    llSetLinkPrimitiveParamsFast(3,[PRIM_SIZE,<scale.y, scale.y,scale.z>, PRIM_COLOR,ALL_SIDES,color, alpha, PRIM_POS_LOCAL, -offset]);
-}
-
-//
-//  handlemsg -- handle incoming JSON message
+//  handlemsg -- handle incoming JSON message from a marker checking in for instructions.
 //
 //  Format:
-//  {"request": "marker", "id": INTEGER, "pos" : VECTOR, "rot" : ROTATION, "scale" : VECTOR,
-//      "color": VECTOR, "alpha": FLOAT}
+//  {"reply": "marker", "id": INTEGER }
 //
 handlemsg(integer channel, string name, key id, string message)
 {
-    ////llOwnerSay("Marker msg: " + message);               // ***TEMP***
-    if (channel != MARKERCHANNEL) { return; }   // not ours
-    if ((integer)llJsonGetValue(message, ["id"] ) != gId) { return; } // not our message
-    string request = llJsonGetValue(message, ["request"]);       // what to do
-    if (request != "marker")                            // not valid 
-    {   llSay(DEBUG_CHANNEL, "Invalid request to marker: " + message); return; }
-    vector pos = (vector)llJsonGetValue(message,["pos"]);   // get params
-    rotation rot = (rotation)llJsonGetValue(message,["rot"]);
-    vector scale = (vector)llJsonGetValue(message,["scale"]); 
-    vector color = (vector)llJsonGetValue(message,["color"]); 
-    float alpha = (float)llJsonGetValue(message,["alpha"]); 
-    llListenRemove(gListenHandle);                          // one message for us and we are done
-    gListenHandle = 0;                                      // not listening
-    setmarker(pos, rot, scale, color, alpha);               // apply params
-    //  Could turn off script at this point.
+    ////llOwnerSay("Marker reply: " + message);               // ***TEMP***
+    if (channel != MARKERREPLYCHANNEL) { return; }   // not ours
+    string reply = llJsonGetValue(message, ["reply"]);       // what to do
+    if (reply != "marker")                            // not valid 
+    {   llSay(DEBUG_CHANNEL, "Invalid reply from marker: " + message); return; }
+    integer id = (integer)llJsonGetValue(message,["id"]);
+    integer length = llGetListLength(gPendingMarkers);  // items in pending marker list
+    integer i;
+    for (i=0; i<length; i += 2)            // for all markers waiting for info
+    {   if (id == llList2Integer(gPendingMarkers,i))   // if ID matches
+        {   list msg = ["request", "marker", "id",id] +  llJson2List(llList2String(gPendingMarkers,i+1));    // add ID to params
+            llSay(MARKERCHANNEL, llList2Json(JSON_OBJECT,msg)); // tell marker what to do
+            gPendingMarkers = llListReplaceList(gPendingMarkers,[], i, i+1);   // remove from list
+        }
+    }
+    if (llGetListLength(gPendingMarkers) == 0)
+    {   ////llOwnerSay("All markers rezzed");
+        llListenRemove(gListenHandle);                              // no need to keep listening
+        gListenHandle = 0; 
+    }
 }
 
+//
+//  The main program of the marker task.
+//
 default
 {
-
-    on_rez(integer param)
-    {   if (param == 0) { return; }                         // if rezzed not by program
-        gId = param;
-        gListenHandle = llListen(MARKERCHANNEL, "", NULL_KEY, ""); 
-        ////llOwnerSay(llList2Json(JSON_OBJECT,["reply","marker","id",gId]));  // we're rezzed, tell us what to do    // ***TEMP***    
-        llSay(MARKERREPLYCHANNEL, llList2Json(JSON_OBJECT,["reply","marker","id",gId]));  // we're rezzed, tell us what to do
+    state_entry()
+    {
+        gMarkerSerial = 0;
+        gPendingMarkers = [];
     }
-        
+    
+    on_rez(integer param)
+    {   llResetScript(); }
+
+    
     listen(integer channel, string name, key id, string message)
     {
         handlemsg(channel, name, id, message);              // told what to do
     }
+    
+    link_message(integer sender_num, integer num, string json, key name)
+    {   ////llOwnerSay("Link msg #" + (string)num + ": " + json);               // ***TEMP***
+        if (num == PATHMASTERRESET)                 // if master reset
+        {   llResetScript(); }                      // full reset
+        if (num != LINKMSGMARKER) { return; }                               // not ours
+        if (gListenHandle == 0) { gListenHandle = llListen(MARKERREPLYCHANNEL, "", NULL_KEY, ""); } // listen for marker replies
+        gMarkerSerial++;
+        gPendingMarkers += [gMarkerSerial,json];                      // save params for later reply
+        //  Rez the object
+        vector rezpos = llGetPos() + <0,0,2>;           // rez above object
+        llRezObject(name, rezpos, ZERO_VECTOR, ZERO_ROTATION, gMarkerSerial );             
+    }
 }
-
 
