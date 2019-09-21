@@ -23,7 +23,7 @@ float PATHSINMAXWALKABLEANGLE = 0.4226;                     // sine of (90-65) d
 
 #define PATHZTOL (0.35)                                     // (m) allow this much error from llGetStaticPath
 
-ist PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2]; // 2 hits, because we can hit ourself and must ignore that.
+list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2]; // 2 hits, because we can hit ourself and must ignore that.
 ////list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2];                  // 2 hits, because we can hit ourselves and must ignore that
 list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL];   // 2 hits, plus we need the normal
 
@@ -607,7 +607,7 @@ float obstacleraycastvert(vector p0, vector p1)
 }
 //  Temporary
 #define obstaclecheckcelloccupied(p0, p1, width, height, chartype, dobackcorners) \
-{   return (pathcheckcastcelloccupied(p0,p1, width, heigth, chartype, dobackcorners) < 0.0) }
+   (pathcheckcelloccupied(p0, p1, width, height, chartype, dobackcorners) < 0.0)
 #ifdef OBSOLETE
 //
 //  obstaclecheckcelloccupied  -- is there an obstacle in this cell?
