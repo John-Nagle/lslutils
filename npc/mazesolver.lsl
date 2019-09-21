@@ -851,7 +851,7 @@ integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
     vector p1 = mazecelltopoint(x,y);
     ////return(obstaclecheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE));    // test whether cell occupied, assuming prev cell was OK
     
-    integer occupied = obstaclecheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE);  // test whether cell occupied
+    integer occupied = pathcheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE) < 0;  // test whether cell occupied
 #ifdef MARKERS                                                      // debug markers
     rotation color = TRANSYELLOW;                                   // yellow if unoccupied
     if (occupied) { color = TRANSRED; }                             // red if occupied

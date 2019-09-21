@@ -19,11 +19,16 @@ float GROUNDCLEARANCE = 0.05;                               // (m) avoid false g
 float PATHCHECKTOL = 0.02;                                  // (m) allow 2cm collinearity error
 float PATHPOINTONSEGDIST = 0.10;                            // (m) allow point up to 10cm off line when checking for what seg contains a point
 float PATHSTATICTOL = 0.10;                                 // (m) allow extra space on either side of path 
+float PATHSINMAXWALKABLEANGLE = 0.4226;                     // sine of (90-65) degrees. 
 
 #define PATHZTOL (0.35)                                     // (m) allow this much error from llGetStaticPath
 
-list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2]; // 2 hits, because we can hit ourself and must ignore that.
-list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2];                  // 2 hits, because we can hit ourselves and must ignore that
+ist PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2]; // 2 hits, because we can hit ourself and must ignore that.
+////list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2];                  // 2 hits, because we can hit ourselves and must ignore that
+list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL];   // 2 hits, plus we need the normal
+
+
+
 
 #ifndef INFINITY                                            // should be an LSL builtin
 #define INFINITY ((float)"inf")                             // is there a better way?
@@ -329,6 +334,39 @@ list pathptstowalkable(list path)
 }
 
 //
+//  pathptoffsetalongplane
+//
+//  p is a point above the plane defined by mazepos and mazerot.
+//  v is an offset in the XY plane for p.
+//  Goal is to compute a point <p.x+v.x, p.y.v.y, zoffset>
+//  where zoffset is chosen such that the Z distance between
+//  the new point and the plane is the same as for p.
+//
+//  This is used for "horizontal" ray casts in the maze solver.
+//  These follow the maze base plane.
+//
+vector pathptoffsetalongplane(vector p, vector v, rotation planerot)
+{
+    vector q = p + v;                                   // q.z is irrelevant here.
+    q.z = p.z + pathpointonplane(q,planerot) - pathpointonplane(p,planerot);  // same height above plane as p
+    return(q);
+}
+
+//
+//  pathpointonplane -- Z value of point on plane defined by mazerrot at (p.x, p.y)
+//
+//  Position of plane does not matter. Only the rotation matters.
+//  p.z does not matter.
+//  Will fail if plane is vertical.
+//
+float pathpointonplane(vector p, rotation mazerot)
+{
+    //  ***CHECK THIS***  ***UNTESTED***
+    vector planenormal = <0,0,1>*mazerot;                               // normal to rotated plane. Defines a plane through the origin
+    return(-((p.x * planenormal.x + p.y * planenormal.y)/planenormal.z));  // planenormal.z cannot be zero unless tilted plane is vertical
+}
+
+//
 //  rotperpenonground  -- rotation to get line on ground perpendicular to vector
 //
 //  Used to construct the end lines of path segments.
@@ -469,6 +507,108 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
     }
     return(TRUE);                                               // success
 }
+
+//
+//  mazecheckcelloccupied  -- is there an obstacle in this cell?
+//
+//  Version for maze solver. May be used in planner if we have the memory space.
+//
+//  Checks a cell centered on p1. Assumes the cell centered on p0 is clear. Alignment of cell is p1-p0.
+//
+//  This does some ray casts straight down, and some horizontally. Follows the maze plane for "horizontal"
+//  casts.
+//
+//  We don't have to check the trailing edge of the cell, because we are coming from a clear cell at p0,
+//  so that was already checked.
+//
+//  No static path check, but it has to hit a walkable.
+//
+//  p0 and p1 must be one width apart. They are positions at ground level. Z values will be different on slopes.
+//  
+//  ***NEEDS WORK***
+//  New Z-aware version.
+//  Returns Z value of ground at P1, or -1 if occupied.
+//  At entry, p0 must have a correct Z value, but p1's Z value is obtained by a ray cast downward.
+//
+float pathcheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners)
+{
+    if (gPathSelfObject == NULL_KEY)
+    {   gPathSelfObject = llGetKey(); }                     // our own key, for later
+    float MAZEBELOWGNDTOL = 0.40;                           // cast downwards to just below ground
+    vector dv = p1-p0;                                      // direction, unnormalized
+    dv.z = 0;                                               // Z not meaningful yet.
+    vector dir = llVecNorm(dv);                             // forward direction, XY plane
+    vector fullheight = <0,0,height>;                       // add this to top of vertical ray cast
+    vector halfheight = <0,0,height*0.5>;                   // add this for casts from middle of character
+    vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
+    pathMsg(PATH_MSG_INFO, "Cell occupied check: p0: " + (string) p0 + " p1: " + (string)p1);
+
+    ////p0 = p1 - dir*(width*1.5);                              // start casts from far side of previous cell
+    vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
+    vector fwdoffset = dir*(width*0.5);                     // distance to look ahead, to end of this cell
+    vector sideoffset = crossdir*(width*0.5);               // distance to the side of the cell
+    //  Initial basic downward cast. This gets us our Z reference for P1
+    float zp1 = obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin);   // probe center of cell, looking down
+    if (zp1 < 0) { return(-1.0); }                          // fails
+    p1.z = zp1;                                             // we can now set p1's proper Z height
+    vector pa = p1 + sideoffset;                            // one edge at ground level
+    vector pb = p1 - sideoffset;                            // other edge at ground level
+    vector pc = p1 + fwdoffset;                             // ahead at ground level
+    vector pd = p1 - fwdoffset;                             // "behind" point
+    pathMsg(PATH_MSG_INFO, "pa/pb/pc/pd: " + (string)pa + (string)pb+(string)pc+(string)pd);    // ***TEMP***
+    //  Horizontal casts.
+    //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
+    //  Cast from back edge of cell p0 to front edge of cell p1, at half height. The most important ray cast.
+    if (obstacleraycasthoriz(p0+halfheight-(dir*(width*0.5)),pc + halfheight)) { return(TRUE); }// Horizontal cast at mid height, any non walkable hit is bad
+#ifdef TEMPTURNOFF // need more horizontal checks once new geometry is debugged
+    if (obstacleraycasthoriz(p0+<0,0,height*0.1>,fwdoffset, mazeplane)) { return(TRUE); }// Horizontal cast near ground level, any non walkable hit is bad
+    if (obstacleraycasthoriz(p0+<0,0,height>,fwdoffset), mazeplane)) { return(TRUE); }   // Horizontal cast at full height, any hit is bad
+
+    //  Crosswise horizontal check.
+    if (obstacleraycasthoriz(pa+<0,0,height*0.5>,pb-pa+fwdoffset>)) { return(TRUE); }   // Horizontal cast, any hit is bad
+#endif // TEMPTURNOFF
+    //  Downward ray casts only.  Must hit a walkable.
+    //  Center of cell is clear and walkable. Now check upwards at front and side.
+    //  The idea is to check at points that are on a circle of diameter "width"
+    if (obstacleraycastvert(pa+fullheight,pa-mazedepthmargin) < 0) { return(TRUE); }   
+    if (obstacleraycastvert(pb+fullheight,pb-mazedepthmargin) < 0) { return(TRUE); } // cast downwards, must hit walkable
+    if (obstacleraycastvert(pc+fullheight,pc-mazedepthmargin) < 0) { return(TRUE); } // cast downwards, must hit walkable
+    if (obstacleraycastvert(pd+fullheight,pc-mazedepthmargin) < 0) { return(TRUE); } // cast at steep angle, must hit walkable
+    if (!dobackcorners) 
+    {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
+        return(FALSE); 
+    }
+    //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
+    if (obstacleraycastvert(pd+fullheight,pd-mazedepthmargin) < 0) { return(TRUE); }; // cast downwards for trailing point
+    return(zp1);                                                // success, no obstacle, return Z value for ground below P1.
+}
+
+//
+//  obstacleraycasthoriz -- test for horizontal ray casts.  Must find open space.  Returns TRUE if obstacle.
+//
+integer obstacleraycasthoriz(vector p0, vector p1)
+{   
+    list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
+    ////return(pathcastfoundproblem(castresult, FALSE, TRUE));  // if any hits at all, other than self, fail
+    float result = pathcastfoundproblem(castresult, FALSE);     // if any hits at all, other than self, fail
+    return(result < INFINITY);                                  // TRUE if obstacle
+}
+
+//
+//  obstacleraycastvert -- test for downward ray casts. Must find a walkable.  Returns -1 if problem, Z height otherwise.
+//
+//
+float obstacleraycastvert(vector p0, vector p1)
+{
+    list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // cast downwards, must hit walkable
+    float result = pathcastfoundproblem(castresult, TRUE);      // if any non-walkable hits, fail
+    if (result < 0) { pathMsg(PATH_MSG_INFO, "Vert raycast fail: "+ (string)p0 + " " +  (string)p1); } // ***TEMP***
+    return(result);
+}
+//  Temporary
+#define obstaclecheckcelloccupied(p0, p1, width, height, chartype, dobackcorners) \
+{   return (pathcheckcastcelloccupied(p0,p1, width, heigth, chartype, dobackcorners) < 0.0) }
+#ifdef OBSOLETE
 //
 //  obstaclecheckcelloccupied  -- is there an obstacle in this cell?
 //
@@ -603,41 +743,54 @@ integer obstacleraycast1(vector p0, vector p1)
     list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // cast downwards, must hit walkable
     return(pathcastfoundproblem(castresult, TRUE, FALSE));      // if any non-walkable hits, fail
 }
+#endif // OBSOLETE
 //
-//  pathcastfoundproblem  -- true if cast ray hit a walkable, only. Used for downward casts
+//  pathcastfoundproblem  -- analyze result of llCastRay. Input must have [pos, key, normal ... ]
 //
-integer pathcastfoundproblem(list castresult, integer nohitval, integer walkableval)
+//  Returns -1.0 for fails. INFINITY for no hit. Z height of object hit for walkables.
+//
+//  A walkable must be roughly horizontal, below PATHSINMAXWALKABLEANGLE. This includes the ground.
+//
+float pathcastfoundproblem(list castresult, integer needwalkable)
 {
     integer status = llList2Integer(castresult, -1);        // status is last element in list
 #ifdef OBSOLETE
     if (status < 0)
     {   pathMsg(PATH_MSG_WARN,"Cast ray error status: " + (string)status);
-        return(FALSE);                                      // fails, unlikely       
+        return(-1.0);                                      // fails, unlikely       
     }
 #endif // OBSOLETE
-    if (status == 0) { return(nohitval); }                  // hit nothing, use no hit value
-    if (status < 0)  { return(TRUE); }                     // problem, fails
+    if (status == 0) 
+    {   if (needwalkable) { return(-1.0); }                 // needed to find ground
+        return(INFINITY);                                   // hit nothing, infinite distance
+    }
+    if (status < 0)  { return(-1.0); }                      // problem, fails
     //  Hit something. Must analyze.
     //  Hit ourself, ignore. 
     //  Hit land or walkable, return TRUE.
     //  Hit nothing but ignorables, return nohitval  
     integer i;
-    for (i=0; i<2*status; i+=2)                             // check objects hit. Check two, because the first one might be ourself
+    for (i=0; i<3*status; i+=3)                             // check objects hit. Check two, because the first one might be ourself
     {
         key hitobj = llList2Key(castresult, i+0);           // get object hit
-        if (hitobj == NULL_KEY) { return(walkableval); }           // land is walkable, so, OK
         if (hitobj != gPathSelfObject)                      // if hit something other than self.
-        {   vector hitpt = llList2Vector(castresult, i+1);            // get point of hit
-            list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
-            integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-            if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
-            {   ////pathMsg(PATH_MSG_DEBUG,"Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
-                return(TRUE);                              // hit non-walkable, obstructed
-            } 
-            return(walkableval);                            // we hit a walkable - good, maybe
+        {   vector hitpt = llList2Vector(castresult, i+1);  // get point of hit
+            if (hitobj != NULL_KEY)                         // if not ground, must check pathfinding type
+            {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
+                integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
+                if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
+                {   ////pathMsg(PATH_MSG_DEBUG,"Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
+                    return(-1.0);                               // hit non-walkable, obstructed
+                }
+            }
+            //  Hit a walkable. Check normal angle
+            vector hitnormal = llList2Vector(castresult, i+2);  // normal to surface
+            if ((hitnormal * <0,0,1.0>) < PATHSINMAXWALKABLEANGLE) { return (-1.0); } // too steep for a walkable
+            return(hitpt.z);                                // otherwise Z value of walkable.
         }
     }
-    return(nohitval);                                       // hit nothing of interest   
+    if (needwalkable) { return(-1.0); }                     // needed a walkable and didn't find one.
+    return(INFINITY);                                       // hit nothing of interest   
 }
 //
 //  pathanalyzecastresult  -- analyze the result of a cast ray probe
