@@ -570,10 +570,10 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
     //  Downward ray casts only.  Must hit a walkable.
     //  Center of cell is clear and walkable. Now check upwards at front and side.
     //  The idea is to check at points that are on a circle of diameter "width"
-    if (obstacleraycastvert(pa+fullheight,pa-mazedepthmargin) < 0) { return(TRUE); }   
-    if (obstacleraycastvert(pb+fullheight,pb-mazedepthmargin) < 0) { return(TRUE); } // cast downwards, must hit walkable
-    if (obstacleraycastvert(pc+fullheight,pc-mazedepthmargin) < 0) { return(TRUE); } // cast downwards, must hit walkable
-    if (obstacleraycastvert(pd+fullheight,pc-mazedepthmargin) < 0) { return(TRUE); } // cast at steep angle, must hit walkable
+    if (obstacleraycastvert(pa+halfheight,pa-mazedepthmargin) < 0) { return(TRUE); }   
+    if (obstacleraycastvert(pb+halfheight,pb-mazedepthmargin) < 0) { return(TRUE); } // cast downwards, must hit walkable
+    if (obstacleraycastvert(pc+halfheight,pc-mazedepthmargin) < 0) { return(TRUE); } // cast downwards, must hit walkable
+    if (obstacleraycastvert(pd+halfheight,pc-mazedepthmargin) < 0) { return(TRUE); } // cast at steep angle, must hit walkable
     if (!dobackcorners) 
     {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
         return(FALSE); 
