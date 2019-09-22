@@ -173,7 +173,7 @@ integer pathplanadvance()
                     ////pathMsg(PATH_MSG_INFO,"Pathcheckobstacles backing up from segment #" + (string)gCurrentix + " to #" + (string) newix);
                     if (newix < 1)
                     {   pathdeliversegment(gPathPoints,FALSE, TRUE, gReqPathid, MAZESTATUSBADSTART); // points, no maze, done
-                    return(TRUE);                           // no open space found, fail
+                        return(TRUE);                           // no open space found, fail
                     }
                     //  Discard points until we find the one that contains the new intermediate point.
                     vector droppedpoint = ZERO_VECTOR;          // point we just dropped
@@ -275,8 +275,9 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
         float adjdistalongseg = pathcalccellmovedist(p0, dir, startpos, width, distalongseg);
         vector checkvec = (p0 + dir * adjdistalongseg) - startpos;                           // checking only
         float checkvecmag = llVecMag(<checkvec.x,checkvec.y,0.0>);                          // startpos to endpos of maze in XY plane
-        pathMsg(PATH_MSG_INFO,"Maze endpoint adjust. Dist along seg " + (string)distalongseg + " -> " + (string)adjdistalongseg + " 2D dist: " + 
-            (string)checkvecmag);
+        pathMsg(PATH_MSG_INFO,"Maze endpoint adjust at " + (string)prevpos + " " 
+            + (string)pos + ". Dist along seg " + (string)distalongseg + " -> " + (string)adjdistalongseg + " 2D dist: " + 
+            (string)checkvecmag + " seglength: " + (string)seglength);
         if (adjdistalongseg >= 0 && adjdistalongseg <= seglength)   // if still on same segment
         {   assert(adjdistalongseg >= distalongseg);                // must progress forward
             distalongseg = adjdistalongseg;
