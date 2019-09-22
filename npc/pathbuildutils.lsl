@@ -534,7 +534,8 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
 {
     if (gPathSelfObject == NULL_KEY)
     {   gPathSelfObject = llGetKey(); }                     // our own key, for later
-    float MAZEBELOWGNDTOL = 0.40;                           // cast downwards to just below ground
+    ////float MAZEBELOWGNDTOL = 0.40;                           // cast downwards to just below ground
+    float MAZEBELOWGNDTOL = 1.0;                            // ***TEMP** huge tol until we get legit Z values coming in
     vector dv = p1-p0;                                      // direction, unnormalized
     dv.z = 0;                                               // Z not meaningful yet.
     vector dir = llVecNorm(dv);                             // forward direction, XY plane
@@ -558,28 +559,29 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
     pathMsg(PATH_MSG_INFO, "pa/pb/pc/pd: " + (string)pa + (string)pb+(string)pc+(string)pd);    // ***TEMP***
     //  Horizontal casts.
     //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
-    //  Cast from back edge of cell p0 to front edge of cell p1, at half height. The most important ray cast.
-    if (obstacleraycasthoriz(p0+halfheight-(dir*(width*0.5)),pc + halfheight)) { return(TRUE); }// Horizontal cast at mid height, any non walkable hit is bad
-#ifdef TEMPTURNOFF // need more horizontal checks once new geometry is debugged
-    if (obstacleraycasthoriz(p0+<0,0,height*0.1>,fwdoffset, mazeplane)) { return(TRUE); }// Horizontal cast near ground level, any non walkable hit is bad
-    if (obstacleraycasthoriz(p0+<0,0,height>,fwdoffset), mazeplane)) { return(TRUE); }   // Horizontal cast at full height, any hit is bad
+    //  First cast from back edge of cell p0 to front edge of cell p1, at half height. The most important ray cast.
+    if (obstacleraycasthoriz(p0+halfheight-fwdoffset, pc + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
+    if (obstacleraycasthoriz(p0+fullheight-fwdoffset, pc + fullheight)) { return(-1.0); }// Same at full height to check for low clearances
+    if (obstacleraycasthoriz(p0+halfheight-fwdoffset+sideoffset, pa + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
+    if (obstacleraycasthoriz(p0+halfheight-fwdoffset-sideoffset, pb + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
 
+#ifdef TEMPTURNOFF // need more horizontal checks once new geometry is debugged
     //  Crosswise horizontal check.
-    if (obstacleraycasthoriz(pa+<0,0,height*0.5>,pb-pa+fwdoffset>)) { return(TRUE); }   // Horizontal cast, any hit is bad
+    if (obstacleraycasthoriz(p0+halfheight+sideoffset,pb+halfheight)) { return(TRUE); }   // Horizontal cast, any hit is bad
 #endif // TEMPTURNOFF
     //  Downward ray casts only.  Must hit a walkable.
     //  Center of cell is clear and walkable. Now check upwards at front and side.
     //  The idea is to check at points that are on a circle of diameter "width"
-    if (obstacleraycastvert(pa+halfheight,pa-mazedepthmargin) < 0) { return(TRUE); }   
-    if (obstacleraycastvert(pb+halfheight,pb-mazedepthmargin) < 0) { return(TRUE); } // cast downwards, must hit walkable
-    if (obstacleraycastvert(pc+halfheight,pc-mazedepthmargin) < 0) { return(TRUE); } // cast downwards, must hit walkable
-    if (obstacleraycastvert(pd+halfheight,pc-mazedepthmargin) < 0) { return(TRUE); } // cast at steep angle, must hit walkable
+    if (obstacleraycastvert(pa+fullheight,pa-mazedepthmargin) < 0) { return(-1.0); }   
+    if (obstacleraycastvert(pb+fullheight,pb-mazedepthmargin) < 0) { return(-1.0); } // cast downwards, must hit walkable
+    if (obstacleraycastvert(pc+fullheight,pc-mazedepthmargin) < 0) { return(-1.0); } // cast downwards, must hit walkable
+    if (obstacleraycastvert(pd+fullheight,pc-mazedepthmargin) < 0) { return(-1.0); } // cast at steep angle, must hit walkable
     if (!dobackcorners) 
     {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
         return(FALSE); 
     }
     //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
-    if (obstacleraycastvert(pd+fullheight,pd-mazedepthmargin) < 0) { return(TRUE); }; // cast downwards for trailing point
+    if (obstacleraycastvert(pd+fullheight,pd-mazedepthmargin) < 0) { return(-1.0); }; // cast downwards for trailing point
     return(zp1);                                                // success, no obstacle, return Z value for ground below P1.
 }
 
