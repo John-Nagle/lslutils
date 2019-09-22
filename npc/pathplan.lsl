@@ -66,8 +66,8 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     //  Use the system's GetStaticPath to get an initial path
     gPts = pathtrimmedstaticpath(startpos, endpos, stopshort, width + PATHSTATICTOL, chartype);
     integer len = llGetListLength(gPts);                          
-    ////pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(pts,-1) + ", "+ (string)llGetListLength(pts) + 
-    ////    " pts: " + llDumpList2String(pts,","));             // dump list for debug
+    ////pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(gPts,-1) + ", "+ (string)llGetListLength(gPts) + 
+    ////    " gPts: " + llDumpList2String(gPts,","));             // dump list for debug
     pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(gPts,-1) + ", "+ (string)len + " points.");  // dump list for debug
     integer status = llList2Integer(gPts,-1);                // last item is status
     if (status != 0 || len < 3)            // if static path fail or we're already at destination
@@ -191,7 +191,7 @@ integer pathplanadvance()
 
             //  Search for the other side of the obstacle.                     
             DEBUGPRINT1("Looking for far side of obstacle.");
-            list obsendinfo = pathfindclearspace(gPts, interpt0, gCurrentix, gWidth, gHeight, gChartype);    // find far side of obstacle
+            list obsendinfo = pathfindclearspace(interpt0, gCurrentix, gWidth, gHeight, gChartype);    // find far side of obstacle
             if (llGetListLength(obsendinfo) < 2)
             {   pathMsg(PATH_MSG_INFO,"Cannot find far side of obstacle at " + (string)interpt0 + " on segment #" + (string)(gCurrentix-1));
                 gPathPoints += [interpt0];                       // best effort result
@@ -243,12 +243,12 @@ integer pathplanadvance()
 //  llCastRay will not tell us if the starting position is inside an obstacle. So there's some guessing involved.
 //  If we guess wrong, the problem will be detected when the character follows the path.
 //
-list pathfindclearspace(list pts, vector startpos, integer obstacleix, float width, float height, integer chartype)
+list pathfindclearspace(vector startpos, integer obstacleix, float width, float height, integer chartype)
 {
     //  Dumb version. Just try the same check the maze solver uses, advancing along the path, until we find open space.
-    integer len = llGetListLength(pts);
-    vector p0 = llList2Vector(pts,obstacleix);
-    vector p1 = llList2Vector(pts,obstacleix+1);
+    integer len = llGetListLength(gPts);
+    vector p0 = llList2Vector(gPts,obstacleix);
+    vector p1 = llList2Vector(gPts,obstacleix+1);
     vector pos = startpos;                                          // start search here
     vector prevpos = pos;                                           // need current and previous points
     //  Starting position is one extra width from start to provide some separation between start and finish.
@@ -266,8 +266,8 @@ list pathfindclearspace(list pts, vector startpos, integer obstacleix, float wid
             currentix += 1;                                         // start next segment
             distalongseg = 0.0;                                     // start at next seg point, although arguably should advance around corner
         }
-        p0 = llList2Vector(pts,currentix);
-        p1 = llList2Vector(pts,currentix+1);
+        p0 = llList2Vector(gPts,currentix);
+        p1 = llList2Vector(gPts,currentix+1);
         seglength = llVecMag(p1-p0);                                // current segment length
         vector dir = llVecNorm(p1-p0);
         pos = p0+dir*distalongseg;                                  // next point to try
