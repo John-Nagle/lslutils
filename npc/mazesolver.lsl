@@ -121,11 +121,13 @@ list gMazePath = [];                // the path being generated
 list gMazeCells = [];               // maze cell bits, see mazecellget
 integer gMazeX;                     // current working point
 integer gMazeY;                     // current working point
+float   gMazeZ;                     // current working point, world coords
 integer gMazeMdbest;                // best point found
 integer gMazeXsize;                 // maze dimensions
 integer gMazeYsize;
 integer gMazeStartX;                // start position 
-integer gMazeStartY;           
+integer gMazeStartY;
+float   gMazeStartZ;                // Z of start position, world coords          
 integer gMazeEndX;                  // end position 
 integer gMazeEndY; 
 integer gMazeStartclear;            // assume start pt is clear if set
@@ -177,7 +179,7 @@ mazecellset(integer x, integer y, integer newval)
 //
 //  mazesolve  -- find a path through a maze
 //         
-list mazesolve(integer xsize, integer ysize, integer startx, integer starty, integer endx, integer endy)
+list mazesolve(integer xsize, integer ysize, integer startx, integer starty, float startz, integer endx, integer endy)
 {   
     gMazeStatus = 0;                        // OK so far
     gMazeXsize = xsize;                     // set size of map
@@ -187,8 +189,10 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
     {    gMazeCells = gMazeCells + [0]; }   // fill list with zeroes 
     gMazeX = startx;                        // start
     gMazeY = starty;
+    gMazeZ = startz;                        // world coords
     gMazeStartX = startx;                   // start
     gMazeStartY = starty;
+    gMazeStartZ = startz;
     gMazeEndX = endx;                       // destination
     gMazeEndY = endy;
     gMazeMdbest = gMazeXsize+gMazeYsize+1;  // best dist to target init
@@ -222,6 +226,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             //   Inner loop - wall following
             integer followstartx = gMazeX;
             integer followstarty = gMazeY;
+            float followstartz = gMazeZ;
             integer followstartdir = direction;
             MAZEPRINTVERBOSE("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdbest);
             integer livea = TRUE;                                               // more to do on path a
@@ -229,13 +234,15 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
             integer founduseful = FALSE;                                        // found a useful path
             ///integer initialdira = -1;
             ///integer initialdirb = -1;
-            list patha = [followstartx, followstarty, followstartdir];          // start conditions, follow one side
-            list pathb = [followstartx, followstarty, (followstartdir + 2) % 4];    // the other way
-            integer xa = -1;                                                    // x,y,dir for follower A
+            list patha = [followstartx, followstarty, followstartz, followstartdir];          // start conditions, follow one side
+            list pathb = [followstartx, followstarty, followstartz, (followstartdir + 2) % 4];    // the other way
+            integer xa = -1;                                                    // x,y,z,dir for follower A
             integer ya = -1;
+            float za = -1.0;
             integer dira = -1;
-            integer xb = -1;                                                    // x,y,dir for follower B
+            integer xb = -1;                                                    // x,y,z,dir for follower B
             integer yb = -1;
+            float zb = -1.0;
             integer dirb = -1;
             while (gMazeStatus == 0 && (!founduseful) && (livea || liveb))      // if more following required
             {   
@@ -243,24 +250,26 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 if (livea)                                                      // if path A still live
                 {   patha = mazewallfollow(patha, MAZEWALLONRIGHT);                      // follow one wall
                     DEBUGPRINT1("Path A: " + llDumpList2String(patha,","));
-                    DEBUGPRINT1("Path A in: " + mazerouteasstring(llListReplaceList(patha, [], -3,-1))); // ***TEMP***
-                    xa = llList2Integer(patha,-3);                       // get X and Y from path list
-                    ya = llList2Integer(patha,-2);
+                    DEBUGPRINT1("Path A in: " + mazerouteasstring(llListReplaceList(patha, [], -4,-1))); // ***TEMP***
+                    xa = llList2Integer(patha,-4);                       // get X and Y from path list
+                    ya = llList2Integer(patha,-3);
+                    za = llList2Float(patha, -2);
                     dira = llList2Integer(patha,-1);                     // direction
                     if (gMazeStatus == 0 && (xa == gMazeEndX) && (ya == gMazeEndY))    // reached final goal
-                    {   list goodpath = gMazePath + llListReplaceList(patha, [], -3,-1);   // get good path
+                    {   list goodpath = gMazePath + llListReplaceList(patha, [], -4,-1);   // get good path
                         gMazeCells = [];
                         gMazePath = [];
-                        DEBUGPRINT1("Path A reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1)));
+                        DEBUGPRINT1("Path A reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -4,-1)));
                         return(goodpath);
                     }
                     if ((xa != followstartx || ya != followstarty) && mazeexistusefulpath(xa,ya))  // if useful shortcut, time to stop wall following
-                    {   list goodpath = gMazePath + llListReplaceList(patha, [], -3,-1);   // get good path
+                    {   list goodpath = gMazePath + llListReplaceList(patha, [], -4,-1);   // get good path
                         gMazePath = goodpath;                                   // add to accumulated path
-                        gMazeX = xa;                                             // update position
+                        gMazeX = xa;                                            // update position
                         gMazeY = ya;
+                        gMazeZ = za;
                         founduseful = TRUE;                                     // force exit
-                        DEBUGPRINT1("Path A useful: " + mazerouteasstring(llListReplaceList(patha, [], -3,-1)));
+                        DEBUGPRINT1("Path A useful: " + mazerouteasstring(llListReplaceList(patha, [], -4,-1)));
                     }
                     if (xa == followstartx && ya == followstarty && dira == followstartdir) 
                     {   DEBUGPRINT1("Path A stuck."); livea = FALSE; }          // in a loop wall following, stuck ***MAY FAIL - CHECK***
@@ -270,24 +279,26 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, int
                 if (liveb && !founduseful)                                      // if path B still live and no solution found
                 {   pathb = mazewallfollow(pathb, -MAZEWALLONRIGHT);                     // follow other wall
                     DEBUGPRINT1("Path B: " + llDumpList2String(pathb,","));
-                    DEBUGPRINT1("Path B in: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1))); // ***TEMP***
-                    xb = llList2Integer(pathb,-3);                       // get X and Y from path list
-                    yb = llList2Integer(pathb,-2);
+                    DEBUGPRINT1("Path B in: " + mazerouteasstring(llListReplaceList(pathb, [], -4,-1))); // ***TEMP***
+                    xb = llList2Integer(pathb,-4);                       // get X and Y from path list
+                    yb = llList2Integer(pathb,-3);
+                    zb = llList2Float(pathb,-2);
                     dirb = llList2Integer(pathb,-1);                     // direction
                     if (gMazeStatus == 0 && (xb == gMazeEndX) && (yb == gMazeEndY))    // reached final goal
-                    {   list goodpath = gMazePath + llListReplaceList(pathb, [], -3,-1);   // get good path
+                    {   list goodpath = gMazePath + llListReplaceList(pathb, [], -4,-1);   // get good path
                         gMazeCells = [];
                         gMazePath = [];
-                        DEBUGPRINT1("Path B reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1)));
+                        DEBUGPRINT1("Path B reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -4,-1)));
                         return(goodpath);
                     }
                     if ((xb != followstartx || yb != followstarty) && mazeexistusefulpath(xb,yb))    // if useful shortcut, time to stop wall following
-                    {   list goodpath = gMazePath + llListReplaceList(pathb, [], -3,-1);   // get good path
+                    {   list goodpath = gMazePath + llListReplaceList(pathb, [], -4,-1);   // get good path
                         gMazePath = goodpath;                                   // add to accmulated path
                         gMazeX = xb;                                             // update position
                         gMazeY = yb;
+                        gMazeZ = zb;
                         founduseful = TRUE;                                     // force exit
-                        DEBUGPRINT1("Path B useful: " + mazerouteasstring(llListReplaceList(pathb, [], -3,-1)));
+                        DEBUGPRINT1("Path B useful: " + mazerouteasstring(llListReplaceList(pathb, [], -4,-1)));
                     }
                     if (xb == followstartx && yb == followstarty && dirb == (followstartdir + 2) % 4)
                     {   DEBUGPRINT1("Path B stuck"); liveb = FALSE; } // in a loop wall following, stuck
@@ -423,6 +434,8 @@ integer mazeexistusefulpath(integer x, integer y)
 //
 //  mazetakeproductive path -- follow productive path one cell, or return 0
 //
+//  ***NOT YET UPDATING Z***
+//
 integer mazetakeproductivepath()
 {
     integer dx = gMazeEndX - gMazeX;
@@ -521,16 +534,19 @@ integer mazepickside()
 //    "direction" is 0 for +X, 1 for +Y, 2 for -X, 3 for -Y
 //
 //  No use of global variables. Returns
-//  [pt, pt, ... , x, y, direction]   
+//  [pt, pt, ... , x, y, z, direction]   
 //
 //  and "params" uses the same format
 //
+//  ***NOT YET UPDATING Z***
+//
 list mazewallfollow(list params, integer sidelr)
 {
-    integer x = llList2Integer(params,-3);
-    integer y = llList2Integer(params,-2);
+    integer x = llList2Integer(params,-4);
+    integer y = llList2Integer(params,-3);
+    float z = llList2Float(params,-2);
     integer direction = llList2Integer(params,-1);
-    list path = llListReplaceList(params,[],-3,-1); // remove non-path items.
+    list path = llListReplaceList(params,[],-4,-1); // remove non-path items.
     DEBUGPRINT1("Following wall at (" + (string)x + "," + (string)y + ")" + " side " + (string)sidelr + " direction " + (string) direction 
         + "  md: " + (string)mazemd(x, y, gMazeEndX, gMazeEndY) + " mdbest: " + (string)gMazeMdbest);
     integer dx = MAZEEDGEFOLLOWDX(direction);
@@ -572,7 +588,7 @@ list mazewallfollow(list params, integer sidelr)
             if (md < gMazeMdbest && mazeexistsproductivepath(x,y))
             {
                 DEBUGPRINT1("Outside corner led to a productive path halfway through");
-                return(path + [x, y, direction]);
+                return(path + [x, y, z, direction]);
             }
             direction = (direction + sidelr + 4) % 4;    // turn in direction
             x += dxsame;                        // move around corner
@@ -580,7 +596,7 @@ list mazewallfollow(list params, integer sidelr)
             path = mazeaddpttolist(path,x,y);
         }
     }
-    return(path + [x, y, direction]);           // return path plus state
+    return(path + [x, y, z, direction]);           // return path plus state
 } 
 
 //
@@ -817,13 +833,14 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     integer sizey = (integer)llJsonGetValue(jsn,["sizey"]);
     integer startx = (integer)llJsonGetValue(jsn,["startx"]);
     integer starty = (integer)llJsonGetValue(jsn,["starty"]);
+    float startz = (float)llJsonGetValue(jsn,["startz"]);           // elevation in world coords
     gMazeStartclear = (integer)llJsonGetValue(jsn,["startclear"]);   // true if we assume start is clear
     integer endx = (integer)llJsonGetValue(jsn,["endx"]);
     integer endy = (integer)llJsonGetValue(jsn,["endy"]);
     if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = MAZESTATUSBADSIZE; } // too big
     list path = [];
     if (status == 0)                                    // if params sane enough to start
-    {   path = mazesolve(sizex, sizey, startx, starty, endx, endy); // solve the maze
+    {   path = mazesolve(sizex, sizey, startx, starty, startz, endx, endy); // solve the maze
         if (llGetListLength(path) == 0 || gMazeStatus != 0)       // failed to find a path
         {   path = [];                                  // clear path
             status = gMazeStatus;                       // failed for known reason, report
