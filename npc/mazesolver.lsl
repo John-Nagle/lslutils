@@ -166,15 +166,6 @@ mazecellset(integer x, integer y, integer newval)
     gMazeCells = llListReplaceList(gMazeCells,[w],listix, listix); // replace word
     ////gMazeCells[listix] = w;                     // insert word
 }
-#ifndef mazepathx        
-//
-//   Maze path storage - X && Y in one 32-bit value
-//
-#define mazepathx(val) ((val) & 0xffff)         // X is low half
-#define mazepathy(val) (((val)>> 16) & 0xffff)  // Y is high half
-#define mazepathval(x,y) (((y) << 16) | (x))    // construct 32 bit value
-#endif // mazepathx
-
 
 //
 //  mazesolve  -- find a path through a maze
@@ -214,7 +205,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
             gMazePath = [];
             return([]);                    // we are in an undetected loop
         }
-        if (mazeexistsproductivepath(gMazeX, gMazeY))     // if a shortcut is available
+        if (mazeexistsproductivepath(gMazeX, gMazeY, gMazeZ))     // if a shortcut is available
         {   DEBUGPRINT1("Maze productive path at (" + (string)gMazeX + "," + (string)gMazeY + ")");
             mazetakeproductivepath();       // use it
             gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
@@ -262,7 +253,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
                         DEBUGPRINT1("Path A reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -4,-1)));
                         return(goodpath);
                     }
-                    if ((xa != followstartx || ya != followstarty) && mazeexistusefulpath(xa,ya))  // if useful shortcut, time to stop wall following
+                    if ((xa != followstartx || ya != followstarty) && mazeexistusefulpath(xa,ya,za))  // if useful shortcut, time to stop wall following
                     {   list goodpath = gMazePath + llListReplaceList(patha, [], -4,-1);   // get good path
                         gMazePath = goodpath;                                   // add to accumulated path
                         gMazeX = xa;                                            // update position
@@ -291,7 +282,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
                         DEBUGPRINT1("Path B reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -4,-1)));
                         return(goodpath);
                     }
-                    if ((xb != followstartx || yb != followstarty) && mazeexistusefulpath(xb,yb))    // if useful shortcut, time to stop wall following
+                    if ((xb != followstartx || yb != followstarty) && mazeexistusefulpath(xb,yb,zb))    // if useful shortcut, time to stop wall following
                     {   list goodpath = gMazePath + llListReplaceList(pathb, [], -4,-1);   // get good path
                         gMazePath = goodpath;                                   // add to accmulated path
                         gMazeX = xb;                                             // update position
@@ -334,7 +325,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
 //                    
 mazeaddtopath() 
 {   
-    gMazePath = mazeaddpttolist(gMazePath, gMazeX, gMazeY);        // use common fn
+    gMazePath = mazeaddpttolist(gMazePath, gMazeX, gMazeY, gMazeZ);        // use common fn
 }
 
 //
@@ -346,14 +337,14 @@ mazeaddtopath()
 //  No use of global variables, to allow use on multiple paths in parallel.
 //  Path is one integer per x,y format.
 //
-list mazeaddpttolist(list path, integer x, integer y)
+list mazeaddpttolist(list path, integer x, integer y, float z)
 {
-    DEBUGPRINT1("(" + (string)x + "," + (string)y + ")");
+    DEBUGPRINT1("(" + (string)x + "," + (string)y + "," + (string)z + ")");
     //  Memory check
     if (llGetFreeMemory() < MAZEMINMEM)             // if in danger of stack/heap collision crash
     {   gMazeStatus = MAZESTATUSNOMEM; }            // out of memory, will abort
     //  Short list check
-    integer val = mazepathval(x, y);                // current point as one integer
+    integer val = mazepathconstruct(x, y, z, gMazePos.z);    // current point as one integer
     integer length = llGetListLength(path);
     if (length > 0) 
     {   if (llList2Integer(path,-1) == val) { DEBUGPRINT1("Dup pt."); return(path); }}   // new point is dup, ignore.
@@ -369,7 +360,7 @@ list mazeaddpttolist(list path, integer x, integer y)
     //  No optimizations, just add new point
     {   return(path + [val]); }                 // no optimization
 }
-
+#ifdef OBSOLETE
 //
 //  mazetestcell
 //
@@ -400,41 +391,89 @@ integer mazetestcell(integer fromx, integer fromy, integer x, integer y)
     DEBUGPRINT1("Tested cell (" + (string)x + "," + (string)y + ") : " + (string)(barrier));
     return(barrier);                            // return 1 if obstacle
 }
+#endif // OBSOLETE
+//
+//  mazetestcell
+//
+//  Returns -1 if occupied cell.
+//  Returns Z value if not occupied.
+//
+//  We have to test from a known-empty cell, because cast ray won't detect
+//  an obstacle it is inside.
+//                                                       
+float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer y)
+{
+    if (x < 0 || x >= gMazeXsize || y < 0 || y >= gMazeYsize)  // if off grid
+    {    return(-1.0);      }                     // treat as occupied
+    integer v = mazecellget(x,y);
+    if (v & MAZEEXAMINED) 
+    {   DEBUGPRINT1("Checked cell (" + (string)x + "," + (string)y + ") : " + (string)(v & MAZEBARRIER));
+        if (v & MAZEBARRIER) { return(-1.0); }  // occupied/
+        //  Already tested, and we need Z. 
+        //  For now, test it again.
+        pathMsg(PATH_MSG_WARN, "Duplicate check of maze cell (" + (string)x + "," + (string)y + ")");
+        // ***TEMP***
+    }
+    //  This cell is not in the bitmap yet. Must do the expensive test.
+    integer barrier = FALSE;                    // no barrier yet
+    float z = -1.0;                             // assume barrier
+    if (gMazeStartclear && x == gMazeStartX &&  y == gMazeStartY) // special case where start pt is assumed clear
+    {   z = gMazeStartZ; }                      // needed to get character out of very tight spots.
+    else
+    {   //  Have to test the cell.
+        vector p0 = mazecelltopoint(fromx, fromy);          // centers of the start and end test cells
+        p0.z = fromz;                                       // provide Z of previous point
+        vector p1 = mazecelltopoint(x,y);                   // X and Y of next point, Z currently unknown.
+        float z = pathcheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE);    // test whether cell occupied, assuming prev cell was OK
+        barrier = z < 0;                                    // negative Z means obstacle.
+#ifdef MARKERS                                              // debug markers
+        rotation color = TRANSYELLOW;                       // yellow if unoccupied
+        if (barrier) { color = TRANSRED; }                  // red if occupied
+        p1.z = z;                                           // use actual Z from cell check
+        placesegmentmarker(MARKERLINE, p0, p1, gMazeWidth, color, 0.20);// place a temporary line on the ground in-world.
+#endif // MARKERS
+
+    }
+    v = MAZEEXAMINED | barrier;
+    mazecellset(x,y,v);                                     // update cells checked
+    if (barrier && (x == gMazeEndX) && (y == gMazeEndY))    // if the end cell is blocked
+    {   gMazeStatus = MAZESTATUSBADEND; }                   // force abort, maze is unsolveable
+    DEBUGPRINT1("Tested cell (" + (string)x + "," + (string)y + ") : " + (string)(z));
+    return(z);                                              // return -1 if obstacle, else Z heigth
+}
  
 //
 //  mazeexistsproductivepath -- true if a productive path exists
 //
 //  A productive path is one that leads to the goal and isn't blocked
 //     
-integer mazeexistsproductivepath(integer x, integer y)
+integer mazeexistsproductivepath(integer x, integer y, float z)
 {
     integer dx = gMazeEndX - x;
     integer dy = gMazeEndY - y;
     dx = mazeclipto1(dx);
     dy = mazeclipto1(dy);
     if (dx != 0) 
-    {    integer productive = !mazetestcell(x, y, x + dx, y); // test if cell in productive direction is clear
-         if (productive) { return(TRUE); }
+    {    float nextz = mazetestcell(x, y, z, x + dx, y); // test if cell in productive direction is clear    
+         if (nextz > 0) { return(TRUE); }
     }
     if (dy != 0) 
-    {    integer productive = !mazetestcell(x, y, x, y + dy); // test if cell in productive direction is clear
-         if (productive) { return(TRUE); }
+    {    float nextz = mazetestcell(x, y, z, x, y + dy); // test if cell in productive direction is clear
+         if (nextz > 0) { return(TRUE); }
     }
     return(FALSE);
 }
 //
 //  mazeexistusefulpath -- path is both productive and better than best existing distance
 //
-integer mazeexistusefulpath(integer x, integer y)
+integer mazeexistusefulpath(integer x, integer y, float z)
 {
     if (mazemd(x, y, gMazeEndX, gMazeEndY) >= gMazeMdbest) { return(FALSE); }
-    return(mazeexistsproductivepath(x,y)); 
+    return(mazeexistsproductivepath(x,y,z)); 
 }
 
 //
 //  mazetakeproductive path -- follow productive path one cell, or return 0
-//
-//  ***NOT YET UPDATING Z***
 //
 integer mazetakeproductivepath()
 {
@@ -445,31 +484,36 @@ integer mazetakeproductivepath()
     assert(dx != 0 || dy != 0);              // error to call this at dest
     //    Try X dir first if more direct towards goal
     if (abs(dx) > abs(dy) && clippeddx) 
-    {
-        if (!mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY)) 
-        {   gMazeX += clippeddx;                      // advance in desired dir
+    {   float newz = mazetestcell(gMazeX, gMazeY, gMazeZ, gMazeX + clippeddx, gMazeY);
+        if (newz > 0)                                   // if not obstructed
+        {   gMazeX += clippeddx;                        // advance in desired dir
+            gMazeZ = newz;                              // using Z value just obtained
             mazeaddtopath();
-            return(1);
+            return(TRUE);
         }
     }
     //   Then try Y    
     if (clippeddy) 
-    {   if (!mazetestcell(gMazeX, gMazeY, gMazeX, gMazeY + clippeddy))
-        {   gMazeY += clippeddy;                       // advance in desired dir
+    {   float newz = mazetestcell(gMazeX, gMazeY, gMazeZ, gMazeX, gMazeY + clippeddy);
+        if (newz > 0)
+        {   gMazeY += clippeddy;                        // advance in desired dir
+            gMazeZ = newz;                              // using Z value just obtained
             mazeaddtopath();
-            return(1); 
+            return(TRUE); 
         }
     }
     //   Then X, regardless of whether abs(dx) > abs(dy)
     if (clippeddx)
-    {   if (!mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY)) 
+    {   float newz = mazetestcell(gMazeX, gMazeY, gMazeZ, gMazeX + clippeddx, gMazeY);
+        if (newz > 0) 
         {   gMazeX += clippeddx;                       // advance in desired dir
+            gMazeZ = newz;                              // using Z value just obtained
             mazeaddtopath();
-            return(1);
+            return(TRUE);
         } 
     }                           // success
     DEBUGPRINT1("Take productive path failed");
-    return(0);
+    return(FALSE);
 }                                               // hit wall, stop
 //
 //  mazepickside
@@ -491,7 +535,7 @@ integer mazepickside()
     {    clippeddy = 0; } 
     else
     {    clippeddx = 0; }
-    assert(mazetestcell(gMazeX, gMazeY, gMazeX + clippeddx, gMazeY + clippeddy)); // must have hit a wall
+    assert(mazetestcell(gMazeX, gMazeY, gMazeZ, gMazeX + clippeddx, gMazeY + clippeddy) > 0); // must have hit a wall
     //   4 cases
     if (clippeddx == 1)                      // obstacle is in +X dir
     {   
@@ -538,7 +582,8 @@ integer mazepickside()
 //
 //  and "params" uses the same format
 //
-//  ***NOT YET UPDATING Z***
+//  Z is updated from the appropriate call to mazetestcell.
+//  ***CHECK ALL UPDATES TO Z TO MAKE SURE THEY COME FROM THE CORRECT mazetestcell WITH THE SAME X and Y PARAMS***
 //
 list mazewallfollow(list params, integer sidelr)
 {
@@ -553,17 +598,15 @@ list mazewallfollow(list params, integer sidelr)
     integer dy = MAZEEDGEFOLLOWDY(direction);
     integer dxsame = MAZEEDGEFOLLOWDX(((direction + sidelr) + 4) % 4); // if not blocked ahead
     integer dysame = MAZEEDGEFOLLOWDY(((direction + sidelr) + 4) % 4); 
-    integer followedside = mazetestcell(x, y, x + dxsame, y+dysame);
-    if (!followedside) 
-    {
-        assert(followedside);                            // must be next to obstacle
-    }
-    integer blockedahead = mazetestcell(x, y, x + dx, y + dy);
-    if (blockedahead)
+    //  ***NOT SURE ABOUT THIS CHECK*** Previous check did nothing.
+    float followedsidez = mazetestcell(x, y, z, x + dxsame, y+dysame);
+    assert(followedsidez < 0);                                // must be next to obstacle
+    float aheadz = mazetestcell(x, y, z, x + dx, y + dy);   // Z value at x+dx, y+dy, or -1
+    if (aheadz < 0)
     {   integer dxopposite = MAZEEDGEFOLLOWDX(((direction - sidelr) + 4) % 4);
         integer dyopposite = MAZEEDGEFOLLOWDY(((direction - sidelr) + 4) % 4);
-        integer blockedopposite = mazetestcell(x, y, x + dxopposite, y + dyopposite);
-        if (blockedopposite) 
+        float oppositez = mazetestcell(x, y, z, x + dxopposite, y + dyopposite);
+        if (oppositez < 0) 
         {   DEBUGPRINT1("Dead end");
             direction = (direction + 2) % 4;         // dead end, reverse direction
         } else {
@@ -572,20 +615,22 @@ list mazewallfollow(list params, integer sidelr)
         }
     } else {
         assert(dxsame == 0 || dysame == 0);
-        integer blockedsameahead = mazetestcell(x + dx, y + dy, x + dx + dxsame, y + dy + dysame);
-        if (blockedsameahead)                       // straight, not outside corner
+        float sameaheadz = mazetestcell(x + dx, y + dy, aheadz, x + dx + dxsame, y + dy + dysame);
+        if (sameaheadz < 0)                         // straight, not outside corner
         {   DEBUGPRINT1("Straight");
-            x += dx;                            // move ahead 1
+            x += dx;                                // move ahead 1
             y += dy;
-            path = mazeaddpttolist(path,x,y);
-        } else {                                     // outside corner
+            z = aheadz;                             // use Z value for (x+dx, y+dy)
+            path = mazeaddpttolist(path,x,y,z);
+        } else {                                    // outside corner
             DEBUGPRINT1("Outside corner");
-            x += dx;                            // move ahead 1
+            x += dx;                                // move ahead 1
             y += dy;
-            path = mazeaddpttolist(path,x,y);
+            z = aheadz;                             // use Z value for (x+dx, y+dy)
+            path = mazeaddpttolist(path,x,y,z);
             //   Need to check for a productive path. May be time to stop wall following
             integer md = mazemd(x, y, gMazeEndX, gMazeEndY);
-            if (md < gMazeMdbest && mazeexistsproductivepath(x,y))
+            if (md < gMazeMdbest && mazeexistsproductivepath(x,y,z))
             {
                 DEBUGPRINT1("Outside corner led to a productive path halfway through");
                 return(path + [x, y, z, direction]);
@@ -593,12 +638,13 @@ list mazewallfollow(list params, integer sidelr)
             direction = (direction + sidelr + 4) % 4;    // turn in direction
             x += dxsame;                        // move around corner
             y += dysame;
-            path = mazeaddpttolist(path,x,y);
+            z = sameaheadz;                         // use Z value for (x+dx+dxsame, y+dy+dysame)
+            path = mazeaddpttolist(path,x,y,z);
         }
     }
     return(path + [x, y, z, direction]);           // return path plus state
 } 
-
+#ifdef OBSOLETE
 //
 //  mazelinebarrier -- Does the line between the two points, inclusive, hit a barrier?
 //
@@ -770,7 +816,7 @@ list mazeoptimizeroute(list route)
     }
     return(route);                                   // condensed route                      
 }
-
+#endif // OBSOLETE
 //
 //  mazereplyjson -- construct result as JSON
 //
@@ -858,7 +904,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
         "pos", gMazePos, "rot", gMazeRot, "cellsize", gMazeCellSize,
         "points", llList2Json(JSON_ARRAY, path)]),"");
 }
-
+#ifdef OBSOLETE
 //
 //  mazebarrierfn -- barrier test in 3D space
 //
@@ -876,6 +922,7 @@ integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
 #endif // MARKERS
     return(occupied);
 }
+#endif // OBSOLETE
 //
 //  mazecelltopoint -- convert maze coordinates to point in world space
 //
@@ -907,8 +954,8 @@ string mazerouteasstring(list route)
 }
 
 
-integer gBarrierFn(integer fromx, integer fromy, integer x, integer y)
-{   return(mazebarrierfn(fromx, fromy, x, y)); } // connect to real ray-casting fn
+////integer gBarrierFn(integer fromx, integer fromy, integer x, integer y)
+////{   return(mazebarrierfn(fromx, fromy, x, y)); } // connect to real ray-casting fn
 
 //
 //  The main program of the maze solver task
