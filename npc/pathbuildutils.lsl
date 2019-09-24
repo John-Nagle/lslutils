@@ -561,11 +561,11 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
     pathMsg(PATH_MSG_INFO, "pa/pb/pc/pd: " + (string)pa + (string)pb+(string)pc+(string)pd);    // ***TEMP***
     //  Horizontal casts.
     //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
-    //  First cast from back edge of cell p0 to front edge of cell p1, at half height. The most important ray cast.
-    if (obstacleraycasthoriz(p0+halfheight-fwdoffset, pc + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
-    if (obstacleraycasthoriz(p0+fullheight-fwdoffset, pc + fullheight)) { return(-1.0); }// Same at full height to check for low clearances
-    if (obstacleraycasthoriz(p0+halfheight-fwdoffset+sideoffset, pa + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
-    if (obstacleraycasthoriz(p0+halfheight-fwdoffset-sideoffset, pb + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
+    //  First cast from front edge of cell p0 to front edge of cell p1, at half height. The most important ray cast.
+    if (obstacleraycasthoriz(p0+halfheight+fwdoffset, pc + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
+    if (obstacleraycasthoriz(p0+fullheight+fwdoffset, pc + fullheight)) { return(-1.0); }// Same at full height to check for low clearances
+    if (obstacleraycasthoriz(p0+halfheight+fwdoffset+sideoffset, pa + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
+    if (obstacleraycasthoriz(p0+halfheight+fwdoffset-sideoffset, pb + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
 
 #ifdef TEMPTURNOFF // need more horizontal checks once new geometry is debugged
     //  Crosswise horizontal check.
