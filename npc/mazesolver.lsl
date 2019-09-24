@@ -410,9 +410,15 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
     {   DEBUGPRINT1("Checked cell (" + (string)x + "," + (string)y + ") : " + (string)(v & MAZEBARRIER));
         if (v & MAZEBARRIER) { return(-1.0); }  // occupied/
         //  Already tested, not occupied, and we need Z. 
-        //  For now, test it again.  May add a small cache later.
-        pathMsg(PATH_MSG_WARN, "Duplicate check of maze cell (" + (string)x + "," + (string)y + ")");
-        // ***TEMP***
+        vector p0 = mazecelltopoint(fromx, fromy);          // centers of the start and end test cells
+        p0.z = fromz;                                       // provide Z of previous point
+        vector p1 = mazecelltopoint(x,y);                   // X and Y of next point, Z currently unknown.
+        float z = pathcheckcellz(p0, p1, gMazeWidth, gMazeHeight); // get Z depth of cell
+        if (z < 0)
+        {   gMazeStatus = MAZESTATUSCELLCHANGED;            // status of cell changed
+            pathMsg(PATH_MSG_WARN, "Maze cell (" + (string)x + "," + (string)y + ") was empty, now occupied");
+        }
+        return(z);                                          // return Z value for cell. Occupancy already checked.
     }
     //  This cell is not in the bitmap yet. Must do the expensive test.
     integer barrier = FALSE;                    // no barrier yet

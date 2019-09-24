@@ -29,6 +29,7 @@
 #define MAZESTATUSBADOBSTACLE -208              // can't find open space after obstacle
 #define MAZESTATUSBADBACKUP  -209               // backup to find space before obstacle hit beginning
 #define MAZESTATUSNOPTS      -210               // empty path
+#define MAZESTATUSCELLCHANGED -211              // status of cell changed from unoccupied to occupied
 
                                                 // internal errors
 #define MAZESTATUSTIMEOUT   -501                // took too long

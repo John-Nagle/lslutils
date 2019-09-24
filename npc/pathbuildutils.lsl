@@ -20,6 +20,8 @@ float PATHCHECKTOL = 0.02;                                  // (m) allow 2cm col
 float PATHPOINTONSEGDIST = 0.10;                            // (m) allow point up to 10cm off line when checking for what seg contains a point
 float PATHSTATICTOL = 0.10;                                 // (m) allow extra space on either side of path 
 float PATHSINMAXWALKABLEANGLE = 0.4226;                     // sine of (90-65) degrees. 
+float MAZEBELOWGNDTOL = 1.0;                                // (m) ***TEMP** huge tol until we get legit Z values coming in
+
 
 #define PATHZTOL (0.35)                                     // (m) allow this much error from llGetStaticPath
 
@@ -332,7 +334,7 @@ list pathptstowalkable(list path)
     }
     return(pts);                                                // points on floor
 }
-
+#ifdef OBSOLETE
 //
 //  pathptoffsetalongplane
 //
@@ -365,7 +367,7 @@ float pathpointonplane(vector p, rotation mazerot)
     vector planenormal = <0,0,1>*mazerot;                               // normal to rotated plane. Defines a plane through the origin
     return(-((p.x * planenormal.x + p.y * planenormal.y)/planenormal.z));  // planenormal.z cannot be zero unless tilted plane is vertical
 }
-
+#endif // OBSOLETE
 //
 //  rotperpenonground  -- rotation to get line on ground perpendicular to vector
 //
@@ -525,7 +527,6 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 //
 //  p0 and p1 must be one width apart. They are positions at ground level. Z values will be different on slopes.
 //  
-//  ***NEEDS WORK***
 //  New Z-aware version.
 //  Returns Z value of ground at P1, or -1 if occupied.
 //  At entry, p0 must have a correct Z value, but p1's Z value is obtained by a ray cast downward.
@@ -534,8 +535,6 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
 {
     if (gPathSelfObject == NULL_KEY)
     {   gPathSelfObject = llGetKey(); }                     // our own key, for later
-    ////float MAZEBELOWGNDTOL = 0.40;                           // cast downwards to just below ground
-    float MAZEBELOWGNDTOL = 1.0;                            // ***TEMP** huge tol until we get legit Z values coming in
     vector dv = p1-p0;                                      // direction, unnormalized
     dv.z = 0;                                               // Z not meaningful yet.
     vector dir = llVecNorm(dv);                             // forward direction, XY plane
@@ -543,8 +542,6 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
     vector halfheight = <0,0,height*0.5>;                   // add this for casts from middle of character
     vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
     pathMsg(PATH_MSG_INFO, "Cell occupied check: p0: " + (string) p0 + " p1: " + (string)p1);
-
-    ////p0 = p1 - dir*(width*1.5);                              // start casts from far side of previous cell
     vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
     vector fwdoffset = dir*(width*0.5);                     // distance to look ahead, to end of this cell
     vector sideoffset = crossdir*(width*0.5);               // distance to the side of the cell
@@ -586,6 +583,25 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
     if (obstacleraycastvert(pd+fullheight,pd-mazedepthmargin) < 0) { return(-1.0); }; // cast downwards for trailing point
     return(zp1);                                                // success, no obstacle, return Z value for ground below P1.
 }
+//
+//  pathcheckcellz -- get Z height of ground below base of cell
+//
+//  Same result for that as pathcheckcelloccupied, but fewer checks.
+//  Used when we need the Z height for a second time.
+//
+float pathcheckcellz(vector p0, vector p1, float width, float height)
+{
+    if (gPathSelfObject == NULL_KEY)
+    {   gPathSelfObject = llGetKey(); }                     // our own key, for later
+    vector fullheight = <0,0,height>;                       // add this to top of vertical ray cast
+    vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
+    //  Initial basic downward cast. This gets us our Z reference for P1
+    p1.z = p0.z;                                            // we have no Z value for P1 yet. Start with the one from P0.
+    //  Look over a wide enough range of Z values to catch all walkable slopes.
+    return(obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin-<0,0,1>*(width*(1.0+PATHSINMAXWALKABLEANGLE))));   // probe center of cell, looking down
+}
+
+
 
 //
 //  obstacleraycasthoriz -- test for horizontal ray casts.  Must find open space.  Returns TRUE if obstacle.
