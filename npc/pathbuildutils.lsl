@@ -549,7 +549,9 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
     vector fwdoffset = dir*(width*0.5);                     // distance to look ahead, to end of this cell
     vector sideoffset = crossdir*(width*0.5);               // distance to the side of the cell
     //  Initial basic downward cast. This gets us our Z reference for P1
-    float zp1 = obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin);   // probe center of cell, looking down
+    p1.z = p0.z;                                            // we have no Z value for P1 yet. Start with the one from P0.
+    //  Look over a wide enough range of Z values to catch all walkable slopes.
+    float zp1 = obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin-<0,0,1>*(width*(1.0+PATHSINMAXWALKABLEANGLE)));   // probe center of cell, looking down
     if (zp1 < 0) { return(-1.0); }                          // fails
     p1.z = zp1;                                             // we can now set p1's proper Z height
     vector pa = p1 + sideoffset;                            // one edge at ground level

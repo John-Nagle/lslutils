@@ -192,7 +192,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
     //   Outer loop - shortcuts || wall following
     MAZEPRINTVERBOSE("Start maze solve.");
     while (gMazeX != gMazeEndX || gMazeY != gMazeEndY)  // while not at dest
-    {   MAZEPRINTVERBOSE("Maze solve at (" + (string)gMazeX + "," + (string)gMazeY + "," + (string)gMazeZ + ")");
+    {   pathMsg(PATH_MSG_INFO,"Maze solve at (" + (string)gMazeX + "," + (string)gMazeY + "," + (string)gMazeZ + ")");
         if (gMazeStatus)                                    // if something went wrong
         {   MAZEPRINTVERBOSE("Maze solver failed: status " + (string)gMazeStatus + " at (" + (string)gMazeX + "," + (string)gMazeY + ")");
             gMazeCells = [];                                // release memory
@@ -592,7 +592,8 @@ list mazewallfollow(list params, integer sidelr)
     float z = llList2Float(params,-2);
     integer direction = llList2Integer(params,-1);
     list path = llListReplaceList(params,[],-4,-1); // remove non-path items.
-    DEBUGPRINT1("Following wall at (" + (string)x + "," + (string)y + ")" + " side " + (string)sidelr + " direction " + (string) direction 
+    pathMsg(PATH_MSG_INFO,"Following wall at (" + (string)x + "," + (string)y + "," + (string)z + ")" 
+        + " side " + (string)sidelr + " direction " + (string) direction 
         + "  md: " + (string)mazemd(x, y, gMazeEndX, gMazeEndY) + " mdbest: " + (string)gMazeMdbest);
     integer dx = MAZEEDGEFOLLOWDX(direction);
     integer dy = MAZEEDGEFOLLOWDY(direction);

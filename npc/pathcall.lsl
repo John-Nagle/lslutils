@@ -13,7 +13,7 @@
 
 //  Constants
 float REGION_SIZE = 256.0;                                      // size of a region  
-#define PATHCALLSTALLTIME 120                                   // if stalled for 120 seconds, reset everything 
+#define PATHCALLSTALLTIME 300 ////120                                   // if stalled for 120 seconds, reset everything 
 //
 //  Globals
 //  Character parameters
