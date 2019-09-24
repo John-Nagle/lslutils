@@ -192,7 +192,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
     //   Outer loop - shortcuts || wall following
     MAZEPRINTVERBOSE("Start maze solve.");
     while (gMazeX != gMazeEndX || gMazeY != gMazeEndY)  // while not at dest
-    {   MAZEPRINTVERBOSE("Maze solve at (" + (string)gMazeX + "," + (string)gMazeY + ")");
+    {   MAZEPRINTVERBOSE("Maze solve at (" + (string)gMazeX + "," + (string)gMazeY + "," + (string)gMazeZ + ")");
         if (gMazeStatus)                                    // if something went wrong
         {   MAZEPRINTVERBOSE("Maze solver failed: status " + (string)gMazeStatus + " at (" + (string)gMazeX + "," + (string)gMazeY + ")");
             gMazeCells = [];                                // release memory
@@ -409,8 +409,8 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
     if (v & MAZEEXAMINED) 
     {   DEBUGPRINT1("Checked cell (" + (string)x + "," + (string)y + ") : " + (string)(v & MAZEBARRIER));
         if (v & MAZEBARRIER) { return(-1.0); }  // occupied/
-        //  Already tested, and we need Z. 
-        //  For now, test it again.
+        //  Already tested, not occupied, and we need Z. 
+        //  For now, test it again.  May add a small cache later.
         pathMsg(PATH_MSG_WARN, "Duplicate check of maze cell (" + (string)x + "," + (string)y + ")");
         // ***TEMP***
     }
@@ -424,15 +424,15 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
         vector p0 = mazecelltopoint(fromx, fromy);          // centers of the start and end test cells
         p0.z = fromz;                                       // provide Z of previous point
         vector p1 = mazecelltopoint(x,y);                   // X and Y of next point, Z currently unknown.
-        float z = pathcheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE);    // test whether cell occupied, assuming prev cell was OK
+        z = pathcheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE);    // test whether cell occupied, assuming prev cell was OK
         barrier = z < 0;                                    // negative Z means obstacle.
-#ifdef MARKERS                                              // debug markers
+#ifdef MARKERS                                              // debug markers which appear in world
         rotation color = TRANSYELLOW;                       // yellow if unoccupied
         if (barrier) { color = TRANSRED; }                  // red if occupied
-        p1.z = z;                                           // use actual Z from cell check
+        p1.z = p0.z;                                        // use Z from p0 if cell check failed. So all fails are horizontal markers.
+        if (z > 0) { p1.z = z; }                            // use actual Z from cell check if successful
         placesegmentmarker(MARKERLINE, p0, p1, gMazeWidth, color, 0.20);// place a temporary line on the ground in-world.
 #endif // MARKERS
-
     }
     v = MAZEEXAMINED | barrier;
     mazecellset(x,y,v);                                     // update cells checked
@@ -535,7 +535,7 @@ integer mazepickside()
     {    clippeddy = 0; } 
     else
     {    clippeddx = 0; }
-    assert(mazetestcell(gMazeX, gMazeY, gMazeZ, gMazeX + clippeddx, gMazeY + clippeddy) > 0); // must have hit a wall
+    assert(mazetestcell(gMazeX, gMazeY, gMazeZ, gMazeX + clippeddx, gMazeY + clippeddy) < 0); // must have hit a wall
     //   4 cases
     if (clippeddx == 1)                      // obstacle is in +X dir
     {   
@@ -600,20 +600,20 @@ list mazewallfollow(list params, integer sidelr)
     integer dysame = MAZEEDGEFOLLOWDY(((direction + sidelr) + 4) % 4); 
     //  ***NOT SURE ABOUT THIS CHECK*** Previous check did nothing.
     float followedsidez = mazetestcell(x, y, z, x + dxsame, y+dysame);
-    assert(followedsidez < 0);                                // must be next to obstacle
+    assert(followedsidez < 0);                              // must be next to obstacle on wall-following side
     float aheadz = mazetestcell(x, y, z, x + dx, y + dy);   // Z value at x+dx, y+dy, or -1
-    if (aheadz < 0)
+    if (aheadz < 0)                                         // if blocked ahead
     {   integer dxopposite = MAZEEDGEFOLLOWDX(((direction - sidelr) + 4) % 4);
         integer dyopposite = MAZEEDGEFOLLOWDY(((direction - sidelr) + 4) % 4);
         float oppositez = mazetestcell(x, y, z, x + dxopposite, y + dyopposite);
-        if (oppositez < 0) 
+        if (oppositez < 0)                                  // blocked ahead, and blocked on followed side - dead end.
         {   DEBUGPRINT1("Dead end");
             direction = (direction + 2) % 4;         // dead end, reverse direction
         } else {
             DEBUGPRINT1("Inside corner");
             direction = (direction - sidelr + 4) % 4;      // inside corner, turn
         }
-    } else {
+    } else {                                        // not blocked ahead, can go straight or do an outside corner.
         assert(dxsame == 0 || dysame == 0);
         float sameaheadz = mazetestcell(x + dx, y + dy, aheadz, x + dx + dxsame, y + dy + dysame);
         if (sameaheadz < 0)                         // straight, not outside corner
@@ -860,13 +860,13 @@ integer gMazeChartype;                          // character type (static path)
 //  
 mazerequestjson(integer sender_num, integer num, string jsn, key id) 
 {   if (num != MAZESOLVEREQUEST) { return; }                // message not for us
+    gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);// so first message will print
     pathMsg(PATH_MSG_INFO,"Request to maze solver: " + jsn);            // verbose mode
     integer status = 0;                                     // so far, so good
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type
     if (requesttype != "mazesolve") { return; }              // ignore, not our msg
     integer pathid = (integer) llJsonGetValue(jsn, ["pathid"]); 
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
-    gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
     vector regioncorner = (vector)llJsonGetValue(jsn,["regioncorner"]);
     gMazePos = (vector)llJsonGetValue(jsn,["pos"]);
     gMazeRot = (rotation)llJsonGetValue(jsn,["rot"]);

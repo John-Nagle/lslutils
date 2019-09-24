@@ -509,7 +509,7 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 }
 
 //
-//  mazecheckcelloccupied  -- is there an obstacle in this cell?
+//  pathcheckcelloccupied  -- is there an obstacle in this cell?
 //
 //  Version for maze solver. May be used in planner if we have the memory space.
 //
@@ -578,7 +578,7 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
     if (obstacleraycastvert(pd+fullheight,pc-mazedepthmargin) < 0) { return(-1.0); } // cast at steep angle, must hit walkable
     if (!dobackcorners) 
     {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
-        return(FALSE); 
+        return(zp1);                                            // return Z
     }
     //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
     if (obstacleraycastvert(pd+fullheight,pd-mazedepthmargin) < 0) { return(-1.0); }; // cast downwards for trailing point
@@ -591,8 +591,8 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
 integer obstacleraycasthoriz(vector p0, vector p1)
 {   
     list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
-    ////return(pathcastfoundproblem(castresult, FALSE, TRUE));  // if any hits at all, other than self, fail
     float result = pathcastfoundproblem(castresult, FALSE);     // if any hits at all, other than self, fail
+    if (result < 0) { pathMsg(PATH_MSG_INFO, "Horiz raycast fail: "+ (string)p0 + " " +  (string)p1); } // ***TEMP***
     return(result < INFINITY);                                  // TRUE if obstacle
 }
 
