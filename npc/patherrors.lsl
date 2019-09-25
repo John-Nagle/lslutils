@@ -30,6 +30,7 @@
 #define MAZESTATUSBADBACKUP  -209               // backup to find space before obstacle hit beginning
 #define MAZESTATUSNOPTS      -210               // empty path
 #define MAZESTATUSCELLCHANGED -211              // status of cell changed from unoccupied to occupied
+#define MAZESTATUSBADZ      -212                // Z value not near maze end. Probably multi-level maze failure
 
                                                 // internal errors
 #define MAZESTATUSTIMEOUT   -501                // took too long

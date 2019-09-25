@@ -130,6 +130,7 @@ integer gMazeStartY;
 float   gMazeStartZ;                // Z of start position, world coords          
 integer gMazeEndX;                  // end position 
 integer gMazeEndY; 
+float   gMazeEndZ;                  // end Z position
 integer gMazeStartclear;            // assume start pt is clear if set
 integer gMazeStatus;                // status code - MAZESTATUS...
        
@@ -186,6 +187,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
     gMazeStartZ = startz;
     gMazeEndX = endx;                       // destination
     gMazeEndY = endy;
+    gMazeEndZ = endz;
     gMazeMdbest = gMazeXsize+gMazeYsize+1;  // best dist to target init
     gMazePath = [];                         // accumulated path
     mazeaddtopath();                        // add initial point
@@ -261,6 +263,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
                         gMazeCells = [];
                         gMazePath = [];
                         DEBUGPRINT1("Path A reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -4,-1)));
+                        if (mazecellbadz(xa, ya, za)) { goodpath = []; gMazeStatus = MAZESTATUSBADZ; }             // check for unreasonable Z value near goal
                         return(goodpath);
                     }
                     if ((xa != followstartx || ya != followstarty) && mazeexistusefulpath(xa,ya,za))  // if useful shortcut, time to stop wall following
@@ -273,9 +276,11 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
                         DEBUGPRINT1("Path A useful: " + mazerouteasstring(llListReplaceList(patha, [], -4,-1)));
                     }
                     if (xa == followstartx && ya == followstarty && dira == followstartdir) 
-                    {   DEBUGPRINT1("Path A stuck."); livea = FALSE; }          // in a loop wall following, stuck ***MAY FAIL - CHECK***
+                    {   DEBUGPRINT1("Path A stuck."); livea = FALSE; }          // in a loop wall following, stuck 
                     if (liveb && xa == xb && ya == yb && dira == (dirb + 2) % 4) // followers have met head on
                     {   DEBUGPRINT1("Path A hit path B"); livea = FALSE; liveb = FALSE; }      // force quit
+                    if (mazecellbadz(xa, ya, za)) { livea = FALSE; }             // check for unreasonable Z value near goal
+
                 }
                 if (liveb && !founduseful)                                      // if path B still live and no solution found
                 {   pathb = mazewallfollow(pathb, -MAZEWALLONRIGHT);                     // follow other wall
@@ -290,6 +295,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
                         gMazeCells = [];
                         gMazePath = [];
                         DEBUGPRINT1("Path B reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -4,-1)));
+                        if (mazecellbadz(xb, yb, zb)) { goodpath = []; gMazeStatus = MAZESTATUSBADZ; }             // check for unreasonable Z value near goal
                         return(goodpath);
                     }
                     if ((xb != followstartx || yb != followstarty) && mazeexistusefulpath(xb,yb,zb))    // if useful shortcut, time to stop wall following
@@ -307,6 +313,8 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
                     {   DEBUGPRINT1("Path A stuck."); livea = FALSE; }          // in a loop wall following, stuck ***MAY FAIL - CHECK***
                     if (livea && xa == xb && ya == yb && dira == (dirb + 2) % 4) // followers have met head on
                     {   DEBUGPRINT1("Path A hit path B"); livea = FALSE; liveb = FALSE; }      // force quit
+                    if (mazecellbadz(xb, yb, zb)) { liveb = FALSE; }             // check for unreasonable Z value near goal
+
                 }           
                 //  Termination conditions
                 //  Consider adding check for paths collided from opposite directions. This is just a speedup, though.
@@ -369,6 +377,23 @@ list mazeaddpttolist(list path, integer x, integer y, float z)
     } 
     //  No optimizations, just add new point
     {   return(path + [val]); }                 // no optimization
+}
+
+//
+//  mazecellbadz -- maze cell is close to end, but too far in Z to be valid.
+//  
+//  This catches problems like being under stairs and such.
+//  It's more of a back up measure; it doesn't create a full 3D maze solver.
+//
+#define MAZERMAXSLOPE 2.0                                       // largest allowed slope
+integer mazecellbadz(integer x, integer y, float z)
+{   float md = gMazeCellSize*(float)mazemd(x, y, gMazeEndX, gMazeEndY);   // Manhattan distance to end
+    float zdiff = llFabs(z - gMazeEndZ);                        // Z move distance to end
+    if (md < gMazeCellSize) { md = gMazeCellSize*0.5; }         // prevent divide by zero when close
+    integer toofar = (zdiff / md) > MAZERMAXSLOPE;              // too far in Z if huge slope to end of maze
+    if (!toofar) { return(FALSE); }                             // OK, within reasonable range
+    pathMsg(PATH_MSG_WARN,"Close to end of maze at (" + (string)x + "," + (string)y + ") zdiff: " + (string)zdiff);
+    return(TRUE);                                               // on wrong level in Z. Bad.
 }
 #ifdef OBSOLETE
 //
@@ -434,7 +459,9 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
     integer barrier = FALSE;                    // no barrier yet
     float z = -1.0;                             // assume barrier
     if (gMazeStartclear && x == gMazeStartX &&  y == gMazeStartY) // special case where start pt is assumed clear
-    {   z = gMazeStartZ; }                      // needed to get character out of very tight spots.
+    {   z = gMazeStartZ; }                                  // needed to get character out of very tight spots.
+    if (gMazeStartclear && x == gMazeEndX &&  y == gMazeEndY) // special case where start pt is assumed clear
+    {   z = gMazeEndZ; }                                    // needed to get character out of very tight spots.
     else
     {   //  Have to test the cell.
         vector p0 = mazecelltopoint(fromx, fromy);          // centers of the start and end test cells
@@ -599,7 +626,6 @@ integer mazepickside()
 //  and "params" uses the same format
 //
 //  Z is updated from the appropriate call to mazetestcell.
-//  ***CHECK ALL UPDATES TO Z TO MAKE SURE THEY COME FROM THE CORRECT mazetestcell WITH THE SAME X and Y PARAMS***
 //
 list mazewallfollow(list params, integer sidelr)
 {
@@ -615,7 +641,6 @@ list mazewallfollow(list params, integer sidelr)
     integer dy = MAZEEDGEFOLLOWDY(direction);
     integer dxsame = MAZEEDGEFOLLOWDX(((direction + sidelr) + 4) % 4); // if not blocked ahead
     integer dysame = MAZEEDGEFOLLOWDY(((direction + sidelr) + 4) % 4); 
-    //  ***NOT SURE ABOUT THIS CHECK*** Previous check did nothing.
     float followedsidez = mazetestcell(x, y, z, x + dxsame, y+dysame);
     assert(followedsidez < 0);                              // must be next to obstacle on wall-following side
     float aheadz = mazetestcell(x, y, z, x + dx, y + dy);   // Z value at x+dx, y+dy, or -1
