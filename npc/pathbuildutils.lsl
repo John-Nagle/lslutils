@@ -15,7 +15,7 @@
 //
 integer CASTRAYRETRIES = 10;                                // retry up to 10 times
 float CASTRAYRETRYDELAY = 0.200;                            // if a problem, retry slowly
-float GROUNDCLEARANCE = 0.05;                               // (m) avoid false ground collisions
+float GROUNDCLEARANCE = 0.20;                               // (m) avoid false ground collisions
 float PATHCHECKTOL = 0.02;                                  // (m) allow 2cm collinearity error
 float PATHPOINTONSEGDIST = 0.10;                            // (m) allow point up to 10cm off line when checking for what seg contains a point
 float PATHSTATICTOL = 0.10;                                 // (m) allow extra space on either side of path 
@@ -564,10 +564,10 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
     if (obstacleraycasthoriz(p0+halfheight+fwdoffset+sideoffset, pa + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
     if (obstacleraycasthoriz(p0+halfheight+fwdoffset-sideoffset, pb + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
 
-#ifdef TEMPTURNOFF // need more horizontal checks once new geometry is debugged
+////#ifdef TEMPTURNOFF // need more horizontal checks once new geometry is debugged
     //  Crosswise horizontal check.
-    if (obstacleraycasthoriz(p0+halfheight+sideoffset,pb+halfheight)) { return(TRUE); }   // Horizontal cast, any hit is bad
-#endif // TEMPTURNOFF
+    if (obstacleraycasthoriz(pa+halfheight,pb+halfheight)) { return(-1.0); }   // Horizontal cast crosswize at mid height, any hit is bad
+////#endif // TEMPTURNOFF
     //  Downward ray casts only.  Must hit a walkable.
     //  Center of cell is clear and walkable. Now check upwards at front and side.
     //  The idea is to check at points that are on a circle of diameter "width"
