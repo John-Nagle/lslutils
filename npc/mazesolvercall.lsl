@@ -107,7 +107,8 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
         "startz", p0.z,                             // float, starting Z position
         "startclear", startclear,                   // assume start point is unobstructed
         "endx", endx,                               // goal, cell coords
-        "endy", endy]),"");
+        "endy", endy,
+        "endz", p1.z]),"");
     return(0);
 }
 

@@ -170,7 +170,7 @@ mazecellset(integer x, integer y, integer newval)
 //
 //  mazesolve  -- find a path through a maze
 //         
-list mazesolve(integer xsize, integer ysize, integer startx, integer starty, float startz, integer endx, integer endy)
+list mazesolve(integer xsize, integer ysize, integer startx, integer starty, float startz, integer endx, integer endy, float endz)
 {   
     gMazeStatus = 0;                        // OK so far
     gMazeXsize = xsize;                     // set size of map
@@ -189,6 +189,16 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
     gMazeMdbest = gMazeXsize+gMazeYsize+1;  // best dist to target init
     gMazePath = [];                         // accumulated path
     mazeaddtopath();                        // add initial point
+#ifdef MARKERS                                              // debug markers which appear in world
+    {   //  Show start and end points of maze as green discs.
+        vector p = mazecelltopoint(startx, starty);
+        p.z = startz;
+        placesegmentmarker(MARKERLINE, p, p+<0.01,0,0>, gMazeWidth, TRANSGREEN, 0.20);// place a temporary line on the ground in-world.
+        p = mazecelltopoint(endx, endy);
+        p.z = endz;
+        placesegmentmarker(MARKERLINE, p, p+<0.01,0,0>, gMazeWidth, TRANSGREEN, 0.20);// place a temporary line on the ground in-world.
+    }
+#endif // MARKERS 
     //   Outer loop - shortcuts || wall following
     MAZEPRINTVERBOSE("Start maze solve.");
     while (gMazeX != gMazeEndX || gMazeY != gMazeEndY)  // while not at dest
@@ -890,10 +900,11 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     gMazeStartclear = (integer)llJsonGetValue(jsn,["startclear"]);   // true if we assume start is clear
     integer endx = (integer)llJsonGetValue(jsn,["endx"]);
     integer endy = (integer)llJsonGetValue(jsn,["endy"]);
+    float endz = (float)llJsonGetValue(jsn,["endz"]);           // elevation in world coords
     if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = MAZESTATUSBADSIZE; } // too big
     list path = [];
     if (status == 0)                                    // if params sane enough to start
-    {   path = mazesolve(sizex, sizey, startx, starty, startz, endx, endy); // solve the maze
+    {   path = mazesolve(sizex, sizey, startx, starty, startz, endx, endy, endz); // solve the maze
         if (llGetListLength(path) == 0 || gMazeStatus != 0)       // failed to find a path
         {   path = [];                                  // clear path
             status = gMazeStatus;                       // failed for known reason, report
