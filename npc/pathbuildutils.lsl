@@ -18,7 +18,7 @@ float CASTRAYRETRYDELAY = 0.200;                            // if a problem, ret
 float GROUNDCLEARANCE = 0.20;                               // (m) avoid false ground collisions
 float PATHCHECKTOL = 0.02;                                  // (m) allow 2cm collinearity error
 float PATHPOINTONSEGDIST = 0.10;                            // (m) allow point up to 10cm off line when checking for what seg contains a point
-float PATHSTATICTOL = 0.10;                                 // (m) allow extra space on either side of path 
+float PATHSTATICTOL = 0.30;                                 // (m) allow extra space on either side of path 
 float PATHSINMAXWALKABLEANGLE = 0.4226;                     // sine of (90-65) degrees. 
 float MAZEBELOWGNDTOL = 1.0;                                // (m) ***TEMP** huge tol until we get legit Z values coming in
 
@@ -610,6 +610,10 @@ integer obstacleraycasthoriz(vector p0, vector p1)
 {   
     list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
     float result = pathcastfoundproblem(castresult, FALSE);     // if any hits at all, other than self, fail
+    if (result < 0) { pathMsg(PATH_MSG_INFO, "Horiz raycast fail: "+ (string)p0 + " " +  (string)p1); } // ***TEMP***
+    //  And in other direction, in case start is inside an object
+    castresult = castray(p1,p0,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
+    result = pathcastfoundproblem(castresult, FALSE);     // if any hits at all, other than self, fail
     if (result < 0) { pathMsg(PATH_MSG_INFO, "Horiz raycast fail: "+ (string)p0 + " " +  (string)p1); } // ***TEMP***
     return(result < INFINITY);                                  // TRUE if obstacle
 }
