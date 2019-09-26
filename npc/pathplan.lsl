@@ -318,8 +318,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
         vector bp0 = llList2Vector(path,0);
         vector bp1 = llList2Vector(path,1);
         //  Start the maze solver
-        integer startclear = (gSegmentId == 0);             // for the very first segment, assume start cell is clear. We're there, after all.
-        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathplanChartype, gPathWidth, startclear, gPathId, gSegmentId, gPathMsgLevel); 
+        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathplanChartype, gPathWidth, gPathId, gSegmentId, gPathMsgLevel); 
         if (status) 
         {   pathMsg(PATH_MSG_ERROR,"Unable to start maze solver. Status: " + (string)status); 
             //  Create a dummy maze solve result and send it to path execution just to transmit the status.

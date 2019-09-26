@@ -131,7 +131,6 @@ float   gMazeStartZ;                // Z of start position, world coords
 integer gMazeEndX;                  // end position 
 integer gMazeEndY; 
 float   gMazeEndZ;                  // end Z position
-integer gMazeStartclear;            // assume start pt is clear if set
 integer gMazeStatus;                // status code - MAZESTATUS...
        
 
@@ -262,8 +261,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
                     {   list goodpath = gMazePath + llListReplaceList(patha, [], -4,-1);   // get good path
                         gMazeCells = [];
                         gMazePath = [];
-                        DEBUGPRINT1("Path A reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -4,-1)));
-                        if (mazecellbadz(xa, ya, za)) { goodpath = []; gMazeStatus = MAZESTATUSBADZ; }             // check for unreasonable Z value near goal
+                        DEBUGPRINT1("Path A reached goal: " + mazerouteasstring(llListReplaceList(patha, [], -4,-1)));
                         return(goodpath);
                     }
                     if ((xa != followstartx || ya != followstarty) && mazeexistusefulpath(xa,ya,za))  // if useful shortcut, time to stop wall following
@@ -277,9 +275,9 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
                     }
                     if (xa == followstartx && ya == followstarty && dira == followstartdir) 
                     {   DEBUGPRINT1("Path A stuck."); livea = FALSE; }          // in a loop wall following, stuck 
-                    if (liveb && xa == xb && ya == yb && dira == (dirb + 2) % 4) // followers have met head on
+                    if (liveb && xa == xb && ya == yb && dira == (dirb + 2) % 4)// followers have met head on
                     {   DEBUGPRINT1("Path A hit path B"); livea = FALSE; liveb = FALSE; }      // force quit
-                    if (mazecellbadz(xa, ya, za)) { livea = FALSE; }             // check for unreasonable Z value near goal
+                    if (mazecellbadz(xa, ya, za)) { livea = FALSE; }            // check for unreasonable Z value near goal
 
                 }
                 if (liveb && !founduseful)                                      // if path B still live and no solution found
@@ -295,7 +293,6 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
                         gMazeCells = [];
                         gMazePath = [];
                         DEBUGPRINT1("Path B reached goal: " + mazerouteasstring(llListReplaceList(pathb, [], -4,-1)));
-                        if (mazecellbadz(xb, yb, zb)) { goodpath = []; gMazeStatus = MAZESTATUSBADZ; }             // check for unreasonable Z value near goal
                         return(goodpath);
                     }
                     if ((xb != followstartx || yb != followstarty) && mazeexistusefulpath(xb,yb,zb))    // if useful shortcut, time to stop wall following
@@ -415,7 +412,7 @@ integer mazetestcell(integer fromx, integer fromy, integer x, integer y)
     }
     //  This cell is not in the bitmap yet. Must do the expensive test.
     integer barrier = FALSE;                    // no barrier yet
-    if (gMazeStartclear && x == gMazeStartX &&  y == gMazeStartY) // special case where start pt is assumed clear
+    if (x == gMazeStartX &&  y == gMazeStartY) // special case where start pt is assumed clear
     {   barrier = FALSE; }                      // needed to get character out of very tight spots.
     else
     {   barrier = gBarrierFn(fromx, fromy, x,y); } // check this location
@@ -457,11 +454,15 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
     }
     //  This cell is not in the bitmap yet. Must do the expensive test.
     integer barrier = FALSE;                    // no barrier yet
-    float z = -1.0;                             // assume barrier
-    if (gMazeStartclear && x == gMazeStartX &&  y == gMazeStartY) // special case where start pt is assumed clear
+    float z = -1.0;                             // assume barrier    
+    //  Special cases for start and end of maze
+    if (x == gMazeStartX && y == gMazeStartY) // special case where start pt is assumed clear
     {   z = gMazeStartZ; }                                  // needed to get character out of very tight spots.
-    if (gMazeStartclear && x == gMazeEndX &&  y == gMazeEndY) // special case where start pt is assumed clear
-    {   z = gMazeEndZ; }                                    // needed to get character out of very tight spots.
+    else if (x == gMazeEndX && y == gMazeEndY) // special case where end pt is assumed clear
+    {   z = gMazeEndZ;                                      // needed to get character out of very tight spots.
+        if (llFabs(z-fromz) > gMazeHeight*0.5)              // if final move to maze end has a big jump in Z.
+        {   gMazeStatus = MAZESTATUSBADZ; return(-1.0); }   // fail
+    }
     else
     {   //  Have to test the cell.
         vector p0 = mazecelltopoint(fromx, fromy);          // centers of the start and end test cells
@@ -922,7 +923,6 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     integer startx = (integer)llJsonGetValue(jsn,["startx"]);
     integer starty = (integer)llJsonGetValue(jsn,["starty"]);
     float startz = (float)llJsonGetValue(jsn,["startz"]);           // elevation in world coords
-    gMazeStartclear = (integer)llJsonGetValue(jsn,["startclear"]);   // true if we assume start is clear
     integer endx = (integer)llJsonGetValue(jsn,["endx"]);
     integer endy = (integer)llJsonGetValue(jsn,["endy"]);
     float endz = (float)llJsonGetValue(jsn,["endz"]);           // elevation in world coords
@@ -930,6 +930,8 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     list path = [];
     if (status == 0)                                    // if params sane enough to start
     {   path = mazesolve(sizex, sizey, startx, starty, startz, endx, endy, endz); // solve the maze
+        gMazeCells = [];                                // release memory before building JSON to save space.
+        gMazePath = [];
         if (llGetListLength(path) == 0 || gMazeStatus != 0)       // failed to find a path
         {   path = [];                                  // clear path
             status = gMazeStatus;                       // failed for known reason, report
@@ -947,25 +949,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
         "pos", gMazePos, "rot", gMazeRot, "cellsize", gMazeCellSize,
         "points", llList2Json(JSON_ARRAY, path)]),"");
 }
-#ifdef OBSOLETE
-//
-//  mazebarrierfn -- barrier test in 3D space
-//
-integer mazebarrierfn(integer prevx, integer prevy, integer x, integer y)
-{   
-    vector p0 = mazecelltopoint(prevx, prevy);          // centers of the start and end test cells
-    vector p1 = mazecelltopoint(x,y);
-    ////return(obstaclecheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE));    // test whether cell occupied, assuming prev cell was OK
-    
-    integer occupied = pathcheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE) < 0;  // test whether cell occupied
-#ifdef MARKERS                                                      // debug markers
-    rotation color = TRANSYELLOW;                                   // yellow if unoccupied
-    if (occupied) { color = TRANSRED; }                             // red if occupied
-    placesegmentmarker(MARKERLINE, p0, p1, gMazeWidth, color, 0.20);// place a temporary line on the ground in-world.
-#endif // MARKERS
-    return(occupied);
-}
-#endif // OBSOLETE
+
 //
 //  mazecelltopoint -- convert maze coordinates to point in world space
 //
