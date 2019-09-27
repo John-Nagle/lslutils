@@ -10,6 +10,7 @@
 #define PATHBUILDUTILSLSL
 #include "npc/assert.lsl"                                   // assert
 #include "npc/mazedefs.lsl"
+#include "debugmsg.lsl"
 //
 //  Constants
 //
@@ -39,6 +40,19 @@ list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL];   // 2 h
 #define NAN ((float)"nan")
 #endif // 
 
+//  Debug interface
+////#define pathMsg(level, msg) debugMsg((level),(msg)) 
+#define pathMsg debugMsg
+//
+//  Error levels
+#define PATH_MSG_ERROR DEBUG_MSG_ERROR                              // fatal - debug popups, restarts.
+#define PATH_MSG_WARN DEBUG_MSG_WARN
+#define PATH_MSG_INFO DEBUG_MSG_INFO
+#define PATH_MSG_DEBUG DEBUG_MSG_DEBUG
+
+#define gPathMsgLevel gDebugMsgLevel                            // ***TEMP*** until renaming
+//  
+#ifdef OBSOLETE                                                 // moved to common debug module
 
 //
 //  Error levels
@@ -76,6 +90,7 @@ pathMsgFn(integer level, string msg)                            // print debug m
         } 
     }                            
 }
+#endif // OBSOLETE
 
 //
 //  Debug marker generation
