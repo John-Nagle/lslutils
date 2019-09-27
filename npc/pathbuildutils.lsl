@@ -263,6 +263,7 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
     {   pathlength += llVecMag(llList2Vector(path,i+1)-llList2Vector(path,i)); }
     return(pathlength);                                     // return positive pathlength
 }
+#ifdef OBSOLETE
 //
 //  pathfindwalkable -- find walkable below point
 //
@@ -289,7 +290,7 @@ vector pathfindwalkable(vector startpos, float abovetol, float belowtol)
     }     
     return(ZERO_VECTOR);                                        // no find
 }
-
+#endif // OBSOLETE
 //
 //  pathptstowalkable -- move path points down to walkable surface
 //
@@ -299,14 +300,17 @@ list pathptstowalkable(list path)
 {   list pts = [];
     integer length = llGetListLength(path);
     integer i;
+    vector zoffset = <0.0,0.0,PATHZTOL>;
     for (i=0; i<length; i++)                                    // for all points
     {   vector p = llList2Vector(path,i);
-        vector pfloor = pathfindwalkable(p, PATHZTOL, PATHZTOL);// look near the 
-        if (pfloor == ZERO_VECTOR)                              // can't find walkable surface
+        ////vector pfloor = pathfindwalkable(p, PATHZTOL, PATHZTOL);// look near the 
+        float newz = obstacleraycastvert(p+zoffset,p-zoffset);  // look down and find the ground
+        if (newz < 0)                                           // can't find walkable surface
         {   pathMsg(PATH_MSG_WARN, "Can't find walkable below pnt " + (string)p);   // where's the ground or floor?
-            pfloor = p;                                         // use unfixed value
+        } else {
+            p.z = newz;                                         // use more accurate Z
         }
-        pts += pfloor;                                          // add this point
+        pts += p;                                               // add this point
     }
     return(pts);                                                // points on floor
 }
