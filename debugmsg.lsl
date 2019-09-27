@@ -32,6 +32,7 @@ debugMsgFn(integer level, string msg)                           // print debug m
 {   if (level > gDebugMsgLevel) { return; }                     // ignore if suppressed
     string s = llGetScriptName() + ": " + msg;                  // add name of script
     llWhisper(LOG_CHANNEL, (string) level + "|" + s);           // message, with level on the front
+#ifdef OBSOLETE // done in another task now
     if (level <= DEBUG_MSG_ERROR) 
     {   llSay(DEBUG_CHANNEL, s);                                // serious, pop up the red message
         integer now = llGetUnixTime();
@@ -39,7 +40,8 @@ debugMsgFn(integer level, string msg)                           // print debug m
         {   llInstantMessage(llGetOwner(), llGetObjectName() + " in trouble at " + llGetRegionName() + " " + (string)llGetPos() + ": " + s);     // send IM to owner
             gDebugLastIMTime = now;
         } 
-    }                            
+    }
+#endif // OBSOLETE                          
 }
 
 #endif // DEBUGMSG

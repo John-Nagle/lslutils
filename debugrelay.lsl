@@ -95,6 +95,7 @@ logdumptoim(string why)
     while (i > 0 && llStringLength(msg) < IMMAXLEN - 100)
     {   string s = llList2String(gMsgLog,i);
         msg = s + "\n" + msg;
+        i--;
     }
     msg = why + "\n" + msg;                                 // preface with why
     llInstantMessage(llGetOwner(), msg);                    // send IM to owner
@@ -165,7 +166,7 @@ default
     
     //  Message on debug channel. Relay.
     listen(integer channel, string name, key id, string message)
-    {   llOwnerSay("Channel " + (string)channel + ": " + message);   // ***TEMP***
+    {   ////llOwnerSay("Channel " + (string)channel + ": " + message);   // ***TEMP***
         if (channel == LOG_CHANNEL) { logchanmsg(name, id, message); }
         else if (channel == DEBUG_CHANNEL) { debugchanmsg(name, id, message); }
     }

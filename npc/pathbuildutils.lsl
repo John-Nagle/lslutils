@@ -52,45 +52,6 @@ list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL];   // 2 h
 
 #define gPathMsgLevel gDebugMsgLevel                            // ***TEMP*** until renaming
 //  
-#ifdef OBSOLETE                                                 // moved to common debug module
-
-//
-//  Error levels
-integer PATH_MSG_ERROR = 0;
-integer PATH_MSG_WARN = 1;
-integer PATH_MSG_INFO = 2;
-integer PATH_MSG_DEBUG = 3;
-//  
-
-//
-integer PATH_MIN_IM_INTERVAL = 3600;                            // seconds between IMs. Do not overdo.
-//                                  // Unused
-
-//
-//  Global
-//
-integer gPathMsgLevel = 0;                                      // debug logging off by default. Set this to change level
-integer gPathLastIMTime = 0;                                    // last instant message sent. Do this rarely.
-
-//
-//  pathMsg  -- call for pathfinding problems
-//
-#define pathMsg(level, msg) { if (level <= gPathMsgLevel) { pathMsgFn((level),(msg)); }} // as macro, to prevent building message that will never print
-
-pathMsgFn(integer level, string msg)                            // print debug message
-{   if (level > gPathMsgLevel) { return; }                      // ignore if suppressed
-    string s = llGetScriptName() + ": " + msg;                  // add name of script
-    llOwnerSay(s);                                              // message
-    if (level <= PATH_MSG_ERROR) 
-    {   llSay(DEBUG_CHANNEL, s);                                // serious, pop up the red message
-        integer now = llGetUnixTime();
-        if (now - gPathLastIMTime > PATH_MIN_IM_INTERVAL)       // do this very infrequently
-        {   llInstantMessage(llGetOwner(), llGetObjectName() + " in trouble at " + llGetRegionName() + " " + (string)llGetPos() + ": " + s);     // send IM to owner
-            gPathLastIMTime = now;
-        } 
-    }                            
-}
-#endif // OBSOLETE
 
 //
 //  Debug marker generation
@@ -349,40 +310,6 @@ list pathptstowalkable(list path)
     }
     return(pts);                                                // points on floor
 }
-#ifdef OBSOLETE
-//
-//  pathptoffsetalongplane
-//
-//  p is a point above the plane defined by mazepos and mazerot.
-//  v is an offset in the XY plane for p.
-//  Goal is to compute a point <p.x+v.x, p.y.v.y, zoffset>
-//  where zoffset is chosen such that the Z distance between
-//  the new point and the plane is the same as for p.
-//
-//  This is used for "horizontal" ray casts in the maze solver.
-//  These follow the maze base plane.
-//
-vector pathptoffsetalongplane(vector p, vector v, rotation planerot)
-{
-    vector q = p + v;                                   // q.z is irrelevant here.
-    q.z = p.z + pathpointonplane(q,planerot) - pathpointonplane(p,planerot);  // same height above plane as p
-    return(q);
-}
-
-//
-//  pathpointonplane -- Z value of point on plane defined by mazerrot at (p.x, p.y)
-//
-//  Position of plane does not matter. Only the rotation matters.
-//  p.z does not matter.
-//  Will fail if plane is vertical.
-//
-float pathpointonplane(vector p, rotation mazerot)
-{
-    //  ***CHECK THIS***  ***UNTESTED***
-    vector planenormal = <0,0,1>*mazerot;                               // normal to rotated plane. Defines a plane through the origin
-    return(-((p.x * planenormal.x + p.y * planenormal.y)/planenormal.z));  // planenormal.z cannot be zero unless tilted plane is vertical
-}
-#endif // OBSOLETE
 //
 //  rotperpenonground  -- rotation to get line on ground perpendicular to vector
 //
@@ -505,8 +432,6 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 //
 //  Does both a ray check and a llGetStaticPath check.
 //
-//  NEEDS WORK to be usable from the maze solver on irregular terrain.
-//
 integer obstaclecheckpath(vector p0, vector p1, float width, float height, float probespacing, integer chartype)
 {
     list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, chartype]);
@@ -578,11 +503,8 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
     if (obstacleraycasthoriz(p0+fullheight+fwdoffset, pc + fullheight)) { return(-1.0); }// Same at full height to check for low clearances
     if (obstacleraycasthoriz(p0+halfheight+fwdoffset+sideoffset, pa + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
     if (obstacleraycasthoriz(p0+halfheight+fwdoffset-sideoffset, pb + halfheight)) { return(-1.0); }// Horizontal cast at mid height, any hit is bad
-
-////#ifdef TEMPTURNOFF // need more horizontal checks once new geometry is debugged
     //  Crosswise horizontal check.
     if (obstacleraycasthoriz(pa+halfheight,pb+halfheight)) { return(-1.0); }   // Horizontal cast crosswize at mid height, any hit is bad
-////#endif // TEMPTURNOFF
     //  Downward ray casts only.  Must hit a walkable.
     //  Center of cell is clear and walkable. Now check upwards at front and side.
     //  The idea is to check at points that are on a circle of diameter "width"
@@ -647,142 +569,6 @@ float obstacleraycastvert(vector p0, vector p1)
 //  Temporary
 #define obstaclecheckcelloccupied(p0, p1, width, height, chartype, dobackcorners) \
    (pathcheckcelloccupied(p0, p1, width, height, chartype, dobackcorners) < 0.0)
-#ifdef OBSOLETE
-//
-//  obstaclecheckcelloccupied  -- is there an obstacle in this cell?
-//
-//  Checks a cell centered on p1. Assumes the cell centered on p0 is clear. Alignment of cell is p1-p2.
-//
-//  This works by doing one ray cast straight down, and two straight up. The downward cast must hit a
-//  wallkable. The upward casts must hit nothing. This catches big objects sitting on the walkable
-//  surface.
-//
-//  We don't have to check the trailing edge of the cell, because we are coming from a clear cell at p0,
-//  so that was already cheked.
-//
-//  No static path check, but it has to hit a walkable.
-//
-//  p0 and p1 must be one width apart. They are positions at ground level. Z values will be different on slopes.
-//  
-//  ***NEEDS WORK***
-//
-integer obstaclecheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners)
-{
-    if (gPathSelfObject == NULL_KEY)
-    {   gPathSelfObject = llGetKey(); }                     // our own key, for later
-#ifdef OBSOLETE
-    //  Do static path check. We have to, or we will go through static obstacles which are vertical parts of walkables.
-    list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, chartype]);
-    integer status = llList2Integer(path,-1);                   // last item is status
-    path = llList2List(path,0,-2);                              // remove last item
-    if (status != 0 || (llGetListLength(path) > 2 && !checkcollinear(path)))
-    {   pathMsg(PATH_MSG_INFO,"Path static check found static obstacle between " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
-        return(TRUE);                                       // obstacle found
-    }
-#endif // OBSOLETE
-    //  Static check OK, do ray casts.  
-    float MAZEBELOWGNDTOL = 0.40;                           // cast downwards to just below ground
-    vector dv = p1-p0;                                      // direction, unnormalized
-    vector dvnorm = llVecNorm(dv);                          // 3D direction, normalized.
-    float mazedepthmargin = 0.5*width*llFabs(dvnorm.z)+MAZEBELOWGNDTOL;   // allow for sloped area, cast deeper
-    dv.z = 0;
-    vector dir = llVecNorm(dv);                             // forward direction, XY plane
-    p0 = p1 - dir*(width*1.5);                              // start casts from far side of previous cell
-    vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
-    DEBUGPRINT1("Cell edge check: dir = " + (string)dir + " crossdir: " + (string)crossdir + " p0: " + (string) p0 + " p1: " + (string)p1);
-    vector pa = p1 + (crossdir*(width*0.5));                // one edge at ground level
-    vector pb = p1 - (crossdir*(width*0.5));                // other edge at ground level
-    vector pc = p1 + (dir*(width*0.5));                     // ahead at ground level
-    vector pd = p1 - (dir*(width*0.5));                     // "behind" point
-#ifdef OBSOLETE
- 
-    DEBUGPRINT1("Cell occupied check: " + (string)(p1+<0,0,height>) + " " + (string) (p1-<0,0,mazedepthmargin>)); // ***TEMP***
-    list castresult = castray(p1+<0,0,height>, p1-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS);    // probe center of cell, looking down
-    if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }  // must hit walkable   
-    //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
-    //  ***THESE NEED TO CONSIDER EVEN WALKABLES AS OBSTACLES***
-    castresult = castray(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>,PATHCASTRAYOPTSOBS); // Horizontal cast at mid height, any non walkable hit is bad
-    if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
-    castresult = castray(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>,PATHCASTRAYOPTSOBS); // Horizontal cast near ground level, any non walkable hit is bad
-    if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
-    castresult = castray(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>,PATHCASTRAYOPTSOBS); // Horizontal cast at full height, any hit is bad
-    if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
-
-    //  Crosswise horizontal check.
-    castresult = castray(pa+<0,0,height*0.5>,pb+<0,0,height*0.5>,PATHCASTRAYOPTSOBS); // Horizontal cast, any hit is bad
-    if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }  // if any non walkable hits, fail    
-    //  Center of cell is clear and walkable. Now check upwards at front and side.
-    //  The idea is to check at points that are on a circle of diameter "width"
-    DEBUGPRINT1("Obstacle check if cell occupied. pa: " + (string)pa + " pb: " + (string)pb + " width: " + (string)width + " height: " + (string)height);     // ***TEMP***
-    //  Downward ray casts only.  Must hit a walkable.   
-    castresult = castray(pa+<0,0,height>,pa-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS); // cast downwards, must hit walkable
-    if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }// if any non-walkable hits, fail
-    castresult = castray(pb+<0,0,height>,pb-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS); // cast downwards, must hit walkable
-    if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }    // if any non-walkable hits, fail
-    castresult = castray(pc+<0,0,height>,pc-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS); // cast downwards, must hit walkable
-    if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }    // if any non-walkable hits, fail
-    castresult = castray(pd+<0,0,height>,pc-<0,0,mazedepthmargin>,PATHCASTRAYOPTSOBS); // cast at steep angle, must hit walkable
-    if (!mazecasthitonlywalkable(castresult, FALSE)) { return(TRUE); }    // if any non-walkable hits, fail
-    if (!dobackcorners) 
-    {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
-        return(FALSE); 
-    }
-    //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
-    castresult = castray(pd+<0,0,height>,pd-<0,0,MAZEBELOWGNDTOL>,PATHCASTRAYOPTSOBS); // cast upwards, no land check
-    if (!mazecasthitonlywalkable(castresult, TRUE)) { return(TRUE); }    // if any non-walkable hits, fail
-    DEBUGPRINT1("Cell at " + (string)p1 + " empty."); 
-#endif // OBSOLETE
-    //  Initial basic downward cast.
-    if (obstacleraycast1(p1+<0,0,height>, p1-<0,0,mazedepthmargin>)) { return(TRUE); }    // probe center of cell, looking down
-    //  Horizontal casts.
-    //  Horizontal checks in forward direction to catch tall obstacles or thin ones.
-    //  ***THESE NEED TO CONSIDER EVEN WALKABLES AS OBSTACLES***
-    //  ***WRONG??? - Supposed to be far side of next cell? p0 and p1 are same z value.  ****
-    //  ***TEST POINTS MAY BE WRONG FOR SLOPES***
-    if (obstacleraycast0(p0+<0,0,height*0.5>,p1+dir*(width*0.5)+<0,0,height*0.5>)) { return(TRUE); }// Horizontal cast at mid height, any non walkable hit is bad
-#ifdef TEMPTURNOFF
-    if (obstacleraycast0(p0+<0,0,height*0.1>,p1+dir*(width*0.5)+<0,0,height*0.1>)) { return(TRUE); }// Horizontal cast near ground level, any non walkable hit is bad
-    if (obstacleraycast0(p0+<0,0,height>,p1+dir*(width*0.5)+<0,0,height>)) { return(TRUE); }   // Horizontal cast at full height, any hit is bad
-
-    //  Crosswise horizontal check.
-    if (obstacleraycast0(pa+<0,0,height*0.5>,pb+<0,0,height*0.5>)) { return(TRUE); }   // Horizontal cast, any hit is bad
-#endif // TEMPTURNOFF
-    //  Downward ray casts only.  Must hit a walkable.
-    //  Center of cell is clear and walkable. Now check upwards at front and side.
-    //  The idea is to check at points that are on a circle of diameter "width"
-    if (obstacleraycast1(pa+<0,0,height>,pa-<0,0,mazedepthmargin>)) { return(TRUE); }   
-    if (obstacleraycast1(pb+<0,0,height>,pb-<0,0,mazedepthmargin>)) { return(TRUE); } // cast downwards, must hit walkable
-    if (obstacleraycast1(pc+<0,0,height>,pc-<0,0,mazedepthmargin>)) { return(TRUE); } // cast downwards, must hit walkable
-    if (obstacleraycast1(pd+<0,0,height>,pc-<0,0,mazedepthmargin>)) { return(TRUE); } // cast at steep angle, must hit walkable
-    if (!dobackcorners) 
-    {   DEBUGPRINT1("Cell at " + (string)p1 + " empty.");           
-        return(FALSE); 
-    }
-    //  Need to do all four corners of the square. Used when testing and not coming from a known good place.
-    if (obstacleraycast1(pd+<0,0,height>,pd-<0,0,MAZEBELOWGNDTOL>)) { return(TRUE); }; // cast upwards, no land check 
-    return(FALSE);                                               // success, no obstacle
-}
-
-//
-//  obstacleraycast0 -- test for horizontal ray casts.  Must find open space.  Returns TRUE if obstacle.
-//
-//  ////***NEEDS WORK*** walkable is not acceptable.
-//
-integer obstacleraycast0(vector p0, vector p1)
-{
-    list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
-    return(pathcastfoundproblem(castresult, FALSE, TRUE));      // if any hits at all, other than self, fail
-}
-
-//
-//  obstacleraycast1 -- test for downward ray casts. Must find a walkable.  Returns TRUE if obstacle.
-//
-integer obstacleraycast1(vector p0, vector p1)
-{
-    list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // cast downwards, must hit walkable
-    return(pathcastfoundproblem(castresult, TRUE, FALSE));      // if any non-walkable hits, fail
-}
-#endif // OBSOLETE
 //
 //  pathcastfoundproblem  -- analyze result of llCastRay. Input must have [pos, key, normal ... ]
 //
