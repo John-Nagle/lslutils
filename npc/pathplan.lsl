@@ -75,13 +75,13 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
         return;
     }
     //  Got path
-    gPts = llList2List(gPts,0,-2);                            // drop status from end of points list
+    gPts = llList2List(gPts,0,-2);                          // drop status from end of points list
     ////pathMsg(PATH_MSG_INFO,"Static planned");                // ***TEMP***
-    gPts = pathclean(gPts);                                   // remove dups and ultra short segments
+    gPts = pathclean(gPts);                                 // remove dups and ultra short segments
     ////pathMsg(PATH_MSG_INFO,"Cleaned");                       // ***TEMP***
-    gPts = pathptstowalkable(gPts);                           // project points onto walkable surface
+    gPts = pathptstowalkable(gPts, gHeight);                    // project points onto walkable surface
     ////pathMsg(PATH_MSG_INFO,"Walkables");                     // ***TEMP***
-    len = llGetListLength(gPts);                                // update number of points after cleanup
+    len = llGetListLength(gPts);                            // update number of points after cleanup
     if (len < 2)
     {   
         pathdeliversegment([], FALSE, TRUE, gReqPathid, MAZESTATUSNOPTS);        // empty set of points, no maze, done.

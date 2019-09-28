@@ -23,9 +23,6 @@ float PATHSTATICTOL = 0.30;                                 // (m) allow extra s
 float PATHSINMAXWALKABLEANGLE = 0.4226;                     // sine of (90-65) degrees. 
 float MAZEBELOWGNDTOL = 1.0;                                // (m) ***TEMP** huge tol until we get legit Z values coming in
 
-
-#define PATHZTOL (0.35)                                     // (m) allow this much error from llGetStaticPath
-
 list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2]; // 2 hits, because we can hit ourself and must ignore that.
 ////list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2];                  // 2 hits, because we can hit ourselves and must ignore that
 list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL];   // 2 hits, plus we need the normal
@@ -263,7 +260,6 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
     {   pathlength += llVecMag(llList2Vector(path,i+1)-llList2Vector(path,i)); }
     return(pathlength);                                     // return positive pathlength
 }
-#ifdef OBSOLETE
 //
 //  pathfindwalkable -- find walkable below point
 //
@@ -272,7 +268,12 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
 //
 vector pathfindwalkable(vector startpos, float abovetol, float belowtol)
 {   //  Look downward twice the height, because of seat mispositioning issues.
-    ////list hits = llCastRay(startpos, startpos - <0,0,height*3>, 
+    float newz = obstacleraycastvert(startpos+<0.0,0.0,abovetol>,startpos-<0.0,0.0,belowtol>);            // look down and find the ground
+    if (newz < 0)
+    {   pathMsg(PATH_MSG_ERROR,"Error looking for walkable below " + (string)startpos); return(ZERO_VECTOR); }
+    return(<startpos.x,startpos.y,newz>);                       // use new Z value
+}
+#ifdef OBSOLETE    
     list hits = castray(startpos+<0,0,abovetol>, startpos-<0,0,belowtol>,      // look within allowed search range
             [RC_MAX_HITS,10, RC_REJECT_TYPES, RC_REJECT_PHYSICAL]); // go down up to 5 objs
     pathMsg(PATH_MSG_DEBUG,"Walkable hits looking down from " + (string)startpos + ": " + llDumpList2String(hits,",")); // ***TEMP***
@@ -296,15 +297,15 @@ vector pathfindwalkable(vector startpos, float abovetol, float belowtol)
 //
 //  Used on the output of llGetStaticPath, which can be off by up to 0.35m.
 //
-list pathptstowalkable(list path)
+list pathptstowalkable(list path, float height)
 {   list pts = [];
     integer length = llGetListLength(path);
     integer i;
-    vector zoffset = <0.0,0.0,PATHZTOL>;
+    vector ztop = <0.0,0.0,height*0.5>;                         // top of scan is top of char
+    vector zbot = <0.0,0.0,MAZEBELOWGNDTOL>;                    // bottom is same tolerance used in maze solver.
     for (i=0; i<length; i++)                                    // for all points
     {   vector p = llList2Vector(path,i);
-        ////vector pfloor = pathfindwalkable(p, PATHZTOL, PATHZTOL);// look near the 
-        float newz = obstacleraycastvert(p+zoffset,p-zoffset);  // look down and find the ground
+        float newz = obstacleraycastvert(p+ztop,p-zbot);        // look down and find the ground
         if (newz < 0)                                           // can't find walkable surface
         {   pathMsg(PATH_MSG_WARN, "Can't find walkable below pnt " + (string)p);   // where's the ground or floor?
         } else {
