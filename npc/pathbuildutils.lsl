@@ -273,25 +273,7 @@ vector pathfindwalkable(vector startpos, float abovetol, float belowtol)
     {   pathMsg(PATH_MSG_ERROR,"Error looking for walkable below " + (string)startpos); return(ZERO_VECTOR); }
     return(<startpos.x,startpos.y,newz>);                       // use new Z value
 }
-#ifdef OBSOLETE    
-    list hits = castray(startpos+<0,0,abovetol>, startpos-<0,0,belowtol>,      // look within allowed search range
-            [RC_MAX_HITS,10, RC_REJECT_TYPES, RC_REJECT_PHYSICAL]); // go down up to 5 objs
-    pathMsg(PATH_MSG_DEBUG,"Walkable hits looking down from " + (string)startpos + ": " + llDumpList2String(hits,",")); // ***TEMP***
-    integer hitstatus = llList2Integer(hits,-1);        // < 0 is error
-    if (hitstatus < 0)
-    {   pathMsg(PATH_MSG_ERROR,"Error looking for walkable below " + (string)startpos + ", status " + (string)hitstatus); return(ZERO_VECTOR); }
-    integer i;
-    for (i=0; i<hitstatus*2; i = i + 2)                         // search hits
-    {   key hitobj = llList2Key(hits,i);
-        vector hitpt = llList2Vector(hits, i+1);
-        if (hitobj == NULL_KEY) { return(hitpt); }               // found ground
-        list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
-        integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-        if (pathfindingtype == OPT_WALKABLE) { return(hitpt); } // found walkable
-    }     
-    return(ZERO_VECTOR);                                        // no find
-}
-#endif // OBSOLETE
+#
 //
 //  pathptstowalkable -- move path points down to walkable surface
 //
@@ -439,7 +421,7 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 //
 integer obstaclecheckpath(vector p0, vector p1, float width, float height, float probespacing, integer chartype)
 {
-    list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, chartype]);
+    list path = llGetStaticPath(p0,p1,(width+PATHSTATICTOL)*0.5, [CHARACTER_TYPE, chartype]);
     integer status = llList2Integer(path,-1);                   // last item is status
     path = llList2List(path,0,-2);                              // remove last item
     if (status != 0 || (llGetListLength(path) > 2 && !checkcollinear(path)))
@@ -454,11 +436,38 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
     }
     return(TRUE);                                               // success
 }
-
+//
+//  mazecheckcelloccupied  -- is there an obstacle in this cell?
+//
+//  Checks for a valid static path first.
+//
+//  Used only by maze solver. Don't need to recheck the static path on ordinary paths.
+//
+float mazecheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners)
+{
+    {   //  Make this a block, so we get the stack space back before calling the big cell occupied check
+        p1.z = p0.z;                                                // we have no Z value for P1 yet. Start with the one from P0.
+        //  Look over a wide enough range of Z values to catch all walkable slopes.
+        vector fullheight = <0,0,height>;                           // add this to top of vertical ray cast
+        vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;             // subtract this for bottom end of ray cast
+        float zp1 = obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin-<0,0,1>*(width*(1.0+PATHSINMAXWALKABLEANGLE)));   // probe center of cell, looking down
+        if (zp1 < 0) { return(-1.0); }                              // fails
+        p1.z = zp1;                                                 // we can now set p1's proper Z height
+        //  Do a static path check for this short path between two maze cells
+        list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, chartype]);
+        integer status = llList2Integer(path,-1);                   // last item is status
+        path = llList2List(path,0,-2);                              // remove last item
+        if (status != 0 || (llGetListLength(path) > 2 && !checkcollinear(path)))
+        {   ////pathMsg(PATH_MSG_INFO,"Maze path static check found static obstacle between " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
+            return(-1.0);
+        }
+    }
+    return(pathcheckcelloccupied(p0,p1,width, height, chartype, dobackcorners)); // do the ray cast tests
+}
 //
 //  pathcheckcelloccupied  -- is there an obstacle in this cell?
 //
-//  Version for maze solver. May be used in planner if we have the memory space.
+//  Common version for maze solver and planner.
 //
 //  Checks a cell centered on p1. Assumes the cell centered on p0 is clear. Alignment of cell is p1-p0.
 //

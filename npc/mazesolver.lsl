@@ -51,7 +51,7 @@
 
 #define MAZEINVALIDPT (0xffffffff)                          // invalid point value in old point storage
 
-#define MAZEMINMEM (4096)                                   // make sure we have this much memory left
+#define MAZEMINMEM (3000)                                   // make sure we have this much memory left
 //   Wall follow sides
 #define MAZEWALLONLEFT  1
 #define MAZEWALLONRIGHT (-1)
@@ -356,7 +356,7 @@ list mazeaddpttolist(list path, integer x, integer y, float z)
 {
     DEBUGPRINT1("(" + (string)x + "," + (string)y + "," + (string)z + ")");
     //  Memory check
-    if (llGetFreeMemory() < MAZEMINMEM)             // if in danger of stack/heap collision crash
+    if (pathneedmem(MAZEMINMEM))
     {   gMazeStatus = MAZESTATUSNOMEM; }            // out of memory, will abort
     //  Short list check
     integer val = mazepathconstruct(x, y, z, gMazePos.z);    // current point as one integer
@@ -392,38 +392,7 @@ integer mazecellbadz(integer x, integer y, float z)
     pathMsg(PATH_MSG_WARN,"Close to end of maze at (" + (string)x + "," + (string)y + ") zdiff: " + (string)zdiff);
     return(TRUE);                                               // on wrong level in Z. Bad.
 }
-#ifdef OBSOLETE
-//
-//  mazetestcell
-//
-//  Returns 1 if occupied cell.
-//
-//  We have to test from a known-empty cell, because cast ray won't detect
-//  an obstacle it is inside.
-//                                                       
-integer mazetestcell(integer fromx, integer fromy, integer x, integer y)
-{
-    if (x < 0 || x >= gMazeXsize || y < 0 || y >= gMazeYsize)  // if off grid
-    {    return(1);      }                      // treat as occupied
-    integer v = mazecellget(x,y);
-    if (v & MAZEEXAMINED) 
-    {   DEBUGPRINT1("Checked cell (" + (string)x + "," + (string)y + ") : " + (string)(v & MAZEBARRIER));
-        return(v & MAZEBARRIER);                // already have this one
-    }
-    //  This cell is not in the bitmap yet. Must do the expensive test.
-    integer barrier = FALSE;                    // no barrier yet
-    if (x == gMazeStartX &&  y == gMazeStartY) // special case where start pt is assumed clear
-    {   barrier = FALSE; }                      // needed to get character out of very tight spots.
-    else
-    {   barrier = gBarrierFn(fromx, fromy, x,y); } // check this location
-    v = MAZEEXAMINED | barrier;
-    mazecellset(x,y,v);                         // update cells checked
-    if (barrier && (x == gMazeEndX) && (y == gMazeEndY))    // if the end cell is blocked
-    {   gMazeStatus = MAZESTATUSBADEND; }       // force abort, maze is unsolveable
-    DEBUGPRINT1("Tested cell (" + (string)x + "," + (string)y + ") : " + (string)(barrier));
-    return(barrier);                            // return 1 if obstacle
-}
-#endif // OBSOLETE
+
 //
 //  mazetestcell
 //
@@ -468,7 +437,7 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
         vector p0 = mazecelltopoint(fromx, fromy);          // centers of the start and end test cells
         p0.z = fromz;                                       // provide Z of previous point
         vector p1 = mazecelltopoint(x,y);                   // X and Y of next point, Z currently unknown.
-        z = pathcheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE);    // test whether cell occupied, assuming prev cell was OK
+        z = mazecheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE);    // test whether cell occupied, assuming prev cell was OK
         barrier = z < 0;                                    // negative Z means obstacle.
 #ifdef MARKERS                                              // debug markers which appear in world
         rotation color = TRANSYELLOW;                       // yellow if unoccupied
@@ -687,179 +656,7 @@ list mazewallfollow(list params, integer sidelr)
     }
     return(path + [x, y, z, direction]);           // return path plus state
 } 
-#ifdef OBSOLETE
-//
-//  mazelinebarrier -- Does the line between the two points, inclusive, hit a barrier?
-//
-//  Assumes the start point is not on a barrier cell.
-//  Because we have to work forward from an empty cell so that llCastRay will work.
-//        
-integer mazelinebarrier(integer x0, integer y0, integer x1, integer y1) 
-{   DEBUGPRINT("Maze test barrier: (%d,%d),(%d,%d)" % (x0,y0,x1,y1))
-    if (x0 == x1)                          // vertical line
-    {   assert(y0 != y1);                  // must not be zero length
-        if (y0 > y1)                       // sort
-        {   integer temp = y0;
-            y0 = y1;
-            y1 = temp;
-        }
-        assert(y1 > y0);
-        integer y;
-        for (y=y0; y<y1; y++)
-        ////for y in range(y0,y1) :            // test each segment
-        {   if (mazetestcell(x0, y, x0, y+1)) { return(TRUE); }}              // hit barrier
-        ////return(FALSE);
-    } else {
-        assert(y0 == y1);
-        assert(x0 != x1);
-        if (x0 > x1)                       // sort
-        {   integer temp = x0;
-            x0 = x1;
-            x1 = temp;
-        }
-        assert(x1 > x0);
-        ////for x in range(x0,x1) :
-        integer x;
-        for (x=x0; x<x1; x++)
-        {   if (mazetestcell(x, y0, x+1, y0)) { return(TRUE); }}               // hit barrier
-        ////return(FALSE);
-    }
-    return(FALSE);                          // no obstacle found
-}         
-           
-//
-//    Locally optimize route.
-//        
-//    The incoming route should have corners only, && represent only horizontal && vertical lines.
-//    Optimizing the route looks at groups of 4 points. If the two turns are both the same, then try
-//    to eliminate one of the points by moving the line between the two middle points.
-//    
-//    O(n)        
-//
-//       
-list mazeoptimizeroute(list route) 
-{
-    integer n = 0;
-    //   Advance through route. On each iteration, either the route gets shorter, or n gets
-    //   larger, so this should always terminate.
-    while (n < llGetListLength(route)-3)                         // advancing through route
-    {   integer p0val = llList2Integer(route,n);                            // get next four points
-        integer p1val = llList2Integer(route,n+1);                            // get next four points
-        integer p2val = llList2Integer(route,n+2);                            // get next four points
-        integer p3val = llList2Integer(route,n+3);                            // get next four points
-        integer p0x = mazepathx(p0val);
-        integer p0y = mazepathy(p0val);
-        integer p1x = mazepathx(p1val);
-        integer p1y = mazepathy(p1val);
-        integer p2x = mazepathx(p2val);
-        integer p2y = mazepathy(p2val);
-        integer p3x = mazepathx(p3val);
-        integer p3y = mazepathy(p3val);
-        ////DEBUGPRINT("%d: (%d,%d) (%d,%d) (%d,%d) (%d,%d)" % (n, p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y)) // ***TEMP***
 
-        //   Remove collinear redundant points. The redundant point may not be
-        //   between the endpoints, but that's OK. It's just removing a move to
-        //   a dead end && back.
-        if (p0x == p1x && p0y == p1y)             // redundant point
-        {
-            ////////DEBUGPRINT("Removing redundant point %d from %s" % (n+1, str(route)))
-            route = listreplacelist(route, [], n+1, n+1);
-            if (n > 0) { n = n - 1; }               // back up 1, may have created new redundant group                
-            jump continue;
-        }
-        if (p1x == p2x && p1y == p2y)              // redundant point
-        {   ////////DEBUGPRINT("Removing redundant point %d from %s" % (n+2, str(route)))
-            route = listreplacelist(route, [], n+2, n+2);
-            if (n > 0) { n = n - 1; }               // back up 1, may have created new redundant group                
-            jump continue;
-        }
-        if (mazeinline(p0x,p0y,p1x,p1y,p2x,p2y)) 
-        {   ////////DEBUGPRINT("Removing collinear point %d from %s" % (n+1, str(route)))
-            route = listreplacelist(route, [], n+1, n+1);
-            if (n > 0) { n = n - 1; }               // back up 1, may have created new redundant group                
-            jump continue;
-        }
-        if (mazeinline(p1x,p1y,p2x,p2y,p3x,p3y))
-        {   ////////DEBUGPRINT("Removing collinear point %d from %s" % (n+1, str(route)))
-            route = listreplacelist(route, [], n+2, n+2);
-            if (n > 0) { n = n - 1; }               // back up 1, may have created new redundant group                
-            jump continue;
-        }                
-        if (p1x == p2x)                             // if vertical middle segment
-        {   //   End segments must be horizontal
-            assert(p0y == p1y);
-            assert(p2y == p3y);
-            //   Is this C-shaped?
-            if (!((p0x > p1x) == (p2x < p3x)))   // no, not C-shaped
-            {   n = n + 1;
-                jump continue;
-            }
-            //   Find shorter arm of C
-            integer armlena = p0x-p1x;
-            integer armlenb = p3x-p2x;
-            if (abs(armlena) > abs(armlenb))         // second arm is shorter
-            {
-                //   We will try to move middle segment to align with p0y, ignoring p1y
-                if (mazelinebarrier(p3x, p0y, p3x, p3y))  // if blocked
-                {   n = n + 1;
-                    jump continue;
-                }
-                //   We can get rid of p1 && replace p2
-                route = listreplacelist(route, [mazepathval(p3x,p0y)], n+1, n+2); // remove p1
-                DEBUGPRINT("Vertical middle segment shortened at p1: %d: (%d,%d)" % (n+1,p3x,p0y))
-                jump continue;
-            } else {
-                //   We will try to move middle segment to align with p3y, ignoring p2y
-                if (mazelinebarrier(p0x, p0y, p0x, p3y))  // if blocked
-                {   n = n + 1;
-                    jump continue;
-                }
-                //   We can get rid of p2 && replace p1
-                route = listreplacelist(route, [mazepathval(p0x, p3y)], n+1, n+2); // remove p2
-                DEBUGPRINT("Vertical middle segment shortened at p2: %d: (%d,%d)" % (n+1,p0x,p3y))
-                jump continue;                       
-            }     
-        } else {                                     // if horizontal middle segment
-            assert(p1y == p2y);
-            //   End segments must be vertical
-            assert(p0x == p1x);
-            assert(p2x == p3x);
-            //   Is this C-shaped?
-            if (! ((p0y > p1y) == (p2y < p3y)))    // no, not C-shaped
-            {   n = n + 1;
-                jump continue;
-            }
-            //   Find shorter arm of C
-            integer armlena = p0y-p1y; 
-            integer armlenb = p3y-p2y;
-            if (abs(armlena) > abs(armlenb))         // second arm is shorter
-            {
-                //   We will try to move middle segment to align with p3y
-                if (mazelinebarrier(p0x, p3y, p3x, p3y))  // if blocked
-                {   n = n + 1;
-                    jump continue;
-                }
-                //   We can get rid of p1 && p2 && replace with new point
-                route = listreplacelist(route, [mazepathval(p1x, p3y)], n+1, n+2); // replace p1 && p2
-                DEBUGPRINT("Horizontal middle segment shortened at p1: %d: (%d,%d)" % (n+1,p1x,p3y))
-                jump continue;
-            } else {
-                //   We will try to move middle segment to align with p0y
-                if (mazelinebarrier(p0x, p0y, p3x, p0y))  // if blocked
-                {   n = n + 1;
-                    jump continue;
-                }
-                //   We can get rid of p1 && p2 && replace with new point
-                route = listreplacelist(route, [mazepathval(p2x,p0y)], n+1, n+2); // replace p1 && p2 with new point
-                DEBUGPRINT("Horizontal middle segment shortened at p2: %d: (%d,%d)" % (n+1,p2x,p0y))
-                jump continue;
-            } 
-        }
-    @continue;                                          // the first "jump" I have had to code in decades
-    }
-    return(route);                                   // condensed route                      
-}
-#endif // OBSOLETE
 //
 //  mazereplyjson -- construct result as JSON
 //
