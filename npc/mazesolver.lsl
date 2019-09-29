@@ -65,18 +65,12 @@ list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
 
 #define MAZEPRINTVERBOSE(s) { pathMsg(PATH_MSG_DEBUG,(s)); }
 
-//
-//  abs -- absolute value, integer
-//
-integer abs(integer n)
-{   if (n < 0) { return(-n); }
-    return(n);
-}
+
 //
 //   mazemd -- rectangular "Manhattan" distance
 //
 integer mazemd(integer p0x, integer p0y, integer p1x, integer p1y)
-{   return abs(p1x-p0x) + abs(p1y-p0y); }
+{   return llAbs(p1x-p0x) + llAbs(p1y-p0y); }
     
 //
 //   mazeclipto1 -- clip to range -1, 1
@@ -496,7 +490,7 @@ integer mazetakeproductivepath()
     integer clippeddy = mazeclipto1(dy);
     assert(dx != 0 || dy != 0);              // error to call this at dest
     //    Try X dir first if more direct towards goal
-    if (abs(dx) > abs(dy) && clippeddx) 
+    if (llAbs(dx) > llAbs(dy) && clippeddx) 
     {   float newz = mazetestcell(gMazeX, gMazeY, gMazeZ, gMazeX + clippeddx, gMazeY);
         if (newz > 0)                                   // if not obstructed
         {   gMazeX += clippeddx;                        // advance in desired dir
@@ -544,7 +538,7 @@ integer mazepickside()
     assert(dx != 0 || dy != 0);              // error to call this at dest
     integer clippeddx = mazeclipto1(dx);
     integer clippeddy = mazeclipto1(dy);
-    if (abs(dx) > abs(dy))                    // better to move in X
+    if (llAbs(dx) > llAbs(dy))                    // better to move in X
     {    clippeddy = 0; } 
     else
     {    clippeddx = 0; }
@@ -737,8 +731,8 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
             ////path = mazeoptimizeroute(path);             // do simple optimizations
         } 
     }
-    {   pathMsg(PATH_MSG_WARN,"Maze solver finished task, pathid " + (string)pathid + ", segment " + (string)segmentid + 
-        ". Free memory " + (string)llGetFreeMemory()); 
+    {   pathMsg(PATH_MSG_WARN,"Maze solver finished, pathid " + (string)pathid + ", seg " + (string)segmentid + 
+        ". Free mem: " + (string)llGetFreeMemory()); 
         pathMsg(PATH_MSG_INFO,"Maze route: " + mazerouteasstring(path));    // detailed debug
     } 
     //  Send reply                  
