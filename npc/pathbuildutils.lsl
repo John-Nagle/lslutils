@@ -17,7 +17,7 @@
 integer CASTRAYRETRIES = 10;                                // retry up to 10 times
 float CASTRAYRETRYDELAY = 0.200;                            // if a problem, retry slowly
 float GROUNDCLEARANCE = 0.20;                               // (m) avoid false ground collisions
-float PATHCHECKTOL = 0.02;                                  // (m) allow 2cm collinearity error
+float PATHCHECKTOL = 0.20;                                  // (m) allow 20cm collinearity error
 float PATHPOINTONSEGDIST = 0.10;                            // (m) allow point up to 10cm off line when checking for what seg contains a point
 float PATHSTATICTOL = 0.30;                                 // (m) allow extra space on either side of path 
 float PATHSINMAXWALKABLEANGLE = 0.4226;                     // sine of (90-65) degrees. 

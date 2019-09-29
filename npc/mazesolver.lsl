@@ -51,7 +51,7 @@
 
 #define MAZEINVALIDPT (0xffffffff)                          // invalid point value in old point storage
 
-#define MAZEMINMEM (3000)                                   // make sure we have this much memory left
+#define MAZEMINMEM (2000)                                   // make sure we have this much memory left
 //   Wall follow sides
 #define MAZEWALLONLEFT  1
 #define MAZEWALLONRIGHT (-1)
