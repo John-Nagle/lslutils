@@ -318,12 +318,12 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
         vector bp0 = llList2Vector(path,0);
         vector bp1 = llList2Vector(path,1);
         //  Start the maze solver
-        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathplanChartype, gPathWidth, gPathId, gSegmentId, gPathMsgLevel); 
+        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathplanChartype, gPathWidth, gPathLastObstacle, gPathId, gSegmentId, gPathMsgLevel); 
         if (status) 
         {   pathMsg(PATH_MSG_ERROR,"Unable to start maze solver. Status: " + (string)status); 
             //  Create a dummy maze solve result and send it to path execution just to transmit the status.
             llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT,
-            ["reply", "mazesolve", "pathid", pathid, "status", status,
+            ["reply", "mazesolve", "pathid", pathid, "status", status, 
                 "pos", ZERO_VECTOR, "rot", ZERO_ROTATION, "cellsize", 0.0,
                 "points",llList2Json(JSON_ARRAY,[])]),"");
             return;

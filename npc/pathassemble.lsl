@@ -37,11 +37,11 @@
 //
 //  Idle timer timeout
 //
-#define PATHEXETIMEOUT      2.0                             // check this often for progress
-#define PATHEXERAYTIME      0.2                             // do a cast ray for obstacles this often
+////#define PATHEXETIMEOUT      2.0                             // check this often for progress
+////#define PATHEXERAYTIME      0.2                             // do a cast ray for obstacles this often
 #define PATHMINTURNSECTION  0.5                             // first section of path this length, for a starting turn
-#define PATHMOVECHECKSECS   2.0                             // check this often for progress
-#define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
+////#define PATHMOVECHECKSECS   2.0                             // check this often for progress
+////#define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
 #define PATHEXEMAXCREEP     0.10                            // (m) max positional error allowed after keyframe motion
 
 //
@@ -110,7 +110,7 @@ pathexeinit(float probespacing)
 //
 //  A new pathid forces a flush of everything.
 //
-pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, integer status)
+pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, integer status, key hitobj)
 {   DEBUGPRINT1("patheexedeliver, segment #" + (string)segmentid + " points: " + llDumpList2String(pts,","));
     integer length = llGetListLength(pts);
     if (length == 0 || (length == 1 && llList2Vector(pts,0) != ZERO_VECTOR))    // not enough points and not an EOF marker - why is this happening?
@@ -133,12 +133,12 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
         gPathLastObstacle = NULL_KEY;                       // no last obstacle yet
         gPathExeMovegoal = ZERO_VECTOR;                     // no stored goal yet
         if (segmentid == 0 && llList2Vector(pts,0) == ZERO_VECTOR)  // if this is an error situation at start
-        {   pathMsg(PATH_MSG_WARN, "Path error at start: " + (string)status); // ***TEMP*** 
+        {   pathMsg(PATH_MSG_WARN, "Path error at start: " + (string)status); 
             pathexestop(status);                            // and we fail out.
             return; 
         }
 
-        llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
+        ////llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
         vector verr = llList2Vector(pts,0) - llGetPos();    // get starting point
         if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL && segmentid == 0)     // if too far from current pos 
         {   pathMsg(PATH_MSG_WARN,"Bad start pos, segment " + (string)segmentid +
@@ -148,6 +148,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
         }
     }
     if (gPathExePendingStatus == 0) { gPathExePendingStatus = status; }   // save any error status sent for later
+    if (hitobj != NULL_KEY) { gPathLastObstacle = hitobj; } // save any obstacle id sent for later diagnosis
     if (ismaze)                                             // add to maze or path list
     {   pathexeaddseg(gMazeSegments, segmentid, pts); }
     else
@@ -329,7 +330,7 @@ pathexestopkey(integer status, key hitobj)
     gAllSegments = [];
     gPathExeNextsegid = 0; 
     gPathExeMoving = FALSE;                                 // not moving
-    llSetTimerEvent(0.0);                                   // stop timing 
+    ////llSetTimerEvent(0.0);                                   // stop timing 
     if (gPathExeActive)                                     // if we are active
     {   if (status == 0) { status = gPathExePendingStatus; }// send back any stored status
         pathdonereply(status,hitobj, gPathExeId);           // tell caller about result
@@ -361,10 +362,11 @@ pathexemazedeliver(string jsn)
     }
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     ///if (status != 0) { pathexestop(status); return; }                  // error status from other side
-    if (status != 0) { pathexedeliver([ZERO_VECTOR],pathid, segmentid, TRUE, status); return; } // EOF with error, needed if first segment is bad.
+    if (status != 0) { pathexedeliver([ZERO_VECTOR],pathid, segmentid, TRUE, status, NULL_KEY); return; } // EOF with error, needed if first segment is bad.
     float cellsize = (float)llJsonGetValue(jsn,["cellsize"]); // get maze coords to world coords info
     vector pos = (vector)llJsonGetValue(jsn,["pos"]);
     rotation rot = (rotation)llJsonGetValue(jsn,["rot"]);
+    key hitobj = (key)llJsonGetValue(jsn,["hitobj"]);           // obstacle which started (not stopped) maze solve
     list ptsmaze = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
     list ptsworld = [];
     integer i;
@@ -379,7 +381,7 @@ pathexemazedeliver(string jsn)
     pathMsg(PATH_MSG_INFO, "Maze solve pts: " + llDumpList2String(ptsworld,","));       // ***TEMP*** detailed debug
     //  Straighten path. Maze solver paths are all right angles. Here we try short cuts.
     ptsworld = pathstraighten(ptsworld, gPathExeWidth, gPathExeHeight, gPathExeProbespacing, gPathExeChartype);   // postprocess path
-    pathexedeliver(ptsworld, pathid, segmentid, TRUE, 0);      // deliver maze solution
+    pathexedeliver(ptsworld, pathid, segmentid, TRUE, 0, hitobj);      // deliver maze solution
 }
 //
 //  pathexepathdeliver  -- JSON from path planner
@@ -405,13 +407,13 @@ pathexepathdeliver(string jsn)
         }   // save any error status sent for later
     }
     key hitobj = (key)llJsonGetValue(jsn, ["hitobj"]);      // what stopped us, if anything
-    if (hitobj != NULL_KEY) { gPathLastObstacle = hitobj; } // save last obstacle
+    ////if (hitobj != NULL_KEY) { gPathLastObstacle = hitobj; } // save last obstacle
     list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
     list pts = [];
     integer i;
     integer len = llGetListLength(ptsstr);
     for (i=0; i<len; i++) { pts += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors  
-    pathexedeliver(pts, pathid, segmentid, FALSE, status);      // deliver path segment
+    pathexedeliver(pts, pathid, segmentid, FALSE, status, hitobj);      // deliver path segment
 }
 
 //
@@ -464,7 +466,10 @@ default
         {   llResetScript();                            // full reset
         }
     }
+    
+#ifdef OBSOLETE
     timer()
     {   if (gPathExeMoving) { return; }                 // we are doing something, don't need to restart planner
     }
+#endif // OBSOLETE
 }

@@ -34,7 +34,7 @@ float gMazeCellSize;                                // cell size of maze
 //  The start and end cells are assumed to be clear. The caller must check that.
 //
 //
-integer mazesolverstart(vector p0, vector p1, float width, float height, integer chartype, float probespacing, integer pathid, integer segmentid, integer msglev) 
+integer mazesolverstart(vector p0, vector p1, float width, float height, integer chartype, float probespacing, key hitobj, integer pathid, integer segmentid, integer msglev) 
 {
     //  Lay out the rectangle for the maze
     integer MAXMAZESIZE = 41;                       // ***TEMP*** belongs elsewhere
@@ -102,6 +102,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
         "width", width,                             // avatar dimension
         "height", height,                        
         "chartype", chartype,                       // character type, for static path use
+        "hitobj", hitobj,                           // obstacle that started maze solve
         "sizex", MAXMAZESIZE,                       // maze dimensions in cells
         "sizey", MAXMAZESIZE,
         "startx", startx,                           // start, cell coords

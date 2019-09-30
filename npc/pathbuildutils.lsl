@@ -439,12 +439,21 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
     return(TRUE);                                               // success
 }
 //
-//  mazecheckcelloccupied  -- is there an obstacle in this cell?
+//  mazecheckcelloccupied and obstaclecheckcelloccupied -- is there an obstacle in this cell?
 //
-//  Checks for a valid static path first.
+//  Maze check checks for a valid static path first. Obstacle check does not.
+//  Don't need to recheck the static path on ordinary paths.
 //
-//  Used only by maze solver. Don't need to recheck the static path on ordinary paths.
-//
+//  Temporary until caller converted. No static check.
+#define obstaclecheckcelloccupied(p0, p1, width, height, chartype, dobackcorners) \
+   (pathcheckcelloccupied(p0, p1, width, height, chartype, dobackcorners, FALSE) < 0.0)
+
+//  Temporary until caller converted. Does static check
+#define mazecheckcelloccupied(p0,p1,width,height,chartype,dobackcorners) \
+    (pathcheckcelloccupied((p0),(p1),(width),(height),(chartype),(dobackcorners),TRUE))
+    
+
+#ifdef OBSOLETE
 float mazecheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners)
 {
     {   //  Make this a block, so we get the stack space back before calling the big cell occupied check
@@ -466,6 +475,7 @@ float mazecheckcelloccupied(vector p0, vector p1, float width, float height, int
     }
     return(pathcheckcelloccupied(p0,p1,width, height, chartype, dobackcorners)); // do the ray cast tests
 }
+#endif // OBSOLETE
 //
 //  pathcheckcelloccupied  -- is there an obstacle in this cell?
 //
@@ -487,7 +497,7 @@ float mazecheckcelloccupied(vector p0, vector p1, float width, float height, int
 //  Returns Z value of ground at P1, or -1 if occupied.
 //  At entry, p0 must have a correct Z value, but p1's Z value is obtained by a ray cast downward.
 //
-float pathcheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners)
+float pathcheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners, integer dostaticcheck)
 {
     if (gPathSelfObject == NULL_KEY)
     {   gPathSelfObject = llGetKey(); }                     // our own key, for later
@@ -507,6 +517,18 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
     float zp1 = obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin-<0,0,1>*(width*(1.0+PATHSINMAXWALKABLEANGLE)));   // probe center of cell, looking down
     if (zp1 < 0) { return(-1.0); }                          // fails
     p1.z = zp1;                                             // we can now set p1's proper Z height
+    //  Do static check if requested.
+    if (dostaticcheck)
+    {   //  Do a static path check for this short path between two maze cells
+        list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, chartype]);
+        integer status = llList2Integer(path,-1);           // last item is status
+        path = llList2List(path,0,-2);                      // remove last item
+        if (status != 0 || (llGetListLength(path) > 2 && !checkcollinear(path)))
+        {   ////pathMsg(PATH_MSG_INFO,"Maze path static check found static obstacle between " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
+            return(-1.0);
+        }
+    }
+    //  End static check    
     vector pa = p1 + sideoffset;                            // one edge at ground level
     vector pb = p1 - sideoffset;                            // other edge at ground level
     vector pc = p1 + fwdoffset;                             // ahead at ground level
@@ -582,9 +604,6 @@ float obstacleraycastvert(vector p0, vector p1)
     if (result < 0) { pathMsg(PATH_MSG_INFO, "Vert raycast fail: "+ (string)p0 + " " +  (string)p1); } // ***TEMP***
     return(result);
 }
-//  Temporary
-#define obstaclecheckcelloccupied(p0, p1, width, height, chartype, dobackcorners) \
-   (pathcheckcelloccupied(p0, p1, width, height, chartype, dobackcorners) < 0.0)
 //
 //  pathcastfoundproblem  -- analyze result of llCastRay. Input must have [pos, key, normal ... ]
 //

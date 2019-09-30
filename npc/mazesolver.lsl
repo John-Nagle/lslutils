@@ -676,6 +676,7 @@ float gMazeProbeSpacing;                        // probe spacing for llCastRay
 float gMazeHeight;                              // character height
 float gMazeWidth;                               // character diameter
 integer gMazeChartype;                          // character type (static path)
+key gMazeHitobj;                                // obstacle which caused the maze solve to start
 //
 //  mazerequestjson -- request a maze solve via JSON
 //
@@ -709,6 +710,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     gMazeHeight = (float)llJsonGetValue(jsn,["height"]);
     gMazeWidth = (float)llJsonGetValue(jsn,["width"]);
     gMazeChartype = (integer)llJsonGetValue(jsn,["chartype"]);
+    gMazeHitobj = (key)llJsonGetValue(jsn,["hitobj"]);
     integer sizex = (integer)llJsonGetValue(jsn,["sizex"]);
     integer sizey = (integer)llJsonGetValue(jsn,["sizey"]);
     integer startx = (integer)llJsonGetValue(jsn,["startx"]);
@@ -737,6 +739,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     } 
     //  Send reply                  
     llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "pathid", pathid, "segmentid", segmentid, "status", status,
+        "hitobj",gMazeHitobj,
         "pos", gMazePos, "rot", gMazeRot, "cellsize", gMazeCellSize,
         "points", llList2Json(JSON_ARRAY, path)]),"");
 }
