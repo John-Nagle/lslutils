@@ -22,8 +22,14 @@ integer ACTION_PATROL = 3;
 //  Configuration
 float DETECTION_RADIUS = 60.0;      
 float GOAL_TOL = 1.0;               
-float GOAL_DIST = 1.75;                      // get this close to talk
+float GOAL_DIST = 1.75;                     // (m) get this close to talk
+float MAX_GREET_DIST = 10.0;                // (m) if can get this close, say "Hello there"
+float OBSTACLE_RETRY_PROB = 0.7;            // (fract) Retry if random < this.
+float TESTSPACING = 0.33;                   // (fract) Multiply height and width by this to get ray cast spacing
+
 //  Character dimensions
+integer CHARTYPE = CHARACTER_TYPE_A;                        // humanoid
+
 float CHARACTER_WIDTH = 0.5;
 float CHARACTER_HEIGHT = 2.2;
 float CHARACTER_SPEED = 2.5;                // (m/sec) speed
@@ -74,14 +80,8 @@ float gFaceDir;                 // direction to face next
 
 
 //
-//  Static path tester constants
+//  add_patrol_point -- add patrol point from notecard
 //
-integer CHARTYPE = CHARACTER_TYPE_A;                        // humanoid
-float CHARRADIUS = 0.25;                                    // radius 
-float CHARHEIGHT = 1.8;                                     // height 1.8m
-float TESTSPACING = 0.33;                                   // 3 test points per meter in height
-
-
 add_patrol_point(string s)
 {   s = llStringTrim(s, STRING_TRIM);           // clean
     if (s == "") { return; }                    // blank line        
@@ -105,7 +105,7 @@ add_patrol_point(string s)
 //  pathUpdateCallback -- pathfinding is done. Analyze the result and start the next action.
 //
 pathUpdateCallback(integer status, key hitobj )
-{   pathMsg(PATH_MSG_INFO, "Path update: : " + (string) status);
+{   pathMsg(PATH_MSG_INFO, "Path update: : " + (string) status + " obstacle: " + llKey2Name(hitobj));
     if (status == MAZESTATUSOK)          // success
     {   ////llOwnerSay("Pathfinding task completed.");
         if (gAction == ACTION_PURSUE)               
@@ -121,14 +121,14 @@ pathUpdateCallback(integer status, key hitobj )
             } else {
                 pathMsg(PATH_MSG_WARN,"Can't get in front of avatar due to obstacle.");
                 start_anim(IDLE_ANIM);
-                face_and_greet();
+                face_and_greet("Hello");
             }                             
             return;
         }
         if (gAction == ACTION_FACE)
         {   //  Turn to face avatar.
             start_anim(IDLE_ANIM);
-            face_and_greet();
+            face_and_greet("Hello");
         } 
         if (gAction == ACTION_PATROL)
         {   face_dir(<llSin(gFaceDir), llCos(gFaceDir), 0.0>);   // face in programmed direction
@@ -139,12 +139,35 @@ pathUpdateCallback(integer status, key hitobj )
         }  
         return;
     }
+    //  If had trouble getting there, but got close enough, maybe we can just say hi.
+    if ((gAction == ACTION_PURSUE || gAction == ACTION_FACE) && dist_to_target(gTarget) < MAX_GREET_DIST) // if close enough to greet
+    {   start_anim(IDLE_ANIM);
+        face_and_greet("Hello there.");                         // longer range greeting
+        return;
+    }
+    //  If blocked by something, deal with it.
+    if ((gAction == ACTION_PURSUE || gAction == ACTION_PATROL))             // if going somewhere
+    {   if (is_active_obstacle(hitobj))                                 // and it might move
+        {   if (llFrand(1.0) < OBSTACLE_RETRY_PROB)                     // if random test says retry
+            {   pathMsg(PATH_MSG_WARN,"Obstacle " + llKey2Name(hitobj) + ",will try again.");
+                if (gAction == ACTION_PURSUE)                           // try again.
+                {   start_pursue(); }
+                else 
+                {   
+                    gDwell = 0.0;
+                }
+            } else {                                                    // no retry, give up now
+                gDwell = 0.0;                                           // no dwell time, do something else now
+                pathMsg(PATH_MSG_WARN,"Obstacle, will give way.");
+            }
+        }
+    }
     //  Default - errors we don't special case.
     {          
         if (gAction == ACTION_FACE)             // Can't get in front of avatar, greet anyway.
         {   pathMsg(PATH_MSG_WARN, "Can't navigate to point in front of avatar.");
             start_anim(IDLE_ANIM);
-            face_and_greet();
+            face_and_greet("Hello");
             return;
         }
 
@@ -181,14 +204,14 @@ face_dir(vector lookdir)                        // face this way
 //  
 //  face_and_greet -- face in indicated direction and say hello
 //
-face_and_greet()                            // turn to face avi
+face_and_greet(string msg)                            // turn to face avi
 {
     face_dir(vec_to_target(gTarget));                   // turn to face avi
     gGreetedTargets += gTarget;                         
     gAction = ACTION_IDLE;
     llResetTime();              // start attention span timer.
     gDwell = ATTENTION_SPAN;    // wait this long
-    llSay(0,"Hello");
+    llSay(0,msg);
 }
 
 start_anim(string anim)
@@ -226,12 +249,26 @@ start_patrol()
         gPatrolDestination = llList2Vector(gPatrolPoints, gNextPatrolPoint);
         gDwell = llList2Float(gPatrolPointDwell, gNextPatrolPoint);
         gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
+        restart_patrol();
+#ifdef OBSOLETE
         pathMsg(PATH_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
         start_anim(WAITING_ANIM);                     // applies only when stalled during movement
         pathNavigateTo(gPatrolDestination,0);           // head for next pos
         gAction = ACTION_PATROL;                        // patrolling
         llSetTimerEvent(1.0);                       // fast poll while moving
+#endif // OBSOLETE
     }  
+}
+//
+//  restart_patrol -- start patrol to previously selected point.
+//
+restart_patrol()
+{
+    pathMsg(PATH_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
+    start_anim(WAITING_ANIM);                     // applies only when stalled during movement
+    pathNavigateTo(gPatrolDestination,0);           // head for next pos
+    gAction = ACTION_PATROL;                        // patrolling
+    llSetTimerEvent(1.0);                       // fast poll while moving
 }
 
 //

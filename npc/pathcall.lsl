@@ -270,6 +270,13 @@ vector target_pos(key id)
     return(llList2Vector(v,0));                             
 }
 
+float dist_to_target(key id)
+{   
+    list v = llGetObjectDetails(id, [OBJECT_POS]);  
+    if (v == []) { return(INFINITY); }         // if gone, infinitely far away
+    return(llVecMag(llList2Vector(v,0) - llGetPos()));  // distance to target                            
+}
+
 vector dir_from_target(key id)                      
 {
     list r = llGetObjectDetails(id, [OBJECT_ROT]);  
@@ -278,6 +285,16 @@ vector dir_from_target(key id)
     vector facingdir = <1,0,0>*arot;
     facingdir.z = 0.0;                              
     return(llVecNorm(facingdir));                   
+}
+
+//
+//  is_active_obstacle -- true if obstacle might move.
+//
+integer is_active_obstacle(key id)
+{   if (id == "" || id == NULL_KEY) { return(FALSE); }          // no object
+    return(TRUE);                                               // anything that obstructed us is alive, for now.
+    ////list details = llGetObjectDetails(id, [OBJECT_VELOCITY, OBJECT_PHYSICS, OBJECT_BODY_SHAPE_TYPE]);
+    ////return(llVecMag(llList2Vector(details,0)) > 0.0 || llList2Integer(details,1) != 0 || llList2Float(details,2) >= 0));
 }
 
 //

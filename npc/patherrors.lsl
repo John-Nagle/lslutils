@@ -47,7 +47,7 @@
 #define PATHEXESEGOUTOFSEQ2 -2002
 #define PATHEXESEGOUTOFSEQ1 -2003
 #define PATHEXEBADSTARTPOS  -2004
-#define PATHEXECOLLISION    -2005
+#define PATHEXECOLLISION    -2005               // hit something
 #define PATHEXENOTWALKABLE  -2006               // can't find walkable surface under point
 #define PATHEXEOBSTRUCTED   -2007               // obstruction ahead
 #define PATHEXEBADMOVEEND   -2008               // out of position at end of move
