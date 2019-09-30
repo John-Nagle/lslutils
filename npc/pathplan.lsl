@@ -309,7 +309,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
     }
     integer length = llGetListLength(path);
     //  Fixed part of the reply. Just add "points" at the end.
-    list fixedreplypart = ["reply","path", "pathid", gPathId, "status", status, 
+    list fixedreplypart = ["reply","path", "pathid", gPathId, "status", status, "hitobj", gPathLastObstacle,
                 "target", gPathplanTarget, "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,               // pass speed setting to execution module
                 "width", gPathWidth, "height", gPathHeight, "chartype", gPathplanChartype, "msglev", gPathMsgLevel,
                 "points"];                                  // just add points at the end

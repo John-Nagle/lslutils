@@ -292,9 +292,15 @@ vector dir_from_target(key id)
 //
 integer is_active_obstacle(key id)
 {   if (id == "" || id == NULL_KEY) { return(FALSE); }          // no object
-    return(TRUE);                                               // anything that obstructed us is alive, for now.
-    ////list details = llGetObjectDetails(id, [OBJECT_VELOCITY, OBJECT_PHYSICS, OBJECT_BODY_SHAPE_TYPE]);
-    ////return(llVecMag(llList2Vector(details,0)) > 0.0 || llList2Integer(details,1) != 0 || llList2Float(details,2) >= 0));
+    ////return(TRUE);                                               // anything that obstructed us is alive, for now.
+    //  Guess if this is a live object.
+    list details = llGetObjectDetails(id, [OBJECT_VELOCITY, OBJECT_PHYSICS, OBJECT_PATHFINDING_TYPE, OBJECT_ANIMATED_COUNT]);
+    integer pathfindingtype = llList2Integer(details,2);            // get pathfinding type
+    if (pathfindingtype == OPT_AVATAR || pathfindingtype == OPT_CHARACTER) { return(TRUE); } // definitely alive, yes
+    if (pathfindingtype != OPT_LEGACY_LINKSET) { return(FALSE); }                           // if definitely static, no.
+    if (llVecMag(llList2Vector(details,0)) > 0.0 || llList2Integer(details,1) != 0 || llList2Integer(details,3) > 0) { return(TRUE); } // moving or physical or animesh
+    //  Need a really good test for KFM objects.
+    return(FALSE);                                                      // fails, for now.
 }
 
 //

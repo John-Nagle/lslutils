@@ -130,6 +130,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
         gPathExeEOF = FALSE;                                // not at EOF
         gPathExeActive = TRUE;                              // we are running
         gPathExePendingStatus = 0;                          // no stored status yet
+        gPathLastObstacle = NULL_KEY;                       // no last obstacle yet
         gPathExeMovegoal = ZERO_VECTOR;                     // no stored goal yet
         if (segmentid == 0 && llList2Vector(pts,0) == ZERO_VECTOR)  // if this is an error situation at start
         {   pathMsg(PATH_MSG_WARN, "Path error at start: " + (string)status); // ***TEMP*** 
@@ -340,7 +341,7 @@ pathexestopkey(integer status, key hitobj)
 //  pathexestop -- trouble, stop and abort keyframe motion, short form
 //
 pathexestop(integer status)
-{   pathexestopkey(status, NULL_KEY); }
+{   pathexestopkey(status, gPathLastObstacle); }
 
 //
 //  pathexemazedeliver  -- incoming maze result
@@ -399,8 +400,12 @@ pathexepathdeliver(string jsn)
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) 
     {   pathMsg(PATH_MSG_WARN,"Path deliver with status " + (string)status); 
-        if (gPathExePendingStatus == 0) { gPathExePendingStatus = status; }   // save any error status sent for later
+        if (gPathExePendingStatus == 0)                     // save error status for later
+        {   gPathExePendingStatus = status;
+        }   // save any error status sent for later
     }
+    key hitobj = (key)llJsonGetValue(jsn, ["hitobj"]);      // what stopped us, if anything
+    if (hitobj != NULL_KEY) { gPathLastObstacle = hitobj; } // save last obstacle
     list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
     list pts = [];
     integer i;

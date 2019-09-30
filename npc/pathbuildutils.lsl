@@ -94,6 +94,7 @@ placesegmentmarker(string markername, vector p0, vector p1, float width, rotatio
 float gPathWidth = 0.5;                                     // dimensions of character
 float gPathHeight = 1.8;                                    // defaults, overridden in JSON
 key   gPathSelfObject = NULL_KEY;                           // my own key
+key   gPathLastObstacle = NULL_KEY;                         // last obstacle that stopped us
 
 //
 //  pathneedmem -- need at least this much free memory. Return TRUE if tight on memory.
@@ -371,6 +372,7 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 {   float yoffset;                                          // cast ray offset, Y dir in coords of vector
     float zoffset;                                          // cast ray offset, Z dir in coords of vector
     float nearestdist = INFINITY;                           // closest hit
+    gPathLastObstacle = NULL_KEY;                           // no recent obstacle
     key ownkey = llGetKey();                                // get our own key
     ////DEBUGPRINT1("p0: " + (string)p0 + "  p1: " + (string)p1 + " probespacing: " + (string) probespacing);  // ***TEMP***
     integer probecount = (integer)((height-GROUNDCLEARANCE)/probespacing); // number of probes
@@ -394,8 +396,8 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
             if (status > 0) 
             {   integer i;
                 for (i=0; i<2*status; i+= 2)                        // for all hits
-                {   key hitobj = llList2Key(castresult, i+0);       // get object hit
-                    if (hitobj != ownkey)                           // ignore hits with self
+                {   gPathLastObstacle = llList2Key(castresult, i+0);       // get object hit
+                    if (gPathLastObstacle != ownkey)                   // ignore hits with self
                     {   vector hitpt = llList2Vector(castresult, i+1); // get point of hit
                         ////list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
                         ////integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
