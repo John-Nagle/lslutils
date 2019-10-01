@@ -338,8 +338,13 @@ default
             integer targetix = -1;
             list newGreetedTargets;
             //  Get all agents on same owner parcels in region.
-            list agents = llGetAgentList(AGENT_LIST_PARCEL_OWNER,[]);   
-            integer num_detected = llGetListLength(agents);
+            //  ***TEMP*** don't do agent search if tight on memory.
+            //  ***THIS IS JUST TO DIAGNOSE MEM PROBLEM***
+            list agents;
+            if (!pathneedmem(3000))                      // if not tight on memory
+            {   agents = llGetAgentList(AGENT_LIST_PARCEL_OWNER,[]);  
+            }
+           integer num_detected = llGetListLength(agents);
             if (num_detected == 0)                      // nobody around
             {
                 llSetTimerEvent(IDLE_POLL);             // back to slow mode
