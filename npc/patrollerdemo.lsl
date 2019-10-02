@@ -12,11 +12,13 @@
 //  2019
 //
 #include "npc/pathcall.lsl"
+#include "npc/pathavatartrackcall.lsl"
 
 integer ACTION_IDLE = 0;         
 integer ACTION_PURSUE = 1;
 integer ACTION_FACE = 2;
 integer ACTION_PATROL = 3;
+integer ACTION_TALKING = 4;                 // facing an avi and talking
 
 
 //  Configuration
@@ -57,9 +59,11 @@ integer PATH_STALL_TIME = 300;              // path stall time
 integer gAction = ACTION_IDLE;
 string gAnim;                   // current animation                       
 key gTarget = NULL_KEY;         // current avatar to pursue
+#ifdef OBSOLETE
 list gGreetedTargets = [];      // we have said hello
 list gDeferredTargets = [];     // trouble with these, wait and retry
 list gDeferredPositions = [];   // don't retry until target moves
+#endif // OBSOLETE
 integer gListenChannel;         // for detecting chat
 vector gScale;                  // scale of character
 key gOwner;                     // owner of character
@@ -173,9 +177,10 @@ pathUpdateCallback(integer status, key hitobj )
 
         if (gTarget != NULL_KEY)
         {   pathMsg(PATH_MSG_WARN,"Unable to reach " + llKey2Name(gTarget) + " status: " + (string)status);
-            gDeferredTargets += gTarget;    // defer action on this target
-            gDeferredPositions += target_pos(gTarget);  // where they are
-            gTarget = NULL_KEY;
+            pathavatartrackreply(gTarget,"defer");          // tell tracker to defer action on this avi
+            ////gDeferredTargets += gTarget;    // defer action on this target
+            ////gDeferredPositions += target_pos(gTarget);  // where they are
+            gTarget = NULL_KEY;                             // not tracking anyone
         }
             
         //  Failed, back to idle.
@@ -204,13 +209,12 @@ face_dir(vector lookdir)                        // face this way
 //  
 //  face_and_greet -- face in indicated direction and say hello
 //
-face_and_greet(string msg)                            // turn to face avi
+face_and_greet(string msg)                          // turn to face avi
 {
-    face_dir(vec_to_target(gTarget));                   // turn to face avi
-    gGreetedTargets += gTarget;                         
-    gAction = ACTION_IDLE;
-    llResetTime();              // start attention span timer.
-    gDwell = ATTENTION_SPAN;    // wait this long
+    face_dir(vec_to_target(gTarget));               // turn to face avi
+    gAction = ACTION_TALKING;
+    llResetTime();                                  // start attention span timer.
+    gDwell = ATTENTION_SPAN;                        // wait this long
     llSay(0,msg);
 }
 
@@ -233,6 +237,20 @@ start_pursue()
 
 }
 
+//
+//  requestpursue -- a request to pursue has arrived.
+//
+//  Start it if not already pursuing someone.
+//
+requestpursue(key target)
+{   if (!((gAction == ACTION_IDLE || gAction == ACTION_PATROL)))    // busy doing someone else
+    {   pathavatartrackreply(target, "busy");                       // tell the tracker to be quiet for a while.
+        return;
+    }
+    gTarget = target;                                               // set new target
+    start_pursue();                                                 // go for it
+}
+
 start_patrol()
 {   //  Start patrolling if nothing else to do
     if (gAction == ACTION_IDLE && gPatrolEnabled && 
@@ -250,13 +268,6 @@ start_patrol()
         gDwell = llList2Float(gPatrolPointDwell, gNextPatrolPoint);
         gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
         restart_patrol();
-#ifdef OBSOLETE
-        pathMsg(PATH_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
-        start_anim(WAITING_ANIM);                     // applies only when stalled during movement
-        pathNavigateTo(gPatrolDestination,0);           // head for next pos
-        gAction = ACTION_PATROL;                        // patrolling
-        llSetTimerEvent(1.0);                       // fast poll while moving
-#endif // OBSOLETE
     }  
 }
 //
@@ -307,6 +318,9 @@ startup()
     gListenChannel = llListen(PUBLIC_CHANNEL,"", "","");    // anybody talking to us?
     llOwnerSay("Restart.");
     start_anim(IDLE_ANIM);
+    string msg = gName;                     // name of character
+    vector color = <1.0,1.0,1.0>;           // white
+    llSetText(msg, color, 1.0);             // set hover text
 }
 
 default
@@ -321,15 +335,23 @@ default
         startup();
     }
 
-    timer()                                     // timer tick
-    {   pathTick();                             // timers in path library get updated
-        //  Put name above character
-        string msg = gName;                     // name of character
-        vector color = <1.0,1.0,1.0>;
-        llSetText(msg, color, 1.0);             // set text
-        if (gAction == ACTION_IDLE && llGetTime() < ATTENTION_SPAN)
-        {   return; }                           // talking to someone
+    timer()                                         // timer tick
+    {   pathTick();                                 // timers in path library get updated
+        if (gAction == ACTION_TALKING)              // if talking to an avi
+        {   if (llGetTime() < ATTENTION_SPAN)       // if clock has not run out
+            {   return; }                           // do nothing
+            //  Our patience is limited.
+            pathavatartrackreply(gTarget,"done");   // tell tracker done with this avi.
+            gTarget = NULL_KEY;
+            gAction = ACTION_IDLE;                  // back to idle mode
+        }
+        if (gAction == ACTION_IDLE)                 // no one to greet
+        {   llSetTimerEvent(IDLE_POLL);             // back to slow polls
+            start_patrol();                         // consider patrolling
+        }
 
+        
+#ifdef OBSOLETE // moved to another task
         if (gAction == ACTION_IDLE || gAction == ACTION_PATROL) // begin pursuit
         {   
             float closestdist = 99999;              
@@ -401,10 +423,18 @@ default
                 gDeferredPositions =llDeleteSubList(gDeferredPositions, targetix, targetix);                   
             }
         }
+#endif // OBSOLETE
     }
     
-    link_message(integer sender_num, integer num, string str, key id)
-    {   pathLinkMsg(sender_num, num, str, id); }
+    link_message(integer sender_num, integer num, string jsn, key id)
+    {   pathMsg(PATH_MSG_INFO, jsn);                        // ***TEMP*** dump incoming JSON
+        if (num == PATHAVATARTRACKREQUEST)                  // if avatar tracker wants us to track an avatar
+        {   if (llJsonGetValue(jsn,["request"]) != "trackavi") { return; } // not for us
+            requestpursue(llJsonGetValue(jsn,["id"]));      // go pursue, if appropriate.
+            return; 
+        } 
+        pathLinkMsg(sender_num, num, jsn, id);
+    }
     
     collision_start(integer num_detected)
     {   key hitobj = llDetectedKey(0);                       // first object hit

@@ -2,6 +2,8 @@
 //  pathavatartrack.lsl  
 //  
 //  Service task for pathfinding system users.
+//  Task side.
+//
 //  Reports nearby avatars and keeps track of which ones 
 //  have been served.
 //
@@ -14,6 +16,7 @@
 //
 #include "npc/pathbuildutils.lsl"
 #include "npc/pathcall.lsl"
+#include "npc/pathavatartrackcall.lsl"
 
 
 
@@ -25,12 +28,6 @@ integer MIN_MEMORY = 3000;                  // trouble if memory this low
 #define VERBOSITY PATH_MSG_ERROR            // verbose
 #endif // VERBOSITY
 
-//
-//  Link message types for avatar track.
-//  ***MOVE ELSEWHERE***
-//
-#define PATHAVATARTRACKREQUEST  301             // we send this
-#define PATHAVATARTRACKREPLY    302             // we receive this
 //  Globals
 key gOwner = NULL_KEY;                          // my owner
 key gGroup = NULL_KEY;                          // my group
@@ -40,8 +37,6 @@ key gGroup = NULL_KEY;                          // my group
 list gDoneTargets = [];                         // we have said hello
 list gDeferredTargets = [];                     // trouble with these, wait and retry
 list gDeferredPositions = [];                   // don't retry until target moves
-
-
 
 //
 //  startup - initialization
@@ -158,15 +153,16 @@ avatardone(key id)
 //
 //  Add to the "defer" list.
 //
-avatardefer(key id, vector pos)
+avatardefer(key id)
 {   integer ix = llListFindList(gDoneTargets,[id]);     // look up in "done" list
     if (ix >= 0) { return; }                            // if done, don't add to defer list
+    vector avipos = target_pos(id);                     // get pos of target. Will retry when it moves.
     gDoneTargets += [id];
     integer targetix = llListFindList(gDeferredTargets,[id]);         // if was on deferred list
     if (targetix >= 0) { return; }                      // already on on deferred lists
     //  Add to deferred list
     gDeferredTargets += [id];
-    gDeferredPositions += [pos];
+    gDeferredPositions += [avipos];                     // pos of avatar, not us
 }
 //
 //  avatarbusy -- busy, don't bother me for a while
@@ -201,11 +197,11 @@ default
         if (reply != "trackavi") { return; }            // not ours
         key id = (key) llJsonGetValue(jsn,["id"]);
         string action = llJsonGetValue(jsn,["action"]);
-        vector pos = (vector)llJsonGetValue(jsn,["pos"]); // position, for deferred checks
+        gDebugMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]); // message level for debug msgs
         if (action == "done")                           // if done with avi
         {   avatardone(id); }                           // done with it
         else if (action == "defer")                     // defer until it moves
-        {   avatardefer(id, pos); }
+        {   avatardefer(id); }
         else if (action == "busy")                      // busy, don't bother me for a while
         {   avatarbusy(); }
         else
