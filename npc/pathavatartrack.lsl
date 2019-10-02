@@ -96,7 +96,7 @@ avatarcheck()
         {                                                   // avatar of interest. Do we need to greet it?
             integer doneix = llListFindList(gDoneTargets,[id]);     // on "done" list?
             if (doneix >= 0)
-            {   newDoneTargets += id; }                     // keep on "done" lis            
+            {   newDoneTargets += id; }                      // keep on "done" list            
             integer deferix = llListFindList(gDeferredTargets,[id]);// check for avatar on deferred target list
             if (deferix >= 0)                               // if on deferred list
             {   //  Avatar on deferred problem list. Skip if deferred and hasn't moved.
