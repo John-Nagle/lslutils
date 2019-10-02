@@ -349,85 +349,10 @@ default
         {   llSetTimerEvent(IDLE_POLL);             // back to slow polls
             start_patrol();                         // consider patrolling
         }
-
-        
-#ifdef OBSOLETE // moved to another task
-        if (gAction == ACTION_IDLE || gAction == ACTION_PATROL) // begin pursuit
-        {   
-            float closestdist = 99999;              
-            gTarget = NULL_KEY;                     
-            integer i;
-            integer targetix = -1;
-            list newGreetedTargets;
-            //  Get all agents on same owner parcels in region.
-            //  ***TEMP*** don't do agent search if tight on memory.
-            //  ***THIS IS JUST TO DIAGNOSE MEM PROBLEM***
-            list agents;
-            if (!pathneedmem(3000))                      // if not tight on memory
-            {   agents = llGetAgentList(AGENT_LIST_PARCEL_OWNER,[]);  
-            }
-           integer num_detected = llGetListLength(agents);
-            if (num_detected == 0)                      // nobody around
-            {
-                llSetTimerEvent(IDLE_POLL);             // back to slow mode
-                if (gAction == ACTION_IDLE)
-                {   start_patrol();                     // nothing to do, start patrolling
-                }
-                gGreetedTargets = [];                   // clear everything
-                gDeferredTargets = [];
-                gDeferredPositions = [];                      
-                if (gTarget != NULL_KEY)
-                {                   
-                    pathMsg(PATH_MSG_INFO,"Forget old target.");
-                } 
-                gTarget = NULL_KEY;      
-                return;
-            }
-            for (i=0; i < num_detected; i++)        
-            {   key id = llList2Key(agents,i);           // agent to examine   
-                integer j;
-                for (j=0; j < llGetListLength(gGreetedTargets); j++) 
-                {   if (id == llList2Key(gGreetedTargets,j))
-                    {   newGreetedTargets += id;        // greeted target still in range
-                        id = NULL_KEY;                  // do not re-greet this target
-                    }
-                }
-                //  Check for avatar on deferred problem list. Skip if deferred and hasn't moved.
-                for (j=0; j<llGetListLength(gDeferredTargets); j++)
-                {   if (id == llList2Key(gDeferredTargets, j) 
-                    && llVecMag(llList2Vector(gDeferredPositions, j) - target_pos(id)) < MIN_MOVE_FOR_RETRY)
-                    {   id = NULL_KEY; }                // do not retry this one yet
-                }
-                if (!valid_dest(target_pos(id)))        // if in different parcel/out of region
-                {   id = NULL_KEY;   }                  // ignore    
-                if (id != NULL_KEY)
-                {   float dist = llVecMag(vec_to_target(id));
-                    if (dist > 0 && dist < closestdist) 
-                    {   gTarget = id; 
-                        targetix = j;                   // which index                  
-                        closestdist = dist;
-                    }
-                }
-            }
-            gGreetedTargets = newGreetedTargets;        // only keep greeted targets still in range
-            if (gTarget == NULL_KEY) {                  // no one to greet
-                llSetTimerEvent(IDLE_POLL);             // back to slow polls
-                start_patrol();                         // consider patrolling
-            } else {
-                //  New target found. Go to them.
-                ///gAction = ACTION_PURSUE;
-                gDwell = 0.0;                             // not relevant in this mode
-                start_pursue();
-                // Remove pursue target from to-do list.
-                gDeferredTargets = llDeleteSubList(gDeferredTargets, targetix, targetix);
-                gDeferredPositions =llDeleteSubList(gDeferredPositions, targetix, targetix);                   
-            }
-        }
-#endif // OBSOLETE
     }
     
     link_message(integer sender_num, integer num, string jsn, key id)
-    {   pathMsg(PATH_MSG_INFO, jsn);                        // ***TEMP*** dump incoming JSON
+    {   ////pathMsg(PATH_MSG_INFO, jsn);                        // ***TEMP*** dump incoming JSON
         if (num == PATHAVATARTRACKREQUEST)                  // if avatar tracker wants us to track an avatar
         {   if (llJsonGetValue(jsn,["request"]) != "trackavi") { return; } // not for us
             requestpursue(llJsonGetValue(jsn,["id"]));      // go pursue, if appropriate.
