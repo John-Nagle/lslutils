@@ -191,7 +191,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
         return; 
     }
 
-    endpos = pathfindwalkable(endpos, 0, gPathcallHeight*3);             // find walkable below char
+    endpos = pathfindwalkable(endpos, 0.0, gPathcallHeight*3);             // find walkable below char
     if (endpos == ZERO_VECTOR)
     {   pathMsg(PATH_MSG_WARN,"Error looking for walkable under goal."); 
         pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error

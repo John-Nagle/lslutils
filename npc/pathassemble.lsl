@@ -96,7 +96,7 @@ float pathvecmagxy(vector v) { return(llVecMag(<v.x, v.y, 0>));}            // v
 //  pathexeinit -- set up path execute parameters
 //
 pathexeinit(float probespacing)
-{   gPathSelfObject = llGetKey();                           // us
+{   gPathSelfObject = pathGetRoot(llGetKey());              // us
     pathexestop(0);                                         // stop any operation in progress
     gPathExeProbespacing = probespacing;
     gPathExeNextsegid = 0;

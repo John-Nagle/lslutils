@@ -68,7 +68,7 @@ integer gKfmSegmentCurrent = 0;                             // which segment we 
 //  pathscaninit -- set up path execute parameters
 //
 pathscaninit()
-{   gPathSelfObject = llGetKey();                           // us
+{   gPathSelfObject = pathGetRoot(llGetKey());              // us
     gPathScanFreemem = llGetFreeMemory();   
 }
 

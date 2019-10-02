@@ -23,9 +23,10 @@ float PATHSTATICTOL = 0.30;                                 // (m) allow extra s
 float PATHSINMAXWALKABLEANGLE = 0.4226;                     // sine of (90-65) degrees. 
 float MAZEBELOWGNDTOL = 1.0;                                // (m) ***TEMP** huge tol until we get legit Z values coming in
 
-list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2]; // 2 hits, because we can hit ourself and must ignore that.
+list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_ROOT_KEY]; // 2 hits, because we can hit ourself and must ignore that.
 ////list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2];                  // 2 hits, because we can hit ourselves and must ignore that
-list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL];   // 2 hits, plus we need the normal
+////list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
+list PATHCASTRAYOPTSOBS;                                    // filled in later because we need to do an OR
 
 
 
@@ -95,6 +96,8 @@ float gPathWidth = 0.5;                                     // dimensions of cha
 float gPathHeight = 1.8;                                    // defaults, overridden in JSON
 key   gPathSelfObject = NULL_KEY;                           // my own key
 key   gPathLastObstacle = NULL_KEY;                         // last obstacle that stopped us
+
+#define pathGetRoot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
 
 //
 //  pathneedmem -- need at least this much free memory. Return TRUE if tight on memory.
@@ -266,15 +269,20 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
 //
 //  Looks straight down.
 //  Returns ZERO_VECTOR if fail.
+//  ***Other objects in the way are OK. But not implemented here. NEEDS WORK***
 //
 vector pathfindwalkable(vector startpos, float abovetol, float belowtol)
-{   //  Look downward twice the height, because of seat mispositioning issues.
+{   //  Look downward twice the height, because of seat mispositioning issues
+    if (gPathSelfObject == NULL_KEY)
+    {   gPathSelfObject = pathGetRoot(llGetKey());          // our own key, for later
+        PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
+    }
     float newz = obstacleraycastvert(startpos+<0.0,0.0,abovetol>,startpos-<0.0,0.0,belowtol>);            // look down and find the ground
     if (newz < 0)
     {   pathMsg(PATH_MSG_ERROR,"Error looking for walkable below " + (string)startpos); return(ZERO_VECTOR); }
     return(<startpos.x,startpos.y,newz>);                       // use new Z value
 }
-#
+
 //
 //  pathptstowalkable -- move path points down to walkable surface
 //
@@ -373,7 +381,12 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
     float zoffset;                                          // cast ray offset, Z dir in coords of vector
     float nearestdist = INFINITY;                           // closest hit
     gPathLastObstacle = NULL_KEY;                           // no recent obstacle
-    key ownkey = llGetKey();                                // get our own key
+    if (gPathSelfObject == NULL_KEY)
+    {   gPathSelfObject = pathGetRoot(llGetKey());          // our own key, for later
+        PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
+    }
+
+    
     ////DEBUGPRINT1("p0: " + (string)p0 + "  p1: " + (string)p1 + " probespacing: " + (string) probespacing);  // ***TEMP***
     integer probecount = (integer)((height-GROUNDCLEARANCE)/probespacing); // number of probes
     if (probecount < 1) { probecount = 1; }                 // minimum is one probe
@@ -397,7 +410,7 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
             {   integer i;
                 for (i=0; i<2*status; i+= 2)                        // for all hits
                 {   gPathLastObstacle = llList2Key(castresult, i+0);       // get object hit
-                    if (gPathLastObstacle != ownkey)                   // ignore hits with self
+                    if (gPathLastObstacle != gPathSelfObject)          // ignore hits with self
                     {   vector hitpt = llList2Vector(castresult, i+1); // get point of hit
                         ////list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
                         ////integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
@@ -500,7 +513,9 @@ float mazecheckcelloccupied(vector p0, vector p1, float width, float height, int
 float pathcheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners, integer dostaticcheck)
 {
     if (gPathSelfObject == NULL_KEY)
-    {   gPathSelfObject = llGetKey(); }                     // our own key, for later
+    {   gPathSelfObject = pathGetRoot(llGetKey());          // our own key, for later
+        PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
+    }
     vector dv = p1-p0;                                      // direction, unnormalized
     dv.z = 0;                                               // Z not meaningful yet.
     vector dir = llVecNorm(dv);                             // forward direction, XY plane
@@ -567,7 +582,9 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
 float pathcheckcellz(vector p0, vector p1, float width, float height)
 {
     if (gPathSelfObject == NULL_KEY)
-    {   gPathSelfObject = llGetKey(); }                     // our own key, for later
+    {   gPathSelfObject = pathGetRoot(llGetKey());          // our own key, for later
+        PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
+    }
     vector fullheight = <0,0,height>;                       // add this to top of vertical ray cast
     vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
     //  Initial basic downward cast. This gets us our Z reference for P1
@@ -601,7 +618,7 @@ float obstacleraycastvert(vector p0, vector p1)
 {
     list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // cast downwards, must hit walkable
     float result = pathcastfoundproblem(castresult, TRUE);      // if any non-walkable hits, fail
-    if (result < 0) { pathMsg(PATH_MSG_INFO, "Vert raycast fail: "+ (string)p0 + " " +  (string)p1); } // ***TEMP***
+    if (result < 0) { pathMsg(PATH_MSG_INFO, "Vert raycast fail: "+ (string)p0 + " " +  (string)p1 + " cast result: " + llDumpList2String(castresult,",")); } // ***TEMP***
     return(result);
 }
 //
