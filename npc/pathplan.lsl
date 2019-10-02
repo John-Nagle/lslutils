@@ -96,10 +96,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     gP1 = llList2Vector(gPts,1);                            // next position
     gDistalongseg = 0.0;                                    // starting position, one extra width
     gCurrentix = 0;                                         // working on segment 0
-    integer done = pathplanadvance();                       // start the planner
-    if (done)                                               // if done
-    {   gPts = [];                                          // consume input and prevent its reuse.
-    }
+    pathplanadvance();                                      // start the planner
 }
 
 //
@@ -115,10 +112,7 @@ pathmazesolverdone(integer pathid, integer segmentid, integer status)
         gPts = [];                                          // prevent further useless but harmless maze solves.
         return;
     }
-    integer done = pathplanadvance();                       // start the planner
-    if (done)                                               // if done
-    {   gPts = [];                                          // consume input
-    }
+    pathplanadvance();                                          // start the planner
 }
 
 //
@@ -141,7 +135,7 @@ integer pathplanadvance()
         float hitdist = castbeam(pos, gP1, gWidth, gHeight, gTestspacing, TRUE,
                 PATHCASTRAYOPTS);
         if (hitdist < 0)
-        {  
+        {   gPts = [];                                          // release memory
             pathdeliversegment([], FALSE, TRUE, gReqPathid, MAZESTATUSCASTFAIL);    // empty set of points, no maze, done.
             return(TRUE);                                       // failure
         }
@@ -172,7 +166,8 @@ integer pathplanadvance()
                     integer newix = llList2Integer(pinfo,1);    // segment in which we found point, counting backwards
                     ////pathMsg(PATH_MSG_INFO,"Pathcheckobstacles backing up from segment #" + (string)gCurrentix + " to #" + (string) newix);
                     if (newix < 1)
-                    {   pathdeliversegment(gPathPoints,FALSE, TRUE, gReqPathid, MAZESTATUSBADSTART); // points, no maze, done
+                    {   gPts = [];                              // release memory
+                        pathdeliversegment(gPathPoints,FALSE, TRUE, gReqPathid, MAZESTATUSBADSTART); // points, no maze, done
                         return(TRUE);                           // no open space found, fail
                     }
                     //  Discard points until we find the one that contains the new intermediate point.
@@ -195,6 +190,7 @@ integer pathplanadvance()
             if (llGetListLength(obsendinfo) < 2)
             {   pathMsg(PATH_MSG_INFO,"Cannot find far side of obstacle at " + (string)interpt0 + " on segment #" + (string)(gCurrentix-1));
                 gPathPoints += [interpt0];                       // best effort result
+                gPts = [];                                          // release memory
                 pathdeliversegment(gPathPoints, FALSE, TRUE, gReqPathid, MAZESTATUSBADOBSTACLE);    // final set of points
                 return(TRUE);                                    // partial result
             }
@@ -213,7 +209,8 @@ integer pathplanadvance()
             gPathPoints = [interpt1];                            // path clears and continues after maze
             ////if (llVecMag(interpt1 - llList2Vector(gPts,len-1)) < 0.01)  // if at final destination
             if (llVecMag(interpt1 - llList2Vector(gPts,-1)) < 0.01)  // if at final destination
-            {   pathdeliversegment([], FALSE, TRUE, gReqPathid, 0);    // done, return final part of path ////****CAN RETURN ONE POINT PATH - BAD***
+            {   gPts = [];                                      // release memory
+                pathdeliversegment([], FALSE, TRUE, gReqPathid, 0);    // done, return final part of path ////****CAN RETURN ONE POINT PATH - BAD***
                 return(TRUE);
             }
             assert(interp1ix < llGetListLength(gPts)-1);        // ix must never pass beginning of last segment
@@ -224,7 +221,8 @@ integer pathplanadvance()
             gP1 = llList2Vector(gPts,gCurrentix+1);             // next position
             gDistalongseg = llVecMag(interpt1 - gP0);           // how far along seg 
             if (pathneedmem(PATHPLANMINMEM))                    // tight memory check, will quit early and retry later if necessary
-            {   pathdeliversegment([], FALSE, TRUE, gReqPathid, MAZESTATUSNOMEM);    // early quit, return final part of path with error
+            {   gPts = [];                                      // release memory
+                pathdeliversegment([], FALSE, TRUE, gReqPathid, MAZESTATUSNOMEM);    // early quit, return final part of path with error
                 return(TRUE);
             }
             //  End memory check.
