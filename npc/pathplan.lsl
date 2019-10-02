@@ -38,7 +38,7 @@ integer gReqPathid;                                         // path ID of planni
 
 
 //
-//  pathplannew -- plan an obstacle-free path.
+//  pathplan -- plan an obstacle-free path.
 //
 //  Output is via calls to pathdeliversegment.
 //  Errors are reported via pathdeliversegment.
@@ -56,13 +56,16 @@ integer gReqPathid;                                         // path ID of planni
 pathplan(vector startpos, vector endpos, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid)
 {
     //  Start a new planning cycle
+#ifdef OBSOLETE //  Points come in by a global - too big to copy unnecessarily
     gPts = [];                                              // clear state and save params
+#endif // OBSOLETE
     gPathPoints = [];
     gWidth = width;
     gHeight = height;
     gChartype = chartype;
     gTestspacing = testspacing;
     gReqPathid = pathid; 
+#ifdef OBSOLETE
     //  Use the system's GetStaticPath to get an initial path
     gPts = pathtrimmedstaticpath(startpos, endpos, stopshort, width + PATHSTATICTOL, chartype);
     integer len = llGetListLength(gPts);                          
@@ -88,7 +91,9 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
         return;                                             // empty list
     }
     //  We have a valid static path. Now start checking for obstacles.
-    pathMsg(PATH_MSG_INFO,"Path check for obstacles. Segments: " + (string)len); 
+    pathMsg(PATH_MSG_INFO,"Path check for obstacles. Segments: " + (string)len);
+#endif // OBSOLETE 
+    ////pathMsg(PATH_MSG_INFO,"Preprocessed points 2: " + llDumpList2String(gPts,","));   // ***TEMP***
     gP0 = llList2Vector(gPts,0);                            // starting position
     gPathPoints = [gP0];                                    // output points
     ////{ if (llVecMag(<tfirstp.x, tfirstp.y,0> - <p0.x,p0.y,0>) > 0.001) {pathMsg(PATH_MSG_WARN, "Pathplan prelim adjustment broke 1st pt: " + (string)tfirstp + " -> " + (string)p0);}} // ***TEMP***
@@ -365,8 +370,8 @@ default
     //  Incoming link message - will be a plan job request, or a notification of a maze solve completion
     //    
     link_message(integer status, integer num, string jsonstr, key id)
-    {   if (num == PATHPLANREQUEST)                                     // if request for a planning job
-        {   
+    {   if (num == PATHPLANPREPPED)                                     // if request for a planning job
+        {   gPts = [];                                                  // release space from any previous cycle
             //  First, get stopped before we start planning the next move.
             llMessageLinked(LINK_THIS,MAZEPATHSTOP, "",NULL_KEY);       // tell execution system to stop
             integer i = 100;                                            // keep testing for 100 sleeps
@@ -397,10 +402,15 @@ default
             gPathMsgLevel = (integer)llJsonGetValue(jsonstr,["msglev"]);
             gPathplanSpeed = (float)llJsonGetValue(jsonstr,["speed"]);
             gPathplanTurnspeed = (float)llJsonGetValue(jsonstr,["turnspeed"]);
-            pathMsg(PATH_MSG_INFO,"Path request: " + jsonstr); 
+            list points = llJson2List(llJsonGetValue(jsonstr,["points"]));     // the preprocessed static path points
+            ////pathMsg(PATH_MSG_INFO,"Path request: " + jsonstr); 
             jsonstr = "";                                               // Release string. We are that tight on space.
             //  Call the planner
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " starting."); 
+            integer len = llGetListLength(points);
+            for (i=0; i<len; i++) { gPts += (vector)llList2String(points,i);}   // convert to list of vectors
+            points = [];                                    // release space
+            ////pathMsg(PATH_MSG_INFO,"Preprocessed points: " + llDumpList2String(gPts,","));   // ***TEMP***
             pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, gPathplanChartype, testspacing, pathid); 
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " req done.");   
         }             
