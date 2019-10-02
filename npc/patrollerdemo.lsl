@@ -355,6 +355,7 @@ default
     {   ////pathMsg(PATH_MSG_INFO, jsn);                        // ***TEMP*** dump incoming JSON
         if (num == PATHAVATARTRACKREQUEST)                  // if avatar tracker wants us to track an avatar
         {   if (llJsonGetValue(jsn,["request"]) != "trackavi") { return; } // not for us
+            pathMsg(PATH_MSG_INFO,"Rcvd: " + jsn);          // show incoming JSN
             requestpursue(llJsonGetValue(jsn,["id"]));      // go pursue, if appropriate.
             return; 
         } 

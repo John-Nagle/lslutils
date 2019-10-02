@@ -67,15 +67,16 @@ avatarcheck()
 {
     float closestdist = 99999;              
     key target = NULL_KEY;                     
-    integer targetix = -1;
     list newDoneTargets;
+    list newDeferredTargets;
+    list newDeferredPositions;
     //  Get all agents on same owner parcels in region.
     //  Don't do agent search if tight on memory.
     //  This will clear lists and start all avatar actions over, so
     //  it is an emergency measure.
     list agents;
     if (!pathneedmem(MIN_MEMORY))                      // if not tight on memory
-    {   agents = llGetAgentList(AGENT_LIST_PARCEL_OWNER,[]);  
+    {   agents = llGetAgentList(AGENT_LIST_PARCEL_OWNER,[]);    // get all agents in sim  
     } else {
         pathMsg(PATH_MSG_WARN,"Out of memory, clearing avatar list.");  // unlikely, but good backup
     }
@@ -85,51 +86,47 @@ avatarcheck()
         gDoneTargets = [];                          // clear everything
         gDeferredTargets = [];
         gDeferredPositions = [];                      
-        if (target != NULL_KEY)
-        {                   
-            pathMsg(PATH_MSG_INFO,"Forget old target.");
-        } 
-        target = NULL_KEY;      
         return;
     }
     //  Avatars are in the sim.
     integer i;
     for (i=0; i < num_detected; i++)        
-    {   key id = llList2Key(agents,i);              // agent to examine  
-        if (llListFindList(gDoneTargets,[id]) >= 0) // if on the greeted targets list
-        {   newDoneTargets += id;                   // greeted target still in range
-            id = NULL_KEY;                          // do not re-greet this target
-        }
-        integer j = -1;
-        if (id != NULL_KEY)
-        {   j = llListFindList(gDeferredTargets,[id]);} // check for avatar on deferred problem list
-        if (j >= 0)
-        {   //  Avatar on deferred problem list. Skip if deferred and hasn't moved.
-            if (llVecMag(llList2Vector(gDeferredPositions, j) - target_pos(id)) < MIN_MOVE_FOR_RETRY)
-            {   id = NULL_KEY; }                    // do not retry this one yet
-        }
-        if(id != NULL_KEY)
-        {   if (!valid_dest(target_pos(id)))        // if in different parcel/out of region
-            {   id = NULL_KEY;   }                  // ignore
-        }
-        //  We have a possible target. Find closest.   
-        if (id != NULL_KEY)
-        {   float dist = llVecMag(vec_to_target(id));
-            if (dist > 0 && dist < closestdist) 
-            {   target = id; 
-                targetix = j;                       // which index                  
-                closestdist = dist;
+    {   key id = llList2Key(agents,i);                      // agent to examine
+        if (valid_dest(target_pos(id)))                     // if in same owner/group parcel, etc.
+        {                                                   // avatar of interest. Do we need to greet it?
+            integer doneix = llListFindList(gDoneTargets,[id]);     // on "done" list?
+            if (doneix >= 0)
+            {   newDoneTargets += id; }                     // keep on "done" lis            
+            integer deferix = llListFindList(gDeferredTargets,[id]);// check for avatar on deferred target list
+            if (deferix >= 0)                               // if on deferred list
+            {   //  Avatar on deferred problem list. Skip if deferred and hasn't moved.
+                vector tpos = target_pos(id);               // position of target
+                vector oldtpos = llList2Vector(gDeferredPositions, deferix); // position when deferred
+                if (llVecMag(oldtpos - tpos) < MIN_MOVE_FOR_RETRY) // if avi has not moved since deferral
+                {   pathMsg(PATH_MSG_INFO,"Do not retry " + llKey2Name(id) + " at " + (string)tpos + " was at " + (string)oldtpos); // ***TEMP***       
+                    newDeferredTargets += id;               // keep on deferred list
+                    newDeferredPositions += oldtpos;        // along with its position at defer
+                } else {
+                    deferix = -1;                           // do not defer any more
+                }
+            }           
+            if(doneix < 0 && deferix < 0)                   // live target and not deferred
+            {   float dist = llVecMag(vec_to_target(id));   // pick closest target
+                if (dist > 0 && dist < closestdist) 
+                {   target = id; 
+                    closestdist = dist;
+                }
             }
         }
     }
+    //  Update all lists to new values. 
     gDoneTargets = newDoneTargets;              // only keep greeted targets still in range
+    gDeferredTargets = newDeferredTargets;
+    gDeferredPositions = newDeferredPositions;  
     if (target != NULL_KEY)                     // if there is an avatar to be dealt with
     {
-        //  New target found. Go to them.
-        startavatar(target);
-        // Remove pursue target from to-do list.
-        gDeferredTargets = llDeleteSubList(gDeferredTargets, targetix, targetix);
-        gDeferredPositions = llDeleteSubList(gDeferredPositions, targetix, targetix);                   
+        //  New target found. Go to it.
+        startavatar(target);                       
     }
 }
 
@@ -158,7 +155,6 @@ avatardefer(key id)
 {   integer ix = llListFindList(gDoneTargets,[id]);     // look up in "done" list
     if (ix >= 0) { return; }                            // if done, don't add to defer list
     vector avipos = target_pos(id);                     // get pos of target. Will retry when it moves.
-    gDoneTargets += [id];
     integer targetix = llListFindList(gDeferredTargets,[id]);         // if was on deferred list
     if (targetix >= 0) { return; }                      // already on on deferred lists
     //  Add to deferred list
@@ -195,6 +191,7 @@ default
     link_message(integer sender_num, integer num, string jsn, key id)
     {   //  Reply from behavior task is only message here.
         if (num != PATHAVATARTRACKREPLY) { return; }    // not ours
+        pathMsg(PATH_MSG_INFO,"Rcvd: " + jsn);          // show incoming JSN
         string reply = llJsonGetValue(jsn,["reply"]);
         if (reply != "trackavi") { return; }            // not ours
         key id = (key) llJsonGetValue(jsn,["id"]);
