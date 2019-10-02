@@ -191,12 +191,13 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
         return; 
     }
 
-    endpos = pathfindwalkable(endpos, 0.0, gPathcallHeight*3);             // find walkable below char
-    if (endpos == ZERO_VECTOR)
+    float newz = pathfindwalkable(endpos, 0.0, gPathcallHeight*3);             // find walkable below char
+    if (newz < 0)
     {   pathMsg(PATH_MSG_WARN,"Error looking for walkable under goal."); 
         pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
         return; 
     }
+    endpos.z = newz;                                                // use ground level found by ray cast
     //  Get rough path to target for progress check
     gPathcallLastDistance = pathdistance(llGetPos(), endpos, gPathcallWidth, CHARACTER_TYPE_A);  // measure distance to goal
     //  Generate path

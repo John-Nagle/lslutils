@@ -100,6 +100,16 @@ key   gPathLastObstacle = NULL_KEY;                         // last obstacle tha
 #define pathGetRoot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
 
 //
+//  pathinitutils -- initialize constants if necessary
+//
+pathinitutils()
+{
+    if (gPathSelfObject == NULL_KEY)                        // if constants not initialized
+    {   gPathSelfObject = pathGetRoot(llGetKey());          // our own key, for later
+        PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
+    }
+}
+//
 //  pathneedmem -- need at least this much free memory. Return TRUE if tight on memory.
 //
 integer pathneedmem(integer minfree)
@@ -271,16 +281,11 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
 //  Returns ZERO_VECTOR if fail.
 //  ***Other objects in the way are OK. But not implemented here. NEEDS WORK***
 //
-vector pathfindwalkable(vector startpos, float abovetol, float belowtol)
+float pathfindwalkable(vector startpos, float abovetol, float belowtol)
 {   //  Look downward twice the height, because of seat mispositioning issues
-    if (gPathSelfObject == NULL_KEY)
-    {   gPathSelfObject = pathGetRoot(llGetKey());          // our own key, for later
-        PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
-    }
-    float newz = obstacleraycastvert(startpos+<0.0,0.0,abovetol>,startpos-<0.0,0.0,belowtol>);            // look down and find the ground
-    if (newz < 0)
-    {   pathMsg(PATH_MSG_ERROR,"Error looking for walkable below " + (string)startpos); return(ZERO_VECTOR); }
-    return(<startpos.x,startpos.y,newz>);                       // use new Z value
+    pathinitutils();                                                    // set up some constants if necessary
+    list castresult = castray(startpos+<0.0,0.0,abovetol>,startpos-<0.0,0.0,belowtol>,PATHCASTRAYOPTSOBS);                // cast downwards, must hit walkable
+    return(pathcastfoundproblem(castresult, TRUE, TRUE));           // if any non-walkable hits, -1, otherwise ground Z
 }
 
 //
@@ -292,11 +297,9 @@ list pathptstowalkable(list path, float height)
 {   list pts = [];
     integer length = llGetListLength(path);
     integer i;
-    vector ztop = <0.0,0.0,height*0.5>;                         // top of scan is top of char
-    vector zbot = <0.0,0.0,MAZEBELOWGNDTOL>;                    // bottom is same tolerance used in maze solver.
     for (i=0; i<length; i++)                                    // for all points
     {   vector p = llList2Vector(path,i);
-        float newz = obstacleraycastvert(p+ztop,p-zbot);        // look down and find the ground
+        float newz = pathfindwalkable(p,height*0.5,MAZEBELOWGNDTOL);             // look down and find the ground
         if (newz < 0)                                           // can't find walkable surface
         {   pathMsg(PATH_MSG_WARN, "Can't find walkable below pnt " + (string)p);   // where's the ground or floor?
         } else {
@@ -381,10 +384,7 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
     float zoffset;                                          // cast ray offset, Z dir in coords of vector
     float nearestdist = INFINITY;                           // closest hit
     gPathLastObstacle = NULL_KEY;                           // no recent obstacle
-    if (gPathSelfObject == NULL_KEY)
-    {   gPathSelfObject = pathGetRoot(llGetKey());          // our own key, for later
-        PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
-    }
+    pathinitutils();                                        // set up some constants if necessary
 
     
     ////DEBUGPRINT1("p0: " + (string)p0 + "  p1: " + (string)p1 + " probespacing: " + (string) probespacing);  // ***TEMP***
@@ -512,10 +512,7 @@ float mazecheckcelloccupied(vector p0, vector p1, float width, float height, int
 //
 float pathcheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners, integer dostaticcheck)
 {
-    if (gPathSelfObject == NULL_KEY)
-    {   gPathSelfObject = pathGetRoot(llGetKey());          // our own key, for later
-        PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
-    }
+    pathinitutils();                                        // set up some constants if necessary
     vector dv = p1-p0;                                      // direction, unnormalized
     dv.z = 0;                                               // Z not meaningful yet.
     vector dir = llVecNorm(dv);                             // forward direction, XY plane
@@ -581,10 +578,7 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
 //
 float pathcheckcellz(vector p0, vector p1, float width, float height)
 {
-    if (gPathSelfObject == NULL_KEY)
-    {   gPathSelfObject = pathGetRoot(llGetKey());          // our own key, for later
-        PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
-    }
+    pathinitutils();                                        // set up some constants if necessary
     vector fullheight = <0,0,height>;                       // add this to top of vertical ray cast
     vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
     //  Initial basic downward cast. This gets us our Z reference for P1
@@ -601,11 +595,11 @@ float pathcheckcellz(vector p0, vector p1, float width, float height)
 integer obstacleraycasthoriz(vector p0, vector p1)
 {   
     list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
-    float result = pathcastfoundproblem(castresult, FALSE);     // if any hits at all, other than self, fail
+    float result = pathcastfoundproblem(castresult, FALSE, FALSE);     // if any hits at all, other than self, fail
     if (result < 0) { pathMsg(PATH_MSG_INFO, "Horiz raycast fail: "+ (string)p0 + " " +  (string)p1); } // ***TEMP***
     //  And in other direction, in case start is inside an object
     castresult = castray(p1,p0,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
-    result = pathcastfoundproblem(castresult, FALSE);     // if any hits at all, other than self, fail
+    result = pathcastfoundproblem(castresult, FALSE, FALSE);     // if any hits at all, other than self, fail
     if (result < 0) { pathMsg(PATH_MSG_INFO, "Horiz raycast fail: "+ (string)p0 + " " +  (string)p1); } // ***TEMP***
     return(result < INFINITY);                                  // TRUE if obstacle
 }
@@ -617,7 +611,7 @@ integer obstacleraycasthoriz(vector p0, vector p1)
 float obstacleraycastvert(vector p0, vector p1)
 {
     list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // cast downwards, must hit walkable
-    float result = pathcastfoundproblem(castresult, TRUE);      // if any non-walkable hits, fail
+    float result = pathcastfoundproblem(castresult, TRUE, FALSE);      // if any non-walkable hits, fail
     if (result < 0) { pathMsg(PATH_MSG_INFO, "Vert raycast fail: "+ (string)p0 + " " +  (string)p1 + " cast result: " + llDumpList2String(castresult,",")); } // ***TEMP***
     return(result);
 }
@@ -628,7 +622,7 @@ float obstacleraycastvert(vector p0, vector p1)
 //
 //  A walkable must be roughly horizontal, below PATHSINMAXWALKABLEANGLE. This includes the ground.
 //
-float pathcastfoundproblem(list castresult, integer needwalkable)
+float pathcastfoundproblem(list castresult, integer needwalkable, integer ignoresolids)
 {
     integer status = llList2Integer(castresult, -1);        // status is last element in list
 #ifdef OBSOLETE
@@ -657,7 +651,8 @@ float pathcastfoundproblem(list castresult, integer needwalkable)
                 integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
                 if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
                 {   ////pathMsg(PATH_MSG_DEBUG,"Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
-                    return(-1.0);                               // hit non-walkable, obstructed
+                    if (!ignoresolids)                      // unless ignoring non-walkable solids
+                    {   return(-1.0);  }                    // hit non-walkable, obstructed
                 }
             }
             //  Hit a walkable. Check normal angle
