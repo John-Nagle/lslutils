@@ -36,6 +36,7 @@
 #define PATHMASTERRESET 100                     // reset all path scripts
 #define PATHPLANREQUEST 101                     // character controller to path planner                  
 #define PATHPLANREPLY 102                       // path planner to character controller
+#define PATHPLANPREPPED 103                     // path plan prepper forwards to planner
 
 #define MAZESOLVEREQUEST 201                    // from path planner to maze solver
 #define MAZESOLVERREPLY 202                     // from maze solver to execution
