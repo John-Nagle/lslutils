@@ -136,7 +136,7 @@ avatarcheck()
 //
 //  avatardone -- done with this target
 //
-//  Add to the "done" list.
+//  Add to the "done" list, and start the next request, if any.
 //
 avatardone(key id)
 {   integer ix = llListFindList(gDoneTargets,[id]);     // look up in "done" list
@@ -146,12 +146,13 @@ avatardone(key id)
     if (targetix < 0) { return; }                       // not on deferred lists
     //  Remove from deferred list. Shouldn't be on there anyway.
     gDeferredTargets = llDeleteSubList(gDeferredTargets, targetix, targetix);
-    gDeferredPositions = llDeleteSubList(gDeferredPositions, targetix, targetix);                     
+    gDeferredPositions = llDeleteSubList(gDeferredPositions, targetix, targetix);
+    avatarcheck();                                      // and start up the next request                   
 }
 //
 //  avatardefer -- defer action on this target
 //
-//  Add to the "defer" list.
+//  Add to the "defer" list, and start the next request, if any.
 //
 avatardefer(key id)
 {   integer ix = llListFindList(gDoneTargets,[id]);     // look up in "done" list
@@ -163,6 +164,7 @@ avatardefer(key id)
     //  Add to deferred list
     gDeferredTargets += [id];
     gDeferredPositions += [avipos];                     // pos of avatar, not us
+    avatarcheck();                                      // and start up the next request                   
 }
 //
 //  avatarbusy -- busy, don't bother me for a while
