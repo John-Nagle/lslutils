@@ -94,6 +94,7 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
     pathMsg(PATH_MSG_INFO,"Path check for obstacles. Segments: " + (string)len);
 #endif // OBSOLETE 
     ////pathMsg(PATH_MSG_INFO,"Preprocessed points 2: " + llDumpList2String(gPts,","));   // ***TEMP***
+    assert(llGetListLength(gPts) >= 2);                     // must have at least 2 points to do planning
     gP0 = llList2Vector(gPts,0);                            // starting position
     gPathPoints = [gP0];                                    // output points
     ////{ if (llVecMag(<tfirstp.x, tfirstp.y,0> - <p0.x,p0.y,0>) > 0.001) {pathMsg(PATH_MSG_WARN, "Pathplan prelim adjustment broke 1st pt: " + (string)tfirstp + " -> " + (string)p0);}} // ***TEMP***
@@ -112,12 +113,13 @@ pathplan(vector startpos, vector endpos, float width, float height, float stopsh
 pathmazesolverdone(integer pathid, integer segmentid, integer status)
 {   pathMsg(PATH_MSG_INFO, "Maze solver done with pathid: " + (string)pathid + " segment: " + (string)segmentid + " status: " + (string)status);
     if (gPts == []) { return; }                             // no more planning needed
-    if (status != 0 && pathid == gReqPathid)                // if an error on what we're working on, stop.
+    if (pathid != gReqPathid) { return; }                   // from some other pathid, do not use
+    if (status != 0)                                        // if an error on what we're working on, stop.
     {   pathMsg(PATH_MSG_WARN,"Maze solver error, stopping planning. Status: " + (string)status);
         gPts = [];                                          // prevent further useless but harmless maze solves.
         return;
     }
-    pathplanadvance();                                          // start the planner
+    pathplanadvance();                                      // restart the planner
 }
 
 //
@@ -250,6 +252,7 @@ list pathfindclearspace(vector startpos, integer obstacleix, float width, float 
 {
     //  Dumb version. Just try the same check the maze solver uses, advancing along the path, until we find open space.
     integer len = llGetListLength(gPts);
+    assert(obstacleix < len-1);                                     // index sanity check ***TEMP***
     vector p0 = llList2Vector(gPts,obstacleix);
     vector p1 = llList2Vector(gPts,obstacleix+1);
     vector pos = startpos;                                          // start search here
