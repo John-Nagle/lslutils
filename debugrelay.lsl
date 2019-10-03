@@ -18,9 +18,13 @@
 //  you might miss and don't want to.  It has to be in a prim other than
 //  the one that generates the error, because you can't listen to yourself.
 //
+//
 #include "debugmsg.lsl"
 //
 #define DEBUG_LOG_MAX 50                                    // max number of messages to keep
+
+#define pathGetRoot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
+
 //
 //  Globals
 //
@@ -28,6 +32,7 @@ integer gDebugChannel = 0;                                  // listen channels
 integer gLogChannel = 0;
 integer gVerbose = FALSE;                                   // quiet unless turned on
 list gMsgLog;                                               // circular buffer of messages
+key gRootkey;                                               // our root prim
 
 //
 //  zerofill -- add leading zeroes to number as requested
@@ -106,7 +111,8 @@ logdumptoim(string why)
 //  Debug channel message
 //
 debugchanmsg(string name, key id, string message)
-{   message = name + " in trouble at " + llGetRegionName() + " " + (string)llGetPos() + ": " + message;
+{   if (pathGetRoot(id) != gRootkey) { return; }            // has to be from us
+    message = name + " in trouble at " + llGetRegionName() + " " + (string)llGetPos() + ": " + message;
     llOwnerSay(message);                                    // to local owner
     buffermsg(name, id, DEBUG_MSG_ERROR, message);
     integer now = llGetUnixTime();
@@ -124,15 +130,6 @@ debugchanmsg(string name, key id, string message)
 //
 logchanmsg(string name, key id, string message)
 {   message = llStringTrim(message, STRING_TRIM);           // remove unwanted whitespace
-    integer barix = llSubStringIndex(message,"|");          // look for bar
-    if (barix < 3 && barix > 0)                             // if proper marker
-    {   integer msglev = (integer)llGetSubString(message,0,barix-1);    // get message level
-        message = llGetSubString(message,barix+1,-1);       // get rest of message
-        buffermsg(name, id, msglev, message);               // log the message
-        if (gVerbose)
-        {   llOwnerSay("(" + name + ") : " + message); }
-        return;
-    }
     //  Check for commands
     if (llSubStringIndex(message, "dump") == 0) 
     {   logdump("Dump command"); 
@@ -143,6 +140,20 @@ logchanmsg(string name, key id, string message)
     {   logverbose(); 
         return;
     }
+    if (id != gRootkey)                                     // not a command, must come from own object        
+    {   if (pathGetRoot(id) != gRootkey) { return; }
+    }
+    integer barix = llSubStringIndex(message,"|");          // look for bar
+    if (barix < 3 && barix > 0)                             // if proper marker
+    {   
+        integer msglev = (integer)llGetSubString(message,0,barix-1);    // get message level
+        message = llGetSubString(message,barix+1,-1);       // get rest of message
+        buffermsg(name, id, msglev, message);               // log the message
+        if (gVerbose)
+        {   llOwnerSay("(" + name + ") : " + message); }
+        return;
+    }
+
     llOwnerSay("Bogus msg on log channel from " + name + ": " + message);   // bogus 
 }
 //
@@ -154,9 +165,9 @@ logchanmsg(string name, key id, string message)
 default
 {
     state_entry()
-    {
-        gLogChannel = llListen(DEBUG_CHANNEL, "", "", "");                    // listen forever on DEBUG_CHANNEL
-        gDebugChannel = llListen(LOG_CHANNEL, "", "", "");
+    {   gRootkey = llGetLinkKey(LINK_ROOT);                                 // only listen to our own root prim
+        gLogChannel = llListen(LOG_CHANNEL, "", "", "");                    // listen forever on LOG_CHANNEL and DEBUG_CHANNEL
+        gDebugChannel = llListen(DEBUG_CHANNEL, "", "", "");
     }
     
     on_rez(integer start_param)
