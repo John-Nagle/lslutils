@@ -210,7 +210,14 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
             gMazePath = [];
             return([]);                    // we are in an undetected loop
         }
-        if (mazeexistsproductivepath(gMazeX, gMazeY, gMazeZ))     // if a shortcut is available
+        integer shortcutavail = mazeexistsproductivepath(gMazeX, gMazeY, gMazeZ);     // if a shortcut is available
+        if (gMazeStatus)                                    // if something went wrong checking cells
+        {   MAZEPRINTVERBOSE("Maze solver failed: status " + (string)gMazeStatus + " at (" + (string)gMazeX + "," + (string)gMazeY + ")");
+            gMazeCells = [];                                // release memory
+            gMazePath = [];
+            return([]);
+        }
+        if (shortcutavail)                                                          // if a shortcut is available
         {   DEBUGPRINT1("Maze productive path at (" + (string)gMazeX + "," + (string)gMazeY + ")");
             mazetakeproductivepath();       // use it
             gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
