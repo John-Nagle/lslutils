@@ -162,7 +162,7 @@ logchanmsg(string name, key id, string message)
     {   
         integer msglev = (integer)llGetSubString(message,0,barix-1);    // get message level
         message = llGetSubString(message,barix+1,-1);       // get rest of message
-        if (msglev == DEBUG_MSG_ERROR)                      // bad, pop up alert, send IM
+        if (msglev == DEBUG_MSG_ERROR)                      // bad, pop up alert, IM send
         {   seriouserrormsg(name, id, message);
             return;
         }
