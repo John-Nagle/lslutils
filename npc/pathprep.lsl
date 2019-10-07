@@ -93,7 +93,14 @@ default
             jsonstr = "";                                               // Release string. We are that tight on space.
             //  Call the planner
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)gPathprepPathid + " prepping."); 
-                //  Start a new planning cycle
+            pathinitutils();                                            // initialize library
+            //  Start a new planning cycle
+            //  Quick sanity check - are we in a legit place?
+            if (obstacleraycastvert(startpos, startpos - <0.0,0.0,gPathprepHeight>) < 0)        // one downward raycast as a first step
+            {   pathdeliversegment([],FALSE, TRUE, gPathprepPathid, PATHEXEOBSTRUCTEDSTART);    // In an obstructed place at start - cannot move.
+                pathMsg(PATH_MSG_ERROR, "Bad current location: " + (string)startpos);           // ***TEMP*** force an error as a debug trap
+                return;
+            }
             //  Use the system's GetStaticPath to get an initial path
             list pts = pathtrimmedstaticpath(startpos, goal, stopshort, gPathprepWidth + PATHSTATICTOL, gPathprepChartype);
             integer len = llGetListLength(pts);                          

@@ -21,7 +21,7 @@
 //
 #include "debugmsg.lsl"
 //
-#define DEBUG_LOG_MAX 50                                    // max number of messages to keep
+#define DEBUG_LOG_MAX 30                                    // max number of messages to keep
 
 #define pathGetRoot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
 
@@ -59,10 +59,10 @@ string timestamp()
 //  buffermsg  -- add message to circular buffer
 //
 buffermsg(string name, key id, integer msglev, string message)
-{
-    string s = timestamp() + " (" + name + ") " + message;
+{   string rootname = llKey2Name(pathGetRoot(id));          // name of root object, not debug
+    string s = timestamp() + " (" + name + "," + rootname + ") " + message;
     gMsgLog += [s];                                         // add to circular buffer
-    if (llGetListLength(gMsgLog) > DEBUG_LOG_MAX + 10)      // if becoming too long
+    if (llGetListLength(gMsgLog) > (DEBUG_LOG_MAX + 10))      // if becoming too long
     {   gMsgLog = llList2List(gMsgLog,-DEBUG_LOG_MAX,-1); } // discard old msgs
 }
 
@@ -83,8 +83,8 @@ logdump(string why)
 //
 //  logverbose -- turn verbose mode on/off
 //
-logverbose()
-{   gVerbose = !gVerbose;                                   // toggle verbose mode
+logverbose(integer newmode)
+{   gVerbose = newmode;                                     // set verbose mode
     if (gVerbose)
     {   llOwnerSay("Verbose mode on."); }
     else 
@@ -112,6 +112,15 @@ logdumptoim(string why)
 //
 debugchanmsg(string name, key id, string message)
 {   if (pathGetRoot(id) != gRootkey) { return; }            // has to be from us
+    seriouserrormsg(name,id,message);
+}
+
+
+//
+//  Serious error message
+//
+seriouserrormsg(string name, key id, string message)
+{   if (pathGetRoot(id) != gRootkey) { return; }            // has to be from us
     message = name + " in trouble at " + llGetRegionName() + " " + (string)llGetPos() + ": " + message;
     llOwnerSay(message);                                    // to local owner
     buffermsg(name, id, DEBUG_MSG_ERROR, message);
@@ -122,6 +131,7 @@ debugchanmsg(string name, key id, string message)
         gMsgLog = [];                                       // clears log
     }
 }
+
 
 //
 //  Log channel message
@@ -137,7 +147,11 @@ logchanmsg(string name, key id, string message)
         return;
     } 
     if (llSubStringIndex(message, "verbose") == 0) 
-    {   logverbose(); 
+    {   logverbose(TRUE); 
+        return;
+    }
+    if (llSubStringIndex(message, "quiet") == 0)
+    {   logverbose(FALSE);
         return;
     }
     if (id != gRootkey)                                     // not a command, must come from own object        
@@ -148,12 +162,15 @@ logchanmsg(string name, key id, string message)
     {   
         integer msglev = (integer)llGetSubString(message,0,barix-1);    // get message level
         message = llGetSubString(message,barix+1,-1);       // get rest of message
+        if (msglev == DEBUG_MSG_ERROR)                      // bad, pop up alert, send IM
+        {   seriouserrormsg(name, id, message);
+            return;
+        }
         buffermsg(name, id, msglev, message);               // log the message
         if (gVerbose)
         {   llOwnerSay("(" + name + ") : " + message); }
         return;
     }
-
     llOwnerSay("Bogus msg on log channel from " + name + ": " + message);   // bogus 
 }
 //

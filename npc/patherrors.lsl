@@ -41,7 +41,7 @@
                                                 // bug traps
 #define MAZESTATUSGEOMBUG   -1001               // Geometry setup failed
 
-//  Path execution errors
+//  Path planning and execution errors
 //
 #define PATHEXEBADPATH1     -2001
 #define PATHEXESEGOUTOFSEQ2 -2002
@@ -55,6 +55,7 @@
 #define PATHEXETARGETMOVED  -2010               // target avatar moved during pursue
 #define PATHEXETARGETGONE   -2011               // target avatar disappeared.
 #define PATHEXEBADDEST      -2012               // bad destination - out of parcel, etc.
+#define PATHEXEOBSTRUCTEDSTART     -2013               // starting point of entire path is occupied.
 
 //
 //  List of retryable errors.  For these, try again, if there was progress on the previous try.
