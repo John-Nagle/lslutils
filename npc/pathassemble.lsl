@@ -243,7 +243,10 @@ pathexeassemblesegs()
             //  Points are supposed to match, but because of adjustments to make mazes fit,
             //  they sometimes differ for the maze followed by maze case. But bigger than
             //  1m and something is badly broken.
-            ////vector errvec = lastpt-firstpt;
+            vector errvec = lastpt-firstpt;
+            if (llVecMag(errvec) > 0.50 || llVecMag(<errvec.x,errvec.y,0.0>) > 0.05)
+            {   pathMsg(PATH_MSG_ERROR, "Path assemble - endpoints do not match: " + (string)lastpt + (string)firstpt);
+            }
             assert(llVecMag(lastpt-firstpt) < 1.00);            // 1m sanity check
             ////assert(llVecMag(<errvec.x,errvec.y,0.0>) < 0.20);   // 2D endpoints should match
             nextseg = llList2List(nextseg,1,-1);        // discard new duplicate point
