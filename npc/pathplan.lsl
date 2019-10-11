@@ -186,7 +186,7 @@ integer pathplanadvance()
                         gPathPoints = llListReplaceList(gPathPoints,[],-1, -1);
                     } while ( llGetListLength(gPathPoints) > 0 && !pathpointinsegment(interpt0,droppedpoint,llList2Vector(gPathPoints,-1)));
                 } else {                                   // we're at the segment start, and can't back up. Assume start of path is clear. We got there, after all.
-                    pathMsg(PATH_MSG_INFO,"Assuming start point of path is clear at " + (string)gP0);
+                    pathMsg(PATH_MSG_WARN,"Assuming start point of path is clear at " + (string)gP0);
                     interpt0 = gP0;                             // zero length
                 }
             }
