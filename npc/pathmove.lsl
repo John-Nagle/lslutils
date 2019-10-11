@@ -78,10 +78,13 @@ pathmoveinit()
 //  Zero status here means ordinary movement end, no problems.
 //
 pathmovedone(integer status, key hitobj)
-{   if (!gPathMoveActive) { return; }                       // we are not running, ignore
-    if (gPathMoveMoving && status != 0)                     // if something bad happened
-    {   ////llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
-        pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);    
+{   if (!gPathMoveActive) { return; }                           // we are not running, ignore
+    if (gPathMoveMoving)                                        // if we were moving
+    {   if (status != 0)                                        // if something bad happened
+        {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
+            pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);    
+        } else {                                                // normal stop
+        }
     }
     //  Return "movedone" to exec module
     list params = ["reply", "movedone", "status", status, "pathid", gPathMoveId, "hitobj", hitobj];
@@ -229,7 +232,7 @@ pathmovetimer()
 pathmoverequest(string jsn) 
 {   pathMsg(PATH_MSG_INFO,"Path move request: " + jsn);
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type  
-    if (requesttype == "startmove")                         // start movening
+    if (requesttype == "startmove")                         // start moving
     {   //  Set up for ray casting.
         gPathMoveId = (integer)llJsonGetValue(jsn, ["pathid"]);
         gPathMoveTarget = (key)llJsonGetValue(jsn, ["target"]); // who we are chasing, if anybody
@@ -259,8 +262,14 @@ pathmoverequest(string jsn)
         gPathMoveTimetick = llGetUnixTime();                // reset stall timer
         llSetTimerEvent(PATHMOVERAYTIME);                   // switch to fast timer for ray casts for obstructions
         pathexedokfm();                                     // actually do the avatar movement      
-    } else if (requesttype == "stopmove")                   // stop movening
-    {   gKfmSegments = [];
+    } else if (requesttype == "stopmove")                   // stop moving
+    {   
+        if (!gPathMoveActive) { return; }                   // we are not running, ignore
+        if (gPathMoveMoving)                                // if we were moving, this is a forced stop
+        {   pathMsg(PATH_MSG_WARN,"Unexpected stop requested at " + (string)llGetPos());  // this should not normally happen
+            pathmovedone(PATHEXESTOPREQ,NULL_KEY);          // stop motion
+        }
+        gKfmSegments = [];
         llSetTimerEvent(0.0);                               // shut down and stop timer
         gPathMoveActive = FALSE;                            // move system is active
         gPathMoveMoving = FALSE;                            // character is moving

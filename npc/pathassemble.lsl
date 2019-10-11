@@ -327,7 +327,7 @@ pathexemovementend()
 pathexestopkey(integer status, key hitobj)
 {
     if (gPathExeMoving || (status != 0)) { pathMsg(PATH_MSG_WARN,"Movement stop. Status: " + (string)status); }
-    llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on
+    ////llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on
     gClearSegments = [];                                    // reset state
     gMazeSegments = [];
     gAllSegments = [];
@@ -338,7 +338,7 @@ pathexestopkey(integer status, key hitobj)
     {   if (status == 0) { status = gPathExePendingStatus; }// send back any stored status
         pathdonereply(status,hitobj, gPathExeId);           // tell caller about result
         gPathExeActive = FALSE;                             // no longer active
-        pathmovestop();                                     // turn off path movening
+        pathmovestop();                                     // turn off path moving
     }
 }
 //

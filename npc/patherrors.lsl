@@ -56,6 +56,7 @@
 #define PATHEXETARGETGONE   -2011               // target avatar disappeared.
 #define PATHEXEBADDEST      -2012               // bad destination - out of parcel, etc.
 #define PATHEXEOBSTRUCTEDSTART     -2013               // starting point of entire path is occupied.
+#define PATHEXESTOPREQ      -2014               // behavior requested a stop
 
 //
 //  List of retryable errors.  For these, try again, if there was progress on the previous try.
