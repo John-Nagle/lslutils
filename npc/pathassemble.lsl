@@ -285,7 +285,7 @@ pathexedomove()
         gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
         {   //  Start keyframe motion and obstacle detection.
             //  Offloads the space explosion of keyframe generation to another script with more free space.
-            pathscanstart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId, gPathMsgLevel);      
+            pathmovestart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId, gPathMsgLevel);      
             ////llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion  
             gPathExeMovegoal = llList2Vector(gAllSegments,-1);  // where we are supposed to be going
             assert(gPathExeMovegoal != ZERO_VECTOR);        // must not be EOF marker         
@@ -338,7 +338,7 @@ pathexestopkey(integer status, key hitobj)
     {   if (status == 0) { status = gPathExePendingStatus; }// send back any stored status
         pathdonereply(status,hitobj, gPathExeId);           // tell caller about result
         gPathExeActive = FALSE;                             // no longer active
-        pathscanstop();                                     // turn off path scanning
+        pathmovestop();                                     // turn off path movening
     }
 }
 //
@@ -396,7 +396,7 @@ pathexepathdeliver(string jsn)
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
     //  Results from the path planner also contain some misc, parameter updates.
-    gPathExeTarget = (key)llJsonGetValue(jsn,["target"]);                               // used by scan task to check if pursue target moves
+    gPathExeTarget = (key)llJsonGetValue(jsn,["target"]);                               // used by move task to check if pursue target moves
     gPathExeMaxSpeed = (float)llJsonGetValue(jsn,["speed"]); 
     gPathExeMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
     gPathExeWidth = (float)llJsonGetValue(jsn,["width"]);
@@ -420,19 +420,19 @@ pathexepathdeliver(string jsn)
 }
 
 //
-//  pathexescanreply -- reply from path scanner
+//  pathexemovereply -- reply from path movener
 //
 //  Move ending, collisons, and ray cast obstacle detections come in this way
 //
-pathexescanreply(string jsn)
+pathexemovereply(string jsn)
 {
     string replytype = llJsonGetValue(jsn,["reply"]);   // request type
-    if (replytype != "scandone") {  return; }              // ignore, not our msg
+    if (replytype != "movedone") {  return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer status = (integer)llJsonGetValue(jsn, ["status"]);
     key hitobj = (key)llJsonGetValue(jsn,["hitobj"]);       // what was hit, if anything
     if (pathid != gPathExeId)                               // ignore stale event
-    {   pathMsg(PATH_MSG_WARN, "Stale reply from path scan, status " + (string)status); 
+    {   pathMsg(PATH_MSG_WARN, "Stale reply from path move, status " + (string)status); 
         return;
     }
     if (status == 0)                                        // status zero, no problem
@@ -460,9 +460,9 @@ default
         } else if (num == MAZEPATHREPLY)
         {   DEBUGPRINT1("Path deliver: " + jsn);
             pathexepathdeliver(jsn); 
-        } else if (num == LINKMSGSCANREPLY)
-        {   DEBUGPRINT1("Scan reply: " + jsn);
-            pathexescanreply(jsn);
+        } else if (num == LINKMSGMOVEREPLY)
+        {   DEBUGPRINT1("Move reply: " + jsn);
+            pathexemovereply(jsn);
         } else if (num == MAZEPATHSTOP)                 // planner wants us to stop
         {   pathexestop(0);                             // normal stop commanded
         } else if (num == PATHMASTERRESET)              // if master reset

@@ -31,31 +31,31 @@
 //
 //  Look ahead constants
 //
-#define PATHSCANRAYTIME      0.2                            // (secs) do a cast ray for obstacles this often
+#define PATHMOVERAYTIME      0.2                            // (secs) do a cast ray for obstacles this often
 #define PATHMOVECHECKSECS   2.0                             // (secs) check this often for progress
 #define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
-#define PATHSCANMINTARGETMOVE   4.0                         // (m) target must move this much to be re-chased
-#define PATHSCANMINTARGETFRACT  0.5                         // (fraction) target must move this much as fract of dist to go to be re-chased.
+#define PATHMOVEMINTARGETMOVE   4.0                         // (m) target must move this much to be re-chased
+#define PATHMOVEMINTARGETFRACT  0.5                         // (fraction) target must move this much as fract of dist to go to be re-chased.
 
 //
 //  Globals
 //
-integer gPathScanId = 0;                                    // current path ID
-integer gPathScanActive = FALSE;                            // scan system active
-integer gPathScanMoving = FALSE;                            // character should be moving
-integer gPathScanTimetick = 0;                              // last time we tested for motion
-vector gPathScanLastpos = ZERO_VECTOR;                      // last place we tested for motion
-integer gPathScanFreemem = 9999999;                         // smallest free memory seen
+integer gPathMoveId = 0;                                    // current path ID
+integer gPathMoveActive = FALSE;                            // move system active
+integer gPathMoveMoving = FALSE;                            // character should be moving
+integer gPathMoveTimetick = 0;                              // last time we tested for motion
+vector gPathMoveLastpos = ZERO_VECTOR;                      // last place we tested for motion
+integer gPathMoveFreemem = 9999999;                         // smallest free memory seen
 
 //  Avatar params
-float gPathScanWidth = 1.0;                                  // defaults, overridden by messages
-float gPathScanHeight = 1.0;
-float gPathScanMaxTurnspeed = 0.2;                           // (radians/sec) max turn rate - overridden
-float gPathScanMaxSpeed = 2.0;                               // (meters/sec) max speed
+float gPathMoveWidth = 1.0;                                  // defaults, overridden by messages
+float gPathMoveHeight = 1.0;
+float gPathMoveMaxTurnspeed = 0.2;                           // (radians/sec) max turn rate - overridden
+float gPathMoveMaxSpeed = 2.0;                               // (meters/sec) max speed
 
-integer gPathScanChartype = CHARACTER_TYPE_A;
-key gPathScanTarget = NULL_KEY;                             // who we are chasing, if anybody
-vector gPathScanTargetPos = ZERO_VECTOR;                    // last loc of target
+integer gPathMoveChartype = CHARACTER_TYPE_A;
+key gPathMoveTarget = NULL_KEY;                             // who we are chasing, if anybody
+vector gPathMoveTargetPos = ZERO_VECTOR;                    // last loc of target
 
 //
 //  Segment storage
@@ -65,38 +65,38 @@ list gKfmSegments = [];                                     // segments being ex
 integer gKfmSegmentCurrent = 0;                             // which segment we are currently on
 
 //
-//  pathscaninit -- set up path execute parameters
+//  pathmoveinit -- set up path execute parameters
 //
-pathscaninit()
+pathmoveinit()
 {   gPathSelfObject = pathGetRoot(llGetKey());              // us
-    gPathScanFreemem = llGetFreeMemory();   
+    gPathMoveFreemem = llGetFreeMemory();   
 }
 
 //
-//  pathscandone - done here, report to execute task
+//  pathmovedone - done here, report to execute task
 //
 //  Zero status here means ordinary movement end, no problems.
 //
-pathscandone(integer status, key hitobj)
-{   if (!gPathScanActive) { return; }                       // we are not running, ignore
-    if (gPathScanMoving && status != 0)                     // if something bad happened
+pathmovedone(integer status, key hitobj)
+{   if (!gPathMoveActive) { return; }                       // we are not running, ignore
+    if (gPathMoveMoving && status != 0)                     // if something bad happened
     {   ////llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
         pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);    
     }
-    //  Return "scandone" to exec module
-    list params = ["reply", "scandone", "status", status, "pathid", gPathScanId, "hitobj", hitobj];
-    llMessageLinked(LINK_THIS, LINKMSGSCANREPLY, llList2Json(JSON_OBJECT,params), "");   // Return result to execute task
-    gPathScanMoving = FALSE;                                    // no longer active
+    //  Return "movedone" to exec module
+    list params = ["reply", "movedone", "status", status, "pathid", gPathMoveId, "hitobj", hitobj];
+    llMessageLinked(LINK_THIS, LINKMSGMOVEREPLY, llList2Json(JSON_OBJECT,params), "");   // Return result to execute task
+    gPathMoveMoving = FALSE;                                    // no longer active
 }
 //
-//  pathscanmovementend -- movement has finished, feed in next section if any
+//  pathmovemovementend -- movement has finished, feed in next section if any
 //
-pathscanmovementend()
-{   gPathScanMoving = FALSE;                                    // not moving
+pathmovemovementend()
+{   gPathMoveMoving = FALSE;                                    // not moving
     gKfmSegments = [];                                          // no current segments
-    gPathScanLastpos = ZERO_VECTOR;                             // no last moving pos   
+    gPathMoveLastpos = ZERO_VECTOR;                             // no last moving pos   
     pathMsg(PATH_MSG_INFO,"Movement end");
-    pathscandone(0, "");                                        // normal event
+    pathmovedone(0, "");                                        // normal event
 }
 
 //
@@ -113,12 +113,12 @@ pathobstacleraycast(vector p, vector p1)
     list castanalysis = pathanalyzecastresult(castresult, FALSE);
     if (castanalysis == []) return;                         // no problem
     if (llGetListLength(castanalysis) == 1)                 // error status
-    {   pathscandone(llList2Integer(castanalysis,0), NULL_KEY); return; }  // report error
+    {   pathmovedone(llList2Integer(castanalysis,0), NULL_KEY); return; }  // report error
     key hitobj = llList2Key(castanalysis,0);                // result is [obj, hitpt]
     vector hitpt = llList2Vector(castanalysis,1);
     pathMsg(PATH_MSG_WARN,"Move stopped by obstacle: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
                     + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);
-    pathscandone(PATHEXEOBSTRUCTED, hitobj);  // report trouble
+    pathmovedone(PATHEXEOBSTRUCTED, hitobj);  // report trouble
 }
 //
 //  pathcheckdynobstacles  -- check for dynamic obstacles encountered while moving.
@@ -131,7 +131,7 @@ pathcheckdynobstacles()
     float lookaheaddist = PATHEXELOOKAHEADDIST;     // distance to look ahead
     float PATHEXESEGDISTTOL = 0.20;                 // how close to segment to be in it. Keyframe error causes trouble here.
     float HUGE = 99999999999.0;                     // huge number, but INFINITY is bigger
-    vector posoffset = <0,0,gPathScanHeight*0.5>;    // pos is at object midpoint, points are at ground
+    vector posoffset = <0,0,gPathMoveHeight*0.5>;    // pos is at object midpoint, points are at ground
     vector pos = llGetPos() - posoffset;            // where we are now
     integer i;
     integer foundseg = FALSE;
@@ -139,7 +139,7 @@ pathcheckdynobstacles()
     //  Start at segment where last found the position.  
     //  Stop at end of list, finished lookaheaddist, or no longer moving.
     //  pos and all segment points are at ground level.
-    for (i=gKfmSegmentCurrent; i<llGetListLength(gKfmSegments)-1 && lookaheaddist > 0 && gPathScanActive; i++)
+    for (i=gKfmSegmentCurrent; i<llGetListLength(gKfmSegments)-1 && lookaheaddist > 0 && gPathMoveActive; i++)
     {   vector p0 = llList2Vector(gKfmSegments,i);
         vector p1 = llList2Vector(gKfmSegments,i+1);
         if (!foundseg) 
@@ -177,67 +177,67 @@ pathcheckdynobstacles()
 //  Must not replan too often; replanning is slow.
 //
 pathchecktargetmoved()
-{   if (gPathScanTarget == NULL_KEY) { return; }                // not in pursuit, no check
-    list details = llGetObjectDetails(gPathScanTarget, [OBJECT_POS]);   // get object position
+{   if (gPathMoveTarget == NULL_KEY) { return; }                // not in pursuit, no check
+    list details = llGetObjectDetails(gPathMoveTarget, [OBJECT_POS]);   // get object position
     if (details == [])
     {   pathMsg(PATH_MSG_WARN, "Pursue target left sim."); 
-        pathscandone(PATHEXETARGETGONE, gPathScanTarget);       // target is gone, abort pursue
+        pathmovedone(PATHEXETARGETGONE, gPathMoveTarget);       // target is gone, abort pursue
         return;
     }
     //  If pursue target moved more than half the distance to the goal, but at least 2m, replan.
     vector pos = llGetPos();                                    // where we are
     vector targetpos = llList2Vector(details,0);                // where target is
     float disttotarget = llVecMag(targetpos - pos);
-    float distmoved = llVecMag(gPathScanTargetPos - targetpos); // distance target moved since replan
-    if (distmoved < PATHSCANMINTARGETMOVE) { return; }          // has not moved enough to replan
-    if (distmoved < disttotarget * PATHSCANMINTARGETFRACT) { return; } // has not moved enough to replan
-    pathscandone(PATHEXETARGETMOVED, gPathScanTarget);          // target moved, must replan and chase
+    float distmoved = llVecMag(gPathMoveTargetPos - targetpos); // distance target moved since replan
+    if (distmoved < PATHMOVEMINTARGETMOVE) { return; }          // has not moved enough to replan
+    if (distmoved < disttotarget * PATHMOVEMINTARGETFRACT) { return; } // has not moved enough to replan
+    pathmovedone(PATHEXETARGETMOVED, gPathMoveTarget);          // target moved, must replan and chase
 }
 //  
 //
-//  pathscantimer  -- timer event, check progress and do ray casts
+//  pathmovetimer  -- timer event, check progress and do ray casts
 //
-pathscantimer()
-{   if (gPathScanActive && gKfmSegments != [])                  // if we are moving and have a path
+pathmovetimer()
+{   if (gPathMoveActive && gKfmSegments != [])                  // if we are moving and have a path
     {   pathcheckdynobstacles(); }                              // ray cast for obstacles
-    if (gPathScanActive && gKfmSegments != [])                  // if we are moving and have a path
+    if (gPathMoveActive && gKfmSegments != [])                  // if we are moving and have a path
     {   pathchecktargetmoved(); }                               // check if pursuit target moved
-    if (gPathScanActive)                                        // if we are turned on
+    if (gPathMoveActive)                                        // if we are turned on
     {   
         integer now = llGetUnixTime();                          // time now
-        if (now - gPathScanTimetick > PATHMOVECHECKSECS)
-        {   gPathScanTimetick = now;                            // update last check time
+        if (now - gPathMoveTimetick > PATHMOVECHECKSECS)
+        {   gPathMoveTimetick = now;                            // update last check time
             vector pos = llGetPos();
-            if (llVecMag(pos - gPathScanLastpos) > 0.01)        // if moving at all
+            if (llVecMag(pos - gPathMoveLastpos) > 0.01)        // if moving at all
             {   return; }                                       // OK
             //  No KFM movement. Something has gone wrong. 
-            pathscandone(MAZESTATUSKFMSTALL, NULL_KEY);         // stalled
+            pathmovedone(MAZESTATUSKFMSTALL, NULL_KEY);         // stalled
         }
     }
 }
 
 //
-//  pathscanrequest  -- JSON from path execution
+//  pathmoverequest  -- JSON from path execution
 //
 //  We get a list of the points the character is currently following. 
 //  That tells us what direction to look for obstacles.
 //
-//  Protocol is to send a "startscan" as each KFM segment starts.
-//  Send a "stopscan" when the entire path is finished or when not moving.
+//  Protocol is to send a "startmove" as each KFM segment starts.
+//  Send a "stopmove" when the entire path is finished or when not moving.
 //  This will result in a "stall" event being sent if something goes wrong.
 //
-pathscanrequest(string jsn) 
-{   pathMsg(PATH_MSG_INFO,"Path scan request: " + jsn);
+pathmoverequest(string jsn) 
+{   pathMsg(PATH_MSG_INFO,"Path move request: " + jsn);
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type  
-    if (requesttype == "startscan")                         // start scanning
+    if (requesttype == "startmove")                         // start movening
     {   //  Set up for ray casting.
-        gPathScanId = (integer)llJsonGetValue(jsn, ["pathid"]);
-        gPathScanTarget = (key)llJsonGetValue(jsn, ["target"]); // who we are chasing, if anybody
-        gPathScanWidth = (float)llJsonGetValue(jsn,["width"]);
-        gPathScanHeight = (float)llJsonGetValue(jsn,["height"]);
+        gPathMoveId = (integer)llJsonGetValue(jsn, ["pathid"]);
+        gPathMoveTarget = (key)llJsonGetValue(jsn, ["target"]); // who we are chasing, if anybody
+        gPathMoveWidth = (float)llJsonGetValue(jsn,["width"]);
+        gPathMoveHeight = (float)llJsonGetValue(jsn,["height"]);
         gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
-        gPathScanMaxSpeed = (float)llJsonGetValue(jsn,["speed"]); 
-        gPathScanMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
+        gPathMoveMaxSpeed = (float)llJsonGetValue(jsn,["speed"]); 
+        gPathMoveMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
 
         list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
         gKfmSegments = [];                                  // clear stored path used for ray cast direction
@@ -247,23 +247,23 @@ pathscanrequest(string jsn)
         assert(len >= 2);                                   // required to have a start point and a dest at least
         for (i=0; i<len; i++) { gKfmSegments += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors
         //  Get position of pursuit target if tracking
-        if (gPathScanTarget != NULL_KEY) 
-        {   list details = llGetObjectDetails(gPathScanTarget, [OBJECT_POS]);   // get object position
+        if (gPathMoveTarget != NULL_KEY) 
+        {   list details = llGetObjectDetails(gPathMoveTarget, [OBJECT_POS]);   // get object position
             if (details == [])                              // avatar not found
-            {   pathMsg(PATH_MSG_WARN, "Pursue target not found."); gPathScanTargetPos = ZERO_VECTOR; }   // gone from sim, timer will detect
+            {   pathMsg(PATH_MSG_WARN, "Pursue target not found."); gPathMoveTargetPos = ZERO_VECTOR; }   // gone from sim, timer will detect
             else
-            {   gPathScanTargetPos = llList2Vector(details,0);   }   // where target is
+            {   gPathMoveTargetPos = llList2Vector(details,0);   }   // where target is
         }
-        gPathScanActive = TRUE;                             // scan system is active
-        gPathScanMoving = TRUE;                             // character is moving
-        gPathScanTimetick = llGetUnixTime();                // reset stall timer
-        llSetTimerEvent(PATHSCANRAYTIME);                   // switch to fast timer for ray casts for obstructions
+        gPathMoveActive = TRUE;                             // move system is active
+        gPathMoveMoving = TRUE;                             // character is moving
+        gPathMoveTimetick = llGetUnixTime();                // reset stall timer
+        llSetTimerEvent(PATHMOVERAYTIME);                   // switch to fast timer for ray casts for obstructions
         pathexedokfm();                                     // actually do the avatar movement      
-    } else if (requesttype == "stopscan")                   // stop scanning
+    } else if (requesttype == "stopmove")                   // stop movening
     {   gKfmSegments = [];
         llSetTimerEvent(0.0);                               // shut down and stop timer
-        gPathScanActive = FALSE;                            // scan system is active
-        gPathScanMoving = FALSE;                            // character is moving
+        gPathMoveActive = FALSE;                            // move system is active
+        gPathMoveMoving = FALSE;                            // character is moving
     } else {
         pathMsg(PATH_MSG_ERROR,"Path stop rcvd bad msg: " + jsn);
     }
@@ -301,10 +301,10 @@ list pathexebuildkfm(vector startpos, rotation startrot, list pts)
 list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
 {
 #ifdef MARKERS
-    placesegmentmarker(MARKERLINE, pprev, p0, gPathScanWidth, TRANSGREEN, 0.20);      // place a temporary line on the ground in-world.
+    placesegmentmarker(MARKERLINE, pprev, p0, gPathMoveWidth, TRANSGREEN, 0.20);      // place a temporary line on the ground in-world.
 #endif // MARKERS
     vector rp = p0 - pos;                       // p0 in relative coords - advances us to p0
-    rp.z += gPathScanHeight * 0.5;              // add half-height, because path is at ground level
+    rp.z += gPathMoveHeight * 0.5;              // add half-height, because path is at ground level
     //  Rotation is to the average direction of the previous and next sections in the XY plane.
     vector invec = p0-pprev;                    // incoming direction
     vector outvec = p1-p0;                      // outgoing direction
@@ -317,8 +317,8 @@ list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
     rr = NormRot(rr);                           // why is this necessary?
     //  Time computation. Speed is limited by rotation rate.
     float angle = llFabs(llAngleBetween(ZERO_ROTATION, rr));    // how much rotation is this?
-    float rsecs = angle / gPathScanMaxTurnspeed; // minimum time for this move per rotation limit
-    float rt = inveclen / gPathScanMaxSpeed;     // minimum time for this move per speed limit
+    float rsecs = angle / gPathMoveMaxTurnspeed; // minimum time for this move per rotation limit
+    float rt = inveclen / gPathMoveMaxSpeed;     // minimum time for this move per speed limit
     if (rsecs > rt) { rt = rsecs; }             // choose longer time
     if (rt < 0.15) { rt = 0.15; }               // minimum time for KFM step
     DEBUGPRINT1("angle: " + (string)angle + " inveclen: " + (string)inveclen + " rt: " + (string)rt); // ***TEMP***
@@ -348,19 +348,19 @@ pathexedokfm()
     if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
     {   llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion  
         integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
-        if (freemem < gPathScanFreemem) 
-        {   gPathScanFreemem = freemem; 
-            pathMsg(PATH_MSG_WARN, "Scan task free memory: " + (string)freemem);
+        if (freemem < gPathMoveFreemem) 
+        {   gPathMoveFreemem = freemem; 
+            pathMsg(PATH_MSG_WARN, "Move task free memory: " + (string)freemem);
         }   // record free memory
     }
 }
 
 //
-//  pathscancollision -- collided with something
+//  pathmovecollision -- collided with something
 //
-pathscancollision(integer num_detected)
+pathmovecollision(integer num_detected)
 {   
-    if (!gPathScanMoving) { return; }    // not moving, not our fault
+    if (!gPathMoveMoving) { return; }    // not moving, not our fault
     integer i;
     for (i=0; i<num_detected; i++)
     {   key hitobj = llDetectedKey(i);
@@ -369,7 +369,7 @@ pathscancollision(integer num_detected)
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                    // hit a non-walkable
             {   pathMsg(PATH_MSG_WARN,"Collided with " + llDetectedName(i));
-                pathscandone(PATHEXECOLLISION, llDetectedKey(i)); // stop
+                pathmovedone(PATHEXECOLLISION, llDetectedKey(i)); // stop
                 return;
             }
         }
@@ -377,28 +377,28 @@ pathscancollision(integer num_detected)
 }
 
 //
-//  The main program of the scan task.
+//  The main program of the move task.
 //
 default
 {
     state_entry()
-    {  pathscaninit();                                // init our KFM system        
+    {  pathmoveinit();                                // init our KFM system        
     }
 
     on_rez(integer rezparam) 
     {   llResetScript(); }
 
     link_message(integer status, integer num, string jsn, key id )
-    {   if (num == LINKMSGSCANREQUEST)                           // maze solve result
-        {   pathscanrequest(jsn); }
+    {   if (num == LINKMSGMOVEREQUEST)                           // maze solve result
+        {   pathmoverequest(jsn); }
     }
     
     timer()
-    {   pathscantimer();   }                                     // pass timer event
+    {   pathmovetimer();   }                                     // pass timer event
     
     moving_end()
-    {   pathscanmovementend(); }   
+    {   pathmovemovementend(); }   
     
     collision_start(integer num_detected)
-    {   pathscancollision(num_detected); }
+    {   pathmovecollision(num_detected); }
 }
