@@ -45,6 +45,7 @@ integer gPathMoveActive = FALSE;                            // move system activ
 integer gPathMoveMoving = FALSE;                            // character should be moving
 integer gPathMoveTimetick = 0;                              // last time we tested for motion
 vector gPathMoveLastpos = ZERO_VECTOR;                      // last place we tested for motion
+vector gPathMoveLastdest = ZERO_VECTOR;                     // last destination of KFM string
 integer gPathMoveFreemem = 9999999;                         // smallest free memory seen
 
 //  Avatar params
@@ -79,17 +80,22 @@ pathmoveinit()
 //
 pathmovedone(integer status, key hitobj)
 {   if (!gPathMoveActive) { return; }                           // we are not running, ignore
-    if (gPathMoveMoving)                                        // if we were moving
-    {   if (status != 0)                                        // if something bad happened
-        {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
-            pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);    
-        } else {                                                // normal stop
+    if (gPathMoveMoving && (status != 0))                       // if something bad happened
+    {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
+        pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);    
+    } else {                                                    // normal move completion
+        //  We should be at the KFM destination now.
+        vector pos = llGetPos() - <0,0,gPathMoveHeight * 0.5>;  // pos is at midpoint, points are at ground level
+        if (gPathMoveLastdest != ZERO_VECTOR && llVecMag(pos-gPathMoveLastdest) > 0.10)         // if not at desired point, allow 10cm error
+        {   pathMsg(PATH_MSG_WARN, "KFM did not reach destination. At " + (string)pos + ", should be at " + (string)gPathMoveLastdest);
+            //  May need to take corrective action here. For now, just log.
         }
     }
     //  Return "movedone" to exec module
     list params = ["reply", "movedone", "status", status, "pathid", gPathMoveId, "hitobj", hitobj];
     llMessageLinked(LINK_THIS, LINKMSGMOVEREPLY, llList2Json(JSON_OBJECT,params), "");   // Return result to execute task
     gPathMoveMoving = FALSE;                                    // no longer active
+    gPathMoveLastdest = ZERO_VECTOR;                            // used up destination
 }
 //
 //  pathmovemovementend -- movement has finished, feed in next section if any
@@ -288,6 +294,7 @@ list pathexebuildkfm(vector startpos, rotation startrot, list pts)
     integer i;
     integer length = llGetListLength(pts);
     vector pos = startpos;
+    gPathMoveLastdest = llList2Vector(pts,-1);  // last point. We should end up here.
     rotation rot = startrot;
     //  Vectors off the end are ZERO_VECTOR. Code relies on this.
     for (i=1; i<length; i++)                    // skip 1, we are already there.
