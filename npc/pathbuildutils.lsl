@@ -466,29 +466,6 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
     (pathcheckcelloccupied((p0),(p1),(width),(height),(chartype),(dobackcorners),TRUE))
     
 
-#ifdef OBSOLETE
-float mazecheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners)
-{
-    {   //  Make this a block, so we get the stack space back before calling the big cell occupied check
-        p1.z = p0.z;                                                // we have no Z value for P1 yet. Start with the one from P0.
-        //  Look over a wide enough range of Z values to catch all walkable slopes.
-        vector fullheight = <0,0,height>;                           // add this to top of vertical ray cast
-        vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;             // subtract this for bottom end of ray cast
-        float zp1 = obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin-<0,0,1>*(width*(1.0+PATHSINMAXWALKABLEANGLE)));   // probe center of cell, looking down
-        if (zp1 < 0) { return(-1.0); }                              // fails
-        p1.z = zp1;                                                 // we can now set p1's proper Z height
-        //  Do a static path check for this short path between two maze cells
-        list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, chartype]);
-        integer status = llList2Integer(path,-1);                   // last item is status
-        path = llList2List(path,0,-2);                              // remove last item
-        if (status != 0 || (llGetListLength(path) > 2 && !checkcollinear(path)))
-        {   ////pathMsg(PATH_MSG_INFO,"Maze path static check found static obstacle between " + (string)p0 + " to " + (string)p1 + ": " + llDumpList2String(path,","));
-            return(-1.0);
-        }
-    }
-    return(pathcheckcelloccupied(p0,p1,width, height, chartype, dobackcorners)); // do the ray cast tests
-}
-#endif // OBSOLETE
 //
 //  pathcheckcelloccupied  -- is there an obstacle in this cell?
 //
@@ -625,12 +602,6 @@ float obstacleraycastvert(vector p0, vector p1)
 float pathcastfoundproblem(list castresult, integer needwalkable, integer ignoresolids)
 {
     integer status = llList2Integer(castresult, -1);        // status is last element in list
-#ifdef OBSOLETE
-    if (status < 0)
-    {   pathMsg(PATH_MSG_WARN,"Cast ray error status: " + (string)status);
-        return(-1.0);                                      // fails, unlikely       
-    }
-#endif // OBSOLETE
     if (status == 0) 
     {   if (needwalkable) { return(-1.0); }                 // needed to find ground
         return(INFINITY);                                   // hit nothing, infinite distance
