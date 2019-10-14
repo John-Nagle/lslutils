@@ -377,7 +377,9 @@ list castray(vector p0, vector p1, list params)
 //  Returns distance, or INFINITY if no obstacle found, or negative of status code if error.
 //  Ignores hits with walkable objects, so this is for horizontal scans only.
 //
-//  Minimum value of probecnt is 2.
+//  Minimum value of probecnt is 2. ***NOT SURE ABOUT THIS***
+//
+//  castparams must yield a data format of [rootid, hitpt, ... status]. No normal.
 //
 float castbeam(vector p0, vector p1, float width, float height, float probespacing, integer wantnearest, list castparams)
 {   float yoffset;                                          // cast ray offset, Y dir in coords of vector
