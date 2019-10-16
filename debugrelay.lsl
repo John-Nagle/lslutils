@@ -93,7 +93,7 @@ logverbose(integer newmode)
 
 logdumptoim(string why)
 {   integer IMMAXLEN = 1000;                                // conservative max IM length
-    llOwnerSay("=== STORED LOG DUMP === : " + why);
+    ////llOwnerSay("=== STORED LOG DUMP === : " + why);
     string msg;
     integer i = llGetListLength(gMsgLog) -1;
     //  Add stored messages to IM string in reverse up to max string length
@@ -105,6 +105,32 @@ logdumptoim(string why)
     msg = why + "\n" + msg;                                 // preface with why
     llInstantMessage(llGetOwner(), msg);                    // send IM to owner
 }
+
+//
+//  logdumptoowner - Dump stored log to owner output
+//
+logdumptoowner(string why)
+{   llOwnerSay("=== STORED LOG DUMP === : " + why);
+    integer i;
+    for (i=0; i<llGetListLength(gMsgLog); i++)
+    {   string s = llList2String(gMsgLog,i);
+        llOwnerSay(s);
+    }
+    llOwnerSay("=== STORED LOG DUMP END ===");
+}
+//
+//  logdumptodebug -- dump to debug channel
+//
+logdumptoowner(string why)
+{   llSay(DEBUG_CHANNEL,"=== STORED LOG DUMP === : " + why);
+    integer i;
+    for (i=0; i<llGetListLength(gMsgLog); i++)
+    {   string s = llList2String(gMsgLog,i);
+        llSay(DEBUG_CHANNEL,s);
+    }
+    llSay(DEBUG_CHANNEL,"=== STORED LOG DUMP END ===");
+}
+
 
 
 //
@@ -122,8 +148,8 @@ debugchanmsg(string name, key id, string message)
 seriouserrormsg(string name, key id, string message)
 {   if (pathGetRoot(id) != gRootkey) { return; }            // has to be from us
     message = name + " in trouble at " + llGetRegionName() + " " + (string)llGetPos() + ": " + message;
-    llOwnerSay(message);                                    // to local owner
     buffermsg(name, id, DEBUG_MSG_ERROR, message);
+    logdumptoowner(message);                                // to local owner
     integer now = llGetUnixTime();
     if (now - gDebugLastIMTime > DEBUG_MIN_IM_INTERVAL)     // do this very infrequently
     {   logdumptoim(message);                               // dump to IM

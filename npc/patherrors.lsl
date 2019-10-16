@@ -57,10 +57,12 @@
 #define PATHEXEBADDEST      -2012               // bad destination - out of parcel, etc.
 #define PATHEXEOBSTRUCTEDSTART     -2013               // starting point of entire path is occupied.
 #define PATHEXESTOPREQ      -2014               // behavior requested a stop
+#define PATHEXEWALKABLEFAIL -2015               // tried to recover from non-walkable area but failed
+#define PATHEXEWALKABLEFIXED -2016              // successful recovery from non-walkable area problem
 
 //
 //  List of retryable errors.  For these, try again, if there was progress on the previous try.
 //
-#define PATHRETRYABLES [PATHEXEOBSTRUCTED, PATHEXECOLLISION, PATHEXEBADMOVEEND, PATHEXEBADSTARTPOS, PATHEXETARGETMOVED, MAZESTATUSNOMEM]
+#define PATHRETRYABLES [PATHEXEOBSTRUCTED, PATHEXECOLLISION, PATHEXEBADMOVEEND, PATHEXEBADSTARTPOS, PATHEXETARGETMOVED, MAZESTATUSNOMEM, PATHEXEWALKABLEFIXED]
 
 #endif // PATHERRORS
