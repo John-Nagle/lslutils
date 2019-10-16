@@ -36,7 +36,7 @@
 #define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
 #define PATHMOVEMINTARGETMOVE   4.0                         // (m) target must move this much to be re-chased
 #define PATHMOVEMINTARGETFRACT  0.5                         // (fraction) target must move this much as fract of dist to go to be re-chased.
-#define PATHMOVEMAXFORCED   5.0                             // (m) max distance from last good point for forced recovery
+#define PATHMAXSAVEDGOODPOS 10                              // (count) number of previous good positions to save
 
 //
 //  Globals
@@ -48,7 +48,7 @@ integer gPathMoveTimetick = 0;                              // last time we test
 vector gPathMoveLastpos = ZERO_VECTOR;                      // last place we tested for motion
 vector gPathMoveLastdest = ZERO_VECTOR;                     // last destination of KFM string
 integer gPathMoveFreemem = 9999999;                         // smallest free memory seen
-vector gPathMoveLastgoodpos = ZERO_VECTOR;                  // last good position
+list gPathMoveLastgoodpos = [];                             // last good position
 
 //  Avatar params
 float gPathMoveWidth = 1.0;                                  // defaults, overridden by messages
@@ -127,18 +127,20 @@ integer pathcheckforwalkable()
     {   return(0); }                                     // no problem   
     //  Trouble, there is no walkable here
     pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)p);
-    //  Attempt recovery
-    if (gPathMoveLastgoodpos != ZERO_VECTOR && llVecMag(p-gPathMoveLastgoodpos) < PATHMOVEMAXFORCED)
-    {   if (obstacleraycastvert(gPathMoveLastgoodpos+fullheight,gPathMoveLastgoodpos-mazedepthmargin) >= 0) // recovery pos looks good
+    //  Attempt recovery. Try to find a previous good location that's currently open and move there.
+    integer i = llGetListLength(gPathMoveLastgoodpos);      // for stored good points, most recent first
+    while (i-- > 0)                                         // for newest (len-1) to oldest (0)
+    {   vector recoverpos = llList2Vector(gPathMoveLastgoodpos,i);  // try to recover to here
+        if (obstacleraycastvert(recoverpos+fullheight,recoverpos-mazedepthmargin) >= 0) // recovery pos looks good
         {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
             llSleep(0.5);                                   // allow time for stop to take effect
-            llSetPos(gPathMoveLastgoodpos + fullheight*0.5);  // forced move to previous good position
+            llSetPos(recoverpos + fullheight*0.5);  // forced move to previous good position
             llSleep(0.5);                                   // give time to settle
-            pathMsg(PATH_MSG_WARN,"Recovered by moving to " + (string) gPathMoveLastgoodpos);
+            pathMsg(PATH_MSG_WARN,"Recovered by moving to " + (string) recoverpos);
             return(PATHEXEWALKABLEFIXED);
         }
     }
-    pathMsg(PATH_MSG_ERROR,"Unable to recover from lack of walkable below " + (string)p + " by recovering to " + (string)gPathMoveLastgoodpos); 
+    pathMsg(PATH_MSG_ERROR,"Unable to recover from lack of walkable below " + (string)p + " by recovering to " + llDumpList2String(gPathMoveLastgoodpos,",")); 
     return(PATHEXEWALKABLEFAIL);
 }
 
@@ -222,8 +224,11 @@ pathcheckdynobstacles()
     {   pathmovedone(status, NULL_KEY);                         // big trouble. Probably stuck here
         return;
     }
-    if (llVecMag(gPathMoveLastgoodpos - groundpos) > gPathMoveWidth)  // if moved to a new good pos
-    {   gPathMoveLastgoodpos = groundpos;  }                          // save this ground level position for recovery
+    if (llVecMag(llList2Vector(gPathMoveLastgoodpos,0) - groundpos) > gPathMoveWidth)  // if moved to a new good pos
+    {   gPathMoveLastgoodpos += [groundpos];                    // save this ground level position for recovery
+        if (llGetListLength(gPathMoveLastgoodpos) > PATHMAXSAVEDGOODPOS)    // limit list length
+        {   gPathMoveLastgoodpos = llDeleteSubList(gPathMoveLastgoodpos,0,0); } // by removing oldest entry
+    }
 
 }
 //
