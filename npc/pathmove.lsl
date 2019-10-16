@@ -130,7 +130,9 @@ integer pathcheckforwalkable()
     //  Attempt recovery
     if (gPathMoveLastgoodpos != ZERO_VECTOR && llVecMag(p-gPathMoveLastgoodpos) < PATHMOVEMAXFORCED)
     {   if (obstacleraycastvert(gPathMoveLastgoodpos+fullheight,gPathMoveLastgoodpos-mazedepthmargin) >= 0) // recovery pos looks good
-        {   llSetPos(gPathMoveLastgoodpos + fullheight*0.5);  // forced move to previous good position
+        {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
+            llSleep(0.5);                                   // allow time for stop to take effect
+            llSetPos(gPathMoveLastgoodpos + fullheight*0.5);  // forced move to previous good position
             llSleep(0.5);                                   // give time to settle
             pathMsg(PATH_MSG_WARN,"Recovered by moving to " + (string) gPathMoveLastgoodpos);
             return(PATHEXEWALKABLEFIXED);
