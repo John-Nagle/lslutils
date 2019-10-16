@@ -83,8 +83,10 @@ pathmoveinit()
 pathmovedone(integer status, key hitobj)
 {   if (!gPathMoveActive) { return; }                           // we are not running, ignore
     if (gPathMoveMoving && (status != 0))                       // if something bad happened
-    {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
-        pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);    
+    {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on. This is the only KFM_CMD_STOP.
+        pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);
+        integer newstatus = pathrecoverwalkable();              // recover position if necessary
+        if (newstatus != 0) { status = newstatus; }             // use walkable recovery status if walkable problem   
     } else {                                                    // normal move completion
         //  We should be at the KFM destination now.
         vector pos = llGetPos() - <0,0,gPathMoveHeight * 0.5>;  // pos is at midpoint, points are at ground level
@@ -93,7 +95,7 @@ pathmovedone(integer status, key hitobj)
             //  May need to take corrective action here. For now, just log.
         }
         //  Final check - are we some place we should't be. Fix it now, rather than getting stuck.
-        status = pathcheckforwalkable();                        // if at non-walkable destination and can't recover
+        status = pathrecoverwalkable();                         // if at non-walkable destination and can't recover
     }
     //  Return "movedone" to exec module
     list params = ["reply", "movedone", "status", status, "pathid", gPathMoveId, "hitobj", hitobj];
@@ -124,6 +126,23 @@ integer pathcheckforwalkable()
     vector p = pos-halfheight;                              // position on ground
     vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
     if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) >= 0)  
+    {   return(0); }                                        // no problem   
+    //  Trouble, there is no walkable here
+    return(PATHEXEWALKABLEFAIL);                            // fail for now, may recover later
+}
+
+//
+//  pathrecoverwalkable  -- get back onto walkable surface if possible
+//
+//  Returns 0 or error status
+//
+integer pathrecoverwalkable()
+{   vector pos = llGetPos();                                // we are here
+    vector fullheight = <0,0,gPathMoveHeight>;              // add this for casts from middle of character
+    vector halfheight = fullheight*0.5;
+    vector p = pos-halfheight;                              // position on ground
+    vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
+    if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) >= 0)  
     {   return(0); }                                     // no problem   
     //  Trouble, there is no walkable here
     //  Attempt recovery. Try to find a previous good location that's currently open and move there.
@@ -132,7 +151,7 @@ integer pathcheckforwalkable()
     while (i-- > 0)                                         // for newest (len-1) to oldest (0)
     {   vector recoverpos = llList2Vector(gPathMoveLastgoodpos,i);  // try to recover to here
         if (obstacleraycastvert(recoverpos+fullheight,recoverpos-mazedepthmargin) >= 0) // recovery pos looks good
-        {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);// stop whatever is going on
+        {   
             llSleep(0.5);                                   // allow time for stop to take effect
             llSetPos(recoverpos + fullheight*0.5);          // forced move to previous good position
             llSleep(0.5);                                   // give time to settle
