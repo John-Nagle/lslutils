@@ -36,7 +36,7 @@
 #define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
 #define PATHMOVEMINTARGETMOVE   4.0                         // (m) target must move this much to be re-chased
 #define PATHMOVEMINTARGETFRACT  0.5                         // (fraction) target must move this much as fract of dist to go to be re-chased.
-#define PATHMOVEMAXFORCED   2.0                             // (m) max distance from last good point for forced recovery
+#define PATHMOVEMAXFORCED   5.0                             // (m) max distance from last good point for forced recovery
 
 //
 //  Globals
@@ -134,7 +134,7 @@ integer pathcheckforwalkable(vector p)
             return(PATHEXEWALKABLEFIXED);
         }
     }
-    pathMsg(PATH_MSG_ERROR,"Unable to recover from lack of walkable below " + (string)p); 
+    pathMsg(PATH_MSG_ERROR,"Unable to recover from lack of walkable below " + (string)p + " by recovering to " + (string)gPathMoveLastgoodpos); 
     return(PATHEXEWALKABLEFAIL);
 }
 
