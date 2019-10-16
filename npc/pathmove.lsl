@@ -93,7 +93,7 @@ pathmovedone(integer status, key hitobj)
             //  May need to take corrective action here. For now, just log.
         }
         //  Final check - are we some place we should't be. Fix it now, rather than getting stuck.
-        status = pathcheckforwalkable(pos);                     // if at non-walkable destination and can't recover
+        status = pathcheckforwalkable();                        // if at non-walkable destination and can't recover
     }
     //  Return "movedone" to exec module
     list params = ["reply", "movedone", "status", status, "pathid", gPathMoveId, "hitobj", hitobj];
@@ -117,9 +117,11 @@ pathmovemovementend()
 //
 //  Returns 0 or error status
 //
-integer pathcheckforwalkable(vector p)
-{
+integer pathcheckforwalkable()
+{   vector pos = llGetPos();                                // we are here
     vector fullheight = <0,0,gPathMoveHeight>;              // add this for casts from middle of character
+    vector halfheight = fullheight*0.5;
+    vector p = pos-halfheight;                              // position on ground
     vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
     if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) >= 0)  
     {   return(0); }                                     // no problem   
@@ -175,6 +177,7 @@ pathcheckdynobstacles()
     float HUGE = 99999999999.0;                     // huge number, but INFINITY is bigger
     vector halfheight = <0,0,gPathMoveHeight*0.5>;    // pos is at object midpoint, points are at ground
     vector pos = llGetPos() - halfheight;            // where we are now
+    vector groundpos = pos;                             // pos on ground
     integer i;
     integer foundseg = FALSE;
     vector startpos = llList2Vector(gKfmSegments,0);   // start of path
@@ -212,12 +215,13 @@ pathcheckdynobstacles()
     if (!foundseg)
     {   pathMsg(PATH_MSG_WARN,"Unable to find " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
     //  Check for walkable support under the current position
-    integer status = pathcheckforwalkable(pos);
+    integer status = pathcheckforwalkable();
     if (status)
     {   pathmovedone(status, NULL_KEY);                         // big trouble. Probably stuck here
         return;
     }
-    gPathMoveLastgoodpos = pos;                                // save this ground level position for recovery
+    if (llVecMag(gPathMoveLastgoodpos - groundpos) > gPathMoveWidth)  // if moved to a new good pos
+    {   gPathMoveLastgoodpos = groundpos;  }                          // save this ground level position for recovery
 
 }
 //
@@ -248,7 +252,9 @@ pathchecktargetmoved()
 //  pathmovetimer  -- timer event, check progress and do ray casts
 //
 pathmovetimer()
-{   if (gPathMoveActive && gKfmSegments != [])                  // if we are moving and have a path
+{   float interval = llGetAndResetTime();                       // time since last tick ***TEMP**
+    if (interval > 0.25) { pathMsg(PATH_MSG_WARN,"Timer ticks slow: " + (string)interval + "s."); }
+    if (gPathMoveActive && gKfmSegments != [])                  // if we are moving and have a path
     {   pathcheckdynobstacles(); }                              // ray cast for obstacles
     if (gPathMoveActive && gKfmSegments != [])                  // if we are moving and have a path
     {   pathchecktargetmoved(); }                               // check if pursuit target moved
@@ -307,6 +313,7 @@ pathmoverequest(string jsn)
         gPathMoveActive = TRUE;                             // move system is active
         gPathMoveMoving = TRUE;                             // character is moving
         gPathMoveTimetick = llGetUnixTime();                // reset stall timer
+        llResetTime();                                      // ***TEMP***
         llSetTimerEvent(PATHMOVERAYTIME);                   // switch to fast timer for ray casts for obstructions
         pathexedokfm();                                     // actually do the avatar movement      
     } else if (requesttype == "stopmove")                   // stop moving
