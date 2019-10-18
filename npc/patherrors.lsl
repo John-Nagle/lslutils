@@ -38,6 +38,7 @@
 #define MAZESTATUSLOOPING   -503                // runaway, didn't terminate
 #define MAZESTATUSCASTFAIL  -506                // cast ray hard failure
 #define MAZESTATUSKFMSTALL  -507                // not moving in KFM mode
+#define MAZESTATUSBADRECOV  -508                // recovery  move requested while moving
                                                 // bug traps
 #define MAZESTATUSGEOMBUG   -1001               // Geometry setup failed
 

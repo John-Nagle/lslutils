@@ -35,13 +35,7 @@
 //
 
 //
-//  Idle timer timeout
-//
-////#define PATHEXETIMEOUT      2.0                             // check this often for progress
-////#define PATHEXERAYTIME      0.2                             // do a cast ray for obstacles this often
 #define PATHMINTURNSECTION  0.5                             // first section of path this length, for a starting turn
-////#define PATHMOVECHECKSECS   2.0                             // check this often for progress
-////#define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
 #define PATHEXEMAXCREEP     0.10                            // (m) max positional error allowed after keyframe motion
 
 //
@@ -138,7 +132,6 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
             return; 
         }
 
-        ////llSetTimerEvent(PATHEXETIMEOUT);                    // periodic stall timer
         vector verr = llList2Vector(pts,0) - llGetPos();    // get starting point
         if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL && segmentid == 0)     // if too far from current pos 
         {   pathMsg(PATH_MSG_WARN,"Bad start pos, segment " + (string)segmentid +
@@ -333,7 +326,6 @@ pathexestopkey(integer status, key hitobj)
     gAllSegments = [];
     gPathExeNextsegid = 0; 
     gPathExeMoving = FALSE;                                 // not moving
-    ////llSetTimerEvent(0.0);                                   // stop timing 
     if (gPathExeActive)                                     // if we are active
     {   if (status == 0) { status = gPathExePendingStatus; }// send back any stored status
         pathdonereply(status,hitobj, gPathExeId);           // tell caller about result
@@ -420,7 +412,7 @@ pathexepathdeliver(string jsn)
 }
 
 //
-//  pathexemovereply -- reply from path movener
+//  pathexemovereply -- reply from path mover
 //
 //  Move ending, collisons, and ray cast obstacle detections come in this way
 //
@@ -465,14 +457,6 @@ default
             pathexemovereply(jsn);
         } else if (num == MAZEPATHSTOP)                 // planner wants us to stop
         {   pathexestop(0);                             // normal stop commanded
-        } else if (num == PATHMASTERRESET)              // if master reset
-        {   llResetScript();                            // full reset
-        }
+        } 
     }
-    
-#ifdef OBSOLETE
-    timer()
-    {   if (gPathExeMoving) { return; }                 // we are doing something, don't need to restart planner
-    }
-#endif // OBSOLETE
 }

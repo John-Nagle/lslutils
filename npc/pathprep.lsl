@@ -10,6 +10,7 @@
 //
 #include "npc/pathbuildutils.lsl"                           // common functions
 #include "npc/mazesolvercall.lsl"
+#include "npc/pathmovecall.lsl"                             // for recover
 //
 //  Constants
 //
@@ -97,8 +98,10 @@ default
             //  Start a new planning cycle
             //  Quick sanity check - are we in a legit place?
             if (obstacleraycastvert(startpos, startpos - <0.0,0.0,gPathprepHeight>) < 0)        // one downward raycast as a first step
-            {   pathdeliversegment([],FALSE, TRUE, gPathprepPathid, PATHEXEOBSTRUCTEDSTART);    // In an obstructed place at start - cannot move.
-                pathMsg(PATH_MSG_ERROR, "Bad current location: " + (string)startpos);           // ***TEMP*** force an error as a debug trap
+            {   ////pathdeliversegment([],FALSE, TRUE, gPathprepPathid, PATHEXEOBSTRUCTEDSTART);    // In an obstructed place at start - cannot move.
+                pathMsg(PATH_MSG_WARN, "Start location is not clear: " + (string)startpos);           // not good, but we can recover
+                //  Ask the move task to attempt recovery. This will move to a better place and return a status to the retry system.
+                pathmoverecover(gPathprepPathid);                       // attempts recovery and informs retry system   
                 return;
             }
             //  Use the system's GetStaticPath to get an initial path

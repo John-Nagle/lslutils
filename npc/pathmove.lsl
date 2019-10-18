@@ -51,12 +51,12 @@ integer gPathMoveFreemem = 9999999;                         // smallest free mem
 list gPathMoveLastgoodpos = [];                             // last good position
 
 //  Avatar params
-float gPathMoveWidth = 1.0;                                  // defaults, overridden by messages
+float gPathMoveWidth = 1.0;                                 // defaults, overridden by messages
 float gPathMoveHeight = 1.0;
-float gPathMoveMaxTurnspeed = 0.2;                           // (radians/sec) max turn rate - overridden
-float gPathMoveMaxSpeed = 2.0;                               // (meters/sec) max speed
+float gPathMoveMaxTurnspeed = 0.2;                          // (radians/sec) max turn rate - overridden
+float gPathMoveMaxSpeed = 2.0;                              // (meters/sec) max speed
+integer gPathMoveChartype = CHARACTER_TYPE_A;               // (enum) character type
 
-integer gPathMoveChartype = CHARACTER_TYPE_A;
 key gPathMoveTarget = NULL_KEY;                             // who we are chasing, if anybody
 vector gPathMoveTargetPos = ZERO_VECTOR;                    // last loc of target
 
@@ -119,6 +119,7 @@ pathmovemovementend()
 //
 //  Returns 0 or error status
 //
+//
 integer pathcheckforwalkable()
 {   vector pos = llGetPos();                                // we are here
     vector fullheight = <0,0,gPathMoveHeight>;              // add this for casts from middle of character
@@ -150,6 +151,10 @@ integer pathrecoverwalkable()
     pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)p + ". Recovery points available: " + (string)i);
     while (i-- > 0)                                         // for newest (len-1) to oldest (0)
     {   vector recoverpos = llList2Vector(gPathMoveLastgoodpos,i);  // try to recover to here
+        //  ***Should this use a full obstacle test? Probably. Hate to pull in that code, for space reasons.***
+#ifdef NOTYET // 
+        if (pathcheckcelloccupied(pos, recoverpos, gPathMoveWidth,gPathMoveHeight, gPathMoveChartype, TRUE, FALSE))
+#endif // NOTYET 
         if (obstacleraycastvert(recoverpos+fullheight,recoverpos-mazedepthmargin) >= 0) // recovery pos looks good
         {   
             llSleep(0.5);                                   // allow time for stop to take effect
@@ -354,8 +359,19 @@ pathmoverequest(string jsn)
         llSetTimerEvent(0.0);                               // shut down and stop timer
         gPathMoveActive = FALSE;                            // move system is active
         gPathMoveMoving = FALSE;                            // character is moving
+    } else if (requesttype == "recover")                    // recover to known good position, requested by pathprep
+    {   //  This is done in move because it's an in-world move, and we do all in-world moves here.
+        integer status = 0;
+        if (gPathMoveActive || gPathMoveMoving)             // motion in progress, can't do a forced recovery
+        {   status = MAZESTATUSBADRECOV;                    // internal error, should not have requested this
+            pathMsg(PATH_MSG_ERROR,"Recover move requested while in motion"); 
+        }     
+        else 
+        {   status = pathrecoverwalkable();  }              // force to a walkable position
+        integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
+        pathdonereply(status, NULL_KEY, pathid);            // end entire operation         
     } else {
-        pathMsg(PATH_MSG_ERROR,"Path stop rcvd bad msg: " + jsn);
+        pathMsg(PATH_MSG_ERROR,"Bad msg: " + jsn);
     }
 }
 

@@ -21,4 +21,9 @@
 #define pathmovestop() {  \
     llMessageLinked(LINK_THIS, LINKMSGMOVEREQUEST, \
     llList2Json(JSON_OBJECT,["request","stopmove"]),""); }  
-
+//
+//  Path move recover -- sends link message to recover to good position
+//
+#define pathmoverecover(pathid) \
+    llMessageLinked(LINK_THIS, LINKMSGMOVEREQUEST, \
+    llList2Json(JSON_OBJECT, ["request", "recover", "pathid", (pathid)]),"");
