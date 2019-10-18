@@ -249,18 +249,24 @@ list pathstraighten(list pts, float width, float height, float probespacing, int
 //
 float pathdistance(vector startpos, vector endpos, float width, integer chartype)
 {
-    vector startscale = llGetScale();
+    vector scale = llGetScale();
     vector startposorig = startpos;                         // ***TEMP***
-    startpos.z = (startpos.z - startscale.z*0.45);          // approx ground level for start point
-#ifdef OBSOLETE // endpos is already at ground level. We did this already.
+    ////startpos.z = (startpos.z - startscale.z*0.45);          // approx ground level for start point
+////#ifdef OBSOLETE // endpos is already at ground level. We did this already.
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
-    vector endposorig = endpos;
-    endpos = pathfindwalkable(endpos, startscale.z);        // find walkable below dest
-    if (endpos == ZERO_VECTOR)
+    startpos.z = pathfindwalkable(startpos, scale.z*0.5, scale.z);
+    if (startpos.z < 0)
+    {   pathMsg(PATH_MSG_WARN, "No walkable below path distance goal at " + (string)startposorig); 
+        return(-1.0);
+    }
+    vector endposorig = endpos;                             // ***TEMP*** for msg only
+    endpos.z = pathfindwalkable(endpos, scale.z*0.5, scale.z);    // find walkable below dest - big tolerance
+    if (endpos.z < 0)
     {   pathMsg(PATH_MSG_WARN, "No walkable below path distance goal at " + (string)endposorig); 
         return(-1.0);
     }
-#endif // OBSOLETE
+    
+////#endif // OBSOLETE
     list path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);
     integer status = llList2Integer(path,-1);               // status is last value
     if (status != 0) 

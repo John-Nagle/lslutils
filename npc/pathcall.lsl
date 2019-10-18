@@ -219,10 +219,7 @@ integer pathretry(integer status, key hitobj)
     gPathcallLastParams = [];                                           // consume retry params to prevent loop
     if (!dogged || status != PATHEXETARGETMOVED)                        // dogged pursue mode, keep trying even if not getting closer
     {   
-        vector testendpos = endpos;
-        vector scale = llGetScale();                                    // assume Z scale is character height
-        testendpos.z -= scale.z*0.45;                                    // need position just above ground. Which should be done once somewhere else.
-        float dist = pathdistance(llGetPos(), testendpos, gPathcallWidth, CHARACTER_TYPE_A);  // measure distance to goal
+        float dist = pathdistance(llGetPos(), endpos, gPathcallWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
         if (dist < 0 || dist >= gPathcallLastDistance)                  // check for closer. negative means path distance failed. Avoids loop.
         {   pathMsg(PATH_MSG_WARN, "No retry, did not get closer."); return(FALSE); }   // cannot retry
     }
