@@ -96,8 +96,14 @@ default
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)gPathprepPathid + " prepping."); 
             pathinitutils();                                            // initialize library
             //  Start a new planning cycle
-            //  Quick sanity check - are we in a legit place?
-            if (obstacleraycastvert(startpos, startpos - <0.0,0.0,gPathprepHeight>) < 0)        // one downward raycast as a first step
+            //  Quick sanity check - are we in a legit place?            
+            vector pos = llGetPos();                                // we are here
+            vector fullheight = <0,0,gPathprepHeight>;              // add this for casts from middle of character
+            vector halfheight = fullheight*0.5;
+            vector p = pos-halfheight;                              // position on ground
+            vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
+            if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) < 0)  // use exactly the same test as in pathmove           
+            ////if (obstacleraycastvert(startpos, startpos - <0.0,0.0,gPathprepHeight>) < 0)        // one downward raycast as a first step
             {   ////pathdeliversegment([],FALSE, TRUE, gPathprepPathid, PATHEXEOBSTRUCTEDSTART);    // In an obstructed place at start - cannot move.
                 pathMsg(PATH_MSG_WARN, "Start location is not clear: " + (string)startpos);           // not good, but we can recover
                 //  Ask the move task to attempt recovery. This will move to a better place and return a status to the retry system.
