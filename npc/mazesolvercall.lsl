@@ -55,7 +55,12 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
     {   return(MAZESTATUSBADCELLSIZE); }
     //  OK, good to go.
     gMazeCellSize = cellsize;                       // size of a cell so that start and end line up
-    gMazeRot = rotperpenonground(p0, p1);           // rotation of center of maze
+    ////gMazeRot = rotperpenonground(p0, p1);           // rotation of center of maze 
+    vector dv = p1-p0;                              // direction from start to end of maze
+    dv.z = 0.0;
+    gMazeRot = RotBetween(<1,0,0>, dv);             // rotation of maze coord system in XY plane
+
+    
     //  For now, we always build a maze of MAXMAZESIZE*MAXMAZESIZE.
     //  The maze is aligned so that the X direction of the maze is from xstart to xend, the midpoint
     //  between xstart and xend is the center of the maze (roughly), and ystart and yend are halfway

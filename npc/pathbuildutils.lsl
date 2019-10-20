@@ -186,6 +186,13 @@ rotation NormRot(rotation Q)
 }
 
 //
+//  RotBetween - rotation between two vectors, with proper normalization
+//
+rotation RotBetween(vector p0, vector p1)
+{   return(NormRot(llRotBetween(llVecNorm(p0),llVecNorm(p1)))); }          // required, see wiki
+
+
+//
 //  pathdistalongseg -- distance along segment
 //  
 //  Returns INFINITY if outside tolerance.
@@ -322,10 +329,10 @@ list pathptstowalkable(list path, float height)
 //
 rotation rotperpenonground(vector p0, vector p1)
 {
-    vector dir = llVecNorm(p1-p0);                          // direction for line
-    rotation azimuthrot = llRotBetween(<1,0,0>, llVecNorm(<dir.x, dir.y, 0>));
-    rotation elevrot = llRotBetween(llVecNorm(<dir.x, dir.y, 0>), dir); // elevation
-    return(NormRot(azimuthrot * elevrot));                  // apply in proper order
+    vector dv = p1-p0;                          // direction for line
+    rotation azimuthrot = RotBetween(<1,0,0>, <dv.x, dv.y, 0>);
+    rotation elevrot = RotBetween(<dv.x, dv.y, 0>, dv);     // elevation
+    return(azimuthrot * elevrot);                           // apply in proper order
 }
 
 //
