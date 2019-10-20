@@ -139,9 +139,9 @@ integer pathplanadvance()
         vector dir = llVecNorm(gP1-gP0);                        // direction of segment
         vector pos = gP0 + dir*gDistalongseg;                   // current working position
         vector endcast = gP1 + dir * gWidth*0.5;                // check to far side of area to avoid missing partial obstacle at end
-        pathMsg(PATH_MSG_INFO,"Checking " + (string)pos + " to " + (string)endcast + " for obstacles.");
         float hitdist = castbeam(pos, endcast, gWidth, gHeight, gTestspacing, TRUE,
                 PATHCASTRAYOPTS);
+        pathMsg(PATH_MSG_INFO,"Checked " + (string)pos + " to " + (string)endcast + " for obstacles. Hit dist: "+ (string)hitdist);
         if (hitdist < 0)
         {   gPts = [];                                          // release memory
             pathdeliversegment([], FALSE, TRUE, gReqPathid, MAZESTATUSCASTFAIL);    // empty set of points, no maze, done.
@@ -160,12 +160,15 @@ integer pathplanadvance()
             gDistalongseg = 0.0;                                // starting new segment
         } else {                                                // there is an obstruction
             ////float hitbackup = hitdist-width*0.5;            // back up just enough to get clear
-
-            float hitbackup = hitdist-gWidth;                   // back up just enough to get clear
-            vector interpt0 = pos + dir*(hitbackup);            // back away from obstacle.
+            assert(hitdist >= 0.0);                             // ***TEMP*** 
+            assert(gDistalongseg >= 0);                         // ***TEMP***
+            float hitbackedup = hitdist-gWidth;                   // back up just enough to get clear
+            //  ***SHOULD THIS BE A MINUS BELOW? APPLYING HITBACKUP IN WRONG DIR? hitdist is > 0. **** WRONG***
+            vector interpt0 = pos + dir*(hitbackedup);            // back away from obstacle.
+            ////vector interpt0 = pos - dir*(hitbackedup);            // back away from obstacle.
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
-                " hit dist along segment: " + (string)(gDistalongseg+hitbackup)); 
-            if (gDistalongseg + hitbackup < 0)                   // too close to beginning of current segment to back up
+                " hit dist along segment: " + (string)(gDistalongseg+hitbackedup)); 
+            if (gDistalongseg + hitbackedup < 0)                   // too close to beginning of current segment to back up
             {                                                   // must search in previous segments
                 ////if ((llVecMag(llList2Vector(gPts,0) - interpt0)) > (width))  // if we are not very close to the starting point
                 if ((llVecMag(llList2Vector(gPts,0) - pos)) > (gWidth))  // if we are not very close to the starting point
