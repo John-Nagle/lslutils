@@ -58,7 +58,7 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
     ////gMazeRot = rotperpenonground(p0, p1);           // rotation of center of maze 
     vector dv = p1-p0;                              // direction from start to end of maze
     dv.z = 0.0;
-    gMazeRot = RotBetween(<1,0,0>, dv);             // rotation of maze coord system in XY plane
+    gMazeRot = RotBetween((<1,0,0>), dv);             // rotation of maze coord system in XY plane
 
     
     //  For now, we always build a maze of MAXMAZESIZE*MAXMAZESIZE.

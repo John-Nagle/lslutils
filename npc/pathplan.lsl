@@ -389,7 +389,7 @@ default
                 vector pos = llGetPos();
                 poserr = llVecMag(startpos - pos);                      // how far did we move
                 startpos = pos;
-                pathMsg(PATH_MSG_INFO,"Waiting for character to stop moving.");
+                ////pathMsg(PATH_MSG_INFO,"Waiting for character to stop moving.");
             } while (i-- > 0 && poserr > 0.001);                        // until position stabilizes 
             if (i <= 0) { pathMsg(PATH_MSG_WARN, "Character not stopping on command, at " + (string)startpos); }       
             //  Starting position and goal position must be on a walkable surface, not at character midpoint. 

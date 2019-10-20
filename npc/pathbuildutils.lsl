@@ -188,8 +188,8 @@ rotation NormRot(rotation Q)
 //
 //  RotBetween - rotation between two vectors, with proper normalization
 //
-rotation RotBetween(vector p0, vector p1)
-{   return(NormRot(llRotBetween(llVecNorm(p0),llVecNorm(p1)))); }          // required, see wiki
+#define RotBetween(p0, p1) \
+    (NormRot(llRotBetween(llVecNorm((p0)),llVecNorm((p1)))))
 
 
 //
@@ -329,9 +329,11 @@ list pathptstowalkable(list path, float height)
 //
 rotation rotperpenonground(vector p0, vector p1)
 {
-    vector dv = p1-p0;                          // direction for line
-    rotation azimuthrot = RotBetween(<1,0,0>, <dv.x, dv.y, 0>);
-    rotation elevrot = RotBetween(<dv.x, dv.y, 0>, dv);     // elevation
+    vector dv = p1-p0;                                      // direction for line
+    vector dvflat = <dv.x, dv.y, 0>;
+    vector xvec = <1,0,0>;
+    rotation azimuthrot = RotBetween(xvec, dvflat);
+    rotation elevrot = RotBetween(dvflat, dv);              // elevation
     return(azimuthrot * elevrot);                           // apply in proper order
 }
 
