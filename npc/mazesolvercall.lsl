@@ -37,16 +37,16 @@ float gMazeCellSize;                                // cell size of maze
 integer mazesolverstart(vector p0, vector p1, float width, float height, integer chartype, float probespacing, key hitobj, integer pathid, integer segmentid, integer msglev) 
 {
     //  Lay out the rectangle for the maze
-    integer MAXMAZESIZE = 41;                       // ***TEMP*** belongs elsewhere
-    vector v = p1 - p0;                             // from start to goal
-    float vdist = llVecMag(v);                      // distance from start to goal
-    if (vdist < 0.01) { return(MAZESTATUSTOOSHORT); }              // too close, error
-    vector pmid = (p0 + p1)*0.5;                    // center of maze area
+    integer MAXMAZESIZE = 41;                           // ***TEMP*** belongs elsewhere
+    ////vector v = p1 - p0;                             // from start to goal
+    vector dv = p1-p0;                                  // direction from start to end of maze
+    dv.z = 0.0;
+    float flatdist = llVecMag(dv);                      // distance from start to goal
+    if (flatdist < 0.01) { return(MAZESTATUSTOOSHORT); }// too close, error
     //  "pos" is the center of cell (0,0) of the maze.
     //  "cellsize" is the size of a maze cell. This must be the same as width.
     //  p0 to p1 in the XY plane must be an integral number of widths.
     float cellsize = width;                         // just use width
-    float flatdist = llVecMag(<p0.x,p0.y,0.0> - <p1.x,p1.y,0.0>);   // distance in 2D plane
     integer unitcells = (integer)(flatdist/cellsize+0.001);   // integral number of cells
     if (unitcells < 2) { return(MAZESTATUSTOOSHORT); } // start too close to end. Need to back off start and end points.
     if (unitcells >= MAXMAZESIZE*0.75)    // too big
@@ -55,8 +55,6 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
     {   return(MAZESTATUSBADCELLSIZE); }
     //  OK, good to go.
     gMazeCellSize = cellsize;                       // size of a cell so that start and end line up
-    vector dv = p1-p0;                              // direction from start to end of maze
-    dv.z = 0.0;
     ////gMazeRot = RotBetween((<1,0,0>), dv);             // rotation of maze coord system in XY plane - NO GOOD - bug in RotBetween
     gMazeRot = RotFromXAxis(dv);                    // rotation of maze coord system in XY plane
 
