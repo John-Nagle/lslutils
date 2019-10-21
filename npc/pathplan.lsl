@@ -15,7 +15,7 @@
 //
 float MINSEGMENTLENGTH = 0.025; /// 0.10;                   // minimum path segment length (m)
 
-#define PATHPLANMINMEM  3000                                // less than this, quit early and retry
+#define PATHPLANMINMEM  3500                                // less than this, quit early and retry
 
 //  Globals
 
@@ -56,43 +56,12 @@ integer gReqPathid;                                         // path ID of planni
 pathplan(vector startpos, vector endpos, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid)
 {
     //  Start a new planning cycle
-#ifdef OBSOLETE //  Points come in by a global - too big to copy unnecessarily
-    gPts = [];                                              // clear state and save params
-#endif // OBSOLETE
     gPathPoints = [];
     gWidth = width;
     gHeight = height;
     gChartype = chartype;
     gTestspacing = testspacing;
     gReqPathid = pathid; 
-#ifdef OBSOLETE
-    //  Use the system's GetStaticPath to get an initial path
-    gPts = pathtrimmedstaticpath(startpos, endpos, stopshort, width + PATHSTATICTOL, chartype);
-    integer len = llGetListLength(gPts);                          
-    ////pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(gPts,-1) + ", "+ (string)llGetListLength(gPts) + 
-    ////    " gPts: " + llDumpList2String(gPts,","));             // dump list for debug
-    pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(gPts,-1) + ", "+ (string)len + " points.");  // dump list for debug
-    integer status = llList2Integer(gPts,-1);                // last item is status
-    if (status != 0 || len < 3)            // if static path fail or we're already at destination
-    {   pathdeliversegment([], FALSE, TRUE, gReqPathid, status);// report error
-        return;
-    }
-    //  Got path
-    gPts = llList2List(gPts,0,-2);                          // drop status from end of points list
-    ////pathMsg(PATH_MSG_INFO,"Static planned");                // ***TEMP***
-    gPts = pathclean(gPts);                                 // remove dups and ultra short segments
-    ////pathMsg(PATH_MSG_INFO,"Cleaned");                       // ***TEMP***
-    gPts = pathptstowalkable(gPts, gHeight);                    // project points onto walkable surface
-    ////pathMsg(PATH_MSG_INFO,"Walkables");                     // ***TEMP***
-    len = llGetListLength(gPts);                            // update number of points after cleanup
-    if (len < 2)
-    {   
-        pathdeliversegment([], FALSE, TRUE, gReqPathid, MAZESTATUSNOPTS);        // empty set of points, no maze, done.
-        return;                                             // empty list
-    }
-    //  We have a valid static path. Now start checking for obstacles.
-    pathMsg(PATH_MSG_INFO,"Path check for obstacles. Segments: " + (string)len);
-#endif // OBSOLETE 
     ////pathMsg(PATH_MSG_INFO,"Preprocessed points 2: " + llDumpList2String(gPts,","));   // ***TEMP***
     assert(llGetListLength(gPts) >= 2);                     // must have at least 2 points to do planning
     gP0 = llList2Vector(gPts,0);                            // starting position
@@ -163,9 +132,7 @@ integer pathplanadvance()
             assert(hitdist >= 0.0);                             // ***TEMP*** 
             assert(gDistalongseg >= 0);                         // ***TEMP***
             float hitbackedup = hitdist-gWidth;                   // back up just enough to get clear
-            //  ***SHOULD THIS BE A MINUS BELOW? APPLYING HITBACKUP IN WRONG DIR? hitdist is > 0. **** WRONG***
             vector interpt0 = pos + dir*(hitbackedup);            // back away from obstacle.
-            ////vector interpt0 = pos - dir*(hitbackedup);            // back away from obstacle.
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
                 " hit dist along segment: " + (string)(gDistalongseg+hitbackedup)); 
             if (gDistalongseg + hitbackedup < 0)                   // too close to beginning of current segment to back up
@@ -196,7 +163,6 @@ integer pathplanadvance()
             }
 
             //  Search for the other side of the obstacle.                     
-            DEBUGPRINT1("Looking for far side of obstacle.");
             list obsendinfo = pathfindclearspace(interpt0, gCurrentix, gWidth, gHeight, gChartype);    // find far side of obstacle
             if (llGetListLength(obsendinfo) < 2)
             {   pathMsg(PATH_MSG_INFO,"Cannot find far side of obstacle at " + (string)interpt0 + " on segment #" + (string)(gCurrentix-1));
@@ -239,7 +205,7 @@ integer pathplanadvance()
             //  End memory check.
         }
     }
-    pathMsg(PATH_MSG_INFO, "Path advance end, more to do.");
+    ////pathMsg(PATH_MSG_INFO, "Path advance end, more to do.");
     return(FALSE);                                          // not done, will do another advance later.
 }
 
@@ -285,9 +251,11 @@ list pathfindclearspace(vector startpos, integer obstacleix, float width, float 
         float adjdistalongseg = pathcalccellmovedist(p0, dir, startpos, width, distalongseg);
         vector checkvec = (p0 + dir * adjdistalongseg) - startpos;                           // checking only
         float checkvecmag = llVecMag(<checkvec.x,checkvec.y,0.0>);                          // startpos to endpos of maze in XY plane
+#ifdef OBSOLETE // need the memory space
         pathMsg(PATH_MSG_INFO,"Maze endpoint adjust at " + (string)prevpos + " " 
             + (string)pos + ". Dist along seg " + (string)distalongseg + " -> " + (string)adjdistalongseg + " 2D dist: " + 
             (string)checkvecmag + " seglength: " + (string)seglength);
+#endif // OBSOLETE
         if (adjdistalongseg >= 0 && adjdistalongseg <= seglength)   // if still on same segment
         {   assert(adjdistalongseg >= distalongseg);                // must progress forward
             distalongseg = adjdistalongseg;
