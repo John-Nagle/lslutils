@@ -32,12 +32,14 @@ float TESTSPACING = 0.33;                   // (fract) Multiply height and width
 //  Character dimensions
 integer CHARTYPE = CHARACTER_TYPE_A;                        // humanoid
 
-float CHARACTER_WIDTH = 0.5;
-float CHARACTER_HEIGHT = 2.2;
-float CHARACTER_SPEED = 2.5;                // (m/sec) speed
-float CHARACTER_TURNSPEED_DEG = 90.0;       // (deg/sec) turn rate
-////string IDLE_ANIM = "stand 2";               // idle or chatting         
-////string STAND_ANIM = "stand 2";              // just when stopped
+#define CHARACTER_WIDTH  0.5
+#define CHARACTER_HEIGHT  2.2
+#ifndef CHARACTER_SPEED                     // overrideable
+#define CHARACTER_SPEED  2.5                // (m/sec) speed
+#endif // CHARACTER_SPEED
+#define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
+////string IDLE_ANIM = "stand 2";            // idle or chatting         
+////string STAND_ANIM = "stand 2";           // just when stopped
 ///string WAITING_ANIM = "stand arms folded";  // during planning delays
 string WAITING_ANIM = "SEmotion-bento13";   // arms folded during planning delays
 string IDLE_ANIM = "SEmotion-bento18";      // arms folded during planning delays

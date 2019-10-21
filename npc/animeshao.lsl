@@ -10,7 +10,8 @@
 //
 string IDLE_ANIM = "stand 2";    // idle or chatting         
 string STAND_ANIM = "stand 2"; // just when stopped
-string WALK_ANIM = "Female Walk 1"; 
+string WALK_ANIM = "Female Walk 1";
+string RUN_ANIM = "avatar_run";            // default run animation 
 string SLOW_WALK_ANIM = "animesh_slow_short_stride_walk";   // for slow movement
 ////string TURN_ANIM = "RD Walk In Place";      // when turning
 string RTURN_ANIM = "TurnR";
@@ -18,11 +19,12 @@ string LTURN_ANIM = "TurnL";
 string BLINK_ANIM = "Benato Blink";         // eye blink cycling animation
 list PERM_ANIMS = [BLINK_ANIM];               // anims we always run
 
-float POLL_TIME = 0.5;
-float IDLE_TICKS = 30;                          // 15 secs to shutdown
+float POLL_TIME = 0.25;
+float IDLE_TICKS = 30;                          // 7.5 secs to shutdown
 integer DEBUG = FALSE; /// TRUE;                // messages on/off
 
 float SPEED_WALK = 0.7;                         // faster than this, walking
+float SPEED_RUN = 3.0;                          // faster than this, running
 float ROTRATE_TURN = 0.3;                       // medium speed turn
 
 //  ***MORE*** run, etc.
@@ -103,6 +105,9 @@ update_anim()                                   // called periodically and when 
                 {   llSetTimerEvent(0.0); }     // put AO to sleep to reduce load
             }
         }
+    } else if (posspeed > SPEED_RUN)            // running speed
+    {   gIdleTicks = 0;
+        start_anim(RUN_ANIM);
     } else {
         gIdleTicks = 0;
         start_anim(WALK_ANIM);
@@ -143,7 +148,7 @@ default
     
     link_message(integer source, integer num, string str, key id)
     {
-        llSetTimerEvent(POLL_TIME);             // wake up
+        llSetTimerEvent(POLL_TIME);             // wake up on any message
         gIdleTicks = 0;                         // stay awake long enough to do whatever asked to do
         if (num == 1)                           // change stand animation
         {   gStandAnim = str; }                 // use new stand animation
