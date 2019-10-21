@@ -55,10 +55,10 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
     {   return(MAZESTATUSBADCELLSIZE); }
     //  OK, good to go.
     gMazeCellSize = cellsize;                       // size of a cell so that start and end line up
-    ////gMazeRot = rotperpenonground(p0, p1);           // rotation of center of maze 
     vector dv = p1-p0;                              // direction from start to end of maze
     dv.z = 0.0;
-    gMazeRot = RotBetween((<1,0,0>), dv);             // rotation of maze coord system in XY plane
+    ////gMazeRot = RotBetween((<1,0,0>), dv);             // rotation of maze coord system in XY plane - NO GOOD - bug in RotBetween
+    gMazeRot = RotFromXAxis(dv);                    // rotation of maze coord system in XY plane
 
     
     //  For now, we always build a maze of MAXMAZESIZE*MAXMAZESIZE.
@@ -73,10 +73,12 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
 
     //  Calculate base pos of maze.
     gMazePos = p0 - p0inmaze;                       // position of cell (0,0)
-////#define GEOMCHECK
+#define GEOMCHECK
 #ifdef GEOMCHECK
     vector p0chk = mazecellto3d(startx, starty, gMazeCellSize, gMazePos, gMazeRot);                        // convert back to 3D coords 
     vector p1chk = mazecellto3d(endx, endy, gMazeCellSize, gMazePos, gMazeRot);                        // convert back to 3D coords 
+    p1chk.z = p1.z;                                     // Z doesn't have to match. Z is not part of the transformation here
+#ifdef OBSOLETE
     if (llVecNorm(p1chk -p0chk) * llVecNorm(p1-p0) < 0.999)
     {   
         panic("Maze geometry incorrect. Direction between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
@@ -88,8 +90,9 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
         panic("Maze geometry incorrect. Distance between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
     }
+#endif // OBSOLETE
     //  This happens sometimes, due to some numeric error not yet found.
-    if ((llVecMag(p0chk-p0) > 0.02) || (llVecMag(p1chk-p1) > 0.02))        
+    if ((llVecMag(p0chk-p0) > 0.01) || (llVecMag(p1chk-p1) > 0.01))        
     {   pathMsg(PATH_MSG_ERROR,"Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
     }

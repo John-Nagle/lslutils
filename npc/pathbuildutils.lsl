@@ -188,8 +188,18 @@ rotation NormRot(rotation Q)
 //
 //  RotBetween - rotation between two vectors, with proper normalization
 //
+//  UNSOUND FOR TOTALLY OPPOSED VECTORS
+//
 #define RotBetween(p0, p1) \
     (NormRot(llRotBetween(llVecNorm((p0)),llVecNorm((p1)))))
+    
+    
+//
+//  RotFromXAxis  --  rotation from X axis in XY plane.
+//
+//  Used to set up coordinate system for maze solving
+//
+#define RotFromXAxis(dv) llAxes2Rot(llVecNorm(dv),<0,0,1>%llVecNorm(dv),<0,0,1>)
 
 
 //
@@ -331,8 +341,9 @@ rotation rotperpenonground(vector p0, vector p1)
 {
     vector dv = p1-p0;                                      // direction for line
     vector dvflat = <dv.x, dv.y, 0>;
-    vector xvec = <1,0,0>;
-    rotation azimuthrot = RotBetween(xvec, dvflat);
+    ////vector xvec = <1,0,0>;
+    ////rotation azimuthrot = RotBetween(xvec, dvflat);
+    rotation azimuthrot = RotFromXAxis(dvflat);             // numerically sound
     rotation elevrot = RotBetween(dvflat, dv);              // elevation
     return(azimuthrot * elevrot);                           // apply in proper order
 }
