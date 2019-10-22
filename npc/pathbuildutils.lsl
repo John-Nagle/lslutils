@@ -189,11 +189,11 @@ rotation NormRot(rotation Q)
 //  RotBetween - rotation between two vectors, with proper normalization
 //
 //  UNSOUND FOR TOTALLY OPPOSED VECTORS
+//  USE ONLY FOR DEBUG MARKERS
 //
 #define RotBetween(p0, p1) \
     (NormRot(llRotBetween(llVecNorm((p0)),llVecNorm((p1)))))
-    
-    
+     
 //
 //  RotFromXAxis  --  rotation from X axis in XY plane.
 //
@@ -347,7 +347,7 @@ rotation rotperpenonground(vector p0, vector p1)
     rotation elevrot = RotBetween(dvflat, dv);              // elevation
     return(azimuthrot * elevrot);                           // apply in proper order
 }
-
+#ifdef OBSOLETE
 //
 //  mazecellto3d  -- convert maze cell to 3D coords
 //
@@ -374,6 +374,21 @@ vector mazecellto3d(integer x, integer y, float mazecellsize, vector mazepos, ro
     p.z = - (p.x*planenormal.x + p.y * planenormal.y)/planenormal.z;    // planenormal.z cannot be zero unless tilted plane is vertical
     DEBUGPRINT1("mazecellto3d: x: " + (string)x + " y: " + (string)y + " p: " + (string)p + " p+mazepos: " + (string)(p+mazepos));
     return(p + mazepos);
+}
+#endif // OBSOLETE
+//
+//  mazecellto3d  -- convert maze cell to 3D coords
+//
+//  mazecellsize is the size of a cell in the XY plane, not the 3D plane
+//  mazepos is the position of cell (0,0);
+//  mazerot is the rotation of the maze plane and must be in the XY plane
+//
+//  Used in multiple scripts.
+//
+vector mazecellto3d(integer x, integer y, float mazecellsize, vector mazepos, rotation mazerot)
+{
+    vector vflat = <x*mazecellsize,y*mazecellsize,0.0>;   // vector to cell in XY plane
+    return(vflat*mazerot + mazepos);
 }
 
 //

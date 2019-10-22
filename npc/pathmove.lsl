@@ -420,7 +420,10 @@ list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
     vector outvecnorm = llVecNorm(<outvec.x,outvec.y,0>);
     if (p1 == ZERO_VECTOR) { outvecnorm = invecnorm; } // last section, no turn
     vector dir = llVecNorm(invecnorm+outvecnorm);// next direction
+#ifdef OBSOLETE
     rotation rr = llRotBetween(<1,0,0>, dir) / rot; // relative rotation
+#endif // OBSOLETE
+    rotation rr = RotFromXAxis(dir) / rot;      // relative rotation
     rr = NormRot(rr);                           // why is this necessary?
     //  Time computation. Speed is limited by rotation rate.
     float angle = llFabs(llAngleBetween(ZERO_ROTATION, rr));    // how much rotation is this?
