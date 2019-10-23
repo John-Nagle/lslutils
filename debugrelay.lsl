@@ -22,6 +22,8 @@
 #include "debugmsg.lsl"
 //
 #define DEBUG_LOG_MAX 30                                    // max number of messages to keep
+#define DEBUG_MIN_MEM 8000                                  // truncate messages if less free mem than this
+#define DEBUG_SHORT_MSG 50                                  // truncate messages to this length if tight on mem
 
 #define pathGetRoot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
 
@@ -56,11 +58,38 @@ string timestamp()
 }
 
 //
+//  pathneedmem -- need at least this much free memory. Return TRUE if tight on memory.
+//
+integer pathneedmem(integer minfree)
+{
+    integer freemem = llGetFreeMemory();                // free memory left
+    if (freemem < minfree)                              // tight, but a GC might help.
+    {   
+        integer memlimit = llGetMemoryLimit();          // how much are we allowed?
+        llSetMemoryLimit(memlimit-1);                   // reduce by 1 to force GC
+        llSetMemoryLimit(memlimit);                     // set it back
+        freemem = llGetFreeMemory();                    // get free memory left after GC, hopefully larger.
+    }
+    if (freemem < minfree)                              // if still too little memory
+    {   
+        return(TRUE);
+    }
+    return(FALSE);                                      // no problem
+}        
+
+//
 //  buffermsg  -- add message to circular buffer
 //
 buffermsg(string name, key id, integer msglev, string message)
 {   string rootname = llKey2Name(pathGetRoot(id));          // name of root object, not debug
-    string s = timestamp() + " (" + name + "," + rootname + ") " + message;
+    if (name != rootname)
+    {   name = name + "," + rootname; }
+    if (pathneedmem(DEBUG_MIN_MEM))                         // if tight on memory
+    {
+        if (llStringLength(message) > DEBUG_SHORT_MSG)      // truncate long messages
+        {   message = llGetSubString(message,0,DEBUG_SHORT_MSG) + "..."; }
+    }
+    string s = timestamp() + " (" + name + ") " + message;
     gMsgLog += [s];                                         // add to circular buffer
     if (llGetListLength(gMsgLog) > (DEBUG_LOG_MAX + 10))      // if becoming too long
     {   gMsgLog = llList2List(gMsgLog,-DEBUG_LOG_MAX,-1); } // discard old msgs
