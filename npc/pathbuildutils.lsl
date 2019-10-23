@@ -241,6 +241,9 @@ integer checkcollinear(list pts)
 //
 list pathstraighten(list pts, float width, float height, float probespacing, integer chartype)
 {   integer n = 0;
+    assert(llGetListLength(pts) > 0);                           // must have at least one point
+    vector firstpt = llList2Vector(pts,0);                      // only for checking
+    vector lastpt = llList2Vector(pts,-1);                      // get last point
     //   Advance through route. On each iteration, either the route gets shorter, or n gets
     //   larger, so this should always terminate.
     while (n < llGetListLength(pts)-3)                          // advancing through route
@@ -248,12 +251,14 @@ list pathstraighten(list pts, float width, float height, float probespacing, int
         vector  p1 = llList2Vector(pts,n+1);                    // get next three points
         vector  p2 = llList2Vector(pts,n+2);                    // get next three points
         //  Try to take a short cut, bypassing p1
-        if (obstaclecheckpath(p0, p2, width, height,probespacing, chartype))
+        if (obstaclecheckpath(p0, p2, width, height, probespacing, chartype)) // short cut unobstructed?
         {   pts = llListReplaceList(pts,[],n+1,n+1);            // success, we can delete p2
         } else {                                                // can't delete, so advance
             n = n + 1;
         }
     }
+    assert(llList2Vector(pts,0) == firstpt);                    // must preserve first point
+    assert(llList2Vector(pts,-1) == lastpt);                    // must preserve last point
     return(pts);                                                // shortened route
 }
 

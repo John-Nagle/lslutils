@@ -363,7 +363,8 @@ pathFaceInDirection(vector lookdir)
 {   float TURNRATE = 90*DEG_TO_RAD;                             // (deg/sec) turn rate
     float   PATH_ROTATION_EASE = 0.5;                           // (0..1) Rotation ease-in/ease out strength
     lookdir.z = 0.0;                                            // rotate about XY axis only
-    rotation endrot = llRotBetween(<1,0,0>,llVecNorm(lookdir)); // finish here
+    ////rotation endrot = llRotBetween(<1,0,0>,llVecNorm(lookdir)); // finish here ***AVOID USING BUGGY llRotBetween***
+    rotation endrot =  RotFromXAxis(lookdir);                   // finish here
     rotation startrot = llGetRot();                             // starting from here
     float turntime = llFabs(llAngleBetween(startrot, endrot)) / TURNRATE;  // how much time to spend turning
     integer steps = llCeil(turntime/0.200 + 0.001);             // number of steps 

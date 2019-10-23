@@ -136,10 +136,13 @@ integer pathplanadvance()
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
                 " hit dist along segment: " + (string)(gDistalongseg+hitbackedup)); 
             if (gDistalongseg + hitbackedup < 0)                   // too close to beginning of current segment to back up
-            {                                                   // must search in previous segments
+            {
+                                                                // must search in previous segments
                 ////if ((llVecMag(llList2Vector(gPts,0) - interpt0)) > (width))  // if we are not very close to the starting point
                 if ((llVecMag(llList2Vector(gPts,0) - pos)) > (gWidth))  // if we are not very close to the starting point
-                {   list pinfo =  pathfindunobstructed(gPts, gCurrentix, -1, gWidth, gHeight, gChartype);
+                { 
+#ifdef OBSOLETE   // This fails for back to back maze solves. So just let the retry system handle it.                                                 
+                    list pinfo =  pathfindunobstructed(gPts, gCurrentix, -1, gWidth, gHeight, gChartype);
                     interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
                     integer newix = llList2Integer(pinfo,1);    // segment in which we found point, counting backwards
                     ////pathMsg(PATH_MSG_INFO,"Pathcheckobstacles backing up from segment #" + (string)gCurrentix + " to #" + (string) newix);
@@ -156,6 +159,12 @@ integer pathplanadvance()
                         ////gPathPoints = llListReplaceList(gPathPoints,[],llGetListLength(gPathPoints)-1, llGetListLength(gPathPoints)-1);
                         gPathPoints = llListReplaceList(gPathPoints,[],-1, -1);
                     } while ( llGetListLength(gPathPoints) > 0 && !pathpointinsegment(interpt0,droppedpoint,llList2Vector(gPathPoints,-1)));
+#endif // OBSOLETE
+                    // If we have to back up through a segment boundary, just give up and let the retry system handle it.
+                    gPts = [];                              // release memory
+                    pathdeliversegment(gPathPoints,FALSE, TRUE, gReqPathid, MAZESTATUSBADSTART); // points, no maze, done
+                    return(TRUE);
+                    
                 } else {                                   // we're at the segment start, and can't back up. Assume start of path is clear. We got there, after all.
                     pathMsg(PATH_MSG_WARN,"Assuming start point of path is clear at " + (string)gP0);
                     interpt0 = gP0;                             // zero length
@@ -301,7 +310,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
         {   pathMsg(PATH_MSG_ERROR,"Unable to start maze solver. Status: " + (string)status); 
             //  Create a dummy maze solve result and send it to path execution just to transmit the status.
             llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT,
-            ["reply", "mazesolve", "pathid", pathid, "status", status, 
+            ["reply", "mazesolve", "pathid", pathid, "segmentid", gSegmentId, "status", status, 
                 "pos", ZERO_VECTOR, "rot", ZERO_ROTATION, "cellsize", 0.0,
                 "points",llList2Json(JSON_ARRAY,[])]),"");
             return;

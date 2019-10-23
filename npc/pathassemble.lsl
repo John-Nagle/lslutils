@@ -160,7 +160,8 @@ list pathexeextrapoints(list pts, float distfromends, integer first)
 {
     list newpts = [];
     integer i;
-    integer length = llGetListLength(pts);   
+    integer length = llGetListLength(pts);
+    assert(length > 0);                             // must have at least one point  
     vector p0 = llList2Vector(pts,0);
     newpts += [p0];                                 // always the initial point     
     for (i=1; i<length; i++)
@@ -181,6 +182,7 @@ list pathexeextrapoints(list pts, float distfromends, integer first)
         newpts += [p1];
         p0 = p1;                                    // for next cycle
     }
+    assert(llList2Vector(newpts,-1) == llList2Vector(pts,-1));  // must preserve last point exactly
     return(newpts);
 }
 
@@ -233,12 +235,11 @@ pathexeassemblesegs()
             DEBUGPRINT1("Adding to gAllSegments: " + llDumpList2String(gAllSegments,",")); // ***TEMP***
             vector lastpt = llList2Vector(gAllSegments,-1);
             vector firstpt = llList2Vector(nextseg,0);
-            //  Points are supposed to match, but because of adjustments to make mazes fit,
-            //  they sometimes differ for the maze followed by maze case. But bigger than
-            //  1m and something is badly broken.
             vector errvec = lastpt-firstpt;
+            //  Points are supposed to match. Unclear why they sometimes do not.
             if (llVecMag(errvec) > 0.50 || llVecMag(<errvec.x,errvec.y,0.0>) > 0.05)
-            {   pathMsg(PATH_MSG_ERROR, "Path assemble - endpoints do not match: " + (string)lastpt + (string)firstpt);
+            {   pathMsg(PATH_MSG_ERROR, "Path assemble - endpoints do not match: " + (string)lastpt + (string)firstpt +
+                " pathid: " + (string)gPathExeId + " segid: " + (string)gPathExeNextsegid);
             }
             assert(llVecMag(lastpt-firstpt) < 1.00);            // 1m sanity check
             ////assert(llVecMag(<errvec.x,errvec.y,0.0>) < 0.20);   // 2D endpoints should match
@@ -366,6 +367,7 @@ pathexemazedeliver(string jsn)
     list ptsworld = [];
     integer i;
     integer length = llGetListLength(ptsmaze);              // number of points
+    assert(length >= 2);                                    // must have at least 2 points
     for (i=0; i<length; i++)
     {   integer val = llList2Integer(ptsmaze,i);            // X and Y encoded into one integer
         DEBUGPRINT1("Maze solve pt: (" + (string)mazepathx(val) + "," + (string)mazepathy(val) + ")");
