@@ -270,14 +270,12 @@ pathexedomove()
     {   
         vector kfmstart = llList2Vector(gAllSegments,0);    // first point, which is where we should be
         assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker
-#ifdef OBSOLETE  // we're not controlling actual position here. That's in pathmove, which is async to this.       
         vector pos = llGetPos();                            // we are here
         if (pathvecmagxy(kfmstart - pos) > PATHEXEMAXCREEP)     // we are out of position
         {   pathMsg(PATH_MSG_WARN, "Out of position. At " + (string)pos + ". Should be at " + (string)kfmstart); // not serious, but happens occasionally
             ////pathexestop(PATHEXEBADMOVEEND);                 // error, must start a new operation to recover
             ////return; 
         }
-#endif // OBSOLETE
         gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
         {   //  Start keyframe motion and obstacle detection.
             //  Offloads the space explosion of keyframe generation to another script with more free space.
