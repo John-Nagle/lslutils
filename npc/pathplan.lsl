@@ -174,9 +174,11 @@ integer pathplanadvance()
             //  Search for the other side of the obstacle.                     
             list obsendinfo = pathfindclearspace(interpt0, gCurrentix, gWidth, gHeight, gChartype);    // find far side of obstacle
             if (llGetListLength(obsendinfo) < 2)
-            {   pathMsg(PATH_MSG_INFO,"Cannot find far side of obstacle at " + (string)interpt0 + " on segment #" + (string)(gCurrentix-1));
-                gPathPoints += [interpt0];                       // best effort result
+            {   pathMsg(PATH_MSG_WARN,"Cannot find far side of obstacle at " + (string)interpt0 + " on segment #" + (string)(gCurrentix-1));
+                if (interpt0 != llList2Vector(gPathPoints,-1))      // do not duplicate point. Will cause trouble in KFM
+                {   gPathPoints += [interpt0];  }                   // best effort result
                 gPts = [];                                          // release memory
+                if (llGetListLength(gPathPoints) < 2) { gPathPoints = []; } // avoid single-point segment
                 pathdeliversegment(gPathPoints, FALSE, TRUE, gReqPathid, MAZESTATUSBADOBSTACLE);    // final set of points
                 return(TRUE);                                    // partial result
             }
@@ -205,7 +207,11 @@ integer pathplanadvance()
             gCurrentix = interp1ix;                             // continue from point just found
             gP0 = llList2Vector(gPts,gCurrentix);               // starting position in new segment
             gP1 = llList2Vector(gPts,gCurrentix+1);             // next position
-            gDistalongseg = llVecMag(interpt1 - gP0);           // how far along seg 
+            gDistalongseg = (interpt1-gP0) * llVecNorm(gP1-gP0);// how far along seg in segment direction
+            assert(gDistalongseg >= 0);                         // should not be negative
+            assert(checkcollinear([gP0,interpt1,gP1]));         // ***TEMP*** should be on the P0-P1 line
+            assert(llFabs(llVecMag(interpt1 - gP0) - gDistalongseg) < 0.01);    // ***TEMP*** same as old way of calculating this?
+            ////gDistalongseg = llVecMag(interpt1 - gP0);           // how far along seg 
             if (pathneedmem(PATHPLANMINMEM))                    // tight memory check, will quit early and retry later if necessary
             {   gPts = [];                                      // release memory
                 pathdeliversegment([], FALSE, TRUE, gReqPathid, MAZESTATUSNOMEM);    // early quit, return final part of path with error
