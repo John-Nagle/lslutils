@@ -76,24 +76,15 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
     vector p0chk = mazecellto3d(startx, starty, gMazeCellSize, gMazePos, gMazeRot);                        // convert back to 3D coords 
     vector p1chk = mazecellto3d(endx, endy, gMazeCellSize, gMazePos, gMazeRot);                        // convert back to 3D coords 
     p1chk.z = p1.z;                                     // Z doesn't have to match. Z is not part of the transformation here
-#ifdef OBSOLETE
-    if (llVecNorm(p1chk -p0chk) * llVecNorm(p1-p0) < 0.999)
-    {   
-        panic("Maze geometry incorrect. Direction between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
-        + (string)p1 + " differs from p1chk: " + (string) p1chk);
-    }
-
-    if (llFabs(llVecMag(p1chk-p0chk) - llVecMag(p1-p0)) > 0.001)
-    {   
-        panic("Maze geometry incorrect. Distance between p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
-        + (string)p1 + " differs from p1chk: " + (string) p1chk);
-    }
-#endif // OBSOLETE
-    //  This happens sometimes, due to some numeric error not yet found.
+    //  This used to happen sometime, due to problems with llRotBetween.
+    assert(llVecMag(p0chk-p0) < 0.001);
+    assert(llVecMag(p1chk-p1) < 0.001);
+#ifdef OBSOLETE // Now a hard assert fail, since it's fixed.
     if ((llVecMag(p0chk-p0) > 0.001) || (llVecMag(p1chk-p1) > 0.001))        
     {   pathMsg(PATH_MSG_ERROR,"Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
         + (string)p1 + " differs from p1chk: " + (string) p1chk);
     }
+#endif // OBSOLETE
 #endif // GEOMCHECK
     pathMsg(PATH_MSG_INFO, "Sending job to maze solver, pathid: " + (string)pathid + " segmentid: " + (string)segmentid);
     llMessageLinked(LINK_THIS, MAZESOLVEREQUEST, llList2Json(JSON_OBJECT, [
@@ -116,7 +107,10 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
         "startz", p0.z,                             // float, starting Z position
         "endx", endx,                               // goal, cell coords
         "endy", endy,
-        "endz", p1.z]),"");
+        "endz", p1.z,
+        "p0", p0,                                   // for checking purposes only
+        "p1", p1                                    // for checking purposes only
+        ]),"");
     return(0);
 }
 

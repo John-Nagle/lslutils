@@ -128,14 +128,14 @@ integer pathplanadvance()
             gP1 = llList2Vector(gPts,gCurrentix+1);             // next position
             gDistalongseg = 0.0;                                // starting new segment
         } else {                                                // there is an obstruction
-            ////float hitbackup = hitdist-width*0.5;            // back up just enough to get clear
             assert(hitdist >= 0.0);                             // ***TEMP*** 
             assert(gDistalongseg >= 0);                         // ***TEMP***
-            float hitbackedup = hitdist-gWidth;                   // back up just enough to get clear
-            vector interpt0 = pos + dir*(hitbackedup);            // back away from obstacle.
+            float hitbackedup = hitdist-gWidth;                 // back up just enough to get clear
+            assert(hitbackedup <= fulllength);                  // must be within segment limits
+            vector interpt0 = pos + dir*(hitbackedup);          // back away from obstacle.
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
                 " hit dist along segment: " + (string)(gDistalongseg+hitbackedup)); 
-            if (gDistalongseg + hitbackedup < 0)                   // too close to beginning of current segment to back up
+            if (gDistalongseg + hitbackedup < 0)                // too close to beginning of current segment to back up
             {
                                                                 // must search in previous segments
                 ////if ((llVecMag(llList2Vector(gPts,0) - interpt0)) > (width))  // if we are not very close to the starting point

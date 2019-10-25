@@ -126,6 +126,8 @@ integer gMazeEndX;                  // end position
 integer gMazeEndY; 
 float   gMazeEndZ;                  // end Z position
 integer gMazeStatus;                // status code - MAZESTATUS...
+vector  gP0;                        // beginning of maze, for checking only
+vector  gP1;                        // end of maze, for checking only
        
 
 //
@@ -657,7 +659,7 @@ list mazewallfollow(list params, integer sidelr)
     }
     return(path + [x, y, z, direction]);           // return path plus state
 } 
-
+#ifdef OBSOLETE
 //
 //  mazereplyjson -- construct result as JSON
 //
@@ -675,6 +677,7 @@ string mazereplyjson(integer status, integer pathid, integer segmentid, list pat
 {   return (llList2Json(JSON_OBJECT, ["reply", "mazesolve", "status", status, "pathid", pathid, "segmentid", segmentid,
         "points", llList2Json(JSON_ARRAY, path)]));
 }
+#endif // OBSOLETE
 
 vector gMazePos;                                // location of maze in SL world space
 rotation gMazeRot;                              // rotation of maze in SL world space
@@ -726,6 +729,8 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     integer endx = (integer)llJsonGetValue(jsn,["endx"]);
     integer endy = (integer)llJsonGetValue(jsn,["endy"]);
     float endz = (float)llJsonGetValue(jsn,["endz"]);           // elevation in world coords
+    vector gp0 = (vector)llJsonGetValue(jsn,["p0"]);            // for checking only
+    vector gp1 = (vector)llJsonGetValue(jsn,["p1"]);            // for checking only
     if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = MAZESTATUSBADSIZE; } // too big
     list path = [];
     if (status == 0)                                    // if params sane enough to start
@@ -748,6 +753,7 @@ mazerequestjson(integer sender_num, integer num, string jsn, key id)
     llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "pathid", pathid, "segmentid", segmentid, "status", status,
         "hitobj",gMazeHitobj,
         "pos", gMazePos, "rot", gMazeRot, "cellsize", gMazeCellSize,
+        "p0",gp0, "p1",gp1,                                 // for checking only
         "points", llList2Json(JSON_ARRAY, path)]),"");
 }
 

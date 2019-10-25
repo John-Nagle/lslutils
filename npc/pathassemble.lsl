@@ -238,8 +238,12 @@ pathexeassemblesegs()
             vector errvec = lastpt-firstpt;
             //  Points are supposed to match. Unclear why they sometimes do not.
             if (llVecMag(errvec) > 0.50 || llVecMag(<errvec.x,errvec.y,0.0>) > 0.05)
-            {   pathMsg(PATH_MSG_ERROR, "Path assemble - endpoints do not match: " + (string)lastpt + (string)firstpt +
-                " pathid: " + (string)gPathExeId + " segid: " + (string)gPathExeNextsegid);
+            {   ////pathMsg(PATH_MSG_ERROR, "Path assemble - endpoints do not match: " + (string)lastpt + (string)firstpt +
+                ////" pathid: " + (string)gPathExeId + " segid: " + (string)gPathExeNextsegid);
+                string s = "Path assemble - endpoints do not match: " + (string)lastpt + (string)firstpt + // ***TEMP***
+                " pathid: " + (string)gPathExeId + " segid: " + (string)gPathExeNextsegid;              // ***TEMP*** because assert fail loses messages in queue
+                llOwnerSay(s);                                  // backup way to get info out before panic //***TEMP***
+                pathMsg(PATH_MSG_ERROR,s);
             }
             assert(llVecMag(lastpt-firstpt) < 1.00);            // 1m sanity check
             ////assert(llVecMag(<errvec.x,errvec.y,0.0>) < 0.20);   // 2D endpoints should match
@@ -364,6 +368,8 @@ pathexemazedeliver(string jsn)
     rotation rot = (rotation)llJsonGetValue(jsn,["rot"]);
     key hitobj = (key)llJsonGetValue(jsn,["hitobj"]);           // obstacle which started (not stopped) maze solve
     list ptsmaze = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
+    vector p0 = (vector)llJsonGetValue(jsn,["p0"]);            // for checking only
+    vector p1 = (vector)llJsonGetValue(jsn,["p1"]);            // for checking only
     list ptsworld = [];
     integer i;
     integer length = llGetListLength(ptsmaze);              // number of points
@@ -376,6 +382,14 @@ pathexemazedeliver(string jsn)
         ptsworld += [cellpos];                              // accum list of waypoints
     }
     pathMsg(PATH_MSG_INFO, "Maze solve pts: " + llDumpList2String(ptsworld,","));       // ***TEMP*** detailed debug
+    assert(llGetListLength(ptsworld) >= 2);                             // must have at least two points    
+    assert(llVecMag(llList2Vector(ptsworld,0) - p0) < 0.01);            // maze endpoints must match
+    vector p1err = llList2Vector(ptsworld,-1) - p1;                     // ***TEMP***
+    if (llVecMag(<p1err.x,p1err.y,0>) >= 0.01)                           // ***TEMP***
+    {   pathMsg(PATH_MSG_ERROR,"p1 wrong at end of maze solve: p1: " + (string)p1 + " maze last pt: " + (string)llList2Vector(ptsworld,-1));
+        llSleep(2.0);                                                   // allow time for message processing before assert fails.
+    }                                                                   // ***END TEMP***
+    ////assert(llVecMag(llList2Vector(ptsworld,-1) - p1) < 0.01);            // maze endpoints must match
     //  Straighten path. Maze solver paths are all right angles. Here we try short cuts.
     ptsworld = pathstraighten(ptsworld, gPathExeWidth, gPathExeHeight, gPathExeProbespacing, gPathExeChartype);   // postprocess path
     pathexedeliver(ptsworld, pathid, segmentid, TRUE, 0, hitobj);      // deliver maze solution
