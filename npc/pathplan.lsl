@@ -131,6 +131,11 @@ integer pathplanadvance()
             vector interpt0 = pos + dir*(hitbackedup);          // back away from obstacle.
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
                 " hit dist along segment: " + (string)(gDistalongseg+hitbackedup)); 
+            //  ***THESE TESTS ARE WRONG WHEN TWO MAZE SOLVES IN A ROW HAPPEN***
+            //  ***MUST NEVER DECREASE gDistalongseg WITHIN A SEGMENT*******
+            //  Constraints: Never back up past the beginning of a segment.
+            //               Never back up past gdistalongsgement.
+            //
             if (gDistalongseg + hitbackedup < 0)                // too close to beginning of current segment to back up
             {
                                                                 // must search in previous segments
