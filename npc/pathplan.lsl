@@ -53,14 +53,10 @@ integer gReqPathid;                                         // path ID of planni
 //  This is best-effort; moves will be reported even if the destination cannot be
 //  fully reached.
 //
-pathplan(vector startpos, vector endpos, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid)
+pathplan(float stopshort, integer pathid)
 {
     //  Start a new planning cycle
     gPathPoints = [];
-    gWidth = width;
-    gHeight = height;
-    gChartype = chartype;
-    gTestspacing = testspacing;
     gReqPathid = pathid; 
     ////pathMsg(PATH_MSG_INFO,"Preprocessed points 2: " + llDumpList2String(gPts,","));   // ***TEMP***
     assert(llGetListLength(gPts) >= 2);                     // must have at least 2 points to do planning
@@ -304,14 +300,14 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
     //  Fixed part of the reply. Just add "points" at the end.
     list fixedreplypart = ["reply","path", "pathid", gPathId, "status", status, "hitobj", gPathLastObstacle,
                 "target", gPathplanTarget, "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,               // pass speed setting to execution module
-                "width", gPathWidth, "height", gPathHeight, "chartype", gPathplanChartype, "msglev", gPathMsgLevel,
+                "width", gWidth, "height", gHeight, "chartype", gChartype, "msglev", gPathMsgLevel,
                 "points"];                                  // just add points at the end
     if (ismaze)                                             // maze, add to the to-do list
     {   assert(length == 2);                                // maze must have two endpoints
         vector bp0 = llList2Vector(path,0);
         vector bp1 = llList2Vector(path,1);
         //  Start the maze solver
-        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathplanChartype, gPathWidth, gPathLastObstacle, gPathId, gSegmentId, gPathMsgLevel); 
+        integer status = mazesolverstart(bp0, bp1, gWidth, gHeight, gChartype, gWidth, gPathLastObstacle, gPathId, gSegmentId, gPathMsgLevel); 
         if (status) 
         {   pathMsg(PATH_MSG_ERROR,"Unable to start maze solver. Status: " + (string)status); 
             //  Create a dummy maze solve result and send it to path execution just to transmit the status.
@@ -349,7 +345,6 @@ integer gPathId = 0;                                // serial number of path
 integer gSegmentId = 0;                             // segment number of path
 float gPathplanSpeed = 1.0;                         // defaults usually overridden
 float gPathplanTurnspeed = 0.1;
-integer gPathplanChartype = CHARACTER_TYPE_A; 
 key gPathplanTarget = NULL_KEY;                     // who we are chasing, if not null  
 //
 //  Main program of the path planning task
@@ -364,6 +359,7 @@ default
         {   gPts = [];                                                  // release space from any previous cycle
             //  First, get stopped before we start planning the next move.
             llMessageLinked(LINK_THIS,MAZEPATHSTOP, "",NULL_KEY);       // tell execution system to stop
+#ifdef OBSOLETE
             integer i = 100;                                            // keep testing for 100 sleeps
             vector startpos = llGetPos();
             float poserr = INFINITY;                                    // position error, if still moving
@@ -381,13 +377,15 @@ default
             startpos = llGetPos();                                      // startpos is where we are now
             vector startscale = llGetScale();
             startpos.z = (startpos.z - startscale.z*0.45);              // approximate ground level for start point
+
             vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);     // get goal point
+#endif // OBSOLETE
             gPathplanTarget = (key)llJsonGetValue(jsonstr,["target"]);  // get target if pursue
-            gPathWidth = (float)llJsonGetValue(jsonstr,["width"]);
-            gPathHeight = (float)llJsonGetValue(jsonstr,["height"]);
+            gWidth = (float)llJsonGetValue(jsonstr,["width"]);
+            gHeight = (float)llJsonGetValue(jsonstr,["height"]);
             float stopshort = (float)llJsonGetValue(jsonstr,["stopshort"]);
-            gPathplanChartype = (integer)llJsonGetValue(jsonstr,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
-            float testspacing = (float)llJsonGetValue(jsonstr,["testspacing"]);
+            gChartype = (integer)llJsonGetValue(jsonstr,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
+            gTestspacing = (float)llJsonGetValue(jsonstr,["testspacing"]);
             integer pathid = (integer)llJsonGetValue(jsonstr,["pathid"]);
             gPathMsgLevel = (integer)llJsonGetValue(jsonstr,["msglev"]);
             gPathplanSpeed = (float)llJsonGetValue(jsonstr,["speed"]);
@@ -398,10 +396,11 @@ default
             //  Call the planner
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " starting."); 
             integer len = llGetListLength(points);
+            integer i;
             for (i=0; i<len; i++) { gPts += (vector)llList2String(points,i);}   // convert to list of vectors
             points = [];                                    // release space
             ////pathMsg(PATH_MSG_INFO,"Preprocessed points: " + llDumpList2String(gPts,","));   // ***TEMP***
-            pathplan(startpos, goal, gPathWidth, gPathHeight, stopshort, gPathplanChartype, testspacing, pathid); 
+            pathplan(stopshort, pathid); 
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " req done.");   
         }             
         else if (num == MAZESOLVERREPLY)                    // just snooping on maze solves to see if we should do more planning

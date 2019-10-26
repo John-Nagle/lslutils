@@ -55,7 +55,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
 default
 {
     //
-    //  Incoming link message - will be a plan job request, or a notification of a maze solve completion
+    //  Incoming link message - will be a plan job request.
     //    
     link_message(integer status, integer num, string jsonstr, key id)
     {   if (num == PATHPLANREQUEST)                                     // if request for a planning job
