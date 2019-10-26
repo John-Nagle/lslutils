@@ -347,6 +347,8 @@ pathexestop(integer status)
 //
 //  pathexemazedeliver  -- incoming maze result
 //
+//  This is a set of points, but they're in integer maze cell coordinates, and have to be converted to region coords.
+//
 pathexemazedeliver(string jsn) 
 {
     DEBUGPRINT1("Maze deliver: " + jsn);
@@ -385,7 +387,7 @@ pathexemazedeliver(string jsn)
     assert(llGetListLength(ptsworld) >= 2);                             // must have at least two points    
     assert(llVecMag(llList2Vector(ptsworld,0) - p0) < 0.01);            // maze endpoints must match
     vector p1err = llList2Vector(ptsworld,-1) - p1;                     // ***TEMP***
-    if (llVecMag(<p1err.x,p1err.y,0>) >= 0.01)                           // ***TEMP***
+    if (llVecMag(<p1err.x,p1err.y,0>) >= 0.01)                           // ***TEMP*** Z isn't an exact match - check
     {   pathMsg(PATH_MSG_ERROR,"p1 wrong at end of maze solve: p1: " + (string)p1 + " maze last pt: " + (string)llList2Vector(ptsworld,-1));
         llSleep(2.0);                                                   // allow time for message processing before assert fails.
     }                                                                   // ***END TEMP***
