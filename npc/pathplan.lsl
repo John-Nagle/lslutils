@@ -136,31 +136,31 @@ integer pathplanadvance()
             //  Constraints: Never back up past the beginning of a segment.
             //               Never back up past gdistalongsgement.
             //
+            if (gDistalongseg > hitbackedup)                    // if this would be a backwards move          
+            ////if (gDistalongseg + hitbackedup < 0)                // too close to beginning of current segment to back up
+            {
+                                                                // must search in previous segments
+                if ((llVecMag(llList2Vector(gPts,0) - pos)) > (gWidth))  // if we are not very close to the starting point
+                { 
+                    // If we have to back up through a segment boundary, just give up and let the retry system handle it.
+                    gPts = [];                              // release memory
+                    if (llGetListLength(gPathPoints) < 2) { gPathPoints = []; } // avoid passing a one-point bogus segment forward
+                    pathdeliversegment(gPathPoints,FALSE, TRUE, gReqPathid, MAZESTATUSBACKWARDS); // points, no maze, done
+                    return(TRUE);
+                    
+                } else {                                   // we're at the segment start, and can't back up. Assume start of path is clear. We got there, after all.
+                    pathMsg(PATH_MSG_WARN,"Assuming start point of path is clear at " + (string)gP0);
+                    interpt0 = gP0;                             // zero length
+                }
+            }
+
+#ifdef OBSOLETE
             if (gDistalongseg + hitbackedup < 0)                // too close to beginning of current segment to back up
             {
                                                                 // must search in previous segments
                 ////if ((llVecMag(llList2Vector(gPts,0) - interpt0)) > (width))  // if we are not very close to the starting point
                 if ((llVecMag(llList2Vector(gPts,0) - pos)) > (gWidth))  // if we are not very close to the starting point
                 { 
-#ifdef OBSOLETE   // This fails for back to back maze solves. So just let the retry system handle it.                                                 
-                    list pinfo =  pathfindunobstructed(gPts, gCurrentix, -1, gWidth, gHeight, gChartype);
-                    interpt0 = llList2Vector(pinfo,0);          // open space point before obstacle, in a prevous segment
-                    integer newix = llList2Integer(pinfo,1);    // segment in which we found point, counting backwards
-                    ////pathMsg(PATH_MSG_INFO,"Pathcheckobstacles backing up from segment #" + (string)gCurrentix + " to #" + (string) newix);
-                    if (newix < 1)
-                    {   gPts = [];                              // release memory
-                        pathdeliversegment(gPathPoints,FALSE, TRUE, gReqPathid, MAZESTATUSBADSTART); // points, no maze, done
-                        return(TRUE);                           // no open space found, fail
-                    }
-                    //  Discard points until we find the one that contains the new intermediate point.
-                    vector droppedpoint = ZERO_VECTOR;          // point we just dropped
-                    do {
-                    ////pathMsg(PATH_MSG_INFO,"Dropping point " + (string)llList2Vector(gPathPoints,-1) + " from gPathPoints looking for " + (string)interpt0);
-                        droppedpoint = llList2Vector(gPathPoints,-1);
-                        ////gPathPoints = llListReplaceList(gPathPoints,[],llGetListLength(gPathPoints)-1, llGetListLength(gPathPoints)-1);
-                        gPathPoints = llListReplaceList(gPathPoints,[],-1, -1);
-                    } while ( llGetListLength(gPathPoints) > 0 && !pathpointinsegment(interpt0,droppedpoint,llList2Vector(gPathPoints,-1)));
-#endif // OBSOLETE
                     // If we have to back up through a segment boundary, just give up and let the retry system handle it.
                     gPts = [];                              // release memory
                     pathdeliversegment(gPathPoints,FALSE, TRUE, gReqPathid, MAZESTATUSBADSTART); // points, no maze, done
@@ -171,6 +171,7 @@ integer pathplanadvance()
                     interpt0 = gP0;                             // zero length
                 }
             }
+#endif // OBSOLETE
 
             //  Search for the other side of the obstacle.                     
             list obsendinfo = pathfindclearspace(interpt0, gCurrentix, gWidth, gHeight, gChartype);    // find far side of obstacle

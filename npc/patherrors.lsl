@@ -31,6 +31,7 @@
 #define MAZESTATUSNOPTS      -210               // empty path
 #define MAZESTATUSCELLCHANGED -211              // status of cell changed from unoccupied to occupied
 #define MAZESTATUSBADZ      -212                // Z value not near maze end. Probably multi-level maze failure
+#define MAZESTATUSBACKWARDS -213                // backwards move trying to get clear of obstacle, do a retry
 
                                                 // internal errors
 #define MAZESTATUSTIMEOUT   -501                // took too long
@@ -65,6 +66,6 @@
 //  List of retryable errors.  For these, try again, if there was progress on the previous try.
 //
 #define PATHRETRYABLES [PATHEXEOBSTRUCTED, PATHEXECOLLISION, PATHEXEBADMOVEEND, PATHEXEBADSTARTPOS, PATHEXETARGETMOVED,\
-    MAZESTATUSNOMEM, PATHEXEWALKABLEFIXED, MAZESTATUSBADSTART]
+    MAZESTATUSNOMEM, PATHEXEWALKABLEFIXED, MAZESTATUSBACKWARDS]
 
 #endif // PATHERRORS
