@@ -140,7 +140,7 @@ integer pathplanadvance()
             ////if (gDistalongseg + hitbackedup < 0)                // too close to beginning of current segment to back up
             {
                                                                 // must search in previous segments
-                if ((llVecMag(llList2Vector(gPts,0) - pos)) > (gWidth))  // if we are not very close to the starting point
+                if (gCurrentix != 0 || (llVecMag(llList2Vector(gPts,0) - pos)) > (gWidth))  // if we are not very close to the starting point
                 { 
                     // If we have to back up through a segment boundary, just give up and let the retry system handle it.
                     gPts = [];                              // release memory
