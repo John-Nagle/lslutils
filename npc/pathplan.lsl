@@ -357,9 +357,9 @@ default
     link_message(integer status, integer num, string jsonstr, key id)
     {   if (num == PATHPLANPREPPED)                                     // if request for a planning job
         {   gPts = [];                                                  // release space from any previous cycle
+#ifdef OBSOLETE
             //  First, get stopped before we start planning the next move.
             llMessageLinked(LINK_THIS,MAZEPATHSTOP, "",NULL_KEY);       // tell execution system to stop
-#ifdef OBSOLETE
             integer i = 100;                                            // keep testing for 100 sleeps
             vector startpos = llGetPos();
             float poserr = INFINITY;                                    // position error, if still moving
