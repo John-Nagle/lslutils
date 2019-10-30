@@ -85,7 +85,7 @@ pathmovedone(integer status, key hitobj)
     if (gPathMoveMoving && (status != 0))                       // if something bad happened
     {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on. This is the only KFM_CMD_STOP.
         pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);
-        integer newstatus = pathrecoverwalkable();              // recover position if necessary
+        integer newstatus = pathrecoverwalkable(FALSE);         // recover position if necessary
         if (newstatus != 0) { status = newstatus; }             // use walkable recovery status if walkable problem   
     } else {                                                    // normal move completion
         //  We should be at the KFM destination now.
@@ -95,7 +95,7 @@ pathmovedone(integer status, key hitobj)
             //  May need to take corrective action here. For now, just log.
         }
         //  Final check - are we some place we should't be. Fix it now, rather than getting stuck.
-        status = pathrecoverwalkable();                         // if at non-walkable destination and can't recover
+        status = pathrecoverwalkable(FALSE);                    // if at non-walkable destination and can't recover
     }
     //  Return "movedone" to exec module
     list params = ["reply", "movedone", "status", status, "pathid", gPathMoveId, "hitobj", hitobj];
@@ -137,14 +137,18 @@ integer pathcheckforwalkable()
 //
 //  Returns 0 or error status
 //
-integer pathrecoverwalkable()
+integer pathrecoverwalkable(integer recovering)
 {   vector pos = llGetPos();                                // we are here
     vector fullheight = <0,0,gPathMoveHeight>;              // add this for casts from middle of character
     vector halfheight = fullheight*0.5;
     vector p = pos-halfheight;                              // position on ground
     vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
-    if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) >= 0)  
-    {   return(0); }                                     // no problem   
+    if (!recovering)                                        // if we don't know yet if we are in trouble
+    {   if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) >= 0)  
+        {   pathMsg(PATH_MSG_WARN,"No need for recovery.");     // which is strange
+            return(0);                                          // no problem 
+        }
+    }
     //  Trouble, there is no walkable here
     //  Attempt recovery. Try to find a previous good location that's currently open and move there.
     integer i = llGetListLength(gPathMoveLastgoodpos);      // for stored good points, most recent first
@@ -316,6 +320,7 @@ pathmovetimer()
 //
 pathmoverequest(string jsn) 
 {   pathMsg(PATH_MSG_INFO,"Path move request: " + jsn);
+    llOwnerSay("Path move request: " + jsn);                // ***TEMP***
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type  
     if (requesttype == "startmove")                         // start moving
     {   //  Set up for ray casting.
@@ -367,7 +372,7 @@ pathmoverequest(string jsn)
             pathMsg(PATH_MSG_ERROR,"Recover move requested while in motion"); 
         }     
         else 
-        {   status = pathrecoverwalkable();  }              // force to a walkable position
+        {   status = pathrecoverwalkable(TRUE);  }          // force to a walkable position
         integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
         pathdonereply(status, NULL_KEY, pathid);            // end entire operation         
     } else {
@@ -493,7 +498,8 @@ default
 {
     state_entry()
     {   pathinitutils();                                        // init library
-        pathmoveinit();                                         // init our KFM system        
+        pathmoveinit();                                         // init our KFM system 
+        gPathMsgLevel = PATH_MSG_INFO;                          // will be overridden at first move but needed if first event is something else       
     }
 
     on_rez(integer rezparam) 
