@@ -248,7 +248,7 @@ pathcheckdynobstacles()
     {   pathmovedone(status, NULL_KEY);                         // big trouble. Probably stuck here
         return;
     }
-    if (llVecMag(llList2Vector(gPathMoveLastgoodpos,0) - groundpos) > gPathMoveWidth)  // if moved to a new good pos
+    if (llVecMag(llList2Vector(gPathMoveLastgoodpos,-1) - groundpos) > gPathMoveWidth)  // if moved to a new good pos
     {   gPathMoveLastgoodpos += [groundpos];                    // save this ground level position for recovery
         if (llGetListLength(gPathMoveLastgoodpos) > PATHMAXSAVEDGOODPOS)    // limit list length
         {   gPathMoveLastgoodpos = llDeleteSubList(gPathMoveLastgoodpos,0,0); } // by removing oldest entry

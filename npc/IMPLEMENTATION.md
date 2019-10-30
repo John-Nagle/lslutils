@@ -46,18 +46,48 @@ This is up to the user. We have a demo, "Patroller", but expect users to use the
 modify that one. 
 It calls the functions in the README file - **pathNavigateTo** and **pathPursue** to cause the NPC to move.
 
+
+### Start task (UNIMPLEMENTED - will be split from pathcall.lsl)
+Starts the planning process and handles restarts. Path planning often fails to reach the goal,
+especially when obstacles are moving. This task checks whether a restart would help, and restarts
+the operation from the current position.
+### Prep task
+Prepares for planning. 
+
+Starts with a llGetStaticPath call to get an initial guess for a route.
+Some cleanup is done on that route, and it is passed to the Plan task.
 ### Plan task
-Where most of the work gets done. Planning starts with a llStaticPath call to get an initial guess at a route.
-The route is checked for obstacles, and the obstructed areas are sent to the maze solver, which
-attempts to find a way around the obstacle.
+Where most of the work gets done.
+
+The static route is checked for obstacles, and the obstructed areas are sent to the maze solver, which
+attempts to find a way around the obstacle. This process is incremental; as soon as a part of the route
+is available, it is passed forward to the Assemble task. As each maze solve finishes, the "advance"
+function is called to continue the planning. This allows NPC movement to often be nearly continuous
+even though the planning and maze solving take several seconds. 
 ### Maze solver task
+The plan task finds two points on the static path which bracket an obstacle. It is the
+job of the maze solver to find a usable path between those points. The maze solver lays
+out a grid with cells the size of the character width, usually 0.5m. The grid is not
+axis-aligned; it's aligned to the path between the endpoints. 
+
 This is a follow-the-wall type maze solver. It's moderately efficient, but not optimal.
-### Execute (assemble) task
+When it follows a wall, it does so in both directions simultaneously, and chooses the
+shortest path.
+
+The maze solver is 2D, but has some limited Z awareness to avoid problems when a path
+crosses under another path. A typical situation is a stairway which can be both walked
+up and walked under. 
+### Assemble task
 This puts together the path sections from the plan task and the maze solver task.
-It does some cleanup and optimization on the paths.
-### Scan (motion) task
+It does some cleanup and optimization on the paths. 
+### Move task
 Generates the keyframe movement commands to follow the path.
 Makes llCastRay calls to check for obstructions ahead, and detects collisions.
+Controls movement speed, slowing down for turns.
+Tracks the avatar being pursued during Pursue operations to see if a course
+change is needed.
+Also maintains a list of recent "good points" visited, so that if the NPC gets
+stuck, it can back up to a good point.
 
 ## Additional components
 ### Animesh AO
@@ -83,7 +113,7 @@ This file is included by the top level program to get access to the path plannin
 General purpose functions used by other programs. Included by most of the programs.
 ## Include file "mazesolvercall.lsl"
 Included by Plan task, and has the code for calling the maze solver.
-## Include file "pathscancall.lsl"
+## Include file "pathmovecall.lsl"
 Included by tasks that need to communicate with the Scan (motion) task.
 ## Include file "assert.lsl" 
 Assert and panic functions.
