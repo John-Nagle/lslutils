@@ -61,6 +61,7 @@
 #define PATHEXESTOPREQ      -2014               // behavior requested a stop
 #define PATHEXEWALKABLEFAIL -2015               // tried to recover from non-walkable area but failed
 #define PATHEXEWALKABLEFIXED -2016              // successful recovery from non-walkable area problem
+#define PATHEXEWALKABLETROUBLE -2017            // at non-walkable location, must try recovery
 
 //
 //  List of retryable errors.  For these, try again, if there was progress on the previous try.

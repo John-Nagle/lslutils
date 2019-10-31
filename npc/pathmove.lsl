@@ -85,7 +85,7 @@ pathmovedone(integer status, key hitobj)
     if (gPathMoveMoving && (status != 0))                       // if something bad happened
     {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on. This is the only KFM_CMD_STOP.
         pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);
-        integer newstatus = pathrecoverwalkable(FALSE);         // recover position if necessary
+        integer newstatus = pathcheckforwalkable();             // recover position if necessary
         if (newstatus != 0) { status = newstatus; }             // use walkable recovery status if walkable problem   
     } else {                                                    // normal move completion
         //  We should be at the KFM destination now.
@@ -95,7 +95,7 @@ pathmovedone(integer status, key hitobj)
             //  May need to take corrective action here. For now, just log.
         }
         //  Final check - are we some place we should't be. Fix it now, rather than getting stuck.
-        status = pathrecoverwalkable(FALSE);                    // if at non-walkable destination and can't recover
+        status = pathcheckforwalkable();                        // if at non-walkable destination and can't recover
     }
     //  Return "movedone" to exec module
     list params = ["reply", "movedone", "status", status, "pathid", gPathMoveId, "hitobj", hitobj];
@@ -129,9 +129,11 @@ integer pathcheckforwalkable()
     if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) >= 0)  
     {   return(0); }                                        // no problem   
     //  Trouble, there is no walkable here
+    pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)p);
     return(PATHEXEWALKABLEFAIL);                            // fail for now, may recover later
 }
 
+#ifdef OBSOLETE
 //
 //  pathrecoverwalkable  -- get back onto walkable surface if possible
 //
@@ -168,6 +170,7 @@ integer pathrecoverwalkable(integer recovering)
     pathMsg(PATH_MSG_ERROR,"Unable to recover from lack of walkable below " + (string)p + " by recovering to any of " + llDumpList2String(gPathMoveLastgoodpos,",")); 
     return(PATHEXEWALKABLEFAIL);
 }
+#endif // OBSOLETE
 
 
 //
@@ -362,15 +365,28 @@ pathmoverequest(string jsn)
         gPathMoveMoving = FALSE;                            // character is moving
     } else if (requesttype == "recover")                    // recover to known good position, requested by pathprep
     {   //  This is done in move because it's an in-world move, and we do all in-world moves here.
+        //  The actual work gets done in the recover task, but we make sure here that we are stopped.
         integer status = 0;
         if (gPathMoveActive || gPathMoveMoving)             // motion in progress, can't do a forced recovery
         {   status = MAZESTATUSBADRECOV;                    // internal error, should not have requested this
             pathMsg(PATH_MSG_ERROR,"Recover move requested while in motion"); 
         }     
         else 
+#ifdef OBSOLETE
         {   status = pathrecoverwalkable(TRUE);  }          // force to a walkable position
         integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
-        pathdonereply(status, NULL_KEY, pathid);            // end entire operation         
+        pathdonereply(status, NULL_KEY, pathid);            // end entire operation   
+#endif // OBSOLETE
+        {   
+            integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
+            //  Pass buck to recover task, which has enough empty space for the full obstacle test.
+            //  ***POTENTIAL RACE CONDITON*** user could request a new move while recovery is running.***
+            llMessageLinked(LINKMSGRECOVERREQUEST, LINK_THIS, 
+                llList2Json(JSON_OBJECT,["request","recover", "pathid", pathid, 
+                        "width", gPathMoveWidth, "height", gPathMoveHeight, "chartype",gPathMoveChartype, 
+                        "points", llList2Json(JSON_ARRAY,  gPathMoveLastgoodpos)]),"");
+            return;                                         // buck passed to recover task
+        }      
     } else {
         pathMsg(PATH_MSG_ERROR,"Bad msg: " + jsn);
     }

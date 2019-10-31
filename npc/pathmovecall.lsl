@@ -3,6 +3,7 @@
 //
 #define LINKMSGMOVEREQUEST  1010                            // message types
 #define LINKMSGMOVEREPLY    1011
+#define LINKMSGRECOVERREQUEST 1012                          // passed to pathrecover
 //
 //  Path move start -- sends link message to move task
 //
@@ -22,7 +23,7 @@
     llMessageLinked(LINK_THIS, LINKMSGMOVEREQUEST, \
     llList2Json(JSON_OBJECT,["request","stopmove"]),""); }  
 //
-//  Path move recover -- sends link message to recover to good position
+//  Path move recover -- sends link message to move task to recover to good position
 //
 #define pathmoverecover(pathid) \
     llMessageLinked(LINK_THIS, LINKMSGMOVEREQUEST, \
