@@ -155,11 +155,7 @@ integer pathrecoverwalkable(integer recovering)
     pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)p + ". Recovery points available: " + (string)i);
     while (i-- > 0)                                         // for newest (len-1) to oldest (0)
     {   vector recoverpos = llList2Vector(gPathMoveLastgoodpos,i);  // try to recover to here
-        //  ***Should this use a full obstacle test? Probably. Hate to pull in that code, for space reasons.***
-////#ifdef NOTYET // 
-        if (pathcheckcelloccupied(pos, recoverpos, gPathMoveWidth,gPathMoveHeight, gPathMoveChartype, TRUE, FALSE) < 0.0)
-////#endif // NOTYET 
-        ////if (obstacleraycastvert(recoverpos+fullheight,recoverpos-mazedepthmargin) >= 0) // recovery pos looks good
+        if (pathcheckcelloccupied(pos, recoverpos, gPathMoveWidth,gPathMoveHeight, gPathMoveChartype, TRUE, FALSE) >= 0.0)
         {   
             llSleep(0.5);                                   // allow time for stop to take effect
             llSetPos(recoverpos + fullheight*0.5);          // forced move to previous good position
@@ -320,7 +316,6 @@ pathmovetimer()
 //
 pathmoverequest(string jsn) 
 {   pathMsg(PATH_MSG_INFO,"Path move request: " + jsn);
-    llOwnerSay("Path move request: " + jsn);                // ***TEMP***
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type  
     if (requesttype == "startmove")                         // start moving
     {   //  Set up for ray casting.
