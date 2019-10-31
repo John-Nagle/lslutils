@@ -112,7 +112,7 @@ pathTick()
 //
 pathNavigateTo(vector endpos, float stopshort)
 {
-    pathstart(NULL_KEY, endpos, stopshort, FALSE);             // common for pathNavigateTo and pathPursue
+    pathbegin(NULL_KEY, endpos, stopshort, FALSE);             // common for pathNavigateTo and pathPursue
 }
 
 
@@ -130,7 +130,7 @@ pathNavigateTo(vector endpos, float stopshort)
 //
 pathPursue(key target, float stopshort, integer dogged)
 {
-    pathstart(target, ZERO_VECTOR, stopshort, dogged);          // start pursuit.
+    pathbegin(target, ZERO_VECTOR, stopshort, dogged);          // start pursuit.
 }
 //
 //  End of user API
@@ -173,11 +173,11 @@ pathplanstart(key target, vector goal, float width, float height, float stopshor
 //
 pathbegin(key target, vector endpos, float stopshort, integer dogged)
 {
-    gPathcallLastDistance = INFINITY;                               // must get shorter on each retry
-    pathstart(target, endpos, stopsthort, dogged);                  // do it
+    gPathcallLastDistance = INFINITY;                              // must get shorter on each retry
+    pathstart(target, endpos, stopshort, dogged);                  // do it
 }
 //
-//  pathstart -- go to indicated point or target. Internal fn. Used by start or restart
+//  pathstart -- go to indicated point or target. Internal fn. Used by begin or restart
 //
 //  Go to the indicated location, in the current region, avoiding obstacles.
 //
