@@ -165,7 +165,19 @@ pathplanstart(key target, vector goal, float width, float height, float stopshor
     llMessageLinked(LINK_THIS, PATHPLANREQUEST, params,"");   // send to planner  
 }
 //
-//  pathstart -- go to indicated point or target. Internal fn.
+//  pathbegin -- go to indicated point or target. Internal fn.
+//
+//  Go to the indicated location, in the current region, avoiding obstacles.
+//
+//  Stop short of the target by the distance stopshort. This can be zero. 
+//
+pathbegin(key target, vector endpos, float stopshort, integer dogged)
+{
+    gPathcallLastDistance = INFINITY;                               // must get shorter on each retry
+    pathstart(target, endpos, stopsthort, dogged);                  // do it
+}
+//
+//  pathstart -- go to indicated point or target. Internal fn. Used by start or restart
 //
 //  Go to the indicated location, in the current region, avoiding obstacles.
 //
@@ -198,8 +210,10 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
         return; 
     }
     endpos.z = newz;                                                // use ground level found by ray cast
+#ifdef OBSOLETE
     //  Get rough path to target for progress check
     gPathcallLastDistance = pathdistance(llGetPos(), endpos, gPathcallWidth, CHARACTER_TYPE_A);  // measure distance to goal
+#endif // OBSOLETE
     //  Generate path
     pathplanstart(target, endpos, gPathcallWidth, gPathcallHeight, stopshort, gPathcallChartype, TESTSPACING, gLocalPathId);
     gPathcallStarttime = llGetUnixTime();                               // timestamp we started

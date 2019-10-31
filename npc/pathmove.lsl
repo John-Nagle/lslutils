@@ -153,9 +153,10 @@ integer pathrecoverwalkable(integer recovering)
     //  Attempt recovery. Try to find a previous good location that's currently open and move there.
     integer i = llGetListLength(gPathMoveLastgoodpos);      // for stored good points, most recent first
     pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)p + ". Recovery points available: " + (string)i);
-    while (i-- > 0)                                         // for newest (len-1) to oldest (0)
+    while (i-- > 1)                                         // for newest (len-1) to oldest (0)
     {   vector recoverpos = llList2Vector(gPathMoveLastgoodpos,i);  // try to recover to here
-        if (pathcheckcelloccupied(pos, recoverpos, gPathMoveWidth,gPathMoveHeight, gPathMoveChartype, TRUE, FALSE) >= 0.0)
+        vector prevrecoverpos = llList2Vector(gPathMoveLastgoodpos,i-1);
+        if (pathcheckcelloccupied(prevrecoverpos, recoverpos, gPathMoveWidth,gPathMoveHeight, gPathMoveChartype, TRUE, FALSE) >= 0.0)
         {   
             llSleep(0.5);                                   // allow time for stop to take effect
             llSetPos(recoverpos + fullheight*0.5);          // forced move to previous good position

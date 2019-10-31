@@ -17,8 +17,7 @@
 float MINSEGMENTLENGTH = 0.025; /// 0.10;                   // minimum path segment length (m)
 
 #define PATHPLANMINMEM  3000                                // less than this, quit early and retry
-
-//
+list TRIALOFFSETS = [<-1,0,0>,<1,0,0>,<0,1,0>,<0,-1,0>]; // try coming from any of these directions for start point validation
 //  Globals
 //
 float gPathprepSpeed;
@@ -54,6 +53,9 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
 //
 default
 {
+    state_entry()
+    {   pathinitutils(); }                                              // library init
+
     //
     //  Incoming link message - will be a plan job request.
     //    
@@ -94,7 +96,6 @@ default
             jsonstr = "";                                               // Release string. We are that tight on space.
             //  Call the planner
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)gPathprepPathid + " prepping."); 
-            pathinitutils();                                            // initialize library
             //  Start a new planning cycle
             //  Quick sanity check - are we in a legit place?            
             vector pos = llGetPos();                                // we are here
@@ -105,8 +106,14 @@ default
             vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
             if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) < 0)  // use exactly the same test as in pathmove           
 #endif // OBSOLETE
-            vector refpos = pos - <gPathprepWidth,0,0>;             // dummy previous pos for obstacle test
-            if (pathcheckcelloccupied(refpos, pos, gPathprepWidth, gPathprepHeight, gPathprepChartype, TRUE, FALSE) < 0.0)
+            integer good = FALSE;                                   // not yet a good start point
+            for (i=0; i<llGetListLength(TRIALOFFSETS); i++)         // try coming from all around the start point
+            {   if (!good)
+                {   vector refpos = pos + llList2Vector(TRIALOFFSETS,i)*gPathprepWidth; // test at this offset
+                    good = pathcheckcelloccupied(refpos, pos, gPathprepWidth, gPathprepHeight, gPathprepChartype, TRUE, FALSE) >= 0.0;
+                }
+            }
+            if (!good)
             {   pathMsg(PATH_MSG_WARN, "Start location is not clear: " + (string)startpos);           // not good, but we can recover
                 //  Ask the move task to attempt recovery. This will move to a better place and return a status to the retry system.
                 pathmoverecover(gPathprepPathid);                       // attempts recovery and informs retry system   
