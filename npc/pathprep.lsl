@@ -99,18 +99,18 @@ default
             //  Start a new planning cycle
             //  Quick sanity check - are we in a legit place?            
             vector pos = llGetPos();                                // we are here
-#ifdef OBSOLETE
             vector fullheight = <0,0,gPathprepHeight>;              // add this for casts from middle of character
-            vector halfheight = fullheight*0.5;
+            vector halfheight = fullheight*0.5;   
             vector p = pos-halfheight;                              // position on ground
+#ifdef OBSOLETE
             vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
             if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) < 0)  // use exactly the same test as in pathmove           
 #endif // OBSOLETE
             integer good = FALSE;                                   // not yet a good start point
             for (i=0; i<llGetListLength(TRIALOFFSETS); i++)         // try coming from all around the start point
             {   if (!good)
-                {   vector refpos = pos + llList2Vector(TRIALOFFSETS,i)*gPathprepWidth; // test at this offset
-                    good = pathcheckcelloccupied(refpos, pos, gPathprepWidth, gPathprepHeight, gPathprepChartype, TRUE, FALSE) >= 0.0;
+                {   vector refpos = p + llList2Vector(TRIALOFFSETS,i)*gPathprepWidth; // test at this offset
+                    good = pathcheckcelloccupied(refpos, p, gPathprepWidth, gPathprepHeight, gPathprepChartype, TRUE, FALSE) >= 0.0;
                 }
             }
             if (!good)

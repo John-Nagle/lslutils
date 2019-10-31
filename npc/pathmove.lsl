@@ -381,10 +381,10 @@ pathmoverequest(string jsn)
             integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
             //  Pass buck to recover task, which has enough empty space for the full obstacle test.
             //  ***POTENTIAL RACE CONDITON*** user could request a new move while recovery is running.***
-            llMessageLinked(LINKMSGRECOVERREQUEST, LINK_THIS, 
-                llList2Json(JSON_OBJECT,["request","recover", "pathid", pathid, 
+            llMessageLinked(LINK_THIS, LINKMSGRECOVERREQUEST,
+                llList2Json(JSON_OBJECT,["request","recover", "pathid", pathid, "msglev", gPathMsgLevel,
                         "width", gPathMoveWidth, "height", gPathMoveHeight, "chartype",gPathMoveChartype, 
-                        "points", llList2Json(JSON_ARRAY,  gPathMoveLastgoodpos)]),"");
+                        "recoverpoints", llList2Json(JSON_ARRAY,  gPathMoveLastgoodpos)]),"");
             return;                                         // buck passed to recover task
         }      
     } else {
