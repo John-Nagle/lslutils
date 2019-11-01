@@ -283,7 +283,7 @@ pathexedomove()
         gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
         {   //  Start keyframe motion and obstacle detection.
             //  Offloads the space explosion of keyframe generation to another script with more free space.
-            pathmovestart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId, gPathMsgLevel);      
+            pathmovestart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeChartype, gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId, gPathMsgLevel);      
             ////llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion  
             gPathExeMovegoal = llList2Vector(gAllSegments,-1);  // where we are supposed to be going
             assert(gPathExeMovegoal != ZERO_VECTOR);        // must not be EOF marker         
@@ -411,6 +411,7 @@ pathexepathdeliver(string jsn)
     gPathExeMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
     gPathExeWidth = (float)llJsonGetValue(jsn,["width"]);
     gPathExeHeight = (float)llJsonGetValue(jsn,["height"]);
+    gPathExeChartype = (integer)llJsonGetValue(jsn,["chartype"]);
     gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) 

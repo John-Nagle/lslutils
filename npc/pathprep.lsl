@@ -116,7 +116,7 @@ default
             if (!good)
             {   pathMsg(PATH_MSG_WARN, "Start location is not clear: " + (string)startpos);           // not good, but we can recover
                 //  Ask the move task to attempt recovery. This will move to a better place and return a status to the retry system.
-                pathmoverecover(gPathprepPathid);                       // attempts recovery and informs retry system   
+                pathmoverecover(gPathprepPathid, gPathprepWidth, gPathprepHeight, gPathprepChartype); // attempts recovery and informs retry system   
                 return;
             }
             //  Use the system's GetStaticPath to get an initial path

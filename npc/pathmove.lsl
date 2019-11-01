@@ -44,6 +44,7 @@
 integer gPathMoveId = 0;                                    // current path ID
 integer gPathMoveActive = FALSE;                            // move system active
 integer gPathMoveMoving = FALSE;                            // character should be moving
+integer gPathMoveRecovering = FALSE;                        // recovery in progress, do not move
 integer gPathMoveTimetick = 0;                              // last time we tested for motion
 vector gPathMoveLastpos = ZERO_VECTOR;                      // last place we tested for motion
 vector gPathMoveLastdest = ZERO_VECTOR;                     // last destination of KFM string
@@ -113,7 +114,6 @@ pathmovemovementend()
     pathMsg(PATH_MSG_INFO,"Movement end");
     pathmovedone(0, "");                                        // normal event
 }
-
 //
 //  pathcheckforwalkable  -- is there a walkable below here?
 //
@@ -309,7 +309,7 @@ pathmovetimer()
 }
 
 //
-//  pathmoverequest  -- JSON from path execution
+//  pathmoverequestrcvd  -- JSON from path execution
 //
 //  We get a list of the points the character is currently following. 
 //  That tells us what direction to look for obstacles.
@@ -318,16 +318,20 @@ pathmovetimer()
 //  Send a "stopmove" when the entire path is finished or when not moving.
 //  This will result in a "stall" event being sent if something goes wrong.
 //
-pathmoverequest(string jsn) 
+pathmoverequestrcvd(string jsn) 
 {   pathMsg(PATH_MSG_INFO,"Path move request: " + jsn);
-    string requesttype = llJsonGetValue(jsn,["request"]);   // request type  
-    if (requesttype == "startmove")                         // start moving
-    {   //  Set up for ray casting.
+    string requesttype = llJsonGetValue(jsn,["request"]);   // request type 
+    if (requesttype == "startmove" || requesttype == "recover")
+    {   //  Get the common params
         gPathMoveId = (integer)llJsonGetValue(jsn, ["pathid"]);
         gPathMoveTarget = (key)llJsonGetValue(jsn, ["target"]); // who we are chasing, if anybody
         gPathMoveWidth = (float)llJsonGetValue(jsn,["width"]);
         gPathMoveHeight = (float)llJsonGetValue(jsn,["height"]);
+        gPathMoveChartype = (integer)llJsonGetValue(jsn,["chartype"]);
         gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
+    } 
+    if (requesttype == "startmove")                         // start moving
+    {   //  Set up for ray casting.
         gPathMoveMaxSpeed = (float)llJsonGetValue(jsn,["speed"]); 
         gPathMoveMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
 
@@ -346,6 +350,10 @@ pathmoverequest(string jsn)
             else
             {   gPathMoveTargetPos = llList2Vector(details,0);   }   // where target is
         }
+        if (gPathMoveActive || gPathMoveMoving || gPathMoveRecovering)
+        {   pathmovedone(PATHEXEREQOUTOFSYNC,NULL_KEY);     // request is out of sync; we are doing something else.
+            return;
+        }
         gPathMoveActive = TRUE;                             // move system is active
         gPathMoveMoving = TRUE;                             // character is moving
         gPathMoveTimetick = llGetUnixTime();                // reset stall timer
@@ -355,6 +363,7 @@ pathmoverequest(string jsn)
     } else if (requesttype == "stopmove")                   // stop moving
     {   
         if (!gPathMoveActive) { return; }                   // we are not running, ignore
+        assert(!gPathMoveRecovering);                       // should not be active and recovering at same time
         if (gPathMoveMoving)                                // if we were moving, this is a forced stop
         {   pathMsg(PATH_MSG_WARN,"Unexpected stop requested at " + (string)llGetPos());  // this should not normally happen
             pathmovedone(PATHEXESTOPREQ,NULL_KEY);          // stop motion
@@ -367,7 +376,7 @@ pathmoverequest(string jsn)
     {   //  This is done in move because it's an in-world move, and we do all in-world moves here.
         //  The actual work gets done in the recover task, but we make sure here that we are stopped.
         integer status = 0;
-        if (gPathMoveActive || gPathMoveMoving)             // motion in progress, can't do a forced recovery
+        if (gPathMoveActive || gPathMoveMoving || gPathMoveRecovering)   // motion in progress, can't do a forced recovery
         {   status = MAZESTATUSBADRECOV;                    // internal error, should not have requested this
             pathMsg(PATH_MSG_ERROR,"Recover move requested while in motion"); 
         }     
@@ -380,7 +389,6 @@ pathmoverequest(string jsn)
         {   
             integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
             //  Pass buck to recover task, which has enough empty space for the full obstacle test.
-            //  ***POTENTIAL RACE CONDITON*** user could request a new move while recovery is running.***
             llMessageLinked(LINK_THIS, LINKMSGRECOVERREQUEST,
                 llList2Json(JSON_OBJECT,["request","recover", "pathid", pathid, "msglev", gPathMsgLevel,
                         "width", gPathMoveWidth, "height", gPathMoveHeight, "chartype",gPathMoveChartype, 
@@ -391,7 +399,23 @@ pathmoverequest(string jsn)
         pathMsg(PATH_MSG_ERROR,"Bad msg: " + jsn);
     }
 }
-
+//
+//  pathrecoverreplyrcvd -- reply from recovery
+//
+pathrecoverreplyrcvd(string jsn, key hitobj)
+{
+    pathMsg(PATH_MSG_INFO,"Path recover reply: " + jsn);
+    string requesttype = llJsonGetValue(jsn,["reply"]);   // request type  
+    if (requesttype == "recover")                       // recovery complete
+    {  
+        integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
+        integer status = (integer)llJsonGetValue(jsn, ["status"]);
+        gPathMoveRecovering = FALSE;                    // no longer recovering
+        pathdonereply(status, hitobj, pathid);          // report move completion
+    } else {
+        pathMsg(PATH_MSG_ERROR,"Bad msg: " + jsn);
+    }
+}
 
 //
 //  pathexebuildkfm  -- build keyframe motion list from points
@@ -518,8 +542,10 @@ default
     {   llResetScript(); }
 
     link_message(integer status, integer num, string jsn, key id )
-    {   if (num == LINKMSGMOVEREQUEST)                           // maze solve result
-        {   pathmoverequest(jsn); }
+    {   if (num == LINKMSGMOVEREQUEST)                          // request to move
+        {   pathmoverequestrcvd(jsn); }
+        else if (num == LINKMSGRECOVERREPLY)                    // recovery complete or failed
+        {   pathrecoverreplyrcvd(jsn, id); }
     }
     
     timer()

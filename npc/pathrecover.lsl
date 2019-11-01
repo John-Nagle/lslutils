@@ -103,7 +103,8 @@ pathrecoverrequest(string jsn, key hitobj)
         for (i=0; i<llGetListLength(ptsstr); i++) { pts += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors
         jsn = "";                                       // release memory
         integer status = pathrecoverwalkable(pts);      // force to a walkable position
-        pathdonereply(status, hitobj, pathid);          // report move completion
+        pathrecoverreply(pathid, status, hitobj);
+        ////pathdonereply(status, hitobj, pathid);          // report move completion
     } else {
         pathMsg(PATH_MSG_ERROR,"Bad msg: " + jsn);
     }

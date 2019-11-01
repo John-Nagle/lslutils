@@ -231,11 +231,12 @@ integer pathretry(integer status, key hitobj)
     float shortstop = llList2Float(gPathcallLastParams, 2);
     integer dogged = llList2Integer(gPathcallLastParams,3);
     gPathcallLastParams = [];                                           // consume retry params to prevent loop
-    if (!dogged || status != PATHEXETARGETMOVED)                        // dogged pursue mode, keep trying even if not getting closer
-    {   
-        float dist = pathdistance(llGetPos(), endpos, gPathcallWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
-        if (dist < 0 || dist >= gPathcallLastDistance)                  // check for closer. negative means path distance failed. Avoids loop.
-        {   pathMsg(PATH_MSG_WARN, "No retry, did not get closer."); return(FALSE); }   // cannot retry
+    float dist = pathdistance(llGetPos(), endpos, gPathcallWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
+    if (dist < 0 || dist >= gPathcallLastDistance)                  // check for closer. negative means path distance failed. Avoids loop.
+    {   if (!dogged || status != PATHEXETARGETMOVED)                        // dogged pursue mode, keep trying even if not getting closer  
+        {   pathMsg(PATH_MSG_WARN, "No retry, did not get closer."); return(FALSE); }   // cannot retry  
+    } else {                                                            // if distance improved
+        gPathcallLastDistance = dist;                                   // update distance, which is now smaller
     }
     //  Must do a retry
     pathMsg(PATH_MSG_WARN, "Retrying...");                              // retry
