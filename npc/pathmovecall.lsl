@@ -26,14 +26,14 @@
 //
 //  Path move recover -- sends link message to move task to recover to good position
 //
-#define pathmoverecover(pathid, width, height, chartype) \
+#define pathmoverecover(pathid, width, height, chartype, msglev) { \
     llMessageLinked(LINK_THIS, LINKMSGMOVEREQUEST, \
-    llList2Json(JSON_OBJECT, ["request", "recover", "pathid", (pathid), "width", (width), "height", (height), "chartype", (chartype)]),"");
+    llList2Json(JSON_OBJECT, ["request", "recover", "pathid", (pathid), "width", (width), "height", (height), "chartype", (chartype), "msglev", (msglev)]),""); }
     
 //
 //  Messages to and from recover task
 //
 
-#define pathrecoverreply(pathid, status, hitobj) \
-    llMessageLinked(LINK_THIS, LINKMSGMOVEREQUEST, \
-    llList2Json(JSON_OBJECT, ["reply", "recover", "pathid", (pathid), "status",status]),hitobj);
+#define pathrecoverreply(pathid, status, hitobj) { \
+    llMessageLinked(LINK_THIS, LINKMSGRECOVERREPLY, \
+    llList2Json(JSON_OBJECT, ["reply", "recover", "pathid", (pathid), "status",status]),hitobj); }

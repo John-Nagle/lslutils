@@ -319,12 +319,11 @@ pathmovetimer()
 //  This will result in a "stall" event being sent if something goes wrong.
 //
 pathmoverequestrcvd(string jsn) 
-{   pathMsg(PATH_MSG_INFO,"Path move request: " + jsn);
+{   ////pathMsg(PATH_MSG_INFO,"Path move request: " + jsn);
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type 
+    pathMsg(PATH_MSG_WARN,"Path move request: " + jsn + " Request type: \"" + requesttype + "\""); // ***TEMP***
     if (requesttype == "startmove" || requesttype == "recover")
     {   //  Get the common params
-        gPathMoveId = (integer)llJsonGetValue(jsn, ["pathid"]);
-        gPathMoveTarget = (key)llJsonGetValue(jsn, ["target"]); // who we are chasing, if anybody
         gPathMoveWidth = (float)llJsonGetValue(jsn,["width"]);
         gPathMoveHeight = (float)llJsonGetValue(jsn,["height"]);
         gPathMoveChartype = (integer)llJsonGetValue(jsn,["chartype"]);
@@ -332,6 +331,8 @@ pathmoverequestrcvd(string jsn)
     } 
     if (requesttype == "startmove")                         // start moving
     {   //  Set up for ray casting.
+        gPathMoveId = (integer)llJsonGetValue(jsn, ["pathid"]);
+        gPathMoveTarget = (key)llJsonGetValue(jsn, ["target"]); // who we are chasing, if anybody
         gPathMoveMaxSpeed = (float)llJsonGetValue(jsn,["speed"]); 
         gPathMoveMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
 
@@ -375,28 +376,22 @@ pathmoverequestrcvd(string jsn)
     } else if (requesttype == "recover")                    // recover to known good position, requested by pathprep
     {   //  This is done in move because it's an in-world move, and we do all in-world moves here.
         //  The actual work gets done in the recover task, but we make sure here that we are stopped.
-        integer status = 0;
+        pathMsg(PATH_MSG_WARN,"Recover request: " + jsn);   // ***TEMP***
+        integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
         if (gPathMoveActive || gPathMoveMoving || gPathMoveRecovering)   // motion in progress, can't do a forced recovery
-        {   status = MAZESTATUSBADRECOV;                    // internal error, should not have requested this
-            pathMsg(PATH_MSG_ERROR,"Recover move requested while in motion"); 
+        {   pathMsg(PATH_MSG_ERROR,"Recover move requested while in motion"); // Doesn't really need to be a full error, just a werning.
+            pathdonereply(PATHEXEREQOUTOFSYNC, NULL_KEY, pathid);            // end entire operation  
         }     
         else 
-#ifdef OBSOLETE
-        {   status = pathrecoverwalkable(TRUE);  }          // force to a walkable position
-        integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
-        pathdonereply(status, NULL_KEY, pathid);            // end entire operation   
-#endif // OBSOLETE
-        {   
-            integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
+        {   gPathMoveRecovering = TRUE;                     // now in recovery mode, until other task replies.             
             //  Pass buck to recover task, which has enough empty space for the full obstacle test.
             llMessageLinked(LINK_THIS, LINKMSGRECOVERREQUEST,
                 llList2Json(JSON_OBJECT,["request","recover", "pathid", pathid, "msglev", gPathMsgLevel,
                         "width", gPathMoveWidth, "height", gPathMoveHeight, "chartype",gPathMoveChartype, 
                         "recoverpoints", llList2Json(JSON_ARRAY,  gPathMoveLastgoodpos)]),"");
-            return;                                         // buck passed to recover task
         }      
     } else {
-        pathMsg(PATH_MSG_ERROR,"Bad msg: " + jsn);
+        pathMsg(PATH_MSG_ERROR,"Bad request: " + jsn);
     }
 }
 //
@@ -404,7 +399,7 @@ pathmoverequestrcvd(string jsn)
 //
 pathrecoverreplyrcvd(string jsn, key hitobj)
 {
-    pathMsg(PATH_MSG_INFO,"Path recover reply: " + jsn);
+    pathMsg(PATH_MSG_WARN,"Path recover reply: " + jsn);
     string requesttype = llJsonGetValue(jsn,["reply"]);   // request type  
     if (requesttype == "recover")                       // recovery complete
     {  
@@ -413,7 +408,7 @@ pathrecoverreplyrcvd(string jsn, key hitobj)
         gPathMoveRecovering = FALSE;                    // no longer recovering
         pathdonereply(status, hitobj, pathid);          // report move completion
     } else {
-        pathMsg(PATH_MSG_ERROR,"Bad msg: " + jsn);
+        pathMsg(PATH_MSG_ERROR,"Bad reply: " + jsn);
     }
 }
 
