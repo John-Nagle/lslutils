@@ -126,7 +126,8 @@ integer pathplanadvance()
         } else {                                                // there is an obstruction
             assert(hitdist >= 0.0);                             // ***TEMP*** 
             assert(gDistalongseg >= 0);                         // ***TEMP***
-            float hitbackedup = hitdist-gWidth;                 // back up just enough to get clear
+            ////float hitbackedup = hitdist-gWidth;                 // back up just enough to get clear
+            float hitbackedup = hitdist-gWidth*0.5;             // back up just enough to get clear
             assert(hitbackedup <= fulllength);                  // must be within segment limits
             vector interpt0 = pos + dir*(hitbackedup);          // back away from obstacle.
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
