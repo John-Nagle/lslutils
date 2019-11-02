@@ -108,7 +108,8 @@ pathmovedone(integer status, key hitobj)
 //  pathmovemovementend -- movement has finished, feed in next section if any
 //
 pathmovemovementend()
-{   gPathMoveMoving = FALSE;                                    // not moving
+{   if (!gPathMoveMoving) { return; }                           // not moving, not our fault
+    gPathMoveMoving = FALSE;                                    // not moving
     gKfmSegments = [];                                          // no current segments
     gPathMoveLastpos = ZERO_VECTOR;                             // no last moving pos   
     pathMsg(PATH_MSG_INFO,"Movement end");

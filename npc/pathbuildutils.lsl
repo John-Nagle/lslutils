@@ -201,7 +201,6 @@ rotation NormRot(rotation Q)
 //
 #define RotFromXAxis(dv) llAxes2Rot(llVecNorm(dv),<0,0,1>%llVecNorm(dv),<0,0,1>)
 
-
 //
 //  pathdistalongseg -- distance along segment
 //  
@@ -863,6 +862,7 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
     //  Unreachable
     return([ZERO_VECTOR,-1]);                   // no way
 }
+#ifdef OBSOLETE
 //
 //  pathclean - remove very short segments from path. llGetStaticPath has a problem with this.
 //
@@ -882,6 +882,37 @@ list pathclean(list path)
         }
     }
     newpath += llList2Vector(path,-1);                      // always include final point
+    return(newpath);                                        // cleaned up path
+}
+#endif // OBSOLETE
+//
+//  pathclean - remove very short segments from path. llGetStaticPath has a problem with this.
+//
+list pathclean(list path)
+{   
+    integer len = llGetListLength(path);                    // number of points on path
+    if (len < 2)  { return([]); }                           // avoid single point problems
+    if (len < 3)  { return(path); }                         // too short to clean
+    vector prevpt = llList2Vector(path,0);                  // previous point
+    vector lastpt = llList2Vector(path,-1);                 // last point
+    if (llVecMag(prevpt-lastpt) < MINSEGMENTLENGTH)         // if too short for a valid move 
+    {   return([]); }
+    list newpath = [prevpt];                                // which is the first output point
+    integer i;
+    for (i=1; i<len; i++)                                   // for all points after first
+    {   vector pt = llList2Vector(path,i);                  // get next point
+        float dist = llVecMag(pt - prevpt);                 // segment length
+        if (dist > MINSEGMENTLENGTH)                        // if long enough to keep
+        {   newpath += pt;                                  // add new point
+            prevpt = pt;
+        }
+    }
+    //  If the last point got optimized out for being too close to
+    //  the previous point, replace it with the next to last point.
+    //  The first and last points must always be preserved.
+    if (llList2Vector(path,-1) != llList2Vector(newpath,-1))
+    {   newpath = llListReplaceList(newpath,[llList2Vector(path,-1)],-1,-1); }
+    if (llGetListLength(newpath) < 2) { return([]); }       // return empty for two identical points
     return(newpath);                                        // cleaned up path
 }
 //

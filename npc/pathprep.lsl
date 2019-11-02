@@ -131,8 +131,13 @@ default
                 return;
             }
             //  Got path. Do the path prep work.
-            pts = llList2List(pts,0,-2);                          // drop status from end of points list
+            pts = [startpos] + llList2List(pts,0,-2);                   // drop status from end of points list
             ////pathMsg(PATH_MSG_INFO,"Static planned");                // ***TEMP***
+            vector startposerr0 = llList2Vector(pts,0) - startpos;                  // should not change first point, except in Z
+            if (llVecMag(<startposerr0.x,startposerr0.y,0.0>) > 0.01)            // ***TEMP***
+            {   pathMsg(PATH_MSG_ERROR, "First point wrong 1, was: " + (string)llList2Vector(pts,0) + " should be " + (string)startpos); }
+
+            ////assert(llVecMag(llList2Vector(pts,0) - startpos) < 0.01); // first point of static path must always be where we are
             pts = pathclean(pts);                                 // remove dups and ultra short segments
             ////pathMsg(PATH_MSG_INFO,"Cleaned");                       // ***TEMP***
             pts = pathptstowalkable(pts, gPathHeight);                    // project points onto walkable surface
@@ -143,6 +148,10 @@ default
                 pathdeliversegment([], FALSE, TRUE, gPathprepPathid, MAZESTATUSNOPTS);        // empty set of points, no maze, done.
                 return;                                             // empty list
             }
+            vector startposerr = llList2Vector(pts,0) - startpos;                  // should not change first point, except in Z
+            if (llVecMag(<startposerr.x,startposerr.y,0.0>) > 0.01)            // ***TEMP***
+            {   pathMsg(PATH_MSG_ERROR, "First point wrong 2, was: " + (string)llList2Vector(pts,0) + " should be " + (string)startpos); }
+            ////assert(llVecMag(<startposerr.x,startposerr.y,0.0>) < 0.01);        // first point must always be where we are
             //  We have a valid static path. Send it to the main planner.
             pathMsg(PATH_MSG_INFO,"Path check for obstacles. Segments: " + (string)len); 
             llMessageLinked(LINK_THIS, PATHPLANPREPPED, llList2Json(JSON_OBJECT,

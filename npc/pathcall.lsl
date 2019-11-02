@@ -238,7 +238,7 @@ integer pathretry(integer status, key hitobj)
     }
     if (gPathcallLastDistance > dist) { gPathcallLastDistance = dist; } // use new value if smaller, so the initial value of infinity gets reduced
     //  Must do a retry
-    pathMsg(PATH_MSG_WARN, "Retrying...");                              // retry
+    pathMsg(PATH_MSG_WARN, "Distance " + (string)dist + "m. Retrying...");                              // retry
     pathstart(target, endpos, shortstop, dogged);                       // trying again
     return(TRUE);                                                       // doing retry, do not tell user we are done.
 }
