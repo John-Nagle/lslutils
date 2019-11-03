@@ -406,6 +406,7 @@ pathrecoverreplyrcvd(string jsn, key hitobj)
     {  
         integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
         integer status = (integer)llJsonGetValue(jsn, ["status"]);
+        gPathMoveLastgoodpos = llDeleteSubList(gPathMoveLastgoodpos,-1,-1); // consume recovery point just used
         gPathMoveRecovering = FALSE;                    // no longer recovering
         pathdonereply(status, hitobj, pathid);          // report move completion
     } else {

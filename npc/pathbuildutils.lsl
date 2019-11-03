@@ -908,10 +908,10 @@ list pathclean(list path)
         }
     }
     //  If the last point got optimized out for being too close to
-    //  the previous point, replace it with the next to last point.
+    //  the previous point, replace it with the last point.
     //  The first and last points must always be preserved.
-    if (llList2Vector(path,-1) != llList2Vector(newpath,-1))
-    {   newpath = llListReplaceList(newpath,[llList2Vector(path,-1)],-1,-1); }
+    if (lastpt != llList2Vector(newpath,-1))
+    {   newpath = llListReplaceList(newpath,[lastpt)],-1,-1); }
     if (llGetListLength(newpath) < 2) { return([]); }       // return empty for two identical points
     return(newpath);                                        // cleaned up path
 }
