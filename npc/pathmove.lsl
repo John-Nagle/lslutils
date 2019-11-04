@@ -482,7 +482,7 @@ list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
 //  Finally, the real movement gets done.
 //
 pathexedokfm()
-{   pathMsg(PATH_MSG_WARN,"Entering pathexddokfm. Segments:" + llDumpList2String(gKfmSegments,","));                // ***TEMP***
+{   ////pathMsg(PATH_MSG_WARN,"Entering pathexddokfm. Segments:" + llDumpList2String(gKfmSegments,","));                // ***TEMP***
     vector kfmstart = llList2Vector(gKfmSegments,0);    // first point, which is where we should be
     assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker  
     vector pos = llGetPos();                            // we are here
@@ -498,7 +498,7 @@ pathexedokfm()
     list kfmmoves = pathexebuildkfm(pos, llGetRot(), gKfmSegments);   // build list of commands to do
     if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
     {   llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion
-        pathMsg(PATH_MSG_WARN,"Starting motion, KFM commands: " + llDumpList2String(kfmmoves,","));   // ***TEMP***
+        ////pathMsg(PATH_MSG_WARN,"Starting motion, KFM commands: " + llDumpList2String(kfmmoves,","));   // ***TEMP***
         integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
         if (freemem < gPathMoveFreemem) 
         {   gPathMoveFreemem = freemem; 
