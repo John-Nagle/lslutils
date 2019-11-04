@@ -23,7 +23,7 @@
 //
 #define DEBUG_LOG_MAX 30                                    // max number of messages to keep
 #define DEBUG_MIN_MEM 8000                                  // truncate messages if less free mem than this
-#define DEBUG_SHORT_MSG 50                                  // truncate messages to this length if tight on mem
+#define DEBUG_SHORT_MSG 90                                  // truncate messages to this length before storage
 
 #define pathGetRoot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
 
@@ -84,11 +84,8 @@ buffermsg(string name, key id, integer msglev, string message)
 {   string rootname = llKey2Name(pathGetRoot(id));          // name of root object, not debug
     if (name != rootname)
     {   name = name + "," + rootname; }
-    if (pathneedmem(DEBUG_MIN_MEM))                         // if tight on memory
-    {
-        if (llStringLength(message) > DEBUG_SHORT_MSG)      // truncate long messages
-        {   message = llGetSubString(message,0,DEBUG_SHORT_MSG) + "..."; }
-    }
+    if (llStringLength(message) > DEBUG_SHORT_MSG)      // truncate long messages
+    {   message = llGetSubString(message,0,DEBUG_SHORT_MSG) + "..."; }
     string s = timestamp() + " (" + name + ") " + message;
     gMsgLog += [s];                                         // add to circular buffer
     //  Discard old messages if full or memory tight.
@@ -171,7 +168,6 @@ debugchanmsg(string name, key id, string message)
 {   if (pathGetRoot(id) != gRootkey) { return; }            // has to be from us
     seriouserrormsg(name,id,message);
 }
-
 
 //
 //  Serious error message
