@@ -37,6 +37,8 @@
 #define PATHMOVEMINTARGETMOVE   4.0                         // (m) target must move this much to be re-chased
 #define PATHMOVEMINTARGETFRACT  0.5                         // (fraction) target must move this much as fract of dist to go to be re-chased.
 #define PATHMAXSAVEDGOODPOS 10                              // (count) number of previous good positions to save
+#define PATHEXEMAXCREEP     0.10                            // (m) max positional error allowed after keyframe motion
+
 
 //
 //  Globals
@@ -352,7 +354,8 @@ pathmoverequestrcvd(string jsn)
             else
             {   gPathMoveTargetPos = llList2Vector(details,0);   }   // where target is
         }
-        if (gPathMoveActive || gPathMoveMoving || gPathMoveRecovering)
+        ////if (gPathMoveActive || gPathMoveMoving || gPathMoveRecovering)
+        if (gPathMoveMoving || gPathMoveRecovering)         // if actively doing something else
         {   pathmovedone(PATHEXEREQOUTOFSYNC,NULL_KEY);     // request is out of sync; we are doing something else.
             return;
         }
@@ -479,22 +482,23 @@ list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
 //  Finally, the real movement gets done.
 //
 pathexedokfm()
-{   
+{   pathMsg(PATH_MSG_WARN,"Entering pathexddokfm. Segments:" + llDumpList2String(gKfmSegments,","));                // ***TEMP***
     vector kfmstart = llList2Vector(gKfmSegments,0);    // first point, which is where we should be
     assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker  
     vector pos = llGetPos();                            // we are here
-#ifdef OBSOLETE       
+////#ifdef OBSOLETE       
     if (pathvecmagxy(kfmstart - pos) > PATHEXEMAXCREEP)     // we are out of position
-    {   pathMsg(PATH_MSG_WARN, "KFM out of position. At " + (string)pos + ". Should be at " + (string)kfmstart); // not serious, but happens occasionally
-            ////pathexestop(PATHEXEBADMOVEEND);                 // error, must start a new operation to recover
-            ////return; 
+    {   pathMsg(PATH_MSG_WARN, "KFM out of position at start. At " + (string)pos + ". Should be at " + (string)kfmstart); 
+        pathmovedone(PATHEXEBADMOVEEND, NULL_KEY);       // error, must start a new operation to recover
+        return; 
     }
     ////gKfmSegments = llListReplaceList(gKfmSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
-#endif // OBSOLETE
-    pathMsg(PATH_MSG_DEBUG,"Input to KFM: " + llDumpList2String(gKfmSegments,","));     // what to take in
+////#endif // OBSOLETE
+    pathMsg(PATH_MSG_WARN,"Input to KFM: " + llDumpList2String(gKfmSegments,","));     // what to take in
     list kfmmoves = pathexebuildkfm(pos, llGetRot(), gKfmSegments);   // build list of commands to do
     if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
-    {   llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion  
+    {   llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion
+        pathMsg(PATH_MSG_WARN,"Starting motion, KFM commands: " + llDumpList2String(kfmmoves,","));   // ***TEMP***
         integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
         if (freemem < gPathMoveFreemem) 
         {   gPathMoveFreemem = freemem; 

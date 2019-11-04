@@ -91,9 +91,11 @@ buffermsg(string name, key id, integer msglev, string message)
     }
     string s = timestamp() + " (" + name + ") " + message;
     gMsgLog += [s];                                         // add to circular buffer
-    if (llGetListLength(gMsgLog) > (DEBUG_LOG_MAX + 10))      // if becoming too long
-    {   gMsgLog = llList2List(gMsgLog,-DEBUG_LOG_MAX,-1); } // discard old msgs
+    //  Discard old messages if full or memory tight.
+    while ((pathneedmem(DEBUG_MIN_MEM) || (llGetListLength(gMsgLog) > DEBUG_LOG_MAX)) && (llGetListLength(gMsgLog) > 1))
+    {   gMsgLog = llDeleteSubList(gMsgLog,1,1); }           // if memory tight, drop more messages
 }
+
 
 //
 //  logdump  -- dump log to llOwnerSay

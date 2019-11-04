@@ -36,7 +36,7 @@
 
 //
 #define PATHMINTURNSECTION  0.5                             // first section of path this length, for a starting turn
-#define PATHEXEMAXCREEP     0.10                            // (m) max positional error allowed after keyframe motion
+////#define PATHEXEMAXCREEP     0.10                            // (m) max positional error allowed after keyframe motion
 
 //
 //  Globals
@@ -80,10 +80,6 @@ vector gPathExeMovegoal;                                    // where we are curr
 
 //  Remove first segment of list. llList2List has strange semantics for start > end, so we have to test.
 #define pathexedelseg(lst) { if (llList2Integer(lst,1) + 2 >= llGetListLength(lst)) { lst = []; } else { lst = llList2List(lst, llList2Integer(lst,1) + 2,-1); }}
-
-
-
-float pathvecmagxy(vector v) { return(llVecMag(<v.x, v.y, 0>));}            // vector magnitude, XY plane only
 
 
 //
@@ -275,11 +271,13 @@ pathexedomove()
         vector kfmstart = llList2Vector(gAllSegments,0);    // first point, which is where we should be
         assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker
         vector pos = llGetPos();                            // we are here
+#ifdef OBSOLETE
         if (pathvecmagxy(kfmstart - pos) > PATHEXEMAXCREEP)     // we are out of position
         {   pathMsg(PATH_MSG_WARN, "Out of position. At " + (string)pos + ". Should be at " + (string)kfmstart); // not serious, but happens occasionally
             ////pathexestop(PATHEXEBADMOVEEND);                 // error, must start a new operation to recover
             ////return; 
         }
+#endif // OBSOLETE
         gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
         {   //  Start keyframe motion and obstacle detection.
             //  Offloads the space explosion of keyframe generation to another script with more free space.
@@ -304,14 +302,14 @@ pathexemovementend()
 {   if (gPathExeMoving)                                     // if was moving (KFM operation in progress)
     {
         gPathExeMoving = FALSE;                             // not moving now
-////#ifdef OBSOLETE // no, don't check here. Can legitimately be out of position if a move was aborted.
+#ifdef OBSOLETE // no, don't check here. Can legitimately be out of position if a move was aborted.
         vector pos = llGetPos();
         if (pathvecmagxy(pos - gPathExeMovegoal) > PATHEXEMAXCREEP)     // if not where supposed to be
         {   pathMsg(PATH_MSG_WARN, "Out of position at movement end. At " + (string)pos + ". Should be at " + (string)gPathExeMovegoal); // Happens occasionally
             pathexestop(PATHEXEBADMOVEEND);                 // error, must start a new operation to re-plan and recover
             return; 
         }
-////#endif // OBSOLETE           
+#endif // OBSOLETE           
         pathMsg(PATH_MSG_INFO,"Movement end");
         pathexedomove();                                    // get next KFM section if any and keep going
     } else {                                                // movement end event but we were not moving

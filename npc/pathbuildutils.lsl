@@ -202,6 +202,11 @@ rotation NormRot(rotation Q)
 #define RotFromXAxis(dv) llAxes2Rot(llVecNorm(dv),<0,0,1>%llVecNorm(dv),<0,0,1>)
 
 //
+//  pathvecmagxy -- vector magnitude, XY plane only.
+//
+float pathvecmagxy(vector v) { return(llVecMag(<v.x, v.y, 0>));}            // vector magnitude, XY plane only
+
+//
 //  pathdistalongseg -- distance along segment
 //  
 //  Returns INFINITY if outside tolerance.
@@ -911,7 +916,7 @@ list pathclean(list path)
     //  the previous point, replace it with the last point.
     //  The first and last points must always be preserved.
     if (lastpt != llList2Vector(newpath,-1))
-    {   newpath = llListReplaceList(newpath,[lastpt)],-1,-1); }
+    {   newpath = llListReplaceList(newpath,[lastpt],-1,-1); }
     if (llGetListLength(newpath) < 2) { return([]); }       // return empty for two identical points
     return(newpath);                                        // cleaned up path
 }
