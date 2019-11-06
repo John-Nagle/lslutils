@@ -95,6 +95,28 @@ pathmazesolverdone(integer pathid, integer segmentid, integer status)
 //
 //  Returns TRUE if done.
 //
+//  The occupancy rules of path planning:
+//    
+//    - The starting point is assumed clear, even if it isn't.
+//      However we got there.
+//      
+//    - Path segments must pass the castbeam test to 
+//      one half width beyond the segment end point.
+//      This assures room for the character at the
+//      segment end point.
+//      
+//    - If the planner finds an obstacle, it backs up
+//      one width, but not further than the beginning
+//      of the segment or distance used along the segment.
+//      We know there was room there, because that was
+//      checked previously on the previous segment
+//      check.
+//      
+//    - The beginning and ending cells of a maze solve
+//      are assumed clear, because those are checked
+//      before calling the maze solver.
+//      
+//
 integer pathplanadvance()
 {   assert(gPts != []);                                         // must not call with no points                                                    
     integer doingmaze = FALSE;                                  // true if we started a maze solve
@@ -136,49 +158,7 @@ integer pathplanadvance()
             vector interpt0 = pos + dir*(hitbackedup);          // back away from obstacle.
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
                 " hit dist along segment: " + (string)(gDistalongseg+hitbackedup)); 
-            //  Constraints: Never back up past the beginning of a segment.
-            //               Never back up past gdistalongsgement.
-            //
             //  That's it. Now look for the other side of the obstacle.
-#ifdef OBSOLETE
-            if (gDistalongseg > hitbackedup)                    // if this would be a backwards move          
-            ////if (gDistalongseg + hitbackedup < 0)                // too close to beginning of current segment to back up
-            {
-                                                                // must search in previous segments
-                if (gCurrentix != 0 || (llVecMag(llList2Vector(gPts,0) - pos)) > (gWidth))  // if we are not very close to the starting point
-                { 
-                    // If we have to back up through a segment boundary, just give up and let the retry system handle it.
-                    gPts = [];                              // release memory
-                    if (llGetListLength(gPathPoints) < 2) { gPathPoints = []; } // avoid passing a one-point bogus segment forward
-                    pathdeliversegment(gPathPoints,FALSE, TRUE, gReqPathid, MAZESTATUSBACKWARDS); // points, no maze, done
-                    return(TRUE);
-                    
-                } else {                                   // we're at the segment start, and can't back up. Assume start of path is clear. We got there, after all.
-                    pathMsg(PATH_MSG_WARN,"Assuming start point of path is clear at " + (string)gP0);
-                    interpt0 = gP0;                             // zero length
-                }
-            }
-#endif // OBSOLETE
-#ifdef OBSOLETE
-            if (gDistalongseg + hitbackedup < 0)                // too close to beginning of current segment to back up
-            {
-                                                                // must search in previous segments
-                ////if ((llVecMag(llList2Vector(gPts,0) - interpt0)) > (width))  // if we are not very close to the starting point
-                if ((llVecMag(llList2Vector(gPts,0) - pos)) > (gWidth))  // if we are not very close to the starting point
-                { 
-                    // If we have to back up through a segment boundary, just give up and let the retry system handle it.
-                    gPts = [];                              // release memory
-                    pathdeliversegment(gPathPoints,FALSE, TRUE, gReqPathid, MAZESTATUSBADSTART); // points, no maze, done
-                    return(TRUE);
-                    
-                } else {                                   // we're at the segment start, and can't back up. Assume start of path is clear. We got there, after all.
-                    pathMsg(PATH_MSG_WARN,"Assuming start point of path is clear at " + (string)gP0);
-                    interpt0 = gP0;                             // zero length
-                }
-            }
-#endif // OBSOLETE
-
-            //  Search for the other side of the obstacle.                     
             list obsendinfo = pathfindclearspace(interpt0, gCurrentix, gWidth, gHeight, gChartype);    // find far side of obstacle
             if (llGetListLength(obsendinfo) < 2)
             {   pathMsg(PATH_MSG_WARN,"Cannot find far side of obstacle at " + (string)interpt0 + " on segment #" + (string)(gCurrentix-1));
