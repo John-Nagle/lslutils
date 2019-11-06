@@ -151,7 +151,7 @@ integer pathplanadvance()
             assert(gDistalongseg >= 0);                         // ***TEMP***
             float hitbackedup = hitdist-gWidth;                 // back up just enough to get clear
             ////float hitbackedup = hitdist-gWidth*0.5;             // back up just enough to get clear
-            if (hitbackedup > fulllength) { hitbackedup = fulllength; } // can potentially be off the end, so avoid that.
+            if (hitbackedup + gDistalongseg > fulllength) { hitbackedup = fulllength - gDistalongseg; } // can potentially be off the end, so avoid that.
             if (gDistalongseg > hitbackedup)                    // if this would be a backwards move too far
             {   hitbackedup = gDistalongseg; }                    // don't go back any further
             ////assert(hitbackedup <= fulllength);                  // must be within segment limits
