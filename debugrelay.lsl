@@ -23,7 +23,7 @@
 //
 #define DEBUG_LOG_MAX 30                                    // max number of messages to keep
 #define DEBUG_MIN_MEM 8000                                  // truncate messages if less free mem than this
-#define DEBUG_SHORT_MSG 90                                  // truncate messages to this length before storage
+#define DEBUG_SHORT_MSG 150                                 // truncate messages to this length before storage
 
 #define pathGetRoot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
 

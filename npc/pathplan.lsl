@@ -177,8 +177,18 @@ integer pathplanadvance()
             if (gPathPoints != [] && llVecMag(llList2Vector(gPathPoints,-1) - interpt0) >= 0.0001) // avoid zero length and divide by zero
             {
                 gPathPoints += [interpt0];                       // segment up to start of maze is non-null
-            }            
-            pathdeliversegment(gPathPoints, FALSE, FALSE, gReqPathid, 0);       // points so far, no maze, not done.
+            }
+            //  Cases here:
+            //  - Two or more points stored - good segments before maze.
+            //  - Zero points stored - do nothing. No segment to output.
+            //  - One point stored - it should be the same as interpt0
+            integer npts = llGetListLength(gPathPoints);
+            if (npts > 1)            
+            {   pathdeliversegment(gPathPoints, FALSE, FALSE, gReqPathid, 0);       // points so far, no maze, not done.
+            } else if (npts == 1)                               // maze started at starting point
+            {   // ***TEMP*** really
+                pathMsg(PATH_MSG_WARN, "One point segment ignored: " + (string)llList2Vector(gPathPoints,-1) + " Maze start: " + (string)interpt0);
+            }
             pathdeliversegment([interpt0, interpt1], TRUE, FALSE, gReqPathid, 0);// bounds of a maze area, maze, not done
             doingmaze = TRUE;                                   // maze solver is running, so quit here for now
             gPathPoints = [interpt1];                            // path clears and continues after maze
