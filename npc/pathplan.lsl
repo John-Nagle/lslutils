@@ -177,8 +177,8 @@ integer pathplanadvance()
             if (gPathPoints != [] && llVecMag(llList2Vector(gPathPoints,-1) - interpt0) >= 0.0001) // avoid zero length and divide by zero
             {
                 gPathPoints += [interpt0];                       // segment up to start of maze is non-null
-                pathdeliversegment(gPathPoints, FALSE, FALSE, gReqPathid, 0);       // points so far, no maze, not done.
-            }
+            }            
+            pathdeliversegment(gPathPoints, FALSE, FALSE, gReqPathid, 0);       // points so far, no maze, not done.
             pathdeliversegment([interpt0, interpt1], TRUE, FALSE, gReqPathid, 0);// bounds of a maze area, maze, not done
             doingmaze = TRUE;                                   // maze solver is running, so quit here for now
             gPathPoints = [interpt1];                            // path clears and continues after maze
