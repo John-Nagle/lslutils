@@ -104,6 +104,7 @@ integer pathplanadvance()
         vector dir = llVecNorm(gP1-gP0);                        // direction of segment
         vector pos = gP0 + dir*gDistalongseg;                   // current working position
         vector endcast = gP1 + dir * gWidth*0.5;                // check to far side of area to avoid missing partial obstacle at end
+        ////vector endcast = gP1;                                   // Don't search beyond p1; hits ground on downslopes
         float hitdist = castbeam(pos, endcast, gWidth, gHeight, gTestspacing, TRUE,
                 PATHCASTRAYOPTS);
         pathMsg(PATH_MSG_INFO,"Checked " + (string)pos + " to " + (string)endcast + " for obstacles. Hit dist: "+ (string)hitdist);
@@ -129,15 +130,17 @@ integer pathplanadvance()
             float hitbackedup = hitdist-gWidth;                 // back up just enough to get clear
             ////float hitbackedup = hitdist-gWidth*0.5;             // back up just enough to get clear
             if (hitbackedup > fulllength) { hitbackedup = fulllength; } // can potentially be off the end, so avoid that.
+            if (gDistalongseg > hitbackedup)                    // if this would be a backwards move too far
+            {   hitbackedup = gDistalongseg; }                    // don't go back any further
             ////assert(hitbackedup <= fulllength);                  // must be within segment limits
             vector interpt0 = pos + dir*(hitbackedup);          // back away from obstacle.
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
                 " hit dist along segment: " + (string)(gDistalongseg+hitbackedup)); 
-            //  ***THESE TESTS ARE WRONG WHEN TWO MAZE SOLVES IN A ROW HAPPEN***
-            //  ***MUST NEVER DECREASE gDistalongseg WITHIN A SEGMENT*******
             //  Constraints: Never back up past the beginning of a segment.
             //               Never back up past gdistalongsgement.
             //
+            //  That's it. Now look for the other side of the obstacle.
+#ifdef OBSOLETE
             if (gDistalongseg > hitbackedup)                    // if this would be a backwards move          
             ////if (gDistalongseg + hitbackedup < 0)                // too close to beginning of current segment to back up
             {
@@ -155,7 +158,7 @@ integer pathplanadvance()
                     interpt0 = gP0;                             // zero length
                 }
             }
-
+#endif // OBSOLETE
 #ifdef OBSOLETE
             if (gDistalongseg + hitbackedup < 0)                // too close to beginning of current segment to back up
             {

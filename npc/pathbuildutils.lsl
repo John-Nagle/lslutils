@@ -445,7 +445,8 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
     probespacing = (height-GROUNDCLEARANCE)/probecount;     // adjust to match height
     if (probespacing < 0.10) { return(-4); }                // Bad call
     vector dir = llVecNorm(p1-p0);                          // direction of raycast 
-    vector endoffsetdir = <0,1,0>*rotperpenonground(p0,p1);    // offset for horizontal part of scan
+    ////vector endoffsetdir = <0,1,0>*rotperpenonground(p0,p1);    // offset for horizontal part of scan
+    vector endoffsetdir = <0,0,1> % dir;                    // offset for horizontal part of scan. Cross product of dir and Z axis.
     ////DEBUGPRINT1("End offset dir: " + (string)endoffsetdir);  // ***TEMP***
     //  Always do 3 scans across width - left edge, middle, right edge.
     for (yoffset = -width * 0.5; yoffset <= width * 0.5 + 0.001; yoffset += (width*0.5))
