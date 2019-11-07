@@ -150,10 +150,11 @@ integer pathplanadvance()
             assert(hitdist >= 0.0);                             // ***TEMP*** 
             assert(gDistalongseg >= 0);                         // ***TEMP***
             float hitbackedup = hitdist-gWidth;                 // back up just enough to get clear
+            if (hitbackedup < 0.0) { hitbackedup = 0.0; }       // but don't back up through previous point, previously verified clear
             ////float hitbackedup = hitdist-gWidth*0.5;             // back up just enough to get clear
             if (hitbackedup + gDistalongseg > fulllength) { hitbackedup = fulllength - gDistalongseg; } // can potentially be off the end, so avoid that.
-            if (gDistalongseg > hitbackedup)                    // if this would be a backwards move too far
-            {   hitbackedup = gDistalongseg; }                    // don't go back any further
+            ////if (gDistalongseg > hitbackedup)                    // if this would be a backwards move too far ***WRONG***
+            ////{   hitbackedup = gDistalongseg; }                    // don't go back any further
             ////assert(hitbackedup <= fulllength);                  // must be within segment limits
             vector interpt0 = pos + dir*(hitbackedup);          // back away from obstacle.
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
