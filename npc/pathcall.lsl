@@ -234,7 +234,7 @@ integer pathretry(integer status, key hitobj)
     float dist = pathdistance(llGetPos(), endpos, gPathcallWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
     if (dist < 0 || dist >= gPathcallLastDistance)                      // check for closer. negative means path distance failed. Avoids loop.
     {   if (!dogged || status != PATHEXETARGETMOVED)                    // dogged pursue mode, keep trying even if not getting closer  
-        {   pathMsg(PATH_MSG_WARN, "No retry, did not get closer."); return(FALSE); }   // cannot retry  
+        {   pathMsg(PATH_MSG_WARN, "No retry, did not get closer. Distance " + (string)dist + "m."); return(FALSE); }   // cannot retry  
     }
     if (gPathcallLastDistance > dist) { gPathcallLastDistance = dist; } // use new value if smaller, so the initial value of infinity gets reduced
     //  Must do a retry
