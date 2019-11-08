@@ -39,7 +39,6 @@ list PATHCASTRAYOPTSOBS;                                    // filled in later b
 #endif // 
 
 //  Debug interface
-////#define pathMsg(level, msg) debugMsg((level),(msg)) 
 #define pathMsg debugMsg
 //
 //  Error levels
@@ -139,16 +138,13 @@ integer pathneedmem(integer minfree)
 //  Allow big error in Z direction, 2 meters, because we may be comparing avatar mid-position and a ground point
 //
 integer pathpointinsegment(vector p, vector p0, vector p1)
-////{   return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < 0.999); }
 {   if (!pathbetween(p.z, p0.z, p1.z, 2.0)) { return(FALSE); }    // way out of the Z range, more than any reasonable half-height
     p.z = 0.0; p0.z = 0.0; p1.z = 0.0;                  // ignore Z axis
     if (llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001) { return(TRUE); }  // close enough to endpoint to use, avoid divide by zero
     float enddot = (p-p0)*(p1-p0);                                      // dot product of p0->p and p0-p1
     float alldot = (p1-p0)*(p1-p0);                                     // dot with self
     if (enddot < 0 || enddot > alldot) { return(FALSE); }                // outside endpoints
-    ////if ((llVecNorm(p-p0) * llVecNorm(p-p1)) > 0) { return(FALSE); } // normals in same direction means outside endpoints
     return(distpointtoline(p,p0,p1) < PATHPOINTONSEGDIST);              // point must be near infinite line
-    ////return(llVecMag(p-p0) < 0.001 || llVecMag(p-p1) < 0.001 || ((llVecNorm(p-p0)) * llVecNorm(p-p1)) < -0.99); // opposed normals
 }
  
 //
@@ -311,13 +307,13 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
 //
 //  Looks straight down.
 //  Returns ZERO_VECTOR if fail.
-//  ***Other objects in the way are OK. But not implemented here. NEEDS WORK***
+//  Other objects in the way cause the value from the static path to be used.
 //
 float pathfindwalkable(vector startpos, float abovetol, float belowtol)
 {   //  Look downward twice the height, because of seat mispositioning issues
     pathinitutils();                                                    // set up some constants if necessary
     list castresult = castray(startpos+<0.0,0.0,abovetol>,startpos-<0.0,0.0,belowtol>,PATHCASTRAYOPTSOBS);                // cast downwards, must hit walkable
-    return(pathcastfoundproblem(castresult, TRUE, TRUE));           // if any non-walkable hits, -1, otherwise ground Z
+    return(pathcastfoundproblem(castresult, TRUE, FALSE));           // if any non-walkable hits, -1, otherwise ground Z
 }
 
 //
@@ -350,41 +346,10 @@ rotation rotperpenonground(vector p0, vector p1)
 {
     vector dv = p1-p0;                                      // direction for line
     vector dvflat = <dv.x, dv.y, 0>;
-    ////vector xvec = <1,0,0>;
-    ////rotation azimuthrot = RotBetween(xvec, dvflat);
     rotation azimuthrot = RotFromXAxis(dvflat);             // numerically sound
     rotation elevrot = RotBetween(dvflat, dv);              // elevation
     return(azimuthrot * elevrot);                           // apply in proper order
 }
-#ifdef OBSOLETE
-//
-//  mazecellto3d  -- convert maze cell to 3D coords
-//
-//  mazecellsize is the size of a cell in the XY plane, not the 3D plane
-//  mazepos is the position of cell (0,0);
-//  mazerot is the rotation of the maze plane.
-//
-//  Used in multiple scripts.
-//
-vector mazecellto3d(integer x, integer y, float mazecellsize, vector mazepos, rotation mazerot)
-{
-    if (x == 0 && y == 0) { return(mazepos); }      // avoid divide by zero
-    vector vflat = <x*mazecellsize,y*mazecellsize,0.0>;   // vector to cell in XY plane
-    //  Calc X and Y in 2D space.
-    vector azimuthvec = <1,0,0>*mazerot;           // rotation 
-    azimuthvec = llVecNorm(<azimuthvec.x, azimuthvec.y,0.0>);   
-    rotation azimuthrot = NormRot(llRotBetween(<1,0,0>,azimuthvec));
-    vector p = vflat*azimuthrot;             // vector in XY plane
-    //  Vflatrot has correct X and Y. Now we need Z.
-    vector planenormal = <0,0,1>*mazerot;          // normal to rotated plane. Plane is through origin here.
-    //  Distance from point to plane is p*planenormal.  We want that to be zero.
-    //  We want p.z such that p*planenormal = 0;
-    //  want p.x*planenormal.x + p.y * planenormal.y + p.z * planenormal.z = 0
-    p.z = - (p.x*planenormal.x + p.y * planenormal.y)/planenormal.z;    // planenormal.z cannot be zero unless tilted plane is vertical
-    DEBUGPRINT1("mazecellto3d: x: " + (string)x + " y: " + (string)y + " p: " + (string)p + " p+mazepos: " + (string)(p+mazepos));
-    return(p + mazepos);
-}
-#endif // OBSOLETE
 //
 //  mazecellto3d  -- convert maze cell to 3D coords
 //
@@ -445,7 +410,6 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
     probespacing = (height-GROUNDCLEARANCE)/probecount;     // adjust to match height
     if (probespacing < 0.10) { return(-4); }                // Bad call
     vector dir = llVecNorm(p1-p0);                          // direction of raycast 
-    ////vector endoffsetdir = <0,1,0>*rotperpenonground(p0,p1);    // offset for horizontal part of scan
     vector endoffsetdir = <0,0,1> % dir;                    // offset for horizontal part of scan. Cross product of dir and Z axis.
     ////DEBUGPRINT1("End offset dir: " + (string)endoffsetdir);  // ***TEMP***
     //  Always do 3 scans across width - left edge, middle, right edge.
@@ -691,6 +655,8 @@ float pathcastfoundproblem(list castresult, integer needwalkable, integer ignore
 //
 //  pathanalyzecastresult  -- analyze the result of a cast ray probe
 //
+//  Uses short form cast results.
+//
 //  Returns: 
 //  []              No problem
 //  [KEY,VECTOR]    Hit obstacle
@@ -868,29 +834,6 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
     //  Unreachable
     return([ZERO_VECTOR,-1]);                   // no way
 }
-#ifdef OBSOLETE
-//
-//  pathclean - remove very short segments from path. llGetStaticPath has a problem with this.
-//
-list pathclean(list path)
-{   
-    integer len = llGetListLength(path);                    // number of points on path
-    if (len == 0)  { return([]); }                          // empty list
-    vector prevpt = llList2Vector(path,0);                  // previous point
-    list newpath = [];                                      // which is the first output point
-    integer i;
-    for (i=1; i<len; i++)                                   // for all points after first
-    {   vector pt = llList2Vector(path,i);                  // get next point
-        float dist = llVecMag(pt - prevpt);                 // segment length
-        if (dist > MINSEGMENTLENGTH)                        // if long enough to keep
-        {   newpath += prevpt;
-            prevpt = pt;
-        }
-    }
-    newpath += llList2Vector(path,-1);                      // always include final point
-    return(newpath);                                        // cleaned up path
-}
-#endif // OBSOLETE
 //
 //  pathclean - remove very short segments from path. llGetStaticPath has a problem with this.
 //
