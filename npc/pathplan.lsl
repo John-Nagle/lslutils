@@ -311,7 +311,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
         //  Start the maze solver
         integer status = mazesolverstart(bp0, bp1, gWidth, gHeight, gChartype, gWidth, gPathLastObstacle, gPathId, gSegmentId, gPathMsgLevel); 
         if (status) 
-        {   pathMsg(PATH_MSG_ERROR,"Unable to start maze solver. Status: " + (string)status); 
+        {   pathMsg(PATH_MSG_WARN,"Unable to start maze solver. Status: " + (string)status); 
             //  Create a dummy maze solve result and send it to path execution just to transmit the status.
             llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT,
             ["reply", "mazesolve", "pathid", pathid, "segmentid", gSegmentId, "status", status, 

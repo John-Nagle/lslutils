@@ -79,12 +79,6 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
     //  This used to happen sometime, due to problems with llRotBetween.
     assert(llVecMag(p0chk-p0) < 0.001);
     assert(llVecMag(p1chk-p1) < 0.001);
-#ifdef OBSOLETE // Now a hard assert fail, since it's fixed.
-    if ((llVecMag(p0chk-p0) > 0.001) || (llVecMag(p1chk-p1) > 0.001))        
-    {   pathMsg(PATH_MSG_ERROR,"Maze geometry incorrect. p0: " + (string)p0 + " differs from p0chk: " + (string)p0chk + " or p1 : " 
-        + (string)p1 + " differs from p1chk: " + (string) p1chk);
-    }
-#endif // OBSOLETE
 #endif // GEOMCHECK
     pathMsg(PATH_MSG_INFO, "Sending job to maze solver, pathid: " + (string)pathid + " segmentid: " + (string)segmentid);
     llMessageLinked(LINK_THIS, MAZESOLVEREQUEST, llList2Json(JSON_OBJECT, [
