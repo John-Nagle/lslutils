@@ -33,11 +33,8 @@
 //
 //  Constants
 //
-
-//
 #define PATHMINTURNSECTION  0.5                             // first section of path this length, for a starting turn
-////#define PATHEXEMAXCREEP     0.10                            // (m) max positional error allowed after keyframe motion
-
+#define PATHMAXKFMPOINTS    5 /// ***TEST ONLY***20                              // no more points than this per move to avoid overloading move task
 //
 //  Globals
 //                                
@@ -70,7 +67,8 @@ list gClearSegments = [];                                   // path segment list
 list gMazeSegments = [];                                    // maze segment list
 
 list gAllSegments = [];                                     // combined segments from above, points only
-vector gPathExeMovegoal;                                    // where we are currently headed
+list gRemainingSegments = [];                               // still need to be sent to move
+////vector gPathExeMovegoal;                                    // where we are currently headed
 
 
 //  Segment storage functions. If only we could pass references.
@@ -121,7 +119,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
         gPathExeActive = TRUE;                              // we are running
         gPathExePendingStatus = 0;                          // no stored status yet
         gPathLastObstacle = NULL_KEY;                       // no last obstacle yet
-        gPathExeMovegoal = ZERO_VECTOR;                     // no stored goal yet
+        ////gPathExeMovegoal = ZERO_VECTOR;                     // no stored goal yet
         if (segmentid == 0 && llList2Vector(pts,0) == ZERO_VECTOR)  // if this is an error situation at start
         {   pathMsg(PATH_MSG_WARN, "Path error at start: " + (string)status); 
             pathexestop(status);                            // and we fail out.
@@ -262,34 +260,53 @@ pathexedomove()
 {   if (gPathExeMoving) { return; }                     // we are moving, do nothing
     if (!gPathExeActive) { return; }                    // system is idle, do nothing
     pathexeassemblesegs();                              // have work to do?
-    if (llGetListLength(gAllSegments) == 1 && llList2Vector(gAllSegments,0) == ZERO_VECTOR) // if EOF signal
+#ifdef OBSOLETE
+    if (llGetListLength(gAllSegments) == 1 && llList2Vector(gAllSegments,0) == ZERO_VECTOR && gRemainingSegments != []) // if EOF signal
     {   pathMsg(PATH_MSG_WARN,"Execute done. Lowest free mem: " + (string)gPathExeFreemem); 
         pathexestop(0);                                 // all done, normal stop
+        return
     }
-    else if (gAllSegments != [])                             // if work
-    {   
-        vector kfmstart = llList2Vector(gAllSegments,0);    // first point, which is where we should be
-        assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker
-        vector pos = llGetPos();                            // we are here
-#ifdef OBSOLETE
-        if (pathvecmagxy(kfmstart - pos) > PATHEXEMAXCREEP)     // we are out of position
-        {   pathMsg(PATH_MSG_WARN, "Out of position. At " + (string)pos + ". Should be at " + (string)kfmstart); // not serious, but happens occasionally
-            ////pathexestop(PATHEXEBADMOVEEND);                 // error, must start a new operation to recover
-            ////return; 
-        }
 #endif // OBSOLETE
-        gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
-        {   //  Start keyframe motion and obstacle detection.
-            //  Offloads the space explosion of keyframe generation to another script with more free space.
-            pathmovestart(gAllSegments, gPathExeWidth, gPathExeHeight, gPathExeChartype, gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId, gPathMsgLevel);      
-            ////llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion  
-            gPathExeMovegoal = llList2Vector(gAllSegments,-1);  // where we are supposed to be going
-            assert(gPathExeMovegoal != ZERO_VECTOR);        // must not be EOF marker         
-            gPathExeMoving = TRUE;                          // movement in progress
-            integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
-            if (freemem < gPathExeFreemem) { gPathExeFreemem = freemem; }   // record free memory
+    if (gRemainingSegments == [])                       // if none remain undone 
+    {   if (llGetListLength(gAllSegments) == 1 && llList2Vector(gAllSegments,0) == ZERO_VECTOR) // if the EOF signal
+        {   
+            pathMsg(PATH_MSG_WARN,"Execute done. Lowest free mem: " + (string)gPathExeFreemem);
+            gAllSegments = [];                              // all done 
+            pathexestop(0);                                 // all done, normal stop
+            return;
+        } else {
+           gRemainingSegments = gAllSegments;               // all segments become remaining segments
+           gAllSegments = [];                               // not at EOF yet.
         }
-        gAllSegments = [];                              // segments have been consumed
+    }
+    if (gRemainingSegments != [])                       // if work
+    {   
+        ////vector kfmstart = llList2Vector(gAllSegments,0);    // first point, which is where we should be
+        ////assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker
+        ////gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
+        //  Start keyframe motion and obstacle detection.
+        //  Offloads the space explosion of keyframe generation to another script with more free space.
+        {   list segstodo = [];                             // do these now
+            if (llGetListLength(gRemainingSegments) > PATHMAXKFMPOINTS)                     // if too many to do all at once
+            {   segstodo = llList2List(gRemainingSegments, 0, PATHMAXKFMPOINTS-1);          // do these now
+                gRemainingSegments = llList2List(gRemainingSegments, PATHMAXKFMPOINTS-1,-1);// do these later. Overlap so obstacle scan works.
+                pathMsg(PATH_MSG_WARN, "Too many points to move all at once, splitting list.");
+            } else {                                                                // not too many
+                segstodo = gRemainingSegments;                                            // do them all now
+                gRemainingSegments = [];                        // fully consumed
+            }
+            vector pos = llGetPos();                            // we are here
+            segstodo = llListReplaceList(segstodo,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
+            assert(llGetListLength(segstodo) >= 2);     // must always have at least two points
+            pathmovestart(segstodo, gPathExeWidth, gPathExeHeight, gPathExeChartype, 
+                gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId, gPathMsgLevel); 
+        }     
+        ////gPathExeMovegoal = llList2Vector(gAllSegments,-1);  // where we are supposed to be going
+        ////assert(gPathExeMovegoal != ZERO_VECTOR);        // must not be EOF marker         
+        gPathExeMoving = TRUE;                          // movement in progress
+        integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
+        if (freemem < gPathExeFreemem) { gPathExeFreemem = freemem; }   // record free memory
+        ////gAllSegments = [];                              // segments have been consumed
     } else {
         pathMsg(PATH_MSG_WARN,"Waiting for maze solver/planner to deliver pathid: " + (string)gPathExeId + " segid: " + (string)gPathExeNextsegid);    // solver running behind action
     }
@@ -302,14 +319,6 @@ pathexemovementend()
 {   if (gPathExeMoving)                                     // if was moving (KFM operation in progress)
     {
         gPathExeMoving = FALSE;                             // not moving now
-#ifdef OBSOLETE // no, don't check here. Can legitimately be out of position if a move was aborted.
-        vector pos = llGetPos();
-        if (pathvecmagxy(pos - gPathExeMovegoal) > PATHEXEMAXCREEP)     // if not where supposed to be
-        {   pathMsg(PATH_MSG_WARN, "Out of position at movement end. At " + (string)pos + ". Should be at " + (string)gPathExeMovegoal); // Happens occasionally
-            pathexestop(PATHEXEBADMOVEEND);                 // error, must start a new operation to re-plan and recover
-            return; 
-        }
-#endif // OBSOLETE           
         pathMsg(PATH_MSG_INFO,"Movement end");
         pathexedomove();                                    // get next KFM section if any and keep going
     } else {                                                // movement end event but we were not moving
@@ -327,6 +336,7 @@ pathexestopkey(integer status, key hitobj)
     gClearSegments = [];                                    // reset state
     gMazeSegments = [];
     gAllSegments = [];
+    gRemainingSegments = [];
     gPathExeNextsegid = 0; 
     gPathExeMoving = FALSE;                                 // not moving
     if (gPathExeActive)                                     // if we are active
