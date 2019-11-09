@@ -231,7 +231,8 @@ pathexeassemblesegs()
             vector firstpt = llList2Vector(nextseg,0);
             vector errvec = lastpt-firstpt;
             //  Points are supposed to match. Unclear why they sometimes do not.
-            if (llVecMag(errvec) > 0.50 || llVecMag(<errvec.x,errvec.y,0.0>) > 0.05)
+            //  Z after a maze solve may not quite match that of the path going in. Tolerance is half a height in mazesolve.
+            if (llFabs(errvec.z) > gPathExeHeight*0.5 || llVecMag(<errvec.x,errvec.y,0.0>) > 0.05)
             {   ////pathMsg(PATH_MSG_ERROR, "Path assemble - endpoints do not match: " + (string)lastpt + (string)firstpt +
                 ////" pathid: " + (string)gPathExeId + " segid: " + (string)gPathExeNextsegid);
                 string s = "Path assemble - endpoints do not match: " + (string)lastpt + (string)firstpt + // ***TEMP***
