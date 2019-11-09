@@ -34,7 +34,7 @@
 //  Constants
 //
 #define PATHMINTURNSECTION  0.5                             // first section of path this length, for a starting turn
-#define PATHMAXKFMPOINTS    5 /// ***TEST ONLY***20                              // no more points than this per move to avoid overloading move task
+#define PATHMAXKFMPOINTS    20                              // no more points than this per move to avoid overloading move task
 //
 //  Globals
 //                                
@@ -260,13 +260,6 @@ pathexedomove()
 {   if (gPathExeMoving) { return; }                     // we are moving, do nothing
     if (!gPathExeActive) { return; }                    // system is idle, do nothing
     pathexeassemblesegs();                              // have work to do?
-#ifdef OBSOLETE
-    if (llGetListLength(gAllSegments) == 1 && llList2Vector(gAllSegments,0) == ZERO_VECTOR && gRemainingSegments != []) // if EOF signal
-    {   pathMsg(PATH_MSG_WARN,"Execute done. Lowest free mem: " + (string)gPathExeFreemem); 
-        pathexestop(0);                                 // all done, normal stop
-        return
-    }
-#endif // OBSOLETE
     if (gRemainingSegments == [])                       // if none remain undone 
     {   if (llGetListLength(gAllSegments) == 1 && llList2Vector(gAllSegments,0) == ZERO_VECTOR) // if the EOF signal
         {   
