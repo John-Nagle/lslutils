@@ -33,7 +33,7 @@ float TESTSPACING = 0.33;                   // (fract) Multiply height and width
 integer CHARTYPE = CHARACTER_TYPE_A;                        // humanoid
 
 #define CHARACTER_WIDTH  0.5
-#define CHARACTER_HEIGHT  2.2
+#define CHARACTER_HEIGHT  (gScale.z)        // use Z height as character height
 #ifndef CHARACTER_SPEED                     // overrideable
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
 #endif // CHARACTER_SPEED
@@ -61,11 +61,6 @@ integer PATH_STALL_TIME = 300;              // path stall time
 integer gAction = ACTION_IDLE;
 string gAnim;                   // current animation                       
 key gTarget = NULL_KEY;         // current avatar to pursue
-#ifdef OBSOLETE
-list gGreetedTargets = [];      // we have said hello
-list gDeferredTargets = [];     // trouble with these, wait and retry
-list gDeferredPositions = [];   // don't retry until target moves
-#endif // OBSOLETE
 integer gListenChannel;         // for detecting chat
 vector gScale;                  // scale of character
 key gOwner;                     // owner of character
@@ -287,12 +282,12 @@ restart_patrol()
 //
 //  startup - initialization
 startup()
-{   
+{   gScale = llGetScale();                  // scale of animesh
+    llOwnerSay("Character height: " + (string)CHARACTER_HEIGHT);    // ***TEMP***
     pathInit(CHARACTER_WIDTH, CHARACTER_HEIGHT, CHARACTER_TYPE_A, VERBOSITY);   // set up pathfinding system
     pathSpeed(CHARACTER_SPEED, CHARACTER_TURNSPEED_DEG*DEG_TO_RAD); // how fast to go
     gAction = ACTION_IDLE;
     gAnim = "";
-    gScale = llGetScale();                  // scale of animesh
     gOwner = llGetOwner();                  // owner of animesh
     list groupdetails = llGetObjectDetails(llGetKey(), [OBJECT_GROUP]); // my group
     gGroup = llList2Key(groupdetails,0);    // group of animesh
