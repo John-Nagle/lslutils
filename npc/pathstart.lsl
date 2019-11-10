@@ -32,6 +32,7 @@ integer gPathcallReset = FALSE;                                 // have we reset
 integer gPathcallStarttime = 0;                                 // time last command started
 
 integer gLocalPathId = 0;                                       // current path serial number
+integer gLocalRequestId = 0;                                    // current request from user serial number
 
 key gOwner;                                                     // our ownership, for land perm checks
 key gGroup;
@@ -176,10 +177,11 @@ pathprepstart(key target, vector goal, float width, float height, float stopshor
 //
 //  Stop short of the target by the distance stopshort. This can be zero. 
 //
-pathbegin(key target, vector endpos, float stopshort, integer dogged, integer pathid)
+pathbegin(key target, vector endpos, float stopshort, integer dogged, integer requestid)
 {
     gPathcallLastDistance = INFINITY;                               // must get shorter on each retry
-    pathstart(target, endpos, stopshort, dogged, pathid);           // do it
+    gLocalRequestId = requestid;                                    // save request ID for callbacks
+    pathstart(target, endpos, stopshort, dogged);                   // do it
 }
 //
 //
@@ -193,10 +195,10 @@ pathbegin(key target, vector endpos, float stopshort, integer dogged, integer pa
 //
 //  Stop short of the target by the distance stopshort. This can be zero. 
 //
-pathstart(key target, vector endpos, float stopshort, integer dogged, integer pathid)
+pathstart(key target, vector endpos, float stopshort, integer dogged)
 {   assert(gPathWidth > 0);                                         // we must be initialized
     gPathcallLastParams = [];                                       // no params for retry stored yet.
-    gLocalPathId = pathid;                                          // our serial number, nonnegative
+    gLocalPathId = (gLocalPathId+1)%(PATHMAXUNSIGNED-1);// our serial number, nonnegative
     if (target != NULL_KEY)                                         // if chasing a target
     {   list details = llGetObjectDetails(target, [OBJECT_POS]);    // get object position
         if (details == [])                                          // target has disappeared
@@ -246,7 +248,7 @@ integer pathretry(integer status, key hitobj)
     if (gPathcallLastDistance > dist) { gPathcallLastDistance = dist; } // use new value if smaller, so the initial value of infinity gets reduced
     //  Must do a retry
     pathMsg(PATH_MSG_WARN, "Distance " + (string)dist + "m. Retrying...");                              // retry
-    pathstart(target, endpos, shortstop, dogged, gLocalPathId);         // trying again
+    pathstart(target, endpos, shortstop, dogged);                       // trying again
     return(TRUE);                                                       // doing retry, do not tell user we are done.
 }
 #ifdef OBSOLETE // in pathcall only
@@ -410,7 +412,7 @@ integer clear_sightline(key id, vector lookatpos)
 //
 pathUpdateCallback(integer status, key hitobj)
 {   
-    llMessageLinked(LINK_THIS,PATHSTARTREPLY, llList2Json(JSON_OBJECT,["pathid", gLocalPathId, "status",status,"hitobj",hitobj]),""); 
+    llMessageLinked(LINK_THIS,PATHSTARTREPLY, llList2Json(JSON_OBJECT,["requestid", gLocalRequestId, "status",status,"hitobj",hitobj]),""); 
 }
 //
 //  Main program
@@ -430,17 +432,17 @@ default
     link_message(integer status, integer num, string jsn, key id)
     {   if (num == PATHSTARTREQUEST)                                     // if request for a planning job
         {   pathMsg(PATH_MSG_INFO,"Path request: " + jsn);
-            integer pathid = (integer)llJsonGetValue(jsn,["pathid"]); // caller controls the path serial number
-            string request = llJsonGetValue(jsn,["request"]);       // get request type
+            integer requestid = (integer)llJsonGetValue(jsn,["requestid"]); // caller controls the path serial number
+            string request = llJsonGetValue(jsn,["request"]);           // get request type
             if (request == "pathbegin")                                 // common start function
             {   vector goal = (vector)llJsonGetValue(jsn,["goal"]);     // get goal point
                 key target = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
                 float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
                 float testspacing = (float)llJsonGetValue(jsn,["testspacing"]);
                 integer dogged = (integer)llJsonGetValue(jsn,["dogged"]);
-                pathbegin(target, goal, stopshort,  dogged, pathid);    // start movement
+                pathbegin(target, goal, stopshort,  dogged, requestid);    // start movement
             } else if (request == "pathstop")
-            {   pathbegin(NULL_KEY,llGetPos(),100.0, FALSE, pathid);    // a stop is a dummy move to self
+            {   pathbegin(NULL_KEY,llGetPos(),100.0, FALSE, requestid);    // a stop is a dummy move to self
             } else if (request == "pathspeed")
             {   gPathcallSpeed = (float)llJsonGetValue(jsn,["speed"]);
                 gPathcallTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]);
