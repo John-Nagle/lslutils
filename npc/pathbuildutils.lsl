@@ -123,13 +123,14 @@ key   gPathLastObstacle = NULL_KEY;                         // last obstacle tha
 //  pathinitutils -- initialize constants if necessary. Call in default state entry.
 //
 pathinitutils()
-{
+{   llOwnerSay("pathinitutils called");         // ***TEMP***
     if (!gPathConstantsInitialized)              // if constants not initialized
     {   PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
         gPathOwner = llGetOwner();                  // owner of animesh
         list groupdetails = llGetObjectDetails(llGetKey(), [OBJECT_GROUP]); // my group
         gPathGroup = llList2Key(groupdetails,0);    // group of animesh
         gPathSelfObject = pathGetRoot(llGetKey());              // our own key, for later
+        llOwnerSay("Root key: " + (string)gPathSelfObject); // ***TEMP***
         gPathConstantsInitialized = TRUE;        // initialize
     }
 }
