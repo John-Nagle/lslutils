@@ -54,11 +54,8 @@ integer gPathMoveFreemem = 9999999;                         // smallest free mem
 list gPathMoveLastgoodpos = [];                             // last good position
 
 //  Avatar params
-float gPathMoveWidth = 1.0;                                 // defaults, overridden by messages
-float gPathMoveHeight = 1.0;
 float gPathMoveMaxTurnspeed = 0.2;                          // (radians/sec) max turn rate - overridden
 float gPathMoveMaxSpeed = 2.0;                              // (meters/sec) max speed
-integer gPathMoveChartype = CHARACTER_TYPE_A;               // (enum) character type
 
 key gPathMoveTarget = NULL_KEY;                             // who we are chasing, if anybody
 vector gPathMoveTargetPos = ZERO_VECTOR;                    // last loc of target
@@ -92,7 +89,7 @@ pathmovedone(integer status, key hitobj)
         if (newstatus != 0) { status = newstatus; }             // use walkable recovery status if walkable problem   
     } else {                                                    // normal move completion
         //  We should be at the KFM destination now.
-        vector pos = llGetPos() - <0,0,gPathMoveHeight * 0.5>;  // pos is at midpoint, points are at ground level
+        vector pos = llGetPos() - <0,0,gPathHeight * 0.5>;  // pos is at midpoint, points are at ground level
         if (gPathMoveLastdest != ZERO_VECTOR && llVecMag(pos-gPathMoveLastdest) > 0.10)         // if not at desired point, allow 10cm error
         {   pathMsg(PATH_MSG_WARN, "KFM did not reach destination. At " + (string)pos + ", should be at " + (string)gPathMoveLastdest);
             //  May need to take corrective action here. For now, just log.
@@ -125,7 +122,7 @@ pathmovemovementend()
 //
 integer pathcheckforwalkable()
 {   vector pos = llGetPos();                                // we are here
-    vector fullheight = <0,0,gPathMoveHeight>;              // add this for casts from middle of character
+    vector fullheight = <0,0,gPathHeight>;              // add this for casts from middle of character
     vector halfheight = fullheight*0.5;
     vector p = pos-halfheight;                              // position on ground
     vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
@@ -144,7 +141,7 @@ integer pathcheckforwalkable()
 //
 integer pathrecoverwalkable(integer recovering)
 {   vector pos = llGetPos();                                // we are here
-    vector fullheight = <0,0,gPathMoveHeight>;              // add this for casts from middle of character
+    vector fullheight = <0,0,gPathHeight>;              // add this for casts from middle of character
     vector halfheight = fullheight*0.5;
     vector p = pos-halfheight;                              // position on ground
     vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
@@ -161,7 +158,7 @@ integer pathrecoverwalkable(integer recovering)
     while (i-- > 1)                                         // for newest (len-1) to oldest (0)
     {   vector recoverpos = llList2Vector(gPathMoveLastgoodpos,i);  // try to recover to here
         vector prevrecoverpos = llList2Vector(gPathMoveLastgoodpos,i-1);
-        if (pathcheckcelloccupied(prevrecoverpos, recoverpos, gPathMoveWidth,gPathMoveHeight, gPathMoveChartype, TRUE, FALSE) >= 0.0)
+        if (pathcheckcelloccupied(prevrecoverpos, recoverpos, gPathWidth,gPathHeight, gPathChartype, TRUE, FALSE) >= 0.0)
         {   
             llSleep(0.5);                                   // allow time for stop to take effect
             llSetPos(recoverpos + fullheight*0.5);          // forced move to previous good position
@@ -210,7 +207,7 @@ pathcheckdynobstacles()
     float lookaheaddist = PATHEXELOOKAHEADDIST;     // distance to look ahead
     float PATHEXESEGDISTTOL = 0.20;                 // how close to segment to be in it. Keyframe error causes trouble here.
     float HUGE = 99999999999.0;                     // huge number, but INFINITY is bigger
-    vector halfheight = <0,0,gPathMoveHeight*0.5>;    // pos is at object midpoint, points are at ground
+    vector halfheight = <0,0,gPathHeight*0.5>;    // pos is at object midpoint, points are at ground
     vector pos = llGetPos() - halfheight;            // where we are now
     vector groundpos = pos;                             // pos on ground
     integer i;
@@ -255,7 +252,7 @@ pathcheckdynobstacles()
     {   pathmovedone(status, NULL_KEY);                         // big trouble. Probably stuck here
         return;
     }
-    if (llVecMag(llList2Vector(gPathMoveLastgoodpos,-1) - groundpos) > gPathMoveWidth)  // if moved to a new good pos
+    if (llVecMag(llList2Vector(gPathMoveLastgoodpos,-1) - groundpos) > gPathWidth)  // if moved to a new good pos
     {   gPathMoveLastgoodpos += [groundpos];                    // save this ground level position for recovery
         if (llGetListLength(gPathMoveLastgoodpos) > PATHMAXSAVEDGOODPOS)    // limit list length
         {   gPathMoveLastgoodpos = llDeleteSubList(gPathMoveLastgoodpos,0,0); } // by removing oldest entry
@@ -325,13 +322,6 @@ pathmoverequestrcvd(string jsn)
 {   ////pathMsg(PATH_MSG_INFO,"Path move request: " + jsn);
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type 
     pathMsg(PATH_MSG_WARN,"Path move request: " + jsn + " Request type: \"" + requesttype + "\""); // ***TEMP***
-    if (requesttype == "startmove" || requesttype == "recover")
-    {   //  Get the common params
-        gPathMoveWidth = (float)llJsonGetValue(jsn,["width"]);
-        gPathMoveHeight = (float)llJsonGetValue(jsn,["height"]);
-        gPathMoveChartype = (integer)llJsonGetValue(jsn,["chartype"]);
-        gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
-    } 
     if (requesttype == "startmove")                         // start moving
     {   //  Set up for ray casting.
         gPathMoveId = (integer)llJsonGetValue(jsn, ["pathid"]);
@@ -391,7 +381,7 @@ pathmoverequestrcvd(string jsn)
             //  Pass buck to recover task, which has enough empty space for the full obstacle test.
             llMessageLinked(LINK_THIS, LINKMSGRECOVERREQUEST,
                 llList2Json(JSON_OBJECT,["request","recover", "pathid", pathid, "msglev", gPathMsgLevel,
-                        "width", gPathMoveWidth, "height", gPathMoveHeight, "chartype",gPathMoveChartype, 
+                        "width", gPathWidth, "height", gPathHeight, "chartype",gPathChartype, 
                         "recoverpoints", llList2Json(JSON_ARRAY,  gPathMoveLastgoodpos)]),"");
         }      
     } else {
@@ -449,10 +439,10 @@ list pathexebuildkfm(vector startpos, rotation startrot, list pts)
 list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1)
 {
 #ifdef MARKERS
-    placesegmentmarker(MARKERLINE, pprev, p0, gPathMoveWidth, TRANSGREEN, 0.20);      // place a temporary line on the ground in-world.
+    placesegmentmarker(MARKERLINE, pprev, p0, gPathWidth, TRANSGREEN, 0.20);      // place a temporary line on the ground in-world.
 #endif // MARKERS
     vector rp = p0 - pos;                       // p0 in relative coords - advances us to p0
-    rp.z += gPathMoveHeight * 0.5;              // add half-height, because path is at ground level
+    rp.z += gPathHeight * 0.5;              // add half-height, because path is at ground level
     //  Rotation is to the average direction of the previous and next sections in the XY plane.
     vector invec = p0-pprev;                    // incoming direction
     vector outvec = p1-p0;                      // outgoing direction
@@ -461,9 +451,6 @@ list pathexecalckfm(vector pos, rotation rot, vector pprev, vector p0, vector p1
     vector outvecnorm = llVecNorm(<outvec.x,outvec.y,0>);
     if (p1 == ZERO_VECTOR) { outvecnorm = invecnorm; } // last section, no turn
     vector dir = llVecNorm(invecnorm+outvecnorm);// next direction
-#ifdef OBSOLETE
-    rotation rr = llRotBetween(<1,0,0>, dir) / rot; // relative rotation
-#endif // OBSOLETE
     rotation rr = RotFromXAxis(dir) / rot;      // relative rotation
     rr = NormRot(rr);                           // why is this necessary?
     //  Time computation. Speed is limited by rotation rate.

@@ -190,10 +190,10 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
     {   //  Show start and end points of maze as green discs.
         vector p = mazecelltopoint(startx, starty);
         p.z = startz;
-        placesegmentmarker(MARKERLINE, p, p+<0.01,0,0>, gMazeWidth, TRANSGREEN, 0.20);// place a temporary line on the ground in-world.
+        placesegmentmarker(MARKERLINE, p, p+<0.01,0,0>, gPathWidth, TRANSGREEN, 0.20);// place a temporary line on the ground in-world.
         p = mazecelltopoint(endx, endy);
         p.z = endz;
-        placesegmentmarker(MARKERLINE, p, p+<0.01,0,0>, gMazeWidth, TRANSGREEN, 0.20);// place a temporary line on the ground in-world.
+        placesegmentmarker(MARKERLINE, p, p+<0.01,0,0>, gPathWidth, TRANSGREEN, 0.20);// place a temporary line on the ground in-world.
     }
 #endif // MARKERS 
     //   Outer loop - shortcuts || wall following
@@ -417,7 +417,7 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
         vector p0 = mazecelltopoint(fromx, fromy);          // centers of the start and end test cells
         p0.z = fromz;                                       // provide Z of previous point
         vector p1 = mazecelltopoint(x,y);                   // X and Y of next point, Z currently unknown.
-        float z = pathcheckcellz(p0, p1, gMazeWidth, gMazeHeight); // get Z depth of cell
+        float z = pathcheckcellz(p0, p1, gPathWidth, gPathHeight); // get Z depth of cell
         if (z < 0)
         {   gMazeStatus = MAZESTATUSCELLCHANGED;            // status of cell changed
             pathMsg(PATH_MSG_WARN, "Maze cell (" + (string)x + "," + (string)y + ") was empty, now occupied");
@@ -432,7 +432,7 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
     {   z = gMazeStartZ; }                                  // needed to get character out of very tight spots.
     else if (x == gMazeEndX && y == gMazeEndY) // special case where end pt is assumed clear
     {   z = gMazeEndZ;                                      // needed to get character out of very tight spots.
-        if (llFabs(z-fromz) > gMazeHeight*0.5)              // if final move to maze end has a big jump in Z.
+        if (llFabs(z-fromz) > gPathHeight*0.5)              // if final move to maze end has a big jump in Z.
         {   gMazeStatus = MAZESTATUSBADZ; return(-1.0); }   // fail
     }
     else
@@ -440,14 +440,14 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
         vector p0 = mazecelltopoint(fromx, fromy);          // centers of the start and end test cells
         p0.z = fromz;                                       // provide Z of previous point
         vector p1 = mazecelltopoint(x,y);                   // X and Y of next point, Z currently unknown.
-        z = mazecheckcelloccupied(p0, p1, gMazeCellSize, gMazeHeight, gMazeChartype, FALSE);    // test whether cell occupied, assuming prev cell was OK
+        z = mazecheckcelloccupied(p0, p1, gMazeCellSize, gPathHeight, gPathChartype, FALSE);    // test whether cell occupied, assuming prev cell was OK
         barrier = z < 0;                                    // negative Z means obstacle.
 #ifdef MARKERS                                              // debug markers which appear in world
         rotation color = TRANSYELLOW;                       // yellow if unoccupied
         if (barrier) { color = TRANSRED; }                  // red if occupied
         p1.z = p0.z;                                        // use Z from p0 if cell check failed. So all fails are horizontal markers.
         if (z > 0) { p1.z = z; }                            // use actual Z from cell check if successful
-        placesegmentmarker(MARKERLINE, p0, p1, gMazeWidth, color, 0.20);// place a temporary line on the ground in-world.
+        placesegmentmarker(MARKERLINE, p0, p1, gPathWidth, color, 0.20);// place a temporary line on the ground in-world.
 #endif // MARKERS
     }
     v = MAZEEXAMINED | barrier;
@@ -659,33 +659,12 @@ list mazewallfollow(list params, integer sidelr)
     }
     return(path + [x, y, z, direction]);           // return path plus state
 } 
-#ifdef OBSOLETE
-//
-//  mazereplyjson -- construct result as JSON
-//
-//  Format:
-//  { "reply" : "mazesolve" , "status" : INTEGER, "serial", INTEGER", points: [pt,pt,...]}
-//
-//  Points are packed with x and y in one integer.
-//
-//  "status" is 0 if successful, nonzero if a problem.
-//  "serial" is the serial number from the query, to match reply with request.
-//
-//  Only used for testing.
-//
-string mazereplyjson(integer status, integer pathid, integer segmentid, list path)
-{   return (llList2Json(JSON_OBJECT, ["reply", "mazesolve", "status", status, "pathid", pathid, "segmentid", segmentid,
-        "points", llList2Json(JSON_ARRAY, path)]));
-}
-#endif // OBSOLETE
+
 
 vector gMazePos;                                // location of maze in SL world space
 rotation gMazeRot;                              // rotation of maze in SL world space
 float gMazeCellSize;                            // size of cell in world
 float gMazeProbeSpacing;                        // probe spacing for llCastRay
-float gMazeHeight;                              // character height
-float gMazeWidth;                               // character diameter
-integer gMazeChartype;                          // character type (static path)
 key gMazeHitobj;                                // obstacle which caused the maze solve to start
 //
 //  mazerequestjson -- request a maze solve via JSON
@@ -693,7 +672,6 @@ key gMazeHitobj;                                // obstacle which caused the maz
 //  Format:
 //  { "request" : "mazesolve",  "msglevG" : INTEGER, "serial": INTEGER,
 //      "regioncorner" : VECTOR, "pos": VECTOR, "rot" : QUATERNION, "cellsize": FLOAT, "probespacing" : FLOAT, 
-//      "width" : FLOAT, "height" : FLOAT, chartype: INTEGER,
 //      "sizex", INTEGER, "sizey", INTEGER, 
 //      "startx" : INTEGER, "starty" : INTEGER, "endx" : INTEGER, "endy" : INTEGER }
 //      
@@ -704,8 +682,8 @@ key gMazeHitobj;                                // obstacle which caused the maz
 //  "height" and "radius" define the avatar's capsule. 
 //  
 mazerequestjson(string jsn, key id) 
-{   gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);// so first message will print
-    pathMsg(PATH_MSG_INFO,"Request to maze solver: " + jsn);            // verbose mode
+{   pathMsg(PATH_MSG_INFO,"Request to maze solver: " + jsn);            // verbose mode
+    assert(gMazeWidth > 0);                                 // must be initialized properly
     integer status = 0;                                     // so far, so good
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type
     if (requesttype != "mazesolve") { return; }              // ignore, not our msg
@@ -716,9 +694,6 @@ mazerequestjson(string jsn, key id)
     gMazeRot = (rotation)llJsonGetValue(jsn,["rot"]);
     gMazeCellSize = (float)llJsonGetValue(jsn,["cellsize"]);
     gMazeProbeSpacing = (float)llJsonGetValue(jsn,["probespacing"]);
-    gMazeHeight = (float)llJsonGetValue(jsn,["height"]);
-    gMazeWidth = (float)llJsonGetValue(jsn,["width"]);
-    gMazeChartype = (integer)llJsonGetValue(jsn,["chartype"]);
     gMazeHitobj = (key)llJsonGetValue(jsn,["hitobj"]);
     integer sizex = (integer)llJsonGetValue(jsn,["sizex"]);
     integer sizey = (integer)llJsonGetValue(jsn,["sizey"]);
@@ -801,7 +776,7 @@ default
     {   if (num == MAZESOLVEREQUEST)
         {   mazerequestjson(jsn, id);                   // solve maze
         } else if (num == PATHPARAMSINIT)
-        {   pathinitparams(jsn); }                      // initialize params
+        {   pathinitparams(jsn); }                      // initialize globals (width, height, etc.)
     }
 
 }

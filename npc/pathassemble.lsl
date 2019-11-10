@@ -49,9 +49,6 @@ integer gPathExeFreemem;                                    // amount of free me
 ////integer gPathLastTimetick = 0;                              // last time we tested for motion
 
 //  Avatar params
-float gPathExeWidth = 1.0;                                  // defaults, overridden by messages
-float gPathExeHeight = 1.0;
-integer gPathExeChartype = CHARACTER_TYPE_A;
 float gPathExeMaxTurnspeed = 0.2;                           // (radians/sec) max turn rate - overridden
 float gPathExeMaxSpeed = 2.0;                               // (meters/sec) max speed
 key   gPathExeTarget = NULL_KEY;                            // who we are chasing, if anybody
@@ -232,7 +229,7 @@ pathexeassemblesegs()
             vector errvec = lastpt-firstpt;
             //  Points are supposed to match. Unclear why they sometimes do not.
             //  Z after a maze solve may not quite match that of the path going in. Tolerance is half a height in mazesolve.
-            if (llFabs(errvec.z) > gPathExeHeight*0.5 || llVecMag(<errvec.x,errvec.y,0.0>) > 0.05)
+            if (llFabs(errvec.z) > gPathHeight*0.5 || llVecMag(<errvec.x,errvec.y,0.0>) > 0.05)
             {   ////pathMsg(PATH_MSG_ERROR, "Path assemble - endpoints do not match: " + (string)lastpt + (string)firstpt +
                 ////" pathid: " + (string)gPathExeId + " segid: " + (string)gPathExeNextsegid);
                 string s = "Path assemble - endpoints do not match: " + (string)lastpt + (string)firstpt + // ***TEMP***
@@ -245,7 +242,7 @@ pathexeassemblesegs()
             nextseg = llList2List(nextseg,1,-1);        // discard new duplicate point
             //  If we can take a short-cut at the join between two segments, do so.
             //  Also add "extra points" on long segments here for speed control.
-            if (obstaclecheckpath(llList2Vector(gAllSegments,-2), llList2Vector(nextseg,0), gPathExeWidth, gPathExeHeight, gPathExeProbespacing, gPathExeChartype))
+            if (obstaclecheckpath(llList2Vector(gAllSegments,-2), llList2Vector(nextseg,0), gPathWidth, gPathHeight, gPathExeProbespacing, gPathChartype))
             {   gAllSegments = llList2List(gAllSegments,0,-2) + pathexeextrapoints(nextseg, gPathExeDisttoend, first); }
             else
             {   gAllSegments += pathexeextrapoints(nextseg, gPathExeDisttoend, first);                // no, can't drop point
@@ -277,7 +274,7 @@ pathexedomove()
     {   
         ////vector kfmstart = llList2Vector(gAllSegments,0);    // first point, which is where we should be
         ////assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker
-        ////gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
+        ////gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathHeight*0.5>],0,0);   // always start from current position
         //  Start keyframe motion and obstacle detection.
         //  Offloads the space explosion of keyframe generation to another script with more free space.
         {   list segstodo = [];                             // do these now
@@ -290,9 +287,9 @@ pathexedomove()
                 gRemainingSegments = [];                        // fully consumed
             }
             vector pos = llGetPos();                            // we are here
-            segstodo = llListReplaceList(segstodo,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
+            segstodo = llListReplaceList(segstodo,[pos-<0,0,gPathHeight*0.5>],0,0);   // always start from current position
             assert(llGetListLength(segstodo) >= 2);     // must always have at least two points
-            pathmovestart(segstodo, gPathExeWidth, gPathExeHeight, gPathExeChartype, 
+            pathmovestart(segstodo, gPathWidth, gPathHeight, gPathChartype, 
                 gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId, gPathMsgLevel); 
         }     
         ////gPathExeMovegoal = llList2Vector(gAllSegments,-1);  // where we are supposed to be going
@@ -395,7 +392,7 @@ pathexemazedeliver(string jsn)
     }                                                                   // ***END TEMP***
     ////assert(llVecMag(llList2Vector(ptsworld,-1) - p1) < 0.01);            // maze endpoints must match
     //  Straighten path. Maze solver paths are all right angles. Here we try short cuts.
-    ptsworld = pathstraighten(ptsworld, gPathExeWidth, gPathExeHeight, gPathExeProbespacing, gPathExeChartype);   // postprocess path
+    ptsworld = pathstraighten(ptsworld, gPathWidth, gPathHeight, gPathExeProbespacing, gPathChartype);   // postprocess path
     pathexedeliver(ptsworld, pathid, segmentid, TRUE, 0, hitobj);      // deliver maze solution
 }
 //
@@ -411,10 +408,6 @@ pathexepathdeliver(string jsn)
     gPathExeTarget = (key)llJsonGetValue(jsn,["target"]);                               // used by move task to check if pursue target moves
     gPathExeMaxSpeed = (float)llJsonGetValue(jsn,["speed"]); 
     gPathExeMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
-    gPathExeWidth = (float)llJsonGetValue(jsn,["width"]);
-    gPathExeHeight = (float)llJsonGetValue(jsn,["height"]);
-    gPathExeChartype = (integer)llJsonGetValue(jsn,["chartype"]);
-    gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) 
     {   pathMsg(PATH_MSG_WARN,"Path deliver with status " + (string)status); 

@@ -27,14 +27,6 @@
 //
 integer gPathrecoverId = 0;                                    // current path ID
 
-//  Avatar params
-float gPathrecoverWidth = 1.0;                                 // defaults, overridden by messages
-float gPathrecoverHeight = 1.0;
-integer gPathrecoverChartype = CHARACTER_TYPE_A;               // (enum) character type
-
-
-
-
 //
 //  pathcheckforwalkable  -- is there a walkable below here?
 //
@@ -67,8 +59,8 @@ integer pathrecoverwalkable(list pts)
     while (i-- > 1)                                         // for newest (len-1) to oldest (0)
     {   vector recoverpos = llList2Vector(pts,i);           // try to recover to here
         vector prevrecoverpos = llList2Vector(pts,i-1);
-        vector halfheight = <0,0,gPathrecoverHeight*0.5>;
-        if (pathcheckcelloccupied(prevrecoverpos, recoverpos, gPathrecoverWidth,gPathrecoverHeight, gPathrecoverChartype, TRUE, FALSE) >= 0.0)
+        vector halfheight = <0,0,gPathHeight*0.5>;
+        if (pathcheckcelloccupied(prevrecoverpos, recoverpos, gPathWidth,gPathHeight, gPathChartype, TRUE, FALSE) >= 0.0)
         {   
             llSleep(0.5);                                   // allow time for stop to take effect
             llSetPos(recoverpos + halfheight);              // forced move to previous good position
@@ -93,10 +85,6 @@ pathrecoverrequest(string jsn, key hitobj)
     if (requesttype == "recover")                    // recover to known good position, requested by pathprep
     {   //  Go back to some previous good point.
         integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
-        gPathrecoverWidth = (float)llJsonGetValue(jsn,["width"]);
-        gPathrecoverHeight = (float)llJsonGetValue(jsn,["height"]);
-        gPathrecoverChartype = (integer)llJsonGetValue(jsn,["chartype"]);
-        gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
         list ptsstr = llJson2List(llJsonGetValue(jsn, ["recoverpoints"])); // points, as list of strings
         list pts = [];                                  // points as list of vectors
         integer i;
