@@ -123,14 +123,13 @@ key   gPathLastObstacle = NULL_KEY;                         // last obstacle tha
 //  pathinitutils -- initialize constants if necessary. Call in default state entry.
 //
 pathinitutils()
-{   llOwnerSay("pathinitutils called");         // ***TEMP***
-    if (!gPathConstantsInitialized)              // if constants not initialized
+{   if (!gPathConstantsInitialized)              // if constants not initialized
     {   PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
         gPathOwner = llGetOwner();                  // owner of animesh
         list groupdetails = llGetObjectDetails(llGetKey(), [OBJECT_GROUP]); // my group
         gPathGroup = llList2Key(groupdetails,0);    // group of animesh
         gPathSelfObject = pathGetRoot(llGetKey());              // our own key, for later
-        llOwnerSay(llGetScriptName() + "initialized. Root key: " + (string)gPathSelfObject); // ***TEMP***
+        ////llOwnerSay(llGetScriptName() + "initialized. Root key: " + (string)gPathSelfObject); // ***TEMP***
         gPathConstantsInitialized = TRUE;        // initialize
     }
 }
@@ -367,7 +366,7 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
 //
 float pathfindwalkable(vector startpos, float abovetol, float belowtol)
 {   //  Look downward twice the height, because of seat mispositioning issues
-    pathinitutils();                                                    // set up some constants if necessary
+    assert(gPathConstantsInitialized);                              // make sure pathinitutils has been done
     list castresult = castray(startpos+<0.0,0.0,abovetol>,startpos-<0.0,0.0,belowtol>,PATHCASTRAYOPTSOBS);                // cast downwards, must hit walkable
     return(pathcastfoundproblem(castresult, TRUE, FALSE));           // if any non-walkable hits, -1, otherwise ground Z
 }
@@ -457,7 +456,6 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
     float zoffset;                                          // cast ray offset, Z dir in coords of vector
     float nearestdist = INFINITY;                           // closest hit
     gPathLastObstacle = NULL_KEY;                           // no recent obstacle
-    pathinitutils();                                        // set up some constants if necessary
 
     
     ////DEBUGPRINT1("p0: " + (string)p0 + "  p1: " + (string)p1 + " probespacing: " + (string) probespacing);  // ***TEMP***
@@ -562,7 +560,6 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 //
 float pathcheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners, integer dostaticcheck)
 {
-    pathinitutils();                                        // set up some constants if necessary
     vector dv = p1-p0;                                      // direction, unnormalized
     dv.z = 0;                                               // Z not meaningful yet.
     vector dir = llVecNorm(dv);                             // forward direction, XY plane
@@ -628,7 +625,6 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
 //
 float pathcheckcellz(vector p0, vector p1, float width, float height)
 {
-    pathinitutils();                                        // set up some constants if necessary
     vector fullheight = <0,0,height>;                       // add this to top of vertical ray cast
     vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
     //  Initial basic downward cast. This gets us our Z reference for P1
