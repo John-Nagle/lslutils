@@ -151,7 +151,7 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
 //
 pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
 {   
-    if (num == PATHPLANREPLY)
+    if (num == PATHSTARTREPLY)
     {   integer status = (integer)llJsonGetValue(jsn, ["status"]);  // status and pathid via JSON.
         integer requestid = (integer)llJsonGetValue(jsn, ["requestid"]);  // hitobj as key param in link message
         if (requestid != gPathcallRequestId)                         // result from a cancelled operation
