@@ -438,7 +438,6 @@ default
             {   vector goal = (vector)llJsonGetValue(jsn,["goal"]);     // get goal point
                 key target = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
                 float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
-                float testspacing = (float)llJsonGetValue(jsn,["testspacing"]);
                 integer dogged = (integer)llJsonGetValue(jsn,["dogged"]);
                 pathbegin(target, goal, stopshort,  dogged, requestid);    // start movement
             } else if (request == "pathstop")

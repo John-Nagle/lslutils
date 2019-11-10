@@ -33,15 +33,21 @@
 //
 //  Link message types
 //
-#define PATHMASTERRESET 100                     // reset all path scripts
-#define PATHPLANREQUEST 101                     // character controller to path planner                  
-#define PATHPLANREPLY 102                       // path planner to character controller
+#define PATHPLANREQUEST 101                     // path planner start to path planner                  
+#define PATHPLANREPLY 102                       // path planner reply to path planner start
+
 #define PATHPLANPREPPED 103                     // path plan prepper forwards to planner
 
 #define MAZESOLVEREQUEST 201                    // from path planner to maze solver
 #define MAZESOLVERREPLY 202                     // from maze solver to execution
 #define MAZEPATHREPLY 203                       // from path planner to execution
 #define MAZEPATHSTOP 204                        // from path planner to execution
+
+#define PATHSTARTREQUEST 501                    // user to path planner start
+#define PATHSTARTREPLY 502                      // path planner start reply to user
+
+#define PATHPARAMSINIT  401                     // broadcast params to all scripts  
+
 
 
 

@@ -16,20 +16,13 @@ float REGION_SIZE = 256.0;                                      // size of a reg
 #define PATHCALLSTALLTIME 300 ////120                                   // if stalled for 120 seconds, reset everything 
 //
 //  Globals
-//  Character parameters
-float gPathcallWidth = 1.0;                                     // these are overrridden at init
-float gPathcallHeight = 1.0;
-float gPathcallSpeed = 1.0;                                     // speed defaults are very slow
-float gPathcallTurnspeed = 0.1;
-integer gPathcallChartype = CHARACTER_TYPE_A;                   // humanoid
-//  Retry state
-float gPathcallLastDistance = 0.0;                              // distance to goal on last try
-list  gPathcallLastParams = [];                                 // params at last try
 
 integer gPathcallReset = FALSE;                                 // have we reset the system since startup?
 integer gPathcallStarttime = 0;                                 // time last command started
+integer gPathcallInitialized = FALSE;                           // not initialized yet
+string  gPathcallLastCommand = "None";                          // last JSON sent to start
 
-integer gLocalPathId = 0;                                       // path serial number
+integer gPathcallRequestId = 0;                                 // path serial number
 
 
 
@@ -49,14 +42,13 @@ integer gLocalPathId = 0;                                       // path serial n
 //
 pathInit(float width, float height, integer chartype, integer msglev)
 {
-    gPathMsgLevel = msglev;                         // set error message level (PATH_MSG_INFO, etc.)
-    gPathcallWidth = width;                         // character params
-    gPathcallHeight = height;
-    gPathcallChartype = chartype;
     if (!gPathcallReset)
     {   pathmasterreset();                          // reset everybody
         gPathcallReset = TRUE; 
     } // everybody has been reset
+    //  Broadcast params to everybody.
+    llMessageLinked(LINK_THIS,PATHPARAMSINIT,llList2Json(JSON_OBJECT,
+        ["msglev",msglev, "width",width, "height",height,"chartype",chartype]),"");
 }
 
 //
@@ -72,8 +64,8 @@ pathInit(float width, float height, integer chartype, integer msglev)
 //  So characters slow down when turning corners.
 //
 pathSpeed(float speed, float turnspeed)
-{   gPathcallSpeed = speed;
-    gPathcallTurnspeed = turnspeed;
+{   llMessageLinked(LINK_THIS, PATHSTARTREQUEST, llList2Json(JSON_OBJECT,["request","pathspeed",
+        "speed",speed, "turnspeed",turnspeed]),"");
 }
 
 
@@ -97,7 +89,7 @@ pathStop()
 pathTick()
 {   if ((gPathcallStarttime != 0) && (llGetUnixTime() - gPathcallStarttime) > PATHCALLSTALLTIME)
     {   //  TROUBLE - the system is stalled.
-        pathMsg(PATH_MSG_ERROR, "Stalled and reset. Last command: " + llDumpList2String(gPathcallLastParams,",")); // tell owner
+        pathMsg(PATH_MSG_ERROR, "Stalled and reset. Last command: " + gPathcallLastCommand); // tell owner
         pathmasterreset();                          // reset other scripts
         pathUpdateCallback(MAZESTATUSTIMEOUT, NULL_KEY);       // report problem to caller
     }
@@ -135,7 +127,7 @@ pathPursue(key target, float stopshort, integer dogged)
 //
 //  End of user API
 //
-
+#ifdef OBSOLETE
 //
 //  pathLinkMsg -- reply coming back from path execution
 //
@@ -144,7 +136,7 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
     if (num == PATHPLANREPLY)
     {   integer status = (integer)llJsonGetValue(jsn, ["status"]);  // status and pathid via JSON.
         integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);  // hitobj as key param in link message
-        if (pathid != gLocalPathId)                         // result from a cancelled operation
+        if (pathid != gPathcallRequestId)                         // result from a cancelled operation
         {   pathMsg(PATH_MSG_WARN, "Stale path completed msg discarded."); return; }
         pathMsg(PATH_MSG_WARN,"Path complete, status " + (string)status + " Time: " + (string)llGetTime());
         if (pathretry(status, hitobj)) { return; }          // attempt a retry
@@ -152,7 +144,23 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
         pathUpdateCallback(status, hitobj);
     }
 }
-
+#endif // OBSOLETE
+//
+//  pathLinkMsg -- reply coming back from path execution
+//
+pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
+{   
+    if (num == PATHPLANREPLY)
+    {   integer status = (integer)llJsonGetValue(jsn, ["status"]);  // status and pathid via JSON.
+        integer requestid = (integer)llJsonGetValue(jsn, ["requestid"]);  // hitobj as key param in link message
+        if (requestid != gPathcallRequestId)                         // result from a cancelled operation
+        {   pathMsg(PATH_MSG_WARN, "Stale request completed msg discarded."); return; }
+        pathMsg(PATH_MSG_WARN,"Path complete, status " + (string)status + " Time: " + (string)llGetTime());
+        gPathcallStarttime = 0;                             // really done, stop clock
+        pathUpdateCallback(status, hitobj);
+    }
+}
+#ifdef OBSOLETE
 //
 //  pathplanstart -- start the path planner task
 //
@@ -164,6 +172,7 @@ pathplanstart(key target, vector goal, float width, float height, float stopshor
         "pathid", pathid, "msglev", gPathMsgLevel]);
     llMessageLinked(LINK_THIS, PATHPLANREQUEST, params,"");   // send to planner  
 }
+#endif // OBSOLETE
 //
 //  pathbegin -- go to indicated point or target. Internal fn.
 //
@@ -172,10 +181,13 @@ pathplanstart(key target, vector goal, float width, float height, float stopshor
 //  Stop short of the target by the distance stopshort. This can be zero. 
 //
 pathbegin(key target, vector endpos, float stopshort, integer dogged)
-{
-    gPathcallLastDistance = INFINITY;                              // must get shorter on each retry
-    pathstart(target, endpos, stopshort, dogged);                  // do it
+{   if (!gPathcallInitialized) { panic("Path request made before init call"); } // don't let things start out of sequence
+    gPathcallRequestId = (gPathcallRequestId+1)%(PATHMAXUNSIGNED-1);      // request (not path) serial number, nonnegative
+    gPathcallLastCommand = llList2Json(JSON_OBJECT,["request","pathbegin","requestid",gPathcallRequestId,
+        "target",target, "goal",endpos,"stopshort",stopshort,"dogged",dogged]); // save for diagnostic
+    llMessageLinked(LINK_THIS, PATHSTARTREQUEST,gPathcallLastCommand,"");
 }
+#ifdef OBSOLETE
 //
 //  pathstart -- go to indicated point or target. Internal fn. Used by begin or restart
 //
@@ -185,11 +197,11 @@ pathbegin(key target, vector endpos, float stopshort, integer dogged)
 //
 pathstart(key target, vector endpos, float stopshort, integer dogged)
 {   gPathcallLastParams = [];                                       // no params for retry stored yet.
-    gLocalPathId = (gLocalPathId+1)%(PATHMAXUNSIGNED-1);// our serial number, nonnegative
+    gPathcallRequestId = (gPathcallRequestId+1)%(PATHMAXUNSIGNED-1);// our serial number, nonnegative
     if (target != NULL_KEY)                                         // if chasing a target
     {   list details = llGetObjectDetails(target, [OBJECT_POS]);    // get object position
         if (details == [])                                          // target has disappeared
-        {   pathdonereply(PATHEXETARGETGONE,target,gLocalPathId);  // send message to self and quit
+        {   pathdonereply(PATHEXETARGETGONE,target,gPathcallRequestId);  // send message to self and quit
             return;
         }
         endpos = llList2Vector(details,0);                          // use this endpos
@@ -199,14 +211,14 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
     if (!valid_dest(endpos))
     {   pathMsg(PATH_MSG_WARN,"Destination " + (string)endpos + " not allowed."); 
-        pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
+        pathdonereply(PATHEXEBADDEST,NULL_KEY,gPathcallRequestId);         // send message to self to report error
         return; 
     }
 
     float newz = pathfindwalkable(endpos, 0.0, gPathcallHeight*3);             // find walkable below char
     if (newz < 0)
     {   pathMsg(PATH_MSG_WARN,"Error looking for walkable under goal."); 
-        pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
+        pathdonereply(PATHEXEBADDEST,NULL_KEY,gPathcallRequestId);         // send message to self to report error
         return; 
     }
     endpos.z = newz;                                                // use ground level found by ray cast
@@ -215,7 +227,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
     gPathcallLastDistance = pathdistance(llGetPos(), endpos, gPathcallWidth, CHARACTER_TYPE_A);  // measure distance to goal
 #endif // OBSOLETE
     //  Generate path
-    pathplanstart(target, endpos, gPathcallWidth, gPathcallHeight, stopshort, gPathcallChartype, TESTSPACING, gLocalPathId);
+    pathplanstart(target, endpos, gPathcallWidth, gPathcallHeight, stopshort, gPathcallChartype, TESTSPACING, gPathcallRequestId);
     gPathcallStarttime = llGetUnixTime();                               // timestamp we started
     //  Output from pathcheckobstacles is via callbacks
 }
@@ -242,7 +254,7 @@ integer pathretry(integer status, key hitobj)
     pathstart(target, endpos, shortstop, dogged);                       // trying again
     return(TRUE);                                                       // doing retry, do not tell user we are done.
 }
-
+#endif // OBSOLETE
 //  
 //  pathmasterreset -- reset all scripts whose name begins with "path".
 //
@@ -257,13 +269,13 @@ pathmasterreset()
         }
         count--;
     }
-    gLocalPathId = 0;                                                   // restart path IDs which keep scripts in sync
+    gPathcallRequestId = 0;                                                   // restart path IDs which keep scripts in sync
     llSleep(5.0);                                                       // wait 5 secs for reset.
     llOwnerSay("Master reset complete.");                               // OK, reset
 }
 
 //
-//  Misc. support functions.
+//  Misc. support functions. For user use, not needed by the path planning system itself.
 //
 //  Usual SLERP function for quaternion interpolation
 rotation slerp(rotation a, rotation b, float t) {
@@ -314,7 +326,7 @@ integer is_active_obstacle(key id)
     //  Need a really good test for KFM objects.
     return(FALSE);                                                      // fails, for now.
 }
-
+#ifdef OBSOLETE
 //
 //  valid_dest - is target valid (same sim and same parcel ownership?)
 //
@@ -345,7 +357,7 @@ integer valid_dest(vector pos)
     }
     return(TRUE);  // OK to enter destination parcel
 }
-
+#endif // OBSOLETE
 
 
 //

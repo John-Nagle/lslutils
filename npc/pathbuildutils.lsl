@@ -49,7 +49,28 @@ list PATHCASTRAYOPTSOBS;                                    // filled in later b
 
 #define gPathMsgLevel gDebugMsgLevel                            // ***TEMP*** until renaming
 //  
+//
+//  Initial globals needed by all scripts. Set once and never changed
+//
+float gPathWidth = 0.0;                                     // these are overrridden at init
+float gPathHeight = 0.0;                                    // invalid
+integer gPathChartype = -1;                                 // invalid
+key gPathSelfObject;                                        // key of root prim
 
+//
+//  pathinitparams -- parse message which has the initial params all scripts need
+//
+//  All scripts should call this if message num PATHPARAMSINIT received.
+//
+pathinitparams(string jsn)
+{   if (llJsonGetValue(jsn,["request"]) != "pathparams") { return; } // not for us
+    gPathWidth = (float)llJsonGetValue(jsn,"width");        // width
+    gPathHeight = (float)llJsonGetValue(jsn,"height");      // height
+    gPathChartype = (integer)llJsonGetValue(jsn,"chartype");// character type
+    gPathMsgLevel = (integer)llJsonGetValue(jsn,"msglev");  // get message level
+    assert(gPathWidth > 0 && gPathHeigth > 0);              // sanity check
+    gPathSelfobject = pathGetRoot(llGetKey());          // our own key, for later
+}
 //
 //  Debug marker generation
 //
@@ -91,9 +112,6 @@ placesegmentmarker(string markername, vector p0, vector p1, float width, rotatio
 //
 //  Globals
 //
-float gPathWidth = 0.5;                                     // dimensions of character
-float gPathHeight = 1.8;                                    // defaults, overridden in JSON
-key   gPathSelfObject = NULL_KEY;                           // my own key
 key   gPathLastObstacle = NULL_KEY;                         // last obstacle that stopped us
 
 #define pathGetRoot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
@@ -103,9 +121,8 @@ key   gPathLastObstacle = NULL_KEY;                         // last obstacle tha
 //
 pathinitutils()
 {
-    if (gPathSelfObject == NULL_KEY)                        // if constants not initialized
-    {   gPathSelfObject = pathGetRoot(llGetKey());          // our own key, for later
-        PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
+    if (PATHCASTRAYOPTSOBS == [])                           // if constants not initialized
+    {   PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
     }
 }
 //
