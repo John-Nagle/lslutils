@@ -28,9 +28,6 @@ integer MIN_MEMORY = 3000;                  // trouble if memory this low
 #define VERBOSITY PATH_MSG_ERROR            // verbose
 #endif // VERBOSITY
 
-//  Globals
-key gOwner = NULL_KEY;                          // my owner
-key gGroup = NULL_KEY;                          // my group
 //
 //  Targets in the sim.
 //
@@ -42,10 +39,7 @@ list gDeferredPositions = [];                   // don't retry until target move
 //  startup - initialization
 //
 startup()
-{   gOwner = llGetOwner();                      // my owner
-    list groupdetails = llGetObjectDetails(llGetKey(), [OBJECT_GROUP]); // my group
-    gGroup = llList2Key(groupdetails,0);        // group of animesh
-
+{   pathinitutils();                                            // library init
     llSetTimerEvent(IDLE_POLL);                                 // check for work
     llOwnerSay("Restart.");
 }
@@ -92,7 +86,7 @@ avatarcheck()
     integer i;
     for (i=0; i < num_detected; i++)        
     {   key id = llList2Key(agents,i);                      // agent to examine
-        if (valid_dest(target_pos(id)))                     // if in same owner/group parcel, etc.
+        if (pathvaliddest(target_pos(id)))                  // if in same owner/group parcel, etc.
         {                                                   // avatar of interest. Do we need to greet it?
             integer doneix = llListFindList(gDoneTargets,[id]);     // on "done" list?
             if (doneix >= 0)

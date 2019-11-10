@@ -47,8 +47,9 @@ pathInit(float width, float height, integer chartype, integer msglev)
         gPathcallReset = TRUE; 
     } // everybody has been reset
     //  Broadcast params to everybody.
-    llMessageLinked(LINK_THIS,PATHPARAMSINIT,llList2Json(JSON_OBJECT,
-        ["msglev",msglev, "width",width, "height",height,"chartype",chartype]),"");
+    llMessageLinked(LINK_THIS,PATHPARAMSINIT,llList2Json(JSON_OBJECT,["request","pathparams",
+        "msglev",msglev, "width",width, "height",height,"chartype",chartype]),"");
+    gPathcallInitialized = TRUE;                    // initialized
 }
 
 //

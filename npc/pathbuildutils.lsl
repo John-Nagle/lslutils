@@ -56,6 +56,9 @@ float gPathWidth = 0.0;                                     // these are overrri
 float gPathHeight = 0.0;                                    // invalid
 integer gPathChartype = -1;                                 // invalid
 key gPathSelfObject;                                        // key of root prim
+integer gPathConstantsInitialized = FALSE;                   // constants initalized
+key gPathOwner;                                                 // owner of object
+key gPathGroup;                                                 // group of object
 
 //
 //  pathinitparams -- parse message which has the initial params all scripts need
@@ -63,13 +66,13 @@ key gPathSelfObject;                                        // key of root prim
 //  All scripts should call this if message num PATHPARAMSINIT received.
 //
 pathinitparams(string jsn)
-{   if (llJsonGetValue(jsn,["request"]) != "pathparams") { return; } // not for us
-    gPathWidth = (float)llJsonGetValue(jsn,"width");        // width
-    gPathHeight = (float)llJsonGetValue(jsn,"height");      // height
-    gPathChartype = (integer)llJsonGetValue(jsn,"chartype");// character type
-    gPathMsgLevel = (integer)llJsonGetValue(jsn,"msglev");  // get message level
-    assert(gPathWidth > 0 && gPathHeigth > 0);              // sanity check
-    gPathSelfobject = pathGetRoot(llGetKey());          // our own key, for later
+{   assert(gPathConstantsInitialized);                      // startup init done
+    if (llJsonGetValue(jsn,["request"]) != "pathparams") { return; } // not for us
+    gPathWidth = (float)llJsonGetValue(jsn,["width"]);        // width
+    gPathHeight = (float)llJsonGetValue(jsn,["height"]);      // height
+    gPathChartype = (integer)llJsonGetValue(jsn,["chartype"]);// character type
+    gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);  // get message level
+    assert(gPathWidth > 0 && gPathHeight > 0);              // sanity check
 }
 //
 //  Debug marker generation
@@ -117,12 +120,17 @@ key   gPathLastObstacle = NULL_KEY;                         // last obstacle tha
 #define pathGetRoot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
 
 //
-//  pathinitutils -- initialize constants if necessary
+//  pathinitutils -- initialize constants if necessary. Call in default state entry.
 //
 pathinitutils()
 {
-    if (PATHCASTRAYOPTSOBS == [])                           // if constants not initialized
+    if (!gPathConstantsInitialized)              // if constants not initialized
     {   PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
+        gPathOwner = llGetOwner();                  // owner of animesh
+        list groupdetails = llGetObjectDetails(llGetKey(), [OBJECT_GROUP]); // my group
+        gPathGroup = llList2Key(groupdetails,0);    // group of animesh
+        gPathSelfObject = pathGetRoot(llGetKey());              // our own key, for later
+        gPathConstantsInitialized = TRUE;        // initialize
     }
 }
 //
@@ -219,6 +227,36 @@ rotation NormRot(rotation Q)
 //
 float pathvecmagxy(vector v) { return(llVecMag(<v.x, v.y, 0>));}            // vector magnitude, XY plane only
 
+//
+//  pathvaliddest - is target valid (same sim and same parcel ownership?)
+//
+integer pathvaliddest(vector pos) 
+{
+    if (pos.x <= 0 || pos.x >= REGION_SIZE || pos.y <= 0 || pos.y >= REGION_SIZE) { return(FALSE); }
+    list theredata = llGetParcelDetails(pos, [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP]);
+    list heredata = llGetParcelDetails(llGetPos(), [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP]);
+    integer thereflags = llGetParcelFlags(pos);         // flags for dest parcel
+    key thereowner = llList2Key(theredata,0);
+    key theregroup = llList2Key(theredata,1);
+    if ((llList2Key(heredata,0) != thereowner) // dest parcel must have same ownership
+    && (llList2Key(heredata,1) != theregroup))
+    {   return(FALSE); } // different group and owner at dest parcel
+    //  Check for no-script area
+    if (thereflags & PARCEL_FLAG_ALLOW_SCRIPTS == 0)            // if scripts off for almost everybody
+    {   if (gPathOwner != thereowner)
+        {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_SCRIPTS == 0) || (gPathGroup != theregroup))
+            { return(FALSE); }                                  // would die
+        }
+    }                                // no script area, we would die
+    //  Can we enter the destination parcel?
+    if (thereflags && PARCEL_FLAG_ALLOW_ALL_OBJECT_ENTRY == 0) 
+    {    if (gPathOwner == thereowner) { return(TRUE); } // same owner, OK
+        {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_OBJECT_ENTRY) || (gPathGroup != theregroup))
+            { return(FALSE); }
+        }
+    }
+    return(TRUE);  // OK to enter destination parcel
+}
 //
 //  pathdistalongseg -- distance along segment
 //  
