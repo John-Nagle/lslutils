@@ -353,10 +353,14 @@ key gPathplanTarget = NULL_KEY;                     // who we are chasing, if no
 //
 default
 {
+
+    state_entry()
+    {   pathinitutils(); }                                              // library init
+
     //
     //  Incoming link message - will be a plan job request, or a notification of a maze solve completion
     //    
-    link_message(integer status, integer num, string jsonstr, key id)
+    link_message(integer status, integer num, string jsn, key id)
     {   if (num == PATHPLANPREPPED)                                     // if request for a planning job
         {   gPts = [];                                                  // release space from any previous cycle
 #ifdef OBSOLETE
@@ -380,21 +384,21 @@ default
             vector startscale = llGetScale();
             startpos.z = (startpos.z - startscale.z*0.45);              // approximate ground level for start point
 
-            vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);     // get goal point
+            vector goal = (vector)llJsonGetValue(jsn,["goal"]);     // get goal point
 #endif // OBSOLETE
-            gPathplanTarget = (key)llJsonGetValue(jsonstr,["target"]);  // get target if pursue
-            gWidth = (float)llJsonGetValue(jsonstr,["width"]);
-            gHeight = (float)llJsonGetValue(jsonstr,["height"]);
-            float stopshort = (float)llJsonGetValue(jsonstr,["stopshort"]);
-            gChartype = (integer)llJsonGetValue(jsonstr,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
-            gTestspacing = (float)llJsonGetValue(jsonstr,["testspacing"]);
-            integer pathid = (integer)llJsonGetValue(jsonstr,["pathid"]);
-            gPathMsgLevel = (integer)llJsonGetValue(jsonstr,["msglev"]);
-            gPathplanSpeed = (float)llJsonGetValue(jsonstr,["speed"]);
-            gPathplanTurnspeed = (float)llJsonGetValue(jsonstr,["turnspeed"]);
-            list points = llJson2List(llJsonGetValue(jsonstr,["points"]));     // the preprocessed static path points
-            ////pathMsg(PATH_MSG_INFO,"Path request: " + jsonstr); 
-            jsonstr = "";                                               // Release string. We are that tight on space.
+            gPathplanTarget = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
+            gWidth = (float)llJsonGetValue(jsn,["width"]);
+            gHeight = (float)llJsonGetValue(jsn,["height"]);
+            float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
+            gChartype = (integer)llJsonGetValue(jsn,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
+            gTestspacing = (float)llJsonGetValue(jsn,["testspacing"]);
+            integer pathid = (integer)llJsonGetValue(jsn,["pathid"]);
+            gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
+            gPathplanSpeed = (float)llJsonGetValue(jsn,["speed"]);
+            gPathplanTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]);
+            list points = llJson2List(llJsonGetValue(jsn,["points"]));     // the preprocessed static path points
+            ////pathMsg(PATH_MSG_INFO,"Path request: " + jsn); 
+            jsn = "";                                               // Release string. We are that tight on space.
             //  Call the planner
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " starting."); 
             integer len = llGetListLength(points);
@@ -406,12 +410,14 @@ default
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)pathid + " req done.");   
         }             
         else if (num == MAZESOLVERREPLY)                    // just snooping on maze solves to see if we should do more planning
-        {   integer pathid = (integer) llJsonGetValue(jsonstr, ["pathid"]); 
-            integer segmentid = (integer)llJsonGetValue(jsonstr,["segmentid"]);
-            integer status = (integer) llJsonGetValue(jsonstr, ["status"]);
-            jsonstr = "";                                   // Release string, which is big here. 
+        {   integer pathid = (integer) llJsonGetValue(jsn, ["pathid"]); 
+            integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
+            integer status = (integer) llJsonGetValue(jsn, ["status"]);
+            jsn = "";                                   // Release string, which is big here. 
             pathmazesolverdone(pathid, segmentid, status);  // maze solver is done, can do some more planning
-        }
+        } else if (num == PATHPARAMSINIT)
+        {   pathinitparams(jsn); }                          // initialize params
+
     }
 }
 

@@ -183,22 +183,25 @@ default
     }
     
     link_message(integer sender_num, integer num, string jsn, key id)
-    {   //  Reply from behavior task is only message here.
-        if (num != PATHAVATARTRACKREPLY) { return; }    // not ours
-        pathMsg(PATH_MSG_INFO,"Rcvd: " + jsn);          // show incoming JSN
-        string reply = llJsonGetValue(jsn,["reply"]);
-        if (reply != "trackavi") { return; }            // not ours
-        key id = (key) llJsonGetValue(jsn,["id"]);
-        string action = llJsonGetValue(jsn,["action"]);
-        gDebugMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]); // message level for debug msgs
-        if (action == "done")                           // if done with avi
-        {   avatardone(id); }                           // done with it
-        else if (action == "defer")                     // defer until it moves
-        {   avatardefer(id); }
-        else if (action == "busy")                      // busy, don't bother me for a while
-        {   avatarbusy(); }
-        else
-        {   pathMsg(PATH_MSG_ERROR,"Invalid msg: " + jsn); }
+    {   //  Reply from behavior task is main message here.
+        if (num == PATHAVATARTRACKREPLY)                    // if ours
+        {   pathMsg(PATH_MSG_INFO,"Rcvd: " + jsn);          // show incoming JSN
+            string reply = llJsonGetValue(jsn,["reply"]);
+            if (reply != "trackavi") { return; }            // not ours
+            key id = (key) llJsonGetValue(jsn,["id"]);
+            string action = llJsonGetValue(jsn,["action"]);
+            ////gDebugMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]); // message level for debug msgs
+            if (action == "done")                           // if done with avi
+            {   avatardone(id); }                           // done with it
+            else if (action == "defer")                     // defer until it moves
+            {   avatardefer(id); }
+            else if (action == "busy")                      // busy, don't bother me for a while
+            {   avatarbusy(); }
+            else
+            {   pathMsg(PATH_MSG_ERROR,"Invalid msg: " + jsn); }
+        
+        } else if (num == PATHPARAMSINIT)
+        {   pathinitparams(jsn); }                              // initialize params
     }
     
     

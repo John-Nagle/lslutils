@@ -70,8 +70,6 @@ default
     
     link_message(integer sender_num, integer num, string json, key name)
     {   ////llOwnerSay("Link msg #" + (string)num + ": " + json);               // ***TEMP***
-        if (num == PATHMASTERRESET)                 // if master reset
-        {   llResetScript(); }                      // full reset
         if (num != LINKMSGMARKER) { return; }                               // not ours
         if (gListenHandle == 0) { gListenHandle = llListen(MARKERREPLYCHANNEL, "", NULL_KEY, ""); } // listen for marker replies
         gMarkerSerial++;

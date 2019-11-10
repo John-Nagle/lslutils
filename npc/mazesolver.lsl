@@ -703,9 +703,8 @@ key gMazeHitobj;                                // obstacle which caused the maz
 //  "probespacing" is the spacing between llCastRay probes.
 //  "height" and "radius" define the avatar's capsule. 
 //  
-mazerequestjson(integer sender_num, integer num, string jsn, key id) 
-{   if (num != MAZESOLVEREQUEST) { return; }                // message not for us
-    gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);// so first message will print
+mazerequestjson(string jsn, key id) 
+{   gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);// so first message will print
     pathMsg(PATH_MSG_INFO,"Request to maze solver: " + jsn);            // verbose mode
     integer status = 0;                                     // so far, so good
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type
@@ -788,17 +787,22 @@ string mazerouteasstring(list route)
 }
 
 
-////integer gBarrierFn(integer fromx, integer fromy, integer x, integer y)
-////{   return(mazebarrierfn(fromx, fromy, x, y)); } // connect to real ray-casting fn
-
 //
 //  The main program of the maze solver task
 //
 //
 default
-{   
+{
+
+    state_entry()
+    {   pathinitutils(); }                              // library init
+   
     link_message( integer sender_num, integer num, string jsn, key id )
-    {   mazerequestjson(sender_num, num, jsn, id); 
-    } // handle request
+    {   if (num == MAZESOLVEREQUEST)
+        {   mazerequestjson(jsn, id);                   // solve maze
+        } else if (num == PATHPARAMSINIT)
+        {   pathinitparams(jsn); }                      // initialize params
+    }
+
 }
 

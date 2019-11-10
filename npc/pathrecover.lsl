@@ -121,8 +121,10 @@ default
 
 
     link_message(integer status, integer num, string jsn, key id )
-    {   if (num == LINKMSGRECOVERREQUEST)                        // recovery request
-        {   pathrecoverrequest(jsn,id); }
+    {   if (num == LINKMSGRECOVERREQUEST)               // recovery request
+        {   pathrecoverrequest(jsn,id); 
+        } else if (num == PATHPARAMSINIT)
+        {   pathinitparams(jsn); }                      // initialize params
     }
     
 }

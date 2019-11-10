@@ -130,7 +130,7 @@ pathinitutils()
         list groupdetails = llGetObjectDetails(llGetKey(), [OBJECT_GROUP]); // my group
         gPathGroup = llList2Key(groupdetails,0);    // group of animesh
         gPathSelfObject = pathGetRoot(llGetKey());              // our own key, for later
-        llOwnerSay("Root key: " + (string)gPathSelfObject); // ***TEMP***
+        llOwnerSay(llGetScriptName() + "initialized. Root key: " + (string)gPathSelfObject); // ***TEMP***
         gPathConstantsInitialized = TRUE;        // initialize
     }
 }

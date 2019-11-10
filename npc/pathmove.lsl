@@ -546,7 +546,9 @@ default
     {   if (num == LINKMSGMOVEREQUEST)                          // request to move
         {   pathmoverequestrcvd(jsn); }
         else if (num == LINKMSGRECOVERREPLY)                    // recovery complete or failed
-        {   pathrecoverreplyrcvd(jsn, id); }
+        {   pathrecoverreplyrcvd(jsn, id); 
+        } else if (num == PATHPARAMSINIT)
+        {   pathinitparams(jsn); }                              // initialize params
     }
     
     timer()

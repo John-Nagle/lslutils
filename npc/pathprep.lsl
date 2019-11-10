@@ -59,7 +59,7 @@ default
     //
     //  Incoming link message - will be a plan job request.
     //    
-    link_message(integer status, integer num, string jsonstr, key id)
+    link_message(integer status, integer num, string jsn, key id)
     {   if (num == PATHPLANREQUEST)                                     // if request for a planning job
         {   
             //  First, get stopped before we start planning the next move.
@@ -81,19 +81,19 @@ default
             startpos = llGetPos();                                      // startpos is where we are now
             vector startscale = llGetScale();
             startpos.z = (startpos.z - startscale.z*0.45);              // approximate ground level for start point
-            vector goal = (vector)llJsonGetValue(jsonstr,["goal"]);     // get goal point
-            gPathprepTarget = (key)llJsonGetValue(jsonstr,["target"]);  // get target if pursue
-            gPathprepWidth = (float)llJsonGetValue(jsonstr,["width"]);
-            gPathprepHeight = (float)llJsonGetValue(jsonstr,["height"]);
-            float stopshort = (float)llJsonGetValue(jsonstr,["stopshort"]);
-            gPathprepChartype = (integer)llJsonGetValue(jsonstr,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
-            float testspacing = (float)llJsonGetValue(jsonstr,["testspacing"]);
-            gPathprepPathid = (integer)llJsonGetValue(jsonstr,["pathid"]);
-            gPathMsgLevel = (integer)llJsonGetValue(jsonstr,["msglev"]);
-            gPathprepSpeed = (float)llJsonGetValue(jsonstr,["speed"]);
-            gPathprepTurnspeed = (float)llJsonGetValue(jsonstr,["turnspeed"]);
-            pathMsg(PATH_MSG_INFO,"Path request: " + jsonstr); 
-            jsonstr = "";                                               // Release string. We are that tight on space.
+            vector goal = (vector)llJsonGetValue(jsn,["goal"]);     // get goal point
+            gPathprepTarget = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
+            gPathprepWidth = (float)llJsonGetValue(jsn,["width"]);
+            gPathprepHeight = (float)llJsonGetValue(jsn,["height"]);
+            float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
+            gPathprepChartype = (integer)llJsonGetValue(jsn,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
+            float testspacing = (float)llJsonGetValue(jsn,["testspacing"]);
+            gPathprepPathid = (integer)llJsonGetValue(jsn,["pathid"]);
+            gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
+            gPathprepSpeed = (float)llJsonGetValue(jsn,["speed"]);
+            gPathprepTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]);
+            pathMsg(PATH_MSG_INFO,"Path request: " + jsn); 
+            jsn = "";                                               // Release string. We are that tight on space.
             //  Call the planner
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)gPathprepPathid + " prepping."); 
             //  Start a new planning cycle
@@ -159,7 +159,9 @@ default
                 "chartype", gPathprepChartype, "testspacing", testspacing,
                 "speed", gPathprepSpeed, "turnspeed", gPathprepTurnspeed,
                 "pathid", gPathprepPathid, "msglev", gPathMsgLevel, "points", llList2Json(JSON_ARRAY,pts)]),"");
-        }   
+        } else if (num == PATHPARAMSINIT)
+        {   pathinitparams(jsn); }                                      // initialize params
+  
     }
 }
 

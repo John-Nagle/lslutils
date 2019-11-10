@@ -462,8 +462,8 @@ float PATHSTARTTOL = 0.5;                                   // if we are out of 
 default
 {
     state_entry()
-    {   ////llOwnerSay("Path execute reset");                   // ***TEMP***
-        pathexeinit(TESTSPACING);                            // init our KFM system        
+    {   pathinitutils();                                    // init library
+        pathexeinit(TESTSPACING);                           // init our KFM system        
     }
 
     link_message(integer status, integer num, string jsn, key id )
@@ -478,6 +478,8 @@ default
             pathexemovereply(jsn);
         } else if (num == MAZEPATHSTOP)                 // planner wants us to stop
         {   pathexestop(0);                             // normal stop commanded
-        } 
+        } else if (num == PATHPARAMSINIT)
+        {   pathinitparams(jsn); }                      // initialize params
+
     }
 }
