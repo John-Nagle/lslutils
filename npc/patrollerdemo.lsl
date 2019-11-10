@@ -48,7 +48,7 @@ float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                  // will stick around for this long
 float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far before we recheck on approach
 #ifndef VERBOSITY                           // define VERBOSITY to override
-#define VERBOSITY PATH_MSG_ERROR            // verbose
+#define VERBOSITY DEBUG_MSG_ERROR            // verbose
 #endif // VERBOSITY
 
 //  Configuration
@@ -95,7 +95,7 @@ add_patrol_point(string s)
     {   llSay(DEBUG_CHANNEL, "Invalid patrol point: " + s);
         return;
     }
-    pathMsg(PATH_MSG_INFO,"Added patrol point: " + (string) pos + "  Dwell time: " + (string)dwell
+    debugMsg(DEBUG_MSG_INFO,"Added patrol point: " + (string) pos + "  Dwell time: " + (string)dwell
         + " Face dir: " + (string)facedir); 
     gPatrolPoints += pos;
     gPatrolPointDwell += dwell;
@@ -106,7 +106,7 @@ add_patrol_point(string s)
 //  pathUpdateCallback -- pathfinding is done. Analyze the result and start the next action.
 //
 pathUpdateCallback(integer status, key hitobj )
-{   pathMsg(PATH_MSG_INFO, "Path update: : " + (string) status + " obstacle: " + llKey2Name(hitobj));
+{   debugMsg(DEBUG_MSG_INFO, "Path update: : " + (string) status + " obstacle: " + llKey2Name(hitobj));
     if (status == MAZESTATUSOK)          // success
     {   ////llOwnerSay("Pathfinding task completed.");
         if (gAction == ACTION_PURSUE)               
@@ -116,11 +116,11 @@ pathUpdateCallback(integer status, key hitobj )
             vector finaltarget = target_pos(gTarget) + offset;
             if (clear_sightline(gTarget, finaltarget))
             {            
-                pathMsg(PATH_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
+                debugMsg(DEBUG_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
                 pathNavigateTo(finaltarget, 0);
                 llResetTime();
             } else {
-                pathMsg(PATH_MSG_WARN,"Can't get in front of avatar due to obstacle.");
+                debugMsg(DEBUG_MSG_WARN,"Can't get in front of avatar due to obstacle.");
                 start_anim(IDLE_ANIM);
                 face_and_greet("Hello");
             }                             
@@ -136,7 +136,7 @@ pathUpdateCallback(integer status, key hitobj )
             start_anim(IDLE_ANIM);
             gAction = ACTION_IDLE;
             llResetTime();                          // reset timeout timer but keep dwell time
-            pathMsg(PATH_MSG_INFO,"Patrol point reached.");
+            debugMsg(DEBUG_MSG_INFO,"Patrol point reached.");
         }  
         return;
     }
@@ -150,7 +150,7 @@ pathUpdateCallback(integer status, key hitobj )
     if ((gAction == ACTION_PURSUE || gAction == ACTION_PATROL))             // if going somewhere
     {   if (is_active_obstacle(hitobj))                                 // and it might move
         {   if (llFrand(1.0) < OBSTACLE_RETRY_PROB)                     // if random test says retry
-            {   pathMsg(PATH_MSG_WARN,"Obstacle " + llKey2Name(hitobj) + ",will try again.");
+            {   debugMsg(DEBUG_MSG_WARN,"Obstacle " + llKey2Name(hitobj) + ",will try again.");
                 if (gAction == ACTION_PURSUE)                           // try again.
                 {   start_pursue(); }
                 else 
@@ -159,21 +159,21 @@ pathUpdateCallback(integer status, key hitobj )
                 }
             } else {                                                    // no retry, give up now
                 gDwell = 0.0;                                           // no dwell time, do something else now
-                pathMsg(PATH_MSG_WARN,"Obstacle, will give way.");
+                debugMsg(DEBUG_MSG_WARN,"Obstacle, will give way.");
             }
         }
     }
     //  Default - errors we don't special case.
     {          
         if (gAction == ACTION_FACE)             // Can't get in front of avatar, greet anyway.
-        {   pathMsg(PATH_MSG_WARN, "Can't navigate to point in front of avatar.");
+        {   debugMsg(DEBUG_MSG_WARN, "Can't navigate to point in front of avatar.");
             start_anim(IDLE_ANIM);
             face_and_greet("Hello");
             return;
         }
 
         if (gTarget != NULL_KEY)
-        {   pathMsg(PATH_MSG_WARN,"Unable to reach " + llKey2Name(gTarget) + " status: " + (string)status);
+        {   debugMsg(DEBUG_MSG_WARN,"Unable to reach " + llKey2Name(gTarget) + " status: " + (string)status);
             pathavatartrackreply(gTarget,"defer");          // tell tracker to defer action on this avi
             ////gDeferredTargets += gTarget;    // defer action on this target
             ////gDeferredPositions += target_pos(gTarget);  // where they are
@@ -182,7 +182,7 @@ pathUpdateCallback(integer status, key hitobj )
             
         //  Failed, back to idle.
         gAction = ACTION_IDLE;            
-        pathMsg(PATH_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
+        debugMsg(DEBUG_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
         start_anim(IDLE_ANIM);
         return;
     }
@@ -224,7 +224,7 @@ start_anim(string anim)
 //  start_pursue -- start pursuing avatar.
 //
 start_pursue()
-{   pathMsg(PATH_MSG_WARN,"Pursuing " + llKey2Name(gTarget));
+{   debugMsg(DEBUG_MSG_WARN,"Pursuing " + llKey2Name(gTarget));
     gDwell = 0.0;
     start_anim(WAITING_ANIM);                                       // applies only when stalled during movement
     llSleep(2.0);                                                   // allow stop time
@@ -272,7 +272,7 @@ start_patrol()
 //
 restart_patrol()
 {
-    pathMsg(PATH_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
+    debugMsg(DEBUG_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
     start_anim(WAITING_ANIM);                     // applies only when stalled during movement
     pathNavigateTo(gPatrolDestination,0);           // head for next pos
     gAction = ACTION_PATROL;                        // patrolling
@@ -301,7 +301,8 @@ startup()
     //  Get our name
     gName = llGetObjectName();
     integer spaceIndex = llSubStringIndex(gName, " ");
-    gName  = llGetSubString(gName, 0, spaceIndex - 1);       // first name of character
+    if (spaceIndex >0)
+    {   gName  = llGetSubString(gName, 0, spaceIndex - 1); }       // first name of character
     if (llGetInventoryKey(PATROL_NOTECARD) == NULL_KEY)     // waypoints file no good
     {
         llSay(DEBUG_CHANNEL, "Notecard '" + PATROL_NOTECARD + "' missing or empty. Will not patrol.");
@@ -313,7 +314,7 @@ startup()
     //  Set up character
     llSetTimerEvent(IDLE_POLL);                                 // check for work
     gListenChannel = llListen(PUBLIC_CHANNEL,"", "","");    // anybody talking to us?
-    llOwnerSay("Restart.");
+    llOwnerSay("Restart of "+ gName);
     start_anim(IDLE_ANIM);
     string msg = gName;                     // name of character
     vector color = <1.0,1.0,1.0>;           // white
@@ -349,10 +350,10 @@ default
     }
     
     link_message(integer sender_num, integer num, string jsn, key id)
-    {   ////pathMsg(PATH_MSG_INFO, jsn);                        // ***TEMP*** dump incoming JSON
+    {   ////debugMsg(DEBUG_MSG_INFO, jsn);                        // ***TEMP*** dump incoming JSON
         if (num == PATHAVATARTRACKREQUEST)                  // if avatar tracker wants us to track an avatar
         {   if (llJsonGetValue(jsn,["request"]) != "trackavi") { return; } // not for us
-            pathMsg(PATH_MSG_INFO,"Rcvd: " + jsn);          // show incoming JSN
+            debugMsg(DEBUG_MSG_INFO,"Rcvd: " + jsn);          // show incoming JSN
             requestpursue(llJsonGetValue(jsn,["id"]));      // go pursue, if appropriate.
             return; 
         } 
@@ -363,7 +364,7 @@ default
     {   key hitobj = llDetectedKey(0);                       // first object hit
         list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
         integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-        pathMsg(PATH_MSG_WARN, "Collided with " + llList2String(details,1));
+        debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
         if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
         {   llSay(0,"Excuse me."); }
     }

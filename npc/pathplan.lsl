@@ -30,9 +30,6 @@ vector gP1;                                                 // current working p
 float gDistalongseg;                                        // distance along curren segment  
 integer gCurrentix;                                         // current index
 //  Input params
-float gWidth;                                               // dimensions of character
-float gHeight;
-integer gChartype;
 float gTestspacing;
 integer gReqPathid;                                         // path ID of planning section
 
@@ -125,9 +122,9 @@ integer pathplanadvance()
         float fulllength = llVecMag(gP1-gP0);                   // full segment length
         vector dir = llVecNorm(gP1-gP0);                        // direction of segment
         vector pos = gP0 + dir*gDistalongseg;                   // current working position
-        vector endcast = gP1 + dir * gWidth*0.5;                // check to far side of area to avoid missing partial obstacle at end
+        vector endcast = gP1 + dir * gPathWidth*0.5;                // check to far side of area to avoid missing partial obstacle at end
         ////vector endcast = gP1;                                   // Don't search beyond p1; hits ground on downslopes
-        float hitdist = castbeam(pos, endcast, gWidth, gHeight, gTestspacing, TRUE,
+        float hitdist = castbeam(pos, endcast, gPathWidth, gPathHeight, gTestspacing, TRUE,
                 PATHCASTRAYOPTS);
         pathMsg(PATH_MSG_INFO,"Checked " + (string)pos + " to " + (string)endcast + " for obstacles. Hit dist: "+ (string)hitdist);
         if (hitdist < 0)
@@ -149,9 +146,9 @@ integer pathplanadvance()
         } else {                                                // there is an obstruction
             assert(hitdist >= 0.0);                             // ***TEMP*** 
             assert(gDistalongseg >= 0);                         // ***TEMP***
-            float hitbackedup = hitdist-gWidth;                 // back up just enough to get clear
+            float hitbackedup = hitdist-gPathWidth;                 // back up just enough to get clear
             if (hitbackedup < 0.0) { hitbackedup = 0.0; }       // but don't back up through previous point, previously verified clear
-            ////float hitbackedup = hitdist-gWidth*0.5;             // back up just enough to get clear
+            ////float hitbackedup = hitdist-gPathWidth*0.5;             // back up just enough to get clear
             if (hitbackedup + gDistalongseg > fulllength) { hitbackedup = fulllength - gDistalongseg; } // can potentially be off the end, so avoid that.
             ////if (gDistalongseg > hitbackedup)                    // if this would be a backwards move too far ***WRONG***
             ////{   hitbackedup = gDistalongseg; }                    // don't go back any further
@@ -160,7 +157,7 @@ integer pathplanadvance()
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
                 " hit dist along segment: " + (string)(gDistalongseg+hitbackedup)); 
             //  That's it. Now look for the other side of the obstacle.
-            list obsendinfo = pathfindclearspace(interpt0, gCurrentix, gWidth, gHeight, gChartype);    // find far side of obstacle
+            list obsendinfo = pathfindclearspace(interpt0, gCurrentix, gPathWidth, gPathHeight, gPathChartype);    // find far side of obstacle
             if (llGetListLength(obsendinfo) < 2)
             {   pathMsg(PATH_MSG_WARN,"Cannot find far side of obstacle at " + (string)interpt0 + " on segment #" + (string)(gCurrentix-1));
                 if (interpt0 != llList2Vector(gPathPoints,-1))      // do not duplicate point. Will cause trouble in KFM
@@ -302,14 +299,14 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
     //  Fixed part of the reply. Just add "points" at the end.
     list fixedreplypart = ["reply","path", "pathid", gPathId, "status", status, "hitobj", gPathLastObstacle,
                 "target", gPathplanTarget, "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,               // pass speed setting to execution module
-                "width", gWidth, "height", gHeight, "chartype", gChartype, "msglev", gPathMsgLevel,
+                "width", gPathWidth, "height", gPathHeight, "chartype", gPathChartype, "msglev", gPathMsgLevel,
                 "points"];                                  // just add points at the end
     if (ismaze)                                             // maze, add to the to-do list
     {   assert(length == 2);                                // maze must have two endpoints
         vector bp0 = llList2Vector(path,0);
         vector bp1 = llList2Vector(path,1);
         //  Start the maze solver
-        integer status = mazesolverstart(bp0, bp1, gWidth, gHeight, gChartype, gWidth, gPathLastObstacle, gPathId, gSegmentId, gPathMsgLevel); 
+        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathChartype, gPathWidth, gPathLastObstacle, gPathId, gSegmentId, gPathMsgLevel); 
         if (status) 
         {   pathMsg(PATH_MSG_WARN,"Unable to start maze solver. Status: " + (string)status); 
             //  Create a dummy maze solve result and send it to path execution just to transmit the status.
@@ -363,34 +360,11 @@ default
     link_message(integer status, integer num, string jsn, key id)
     {   if (num == PATHPLANPREPPED)                                     // if request for a planning job
         {   gPts = [];                                                  // release space from any previous cycle
-#ifdef OBSOLETE
-            //  First, get stopped before we start planning the next move.
-            llMessageLinked(LINK_THIS,MAZEPATHSTOP, "",NULL_KEY);       // tell execution system to stop
-            integer i = 100;                                            // keep testing for 100 sleeps
-            vector startpos = llGetPos();
-            float poserr = INFINITY;                                    // position error, if still moving
-            do                                                          // until character stops
-            {   llSleep(0.3);                                           // allow time for message to execute task to stop KFM
-                vector pos = llGetPos();
-                poserr = llVecMag(startpos - pos);                      // how far did we move
-                startpos = pos;
-                ////pathMsg(PATH_MSG_INFO,"Waiting for character to stop moving.");
-            } while (i-- > 0 && poserr > 0.001);                        // until position stabilizes 
-            if (i <= 0) { pathMsg(PATH_MSG_WARN, "Character not stopping on command, at " + (string)startpos); }       
-            //  Starting position and goal position must be on a walkable surface, not at character midpoint. 
-            //  We just go down slightly less than half the character height.
-            //  We're assuming a box around the character.      
-            startpos = llGetPos();                                      // startpos is where we are now
-            vector startscale = llGetScale();
-            startpos.z = (startpos.z - startscale.z*0.45);              // approximate ground level for start point
-
-            vector goal = (vector)llJsonGetValue(jsn,["goal"]);     // get goal point
-#endif // OBSOLETE
             gPathplanTarget = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
-            gWidth = (float)llJsonGetValue(jsn,["width"]);
-            gHeight = (float)llJsonGetValue(jsn,["height"]);
+            ////gPathWidth = (float)llJsonGetValue(jsn,["width"]); //// now broadcast globals
+            ////gPathHeight = (float)llJsonGetValue(jsn,["height"]);
             float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
-            gChartype = (integer)llJsonGetValue(jsn,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
+            ////gPathChartype = (integer)llJsonGetValue(jsn,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
             gTestspacing = (float)llJsonGetValue(jsn,["testspacing"]);
             integer pathid = (integer)llJsonGetValue(jsn,["pathid"]);
             gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);

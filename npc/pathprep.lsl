@@ -22,10 +22,10 @@ list TRIALOFFSETS = [<-1,0,0>,<1,0,0>,<0,1,0>,<0,-1,0>]; // try coming from any 
 //
 float gPathprepSpeed;
 float gPathprepTurnspeed;
-integer gPathprepChartype;
+////integer gPathChartype;
 key gPathprepTarget;
-float gPathprepWidth;
-float gPathprepHeight;
+////float gPathWidth;
+////float gPathHeight;
 integer gPathprepPathid;
 
 //
@@ -40,7 +40,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
 {   //  Fixed part of the reply. Just add "points" at the end.
     list fixedreplypart = ["reply","path", "pathid", pathid, "status", status, "hitobj", NULL_KEY,
                 "target", gPathprepTarget, "speed", gPathprepSpeed, "turnspeed", gPathprepTurnspeed,               // pass speed setting to execution module
-                "width", gPathprepWidth, "height", gPathprepHeight, "chartype", gPathprepChartype, "msglev", gPathMsgLevel,
+                "width", gPathWidth, "height", gPathHeight, "chartype", gPathChartype, "msglev", gPathMsgLevel,
                 "points"];                                  // just add points at the end
     assert(path == []);
     assert(!ismaze);                                        // not during prep
@@ -83,10 +83,10 @@ default
             startpos.z = (startpos.z - startscale.z*0.45);              // approximate ground level for start point
             vector goal = (vector)llJsonGetValue(jsn,["goal"]);     // get goal point
             gPathprepTarget = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
-            gPathprepWidth = (float)llJsonGetValue(jsn,["width"]);
-            gPathprepHeight = (float)llJsonGetValue(jsn,["height"]);
+            ////gPathWidth = (float)llJsonGetValue(jsn,["width"]);
+            ////gPathHeight = (float)llJsonGetValue(jsn,["height"]);
             float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
-            gPathprepChartype = (integer)llJsonGetValue(jsn,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
+            ////gPathChartype = (integer)llJsonGetValue(jsn,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
             float testspacing = (float)llJsonGetValue(jsn,["testspacing"]);
             gPathprepPathid = (integer)llJsonGetValue(jsn,["pathid"]);
             gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
@@ -99,7 +99,7 @@ default
             //  Start a new planning cycle
             //  Quick sanity check - are we in a legit place?            
             vector pos = llGetPos();                                // we are here
-            vector fullheight = <0,0,gPathprepHeight>;              // add this for casts from middle of character
+            vector fullheight = <0,0,gPathHeight>;              // add this for casts from middle of character
             vector halfheight = fullheight*0.5;   
             vector p = pos-halfheight;                              // position on ground
 #ifdef OBSOLETE
@@ -109,18 +109,18 @@ default
             integer good = FALSE;                                   // not yet a good start point
             for (i=0; i<llGetListLength(TRIALOFFSETS); i++)         // try coming from all around the start point
             {   if (!good)
-                {   vector refpos = p + llList2Vector(TRIALOFFSETS,i)*gPathprepWidth; // test at this offset
-                    good = pathcheckcelloccupied(refpos, p, gPathprepWidth, gPathprepHeight, gPathprepChartype, TRUE, FALSE) >= 0.0;
+                {   vector refpos = p + llList2Vector(TRIALOFFSETS,i)*gPathWidth; // test at this offset
+                    good = pathcheckcelloccupied(refpos, p, gPathWidth, gPathHeight, gPathChartype, TRUE, FALSE) >= 0.0;
                 }
             }
             if (!good)
             {   pathMsg(PATH_MSG_WARN, "Start location is not clear: " + (string)startpos);           // not good, but we can recover
                 //  Ask the move task to attempt recovery. This will move to a better place and return a status to the retry system.
-                pathmoverecover(gPathprepPathid, gPathprepWidth, gPathprepHeight, gPathprepChartype, gPathMsgLevel); // attempts recovery and informs retry system   
+                pathmoverecover(gPathprepPathid, gPathWidth, gPathHeight, gPathChartype, gPathMsgLevel); // attempts recovery and informs retry system   
                 return;
             }
             //  Use the system's GetStaticPath to get an initial path
-            list pts = pathtrimmedstaticpath(startpos, goal, stopshort, gPathprepWidth + PATHSTATICTOL, gPathprepChartype);
+            list pts = pathtrimmedstaticpath(startpos, goal, stopshort, gPathWidth + PATHSTATICTOL, gPathChartype);
             integer len = llGetListLength(pts);                          
             ////pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(gPts,-1) + ", "+ (string)llGetListLength(gPts) + 
             ////    " pts: " + llDumpList2String(pts,","));             // dump list for debug
@@ -155,8 +155,8 @@ default
             //  We have a valid static path. Send it to the main planner.
             pathMsg(PATH_MSG_INFO,"Path check for obstacles. Segments: " + (string)len); 
             llMessageLinked(LINK_THIS, PATHPLANPREPPED, llList2Json(JSON_OBJECT,
-                ["target",gPathprepTarget, "goal", goal, "stopshort", stopshort, "width", gPathprepWidth, "height", gPathprepHeight, 
-                "chartype", gPathprepChartype, "testspacing", testspacing,
+                ["target",gPathprepTarget, "goal", goal, "stopshort", stopshort, "width", gPathWidth, "height", gPathHeight, 
+                "chartype", gPathChartype, "testspacing", testspacing,
                 "speed", gPathprepSpeed, "turnspeed", gPathprepTurnspeed,
                 "pathid", gPathprepPathid, "msglev", gPathMsgLevel, "points", llList2Json(JSON_ARRAY,pts)]),"");
         } else if (num == PATHPARAMSINIT)

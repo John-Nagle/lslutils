@@ -52,10 +52,10 @@ pathLinkMsg(string jsn, key hitobj)
 //
 //  pathprepstart -- start the path planner task
 //
-pathprepstart(key target, vector goal, float width, float height, float stopshort, integer chartype, float testspacing, integer pathid)
+pathprepstart(key target, vector goal, float stopshort, float testspacing, integer pathid)
 {   pathMsg(PATH_MSG_INFO,"Path plan start req, pathid: " + (string)pathid);
     string params = llList2Json(JSON_OBJECT, 
-        ["target",target, "goal", goal, "stopshort", stopshort, "width", width, "height", height, "chartype", chartype, "testspacing", testspacing,
+        ["target",target, "goal", goal, "stopshort", stopshort, "testspacing", testspacing,
         "speed", gPathcallSpeed, "turnspeed", gPathcallTurnspeed,
         "pathid", pathid, "msglev", gPathMsgLevel]);
     llMessageLinked(LINK_THIS, PATHPLANREQUEST, params,"");   // send to planner  
@@ -109,7 +109,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
     }
     endpos.z = newz;                                                // use ground level found by ray cast
     //  Generate path
-    pathprepstart(target, endpos, gPathWidth, gPathHeight, stopshort, gPathChartype, TESTSPACING, gLocalPathId);
+    pathprepstart(target, endpos, stopshort, TESTSPACING, gLocalPathId);
     gPathcallStarttime = llGetUnixTime();                               // timestamp we started
     //  Output from pathcheckobstacles is via callbacks
 }
