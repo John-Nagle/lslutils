@@ -247,7 +247,8 @@ pathcheckdynobstacles()
     }
     if (!foundseg)
     {   pathMsg(PATH_MSG_WARN,"Unable to find " + (string)pos + " in " + llDumpList2String(gKfmSegments,","));  // off the path?
-        pathmovedone(PATHERROFFPATH, NULL_KEY);                    // KFM crept out of position. Retry.
+        pathmovedone(PATHERROFFPATH, NULL_KEY);                     // KFM crept out of position. Retry.
+        return;                                                     // and stop here
     }
     //  Check for walkable support under the current position
     integer status = pathcheckforwalkable();
