@@ -246,7 +246,9 @@ pathcheckdynobstacles()
         }   
     }
     if (!foundseg)
-    {   pathMsg(PATH_MSG_WARN,"Unable to find " + (string)pos + " in " + llDumpList2String(gKfmSegments,",")); } // off the path?
+    {   pathMsg(PATH_MSG_WARN,"Unable to find " + (string)pos + " in " + llDumpList2String(gKfmSegments,","));  // off the path?
+        pathmovedone(PATHERROFFPATH, NULL_KEY);                    // KFM crept out of position. Retry.
+    }
     //  Check for walkable support under the current position
     integer status = pathcheckforwalkable();
     if (status)
@@ -473,14 +475,12 @@ pathexedokfm()
     vector kfmstart = llList2Vector(gKfmSegments,0);    // first point, which is where we should be
     assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker  
     vector pos = llGetPos();                            // we are here
-////#ifdef OBSOLETE       
     if (pathvecmagxy(kfmstart - pos) > PATHEXEMAXCREEP)     // we are out of position
     {   pathMsg(PATH_MSG_WARN, "KFM out of position at start. At " + (string)pos + ". Should be at " + (string)kfmstart); 
         pathmovedone(PATHEXEBADMOVEEND, NULL_KEY);       // error, must start a new operation to recover
         return; 
     }
     ////gKfmSegments = llListReplaceList(gKfmSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
-////#endif // OBSOLETE
     pathMsg(PATH_MSG_WARN,"Input to KFM: " + llDumpList2String(gKfmSegments,","));     // what to take in
     list kfmmoves = pathexebuildkfm(pos, llGetRot(), gKfmSegments);   // build list of commands to do
     if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)

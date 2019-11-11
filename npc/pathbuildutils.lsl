@@ -318,6 +318,20 @@ list pathstraighten(list pts, float probespacing)
     assert(llList2Vector(pts,-1) == lastpt);                    // must preserve last point
     return(pts);                                                // shortened route
 }
+//
+//  pathnearestpointonnavmesh -- get nearest point on navmesh
+//
+//  Returns ZERO_VECTOR if fail.
+//  Expensive, for trouble recovery only.
+//
+vector pathnearestpointonnavmesh(vector p)
+{
+    list navmeshinfo = llGetClosestNavPoint(p,[GCNP_STATIC,TRUE,GCNP_RADIUS,5.0]);   // find reasonable point on navmesh
+    if (llGetListLength(navmeshinfo) > 0)                   // if found some point on navmesh
+    {   return(llList2Vector(navmeshinfo,0));   }           // we can still compute a distance
+    pathMsg(PATH_MSG_ERROR,"No navmesh near " + (string)p); // can't even find the navmesh
+    return(ZERO_VECTOR);                                    // fails                
+}
 
 //
 //  pathdistance -- distance measured along a static path
@@ -329,28 +343,31 @@ list pathstraighten(list pts, float probespacing)
 float pathdistance(vector startpos, vector endpos, float gPathWidth, integer gPathChartype)
 {
     vector scale = llGetScale();
-    vector startposorig = startpos;                         // ***TEMP***
-    ////startpos.z = (startpos.z - startscale.z*0.45);          // approx ground level for start point
-////#ifdef OBSOLETE // endpos is already at ground level. We did this already.
+    vector startposorig = startpos;                         // 
+    vector endposorig = endpos;
+    //  Try to find position using pathfindwalkable
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
     startpos.z = pathfindwalkable(startpos, scale.z*0.5, scale.z);
-    if (startpos.z < 0)
-    {   pathMsg(PATH_MSG_WARN, "No walkable below path distance goal at " + (string)startposorig); 
-        return(-1.0);
-    }
-    vector endposorig = endpos;                             // ***TEMP*** for msg only
     endpos.z = pathfindwalkable(endpos, scale.z*0.5, scale.z);    // find walkable below dest - big tolerance
-    if (endpos.z < 0)
-    {   pathMsg(PATH_MSG_WARN, "No walkable below path distance goal at " + (string)endposorig); 
-        return(-1.0);
+    list path;
+    integer status = 1;
+    if (startpos.z >= 0 && endpos.z >= 0)               // if find walkable worked
+    {   path = llGetStaticPath(startpos, endpos, gPathWidth*0.5, [CHARACTER_TYPE,gPathChartype]);
+        status = llList2Integer(path,-1);               // status is last value
     }
-    
-////#endif // OBSOLETE
-    list path = llGetStaticPath(startpos, endpos, gPathWidth*0.5, [CHARACTER_TYPE,gPathChartype]);
-    integer status = llList2Integer(path,-1);               // status is last value
-    if (status != 0) 
-    {   pathMsg(PATH_MSG_WARN, "Static path error: " + (string)status +  (string)startpos + " to " + (string)endpos + " orig startpos: " + (string)startposorig); 
-        return(-1.0);                                       // fails
+    if (status != 0)                                    // trouble finding navmesh, use backup plan
+    {   pathMsg(PATH_MSG_WARN, "Trouble finding navmesh, trying backup approach.");
+        startpos = pathnearestpointonnavmesh(startposorig); // find nearest point on navmesh
+        if (startpos == ZERO_VECTOR) { return(-1.0); }
+        endpos = pathnearestpointonnavmesh(endposorig);     // for both ends
+        if (endpos == ZERO_VECTOR) { return(-1.0); }
+        path = llGetStaticPath(startpos, endpos, gPathWidth*0.5, [CHARACTER_TYPE,gPathChartype]);
+        status = llList2Integer(path,-1);                   // status is last value
+        if (status != 0) 
+        {   pathMsg(PATH_MSG_WARN, "Static path error: " + (string)status +  (string)startpos + " to " + (string)endpos + 
+                " orig startpos: " + (string)startposorig);
+            return(-1.0);                                       // fails
+        }
     }
     integer i;
     integer pntcnt = llGetListLength(path) - 1;             // don't count endpoint

@@ -63,11 +63,12 @@
 #define PATHEXEWALKABLEFIXED -2016              // successful recovery from non-walkable area problem
 #define PATHEXEWALKABLETROUBLE -2017            // at non-walkable location, must try recovery
 #define PATHEXEREQOUTOFSYNC  -2018              // request at move level while doing something else
+#define PATHERROFFPATH       -2019              // off the path in move. Retry.
 
 //
 //  List of retryable errors.  For these, try again, if there was progress on the previous try.
 //
 #define PATHRETRYABLES [PATHEXEOBSTRUCTED, PATHEXECOLLISION, PATHEXEBADMOVEEND, PATHEXEBADSTARTPOS, PATHEXETARGETMOVED,\
-    MAZESTATUSNOMEM, PATHEXEWALKABLEFIXED, MAZESTATUSBACKWARDS,PATHEXEREQOUTOFSYNC, PU_FAILURE_INVALID_START]
+    MAZESTATUSNOMEM, PATHEXEWALKABLEFIXED, MAZESTATUSBACKWARDS,PATHEXEREQOUTOFSYNC, PU_FAILURE_INVALID_START,PATHERROFFPATH]
 
 #endif // PATHERRORS
