@@ -904,8 +904,12 @@ list pathclean(list path)
     {   vector pt = llList2Vector(path,i);                  // get next point
         float dist = llVecMag(pt - prevpt);                 // segment length
         if (dist > MINSEGMENTLENGTH)                        // if long enough to keep
-        {   newpath += pt;                                  // add new point
-            prevpt = pt;
+        {   vector nextpt = llList2Vector(path,i+1);        // will go off end and be zero
+            if (distpointtoline(prevpt, pt, nextpt) > PATHCHECKTOL)  // skip if collinear
+            {
+                newpath += pt;                              // add new point
+                prevpt = pt;
+            }
         }
     }
     //  If the last point got optimized out for being too close to
