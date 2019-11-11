@@ -21,8 +21,7 @@ float PATHCHECKTOL = 0.20;                                  // (m) allow 20cm co
 float PATHPOINTONSEGDIST = 0.10;                            // (m) allow point up to 10cm off line when checking for what seg contains a point
 float PATHSTATICTOL = 0.30;                                 // (m) allow extra space on either side of path 
 float PATHSINMAXWALKABLEANGLE = 0.4226;                     // sine of (90-65) degrees. 
-float MAZEBELOWGNDTOL = 1.0;                                // (m) ***TEMP** huge tol until we get legit Z values coming in
-
+float MAZEBELOWGNDTOL = 2.0;                                // (m) huge tolerance to allow for huge differences between pathfinding mesh and ground
 #define REGION_SIZE (256.0)                                 // (m) Ought to be an LSL call         
 
 list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_ROOT_KEY]; // 2 hits, because we can hit ourself and must ignore that.
@@ -662,6 +661,7 @@ integer obstacleraycasthoriz(vector p0, vector p1)
     list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
     float result = pathcastfoundproblem(castresult, FALSE, FALSE);     // if any hits at all, other than self, fail
     if (result < 0) { pathMsg(PATH_MSG_INFO, "Horiz raycast fail: "+ (string)p0 + " " +  (string)p1); } // ***TEMP***
+    if (result < INFINITY) { return(TRUE); };                   // obstacle
     //  And in other direction, in case start is inside an object
     castresult = castray(p1,p0,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
     result = pathcastfoundproblem(castresult, FALSE, FALSE);     // if any hits at all, other than self, fail
