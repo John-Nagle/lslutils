@@ -36,8 +36,9 @@
 #define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
 #define PATHMOVEMINTARGETMOVE   4.0                         // (m) target must move this much to be re-chased
 #define PATHMOVEMINTARGETFRACT  0.5                         // (fraction) target must move this much as fract of dist to go to be re-chased.
-#define PATHMAXSAVEDGOODPOS 10                              // (count) number of previous good positions to save
+#define PATHMAXSAVEDGOODPOS 20                              // (count) number of previous good positions to save
 #define PATHEXEMAXCREEP     0.10                            // (m) max positional error allowed after keyframe motion
+#define PATHEXEMINGOODPOS   1.00                            // (m) minimum distance between good points
 
 
 //
@@ -252,7 +253,7 @@ pathcheckdynobstacles()
     {   pathmovedone(status, NULL_KEY);                         // big trouble. Probably stuck here
         return;
     }
-    if (llVecMag(llList2Vector(gPathMoveLastgoodpos,-1) - groundpos) > gPathWidth)  // if moved to a new good pos
+    if (llVecMag(llList2Vector(gPathMoveLastgoodpos,-1) - groundpos) > PATHEXEMINGOODPOS)  // if moved to a new good pos
     {   gPathMoveLastgoodpos += [groundpos];                    // save this ground level position for recovery
         if (llGetListLength(gPathMoveLastgoodpos) > PATHMAXSAVEDGOODPOS)    // limit list length
         {   gPathMoveLastgoodpos = llDeleteSubList(gPathMoveLastgoodpos,0,0); } // by removing oldest entry
