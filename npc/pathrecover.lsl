@@ -60,7 +60,7 @@ integer pathrecoverwalkable(list pts)
     {   vector recoverpos = llList2Vector(pts,i);           // try to recover to here
         vector prevrecoverpos = llList2Vector(pts,i-1);
         vector halfheight = <0,0,gPathHeight*0.5>;
-        if (pathcheckcelloccupied(prevrecoverpos, recoverpos, gPathWidth,gPathHeight, gPathChartype, TRUE, FALSE) >= 0.0)
+        if (pathcheckcelloccupied(prevrecoverpos, recoverpos, TRUE, FALSE) >= 0.0)
         {   
             llSleep(0.5);                                   // allow time for stop to take effect
             llSetPos(recoverpos + halfheight);              // forced move to previous good position

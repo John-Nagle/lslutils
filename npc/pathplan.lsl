@@ -124,7 +124,7 @@ integer pathplanadvance()
         vector pos = gP0 + dir*gDistalongseg;                   // current working position
         vector endcast = gP1 + dir * gPathWidth*0.5;                // check to far side of area to avoid missing partial obstacle at end
         ////vector endcast = gP1;                                   // Don't search beyond p1; hits ground on downslopes
-        float hitdist = castbeam(pos, endcast, gPathWidth, gPathHeight, gTestspacing, TRUE,
+        float hitdist = castbeam(pos, endcast, gTestspacing, TRUE,
                 PATHCASTRAYOPTS);
         pathMsg(PATH_MSG_INFO,"Checked " + (string)pos + " to " + (string)endcast + " for obstacles. Hit dist: "+ (string)hitdist);
         if (hitdist < 0)
@@ -274,7 +274,7 @@ list pathfindclearspace(vector startpos, integer obstacleix, float width, float 
             {
                 //  Test the new point.  This test is not airtight because we are not testing from open space.
                 //  May need further checks here.
-                if (!obstaclecheckcelloccupied(prevpos, pos, width, height, chartype, TRUE))
+                if (!obstaclecheckcelloccupied(prevpos, pos, TRUE))
                 {   
                     return([pos,currentix]);                                // success, found open space
                 }
@@ -298,8 +298,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
     integer length = llGetListLength(path);
     //  Fixed part of the reply. Just add "points" at the end.
     list fixedreplypart = ["reply","path", "pathid", gPathId, "status", status, "hitobj", gPathLastObstacle,
-                "target", gPathplanTarget, "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,               // pass speed setting to execution module
-                "width", gPathWidth, "height", gPathHeight, "chartype", gPathChartype, "msglev", gPathMsgLevel,
+                "target", gPathplanTarget, "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,       // pass speed setting to execution module
                 "points"];                                  // just add points at the end
     if (ismaze)                                             // maze, add to the to-do list
     {   assert(length == 2);                                // maze must have two endpoints
@@ -361,13 +360,9 @@ default
     {   if (num == PATHPLANPREPPED)                                     // if request for a planning job
         {   gPts = [];                                                  // release space from any previous cycle
             gPathplanTarget = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
-            ////gPathWidth = (float)llJsonGetValue(jsn,["width"]); //// now broadcast globals
-            ////gPathHeight = (float)llJsonGetValue(jsn,["height"]);
             float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
-            ////gPathChartype = (integer)llJsonGetValue(jsn,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
             gTestspacing = (float)llJsonGetValue(jsn,["testspacing"]);
             integer pathid = (integer)llJsonGetValue(jsn,["pathid"]);
-            gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
             gPathplanSpeed = (float)llJsonGetValue(jsn,["speed"]);
             gPathplanTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]);
             list points = llJson2List(llJsonGetValue(jsn,["points"]));     // the preprocessed static path points

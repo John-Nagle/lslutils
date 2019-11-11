@@ -417,7 +417,7 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
         vector p0 = mazecelltopoint(fromx, fromy);          // centers of the start and end test cells
         p0.z = fromz;                                       // provide Z of previous point
         vector p1 = mazecelltopoint(x,y);                   // X and Y of next point, Z currently unknown.
-        float z = pathcheckcellz(p0, p1, gPathWidth, gPathHeight); // get Z depth of cell
+        float z = pathcheckcellz(p0, p1);                   // get Z depth of cell
         if (z < 0)
         {   gMazeStatus = MAZESTATUSCELLCHANGED;            // status of cell changed
             pathMsg(PATH_MSG_WARN, "Maze cell (" + (string)x + "," + (string)y + ") was empty, now occupied");
@@ -440,7 +440,7 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
         vector p0 = mazecelltopoint(fromx, fromy);          // centers of the start and end test cells
         p0.z = fromz;                                       // provide Z of previous point
         vector p1 = mazecelltopoint(x,y);                   // X and Y of next point, Z currently unknown.
-        z = mazecheckcelloccupied(p0, p1, gMazeCellSize, gPathHeight, gPathChartype, FALSE);    // test whether cell occupied, assuming prev cell was OK
+        z = mazecheckcelloccupied(p0, p1, FALSE);           // test whether cell occupied, assuming prev cell was OK
         barrier = z < 0;                                    // negative Z means obstacle.
 #ifdef MARKERS                                              // debug markers which appear in world
         rotation color = TRANSYELLOW;                       // yellow if unoccupied
@@ -683,7 +683,7 @@ key gMazeHitobj;                                // obstacle which caused the maz
 //  
 mazerequestjson(string jsn, key id) 
 {   pathMsg(PATH_MSG_INFO,"Request to maze solver: " + jsn);            // verbose mode
-    assert(gMazeWidth > 0);                                 // must be initialized properly
+    assert(gPathWidth > 0);                                 // must be initialized properly
     integer status = 0;                                     // so far, so good
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type
     if (requesttype != "mazesolve") { return; }              // ignore, not our msg

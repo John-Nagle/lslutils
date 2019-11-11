@@ -380,8 +380,7 @@ pathmoverequestrcvd(string jsn)
         {   gPathMoveRecovering = TRUE;                     // now in recovery mode, until other task replies.             
             //  Pass buck to recover task, which has enough empty space for the full obstacle test.
             llMessageLinked(LINK_THIS, LINKMSGRECOVERREQUEST,
-                llList2Json(JSON_OBJECT,["request","recover", "pathid", pathid, "msglev", gPathMsgLevel,
-                        "width", gPathWidth, "height", gPathHeight, "chartype",gPathChartype, 
+                llList2Json(JSON_OBJECT,["request","recover", "pathid", pathid,
                         "recoverpoints", llList2Json(JSON_ARRAY,  gPathMoveLastgoodpos)]),"");
         }      
     } else {

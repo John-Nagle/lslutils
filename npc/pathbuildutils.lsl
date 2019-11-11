@@ -23,6 +23,8 @@ float PATHSTATICTOL = 0.30;                                 // (m) allow extra s
 float PATHSINMAXWALKABLEANGLE = 0.4226;                     // sine of (90-65) degrees. 
 float MAZEBELOWGNDTOL = 1.0;                                // (m) ***TEMP** huge tol until we get legit Z values coming in
 
+#define REGION_SIZE (256.0)                                 // (m) Ought to be an LSL call         
+
 list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_ROOT_KEY]; // 2 hits, because we can hit ourself and must ignore that.
 ////list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2];                  // 2 hits, because we can hit ourselves and must ignore that
 ////list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
@@ -68,7 +70,7 @@ key gPathGroup;                                                 // group of obje
 pathinitparams(string jsn)
 {   assert(gPathConstantsInitialized);                      // startup init done
     if (llJsonGetValue(jsn,["request"]) != "pathparams") { return; } // not for us
-    gPathWidth = (float)llJsonGetValue(jsn,["width"]);        // width
+    gPathWidth = (float)llJsonGetValue(jsn,["width"]);        // gPathWidth
     gPathHeight = (float)llJsonGetValue(jsn,["height"]);      // height
     gPathChartype = (integer)llJsonGetValue(jsn,["chartype"]);// character type
     gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);  // get message level
@@ -294,7 +296,7 @@ integer checkcollinear(list pts)
 //
 //  Works in 3D world, not maze cell space.
 //
-list pathstraighten(list pts, float width, float height, float probespacing, integer chartype)
+list pathstraighten(list pts, float probespacing)
 {   integer n = 0;
     assert(llGetListLength(pts) > 0);                           // must have at least one point
     vector firstpt = llList2Vector(pts,0);                      // only for checking
@@ -306,7 +308,7 @@ list pathstraighten(list pts, float width, float height, float probespacing, int
         vector  p1 = llList2Vector(pts,n+1);                    // get next three points
         vector  p2 = llList2Vector(pts,n+2);                    // get next three points
         //  Try to take a short cut, bypassing p1
-        if (obstaclecheckpath(p0, p2, width, height, probespacing, chartype)) // short cut unobstructed?
+        if (obstaclecheckpath(p0, p2, probespacing))            // short cut unobstructed?
         {   pts = llListReplaceList(pts,[],n+1,n+1);            // success, we can delete p2
         } else {                                                // can't delete, so advance
             n = n + 1;
@@ -324,7 +326,7 @@ list pathstraighten(list pts, float width, float height, float probespacing, int
 //
 //  Returns < 0 if fail
 //
-float pathdistance(vector startpos, vector endpos, float width, integer chartype)
+float pathdistance(vector startpos, vector endpos, float gPathWidth, integer gPathChartype)
 {
     vector scale = llGetScale();
     vector startposorig = startpos;                         // ***TEMP***
@@ -344,7 +346,7 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
     }
     
 ////#endif // OBSOLETE
-    list path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);
+    list path = llGetStaticPath(startpos, endpos, gPathWidth*0.5, [CHARACTER_TYPE,gPathChartype]);
     integer status = llList2Integer(path,-1);               // status is last value
     if (status != 0) 
     {   pathMsg(PATH_MSG_WARN, "Static path error: " + (string)status +  (string)startpos + " to " + (string)endpos + " orig startpos: " + (string)startposorig); 
@@ -376,13 +378,13 @@ float pathfindwalkable(vector startpos, float abovetol, float belowtol)
 //
 //  Used on the output of llGetStaticPath, which can be off by up to 0.35m.
 //
-list pathptstowalkable(list path, float height)
+list pathptstowalkable(list path, float gPathHeight)
 {   list pts = [];
     integer length = llGetListLength(path);
     integer i;
     for (i=0; i<length; i++)                                    // for all points
     {   vector p = llList2Vector(path,i);
-        float newz = pathfindwalkable(p,height*0.5,MAZEBELOWGNDTOL);             // look down and find the ground
+        float newz = pathfindwalkable(p,gPathHeight*0.5,MAZEBELOWGNDTOL);             // look down and find the ground
         if (newz < 0)                                           // can't find walkable surface
         {   pathMsg(PATH_MSG_WARN, "Can't find walkable below pnt " + (string)p);   // where's the ground or floor?
         } else {
@@ -451,7 +453,7 @@ list castray(vector p0, vector p1, list params)
 //
 //  castparams must yield a data format of [rootid, hitpt, ... status]. No normal.
 //
-float castbeam(vector p0, vector p1, float width, float height, float probespacing, integer wantnearest, list castparams)
+float castbeam(vector p0, vector p1, float probespacing, integer wantnearest, list castparams)
 {   float yoffset;                                          // cast ray offset, Y dir in coords of vector
     float zoffset;                                          // cast ray offset, Z dir in coords of vector
     float nearestdist = INFINITY;                           // closest hit
@@ -459,16 +461,16 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 
     
     ////DEBUGPRINT1("p0: " + (string)p0 + "  p1: " + (string)p1 + " probespacing: " + (string) probespacing);  // ***TEMP***
-    integer probecount = (integer)((height-GROUNDCLEARANCE)/probespacing); // number of probes
+    integer probecount = (integer)((gPathHeight-GROUNDCLEARANCE)/probespacing); // number of probes
     if (probecount < 1) { probecount = 1; }                 // minimum is one probe
-    probespacing = (height-GROUNDCLEARANCE)/probecount;     // adjust to match height
+    probespacing = (gPathHeight-GROUNDCLEARANCE)/probecount;     // adjust to match gPathHeight
     if (probespacing < 0.10) { return(-4); }                // Bad call
     vector dir = llVecNorm(p1-p0);                          // direction of raycast 
     vector endoffsetdir = <0,0,1> % dir;                    // offset for horizontal part of scan. Cross product of dir and Z axis.
     ////DEBUGPRINT1("End offset dir: " + (string)endoffsetdir);  // ***TEMP***
-    //  Always do 3 scans across width - left edge, middle, right edge.
-    for (yoffset = -width * 0.5; yoffset <= width * 0.5 + 0.001; yoffset += (width*0.5))
-    {   for (zoffset = GROUNDCLEARANCE; zoffset <= height  + 0.001; zoffset += probespacing)
+    //  Always do 3 scans across gPathWidth - left edge, middle, right edge.
+    for (yoffset = -gPathWidth * 0.5; yoffset <= gPathWidth * 0.5 + 0.001; yoffset += (gPathWidth*0.5))
+    {   for (zoffset = GROUNDCLEARANCE; zoffset <= gPathHeight  + 0.001; zoffset += probespacing)
         {   ////DEBUGPRINT1("p0: " + (string)p0 + "  p1: " + (string)p1 + "  zoffset: " + (string)zoffset); // ***TEMP***
             vector yadjust = yoffset*endoffsetdir;          // offset for scan crosswise to path
             list castresult = castray(<p0.x, p0.y, p0.z+zoffset>+yadjust, <p1.x, p1.y, p1.z + zoffset>+yadjust, castparams);
@@ -505,9 +507,9 @@ float castbeam(vector p0, vector p1, float width, float height, float probespaci
 //
 //  Does both a ray check and a llGetStaticPath check.
 //
-integer obstaclecheckpath(vector p0, vector p1, float width, float height, float probespacing, integer chartype)
+integer obstaclecheckpath(vector p0, vector p1, float probespacing)
 {
-    list path = llGetStaticPath(p0,p1,(width+PATHSTATICTOL)*0.5, [CHARACTER_TYPE, chartype]);
+    list path = llGetStaticPath(p0,p1,(gPathWidth+PATHSTATICTOL)*0.5, [CHARACTER_TYPE, gPathChartype]);
     integer status = llList2Integer(path,-1);                   // last item is status
     path = llList2List(path,0,-2);                              // remove last item
     if (status != 0 || (llGetListLength(path) > 2 && !checkcollinear(path)))
@@ -515,7 +517,7 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
         return(FALSE);
     }
     //  Don't test against land, because the static path check did that already.
-    float disttohit = castbeam(p0, p1, width, height, probespacing, FALSE, PATHCASTRAYOPTS);
+    float disttohit = castbeam(p0, p1, probespacing, FALSE, PATHCASTRAYOPTS);
     if (disttohit != INFINITY)
     {   DEBUGPRINT1("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
         return(FALSE);
@@ -529,12 +531,12 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 //  Don't need to recheck the static path on ordinary paths.
 //
 //  Temporary until caller converted. No static check.
-#define obstaclecheckcelloccupied(p0, p1, width, height, chartype, dobackcorners) \
-   (pathcheckcelloccupied(p0, p1, width, height, chartype, dobackcorners, FALSE) < 0.0)
+#define obstaclecheckcelloccupied(p0, p1,  dobackcorners) \
+   (pathcheckcelloccupied(p0, p1, dobackcorners, FALSE) < 0.0)
 
 //  Temporary until caller converted. Does static check
-#define mazecheckcelloccupied(p0,p1,width,height,chartype,dobackcorners) \
-    (pathcheckcelloccupied((p0),(p1),(width),(height),(chartype),(dobackcorners),TRUE))
+#define mazecheckcelloccupied(p0,p1,dobackcorners) \
+    (pathcheckcelloccupied((p0),(p1),(dobackcorners),TRUE))
     
 
 //
@@ -552,34 +554,34 @@ integer obstaclecheckpath(vector p0, vector p1, float width, float height, float
 //
 //  No static path check, but it has to hit a walkable.
 //
-//  p0 and p1 must be one width apart. They are positions at ground level. Z values will be different on slopes.
+//  p0 and p1 must be one gPathWidth apart. They are positions at ground level. Z values will be different on slopes.
 //  
 //  New Z-aware version.
 //  Returns Z value of ground at P1, or -1 if occupied.
 //  At entry, p0 must have a correct Z value, but p1's Z value is obtained by a ray cast downward.
 //
-float pathcheckcelloccupied(vector p0, vector p1, float width, float height, integer chartype, integer dobackcorners, integer dostaticcheck)
+float pathcheckcelloccupied(vector p0, vector p1, integer dobackcorners, integer dostaticcheck)
 {
     vector dv = p1-p0;                                      // direction, unnormalized
     dv.z = 0;                                               // Z not meaningful yet.
     vector dir = llVecNorm(dv);                             // forward direction, XY plane
-    vector fullheight = <0,0,height>;                       // add this to top of vertical ray cast
-    vector halfheight = <0,0,height*0.5>;                   // add this for casts from middle of character
+    vector fullheight = <0,0,gPathHeight>;                       // add this to top of vertical ray cast
+    vector halfheight = <0,0,gPathHeight*0.5>;                   // add this for casts from middle of character
     vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
     pathMsg(PATH_MSG_INFO, "Cell occupied check: p0: " + (string) p0 + " p1: " + (string)p1);
     vector crossdir = dir % <0,0,1>;                        // horizontal from ahead point
-    vector fwdoffset = dir*(width*0.5);                     // distance to look ahead, to end of this cell
-    vector sideoffset = crossdir*(width*0.5);               // distance to the side of the cell
+    vector fwdoffset = dir*(gPathWidth*0.5);                     // distance to look ahead, to end of this cell
+    vector sideoffset = crossdir*(gPathWidth*0.5);               // distance to the side of the cell
     //  Initial basic downward cast. This gets us our Z reference for P1
     p1.z = p0.z;                                            // we have no Z value for P1 yet. Start with the one from P0.
     //  Look over a wide enough range of Z values to catch all walkable slopes.
-    float zp1 = obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin-<0,0,1>*(width*(1.0+PATHSINMAXWALKABLEANGLE)));   // probe center of cell, looking down
+    float zp1 = obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin-<0,0,1>*(gPathWidth*(1.0+PATHSINMAXWALKABLEANGLE)));   // probe center of cell, looking down
     if (zp1 < 0) { return(-1.0); }                          // fails
     p1.z = zp1;                                             // we can now set p1's proper Z height
     //  Do static check if requested.
     if (dostaticcheck)
     {   //  Do a static path check for this short path between two maze cells
-        list path = llGetStaticPath(p0,p1,width*0.5, [CHARACTER_TYPE, chartype]);
+        list path = llGetStaticPath(p0,p1,gPathWidth*0.5, [CHARACTER_TYPE, gPathChartype]);
         integer status = llList2Integer(path,-1);           // last item is status
         path = llList2List(path,0,-2);                      // remove last item
         if (status != 0 || (llGetListLength(path) > 2 && !checkcollinear(path)))
@@ -604,7 +606,7 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
     if (obstacleraycasthoriz(pa+halfheight,pb+halfheight)) { return(-1.0); }   // Horizontal cast crosswize at mid height, any hit is bad
     //  Downward ray casts only.  Must hit a walkable.
     //  Center of cell is clear and walkable. Now check upwards at front and side.
-    //  The idea is to check at points that are on a circle of diameter "width"
+    //  The idea is to check at points that are on a circle of diameter "gPathWidth"
     if (obstacleraycastvert(pa+fullheight,pa-mazedepthmargin) < 0) { return(-1.0); }   
     if (obstacleraycastvert(pb+fullheight,pb-mazedepthmargin) < 0) { return(-1.0); } // cast downwards, must hit walkable
     if (obstacleraycastvert(pc+fullheight,pc-mazedepthmargin) < 0) { return(-1.0); } // cast downwards, must hit walkable
@@ -623,14 +625,14 @@ float pathcheckcelloccupied(vector p0, vector p1, float width, float height, int
 //  Same result for that as pathcheckcelloccupied, but fewer checks.
 //  Used when we need the Z height for a second time.
 //
-float pathcheckcellz(vector p0, vector p1, float width, float height)
+float pathcheckcellz(vector p0, vector p1)
 {
-    vector fullheight = <0,0,height>;                       // add this to top of vertical ray cast
+    vector fullheight = <0,0,gPathHeight>;                       // add this to top of vertical ray cast
     vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
     //  Initial basic downward cast. This gets us our Z reference for P1
     p1.z = p0.z;                                            // we have no Z value for P1 yet. Start with the one from P0.
     //  Look over a wide enough range of Z values to catch all walkable slopes.
-    return(obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin-<0,0,1>*(width*(1.0+PATHSINMAXWALKABLEANGLE))));   // probe center of cell, looking down
+    return(obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin-<0,0,1>*(gPathWidth*(1.0+PATHSINMAXWALKABLEANGLE))));   // probe center of cell, looking down
 }
 
 
@@ -848,7 +850,7 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
 //  Returns [pnt,ix], where ix is the point index previous, in the direction of scan, to the
 //  scan, of the point found.
 //
-list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float height, integer chartype)
+list pathfindunobstructed(list pts, integer ix, integer fwd)
 {
     assert(fwd == 1 || fwd == -1);
     DEBUGPRINT1("Looking for unobstructed point on segment #" + (string)ix + " fwd " + (string)fwd); 
@@ -876,11 +878,11 @@ list pathfindunobstructed(list pts, integer ix, integer fwd, float width, float 
 
         } else {                                // did not hit end of segment
             DEBUGPRINT1("Trying point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd);  
-            if (!obstaclecheckcelloccupied(p0, pos, width, height, chartype, TRUE))
+            if (!obstaclecheckcelloccupied(p0, pos, TRUE))
             {   DEBUGPRINT1("Found clear point on segment #" + (string)ix + " at " + (string)pos + " fwd " + (string)fwd); 
                 return([pos,ix]);               // found an open spot
             }
-            distalongseg += width;              // advance one width
+            distalongseg += gPathWidth;              // advance one gPathWidth
         }
     }
     //  Unreachable
@@ -925,8 +927,10 @@ list pathclean(list path)
 //
 //  Used to make Pursue stop before hitting the target
 //
-list pathtrimmedstaticpath(vector startpos, vector endpos, float stopshort, float width, integer chartype)
-{   list path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);    // plan a static path
+//  Width may be wider than gPathWidth here.
+//
+list pathtrimmedstaticpath(vector startpos, vector endpos, float stopshort, float width)
+{   list path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,gPathChartype]);    // plan a static path
     integer status = llList2Integer(path,-1);               // static path status
     if (stopshort <= 0) return(path);                       // no need to trim
     if (status != 0) { return([status]); }                  // fails

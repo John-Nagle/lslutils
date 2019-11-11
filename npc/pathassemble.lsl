@@ -242,7 +242,7 @@ pathexeassemblesegs()
             nextseg = llList2List(nextseg,1,-1);        // discard new duplicate point
             //  If we can take a short-cut at the join between two segments, do so.
             //  Also add "extra points" on long segments here for speed control.
-            if (obstaclecheckpath(llList2Vector(gAllSegments,-2), llList2Vector(nextseg,0), gPathWidth, gPathHeight, gPathExeProbespacing, gPathChartype))
+            if (obstaclecheckpath(llList2Vector(gAllSegments,-2), llList2Vector(nextseg,0), gPathExeProbespacing))
             {   gAllSegments = llList2List(gAllSegments,0,-2) + pathexeextrapoints(nextseg, gPathExeDisttoend, first); }
             else
             {   gAllSegments += pathexeextrapoints(nextseg, gPathExeDisttoend, first);                // no, can't drop point
@@ -289,8 +289,7 @@ pathexedomove()
             vector pos = llGetPos();                            // we are here
             segstodo = llListReplaceList(segstodo,[pos-<0,0,gPathHeight*0.5>],0,0);   // always start from current position
             assert(llGetListLength(segstodo) >= 2);     // must always have at least two points
-            pathmovestart(segstodo, gPathWidth, gPathHeight, gPathChartype, 
-                gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId, gPathMsgLevel); 
+            pathmovestart(segstodo, gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId); 
         }     
         ////gPathExeMovegoal = llList2Vector(gAllSegments,-1);  // where we are supposed to be going
         ////assert(gPathExeMovegoal != ZERO_VECTOR);        // must not be EOF marker         
@@ -392,7 +391,7 @@ pathexemazedeliver(string jsn)
     }                                                                   // ***END TEMP***
     ////assert(llVecMag(llList2Vector(ptsworld,-1) - p1) < 0.01);            // maze endpoints must match
     //  Straighten path. Maze solver paths are all right angles. Here we try short cuts.
-    ptsworld = pathstraighten(ptsworld, gPathWidth, gPathHeight, gPathExeProbespacing, gPathChartype);   // postprocess path
+    ptsworld = pathstraighten(ptsworld, gPathExeProbespacing);          // postprocess path
     pathexedeliver(ptsworld, pathid, segmentid, TRUE, 0, hitobj);      // deliver maze solution
 }
 //

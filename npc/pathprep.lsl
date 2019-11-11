@@ -110,17 +110,17 @@ default
             for (i=0; i<llGetListLength(TRIALOFFSETS); i++)         // try coming from all around the start point
             {   if (!good)
                 {   vector refpos = p + llList2Vector(TRIALOFFSETS,i)*gPathWidth; // test at this offset
-                    good = pathcheckcelloccupied(refpos, p, gPathWidth, gPathHeight, gPathChartype, TRUE, FALSE) >= 0.0;
+                    good = pathcheckcelloccupied(refpos, p, TRUE, FALSE) >= 0.0;
                 }
             }
             if (!good)
             {   pathMsg(PATH_MSG_WARN, "Start location is not clear: " + (string)startpos);           // not good, but we can recover
                 //  Ask the move task to attempt recovery. This will move to a better place and return a status to the retry system.
-                pathmoverecover(gPathprepPathid, gPathWidth, gPathHeight, gPathChartype, gPathMsgLevel); // attempts recovery and informs retry system   
+                pathmoverecover(gPathprepPathid);                       // attempts recovery and informs retry system   
                 return;
             }
             //  Use the system's GetStaticPath to get an initial path
-            list pts = pathtrimmedstaticpath(startpos, goal, stopshort, gPathWidth + PATHSTATICTOL, gPathChartype);
+            list pts = pathtrimmedstaticpath(startpos, goal, stopshort, gPathWidth + PATHSTATICTOL);
             integer len = llGetListLength(pts);                          
             ////pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(gPts,-1) + ", "+ (string)llGetListLength(gPts) + 
             ////    " pts: " + llDumpList2String(pts,","));             // dump list for debug
@@ -155,10 +155,9 @@ default
             //  We have a valid static path. Send it to the main planner.
             pathMsg(PATH_MSG_INFO,"Path check for obstacles. Segments: " + (string)len); 
             llMessageLinked(LINK_THIS, PATHPLANPREPPED, llList2Json(JSON_OBJECT,
-                ["target",gPathprepTarget, "goal", goal, "stopshort", stopshort, "width", gPathWidth, "height", gPathHeight, 
-                "chartype", gPathChartype, "testspacing", testspacing,
+                ["target",gPathprepTarget, "goal", goal, "stopshort", stopshort, "testspacing", testspacing,
                 "speed", gPathprepSpeed, "turnspeed", gPathprepTurnspeed,
-                "pathid", gPathprepPathid, "msglev", gPathMsgLevel, "points", llList2Json(JSON_ARRAY,pts)]),"");
+                "pathid", gPathprepPathid, "points", llList2Json(JSON_ARRAY,pts)]),"");
         } else if (num == PATHPARAMSINIT)
         {   pathinitparams(jsn); }                                      // initialize params
   

@@ -11,11 +11,11 @@
 //  This is a macro to avoid an extra recopy of "pts", which can be large.
 //  The "execute" task is tight on space.
 //
-#define pathmovestart(pts, width, height, chartype, target, speed, turnspeed, pathid, msglev) {  \
+#define pathmovestart(pts, target, speed, turnspeed, pathid) {  \
     llMessageLinked(LINK_THIS, LINKMSGMOVEREQUEST, \
-    llList2Json(JSON_OBJECT,["request","startmove","width", (width), "height", (height), "chartype", (chartype), "target", (target),\
+    llList2Json(JSON_OBJECT,["request","startmove", "target", (target),\
     "speed", (speed), "turnspeed", turnspeed,\
-    "pathid",(pathid), "msglev",(msglev),\
+    "pathid",(pathid),\
     "points", llList2Json(JSON_ARRAY,(pts))]),""); }  
 //
 //  Path move stop -- sends link message to move task
@@ -26,9 +26,9 @@
 //
 //  Path move recover -- sends link message to move task to recover to good position
 //
-#define pathmoverecover(pathid, width, height, chartype, msglev) { \
+#define pathmoverecover(pathid) { \
     llMessageLinked(LINK_THIS, LINKMSGMOVEREQUEST, \
-    llList2Json(JSON_OBJECT, ["request", "recover", "pathid", (pathid), "width", (width), "height", (height), "chartype", (chartype), "msglev", (msglev)]),""); }
+    llList2Json(JSON_OBJECT, ["request", "recover", "pathid", (pathid)]),""); }
     
 //
 //  Messages to and from recover task
