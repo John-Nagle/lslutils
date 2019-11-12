@@ -15,21 +15,21 @@
 //
 
 //  Constants
-////float REGION_SIZE = 256.0;                                      // size of a region  
-float TESTSPACING = 0.33;                                       // (m) vertical spacing between ray casts
+#define TESTSPACING (0.33)                                      // (m) vertical spacing between ray casts
+#define PATHMAXRETRIES  10                                      // (count) no more than this many retries before giving up
 
-////#define PATHCALLSTALLTIME 300 ////120                                   // if stalled for 120 seconds, reset everything 
 //
 //  Globals
 //  Character parameters
 float gPathcallSpeed = 1.0;                                     // speed defaults are very slow
 float gPathcallTurnspeed = 0.1;
 //  Retry state
+integer gPathcallRetries = 0;                                   // no retries yet
 float gPathcallLastDistance = 0.0;                              // distance to goal on last try
 list  gPathcallLastParams = [];                                 // params at last try
 
 integer gPathcallReset = FALSE;                                 // have we reset the system since startup?
-integer gPathcallStarttime = 0;                                 // time last command started
+////integer gPathcallStarttime = 0;                                 // time last command started
 
 integer gLocalPathId = 0;                                       // current path serial number
 integer gLocalRequestId = 0;                                    // current request from user serial number
@@ -45,7 +45,7 @@ pathLinkMsg(string jsn, key hitobj)
     {   pathMsg(PATH_MSG_WARN, "Stale path completed msg discarded."); return; }
     pathMsg(PATH_MSG_WARN,"Path complete, status " + (string)status + " Time: " + (string)llGetTime());
     if (pathretry(status, hitobj)) { return; }          // attempt a retry
-    gPathcallStarttime = 0;                             // really done, stop clock
+    ////gPathcallStarttime = 0;                             // really done, stop clock
     pathUpdateCallback(status, hitobj);
 }
 
@@ -70,7 +70,9 @@ pathprepstart(key target, vector goal, float stopshort, float testspacing, integ
 pathbegin(key target, vector endpos, float stopshort, integer dogged, integer requestid)
 {
     gPathcallLastDistance = INFINITY;                               // must get shorter on each retry
+    gPathcallRetries = 0;                                           // no retries yet
     gLocalRequestId = requestid;                                    // save request ID for callbacks
+    llResetTime();                                                  // for elapsed time display
     pathstart(target, endpos, stopshort, dogged);                   // do it
 }
 //
@@ -110,7 +112,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
     endpos.z = newz;                                                // use ground level found by ray cast
     //  Generate path
     pathprepstart(target, endpos, stopshort, TESTSPACING, gLocalPathId);
-    gPathcallStarttime = llGetUnixTime();                               // timestamp we started
+    ////gPathcallStarttime = llGetUnixTime();                               // timestamp we started
     //  Output from pathcheckobstacles is via callbacks
 }
 //
@@ -125,6 +127,10 @@ integer pathretry(integer status, key hitobj)
     float shortstop = llList2Float(gPathcallLastParams, 2);
     integer dogged = llList2Integer(gPathcallLastParams,3);
     gPathcallLastParams = [];                                           // consume retry params to prevent loop
+    if (gPathcallRetries > PATHMAXRETRIES)
+    {   pathMsg(PATH_MSG_ERROR, "Maximum retries exceeded.");           // not getting anywhere, give up and report trouble
+        return(FALSE);                                                  // 
+    }
     float dist = pathdistance(llGetPos(), endpos, gPathWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
     if (dist < 0 || dist >= gPathcallLastDistance)                      // check for closer. negative means path distance failed. Avoids loop.
     {   if (!dogged || status != PATHEXETARGETMOVED)                    // dogged pursue mode, keep trying even if not getting closer  
@@ -132,7 +138,8 @@ integer pathretry(integer status, key hitobj)
     }
     if (gPathcallLastDistance > dist) { gPathcallLastDistance = dist; } // use new value if smaller, so the initial value of infinity gets reduced
     //  Must do a retry
-    pathMsg(PATH_MSG_WARN, "Distance " + (string)dist + "m. Retrying...");                              // retry
+    gPathcallRetries++;                                                 // retry count 
+    pathMsg(PATH_MSG_WARN, "Retrying. Distance " + (string)dist + "m. Retry " + (string)gPathcallRetries);                              // retry
     pathstart(target, endpos, shortstop, dogged);                       // trying again
     return(TRUE);                                                       // doing retry, do not tell user we are done.
 }
