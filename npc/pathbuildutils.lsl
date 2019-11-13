@@ -244,17 +244,15 @@ integer pathvaliddest(vector pos)
     {   return(FALSE); } // different group and owner at dest parcel
     //  Check for no-script area
     if (thereflags & PARCEL_FLAG_ALLOW_SCRIPTS == 0)            // if scripts off for almost everybody
-    {   if (gPathOwner != thereowner)
-        {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_SCRIPTS == 0) || (gPathGroup != theregroup))
-            { return(FALSE); }                                  // would die
-        }
+    {   if (gPathOwner != thereowner) { return(TRUE); }         // same owner, OK
+        if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_SCRIPTS == 0) || (gPathGroup != theregroup))
+        { return(FALSE); }                                  // would die
     }                                // no script area, we would die
     //  Can we enter the destination parcel?
-    if (thereflags && PARCEL_FLAG_ALLOW_ALL_OBJECT_ENTRY == 0) 
-    {    if (gPathOwner == thereowner) { return(TRUE); } // same owner, OK
-        {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_OBJECT_ENTRY) || (gPathGroup != theregroup))
-            { return(FALSE); }
-        }
+    if (thereflags & PARCEL_FLAG_ALLOW_ALL_OBJECT_ENTRY == 0) 
+    {   if (gPathOwner == thereowner) { return(TRUE); } // same owner, OK
+        if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_OBJECT_ENTRY) || (gPathGroup != theregroup))
+        { return(FALSE); }
     }
     return(TRUE);  // OK to enter destination parcel
 }
