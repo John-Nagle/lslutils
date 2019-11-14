@@ -243,14 +243,14 @@ integer pathvaliddest(vector pos)
     && (llList2Key(heredata,1) != theregroup))
     {   return(FALSE); } // different group and owner at dest parcel
     //  Check for no-script area
-    if (thereflags & PARCEL_FLAG_ALLOW_SCRIPTS == 0)            // if scripts off for almost everybody
+    if ((thereflags & PARCEL_FLAG_ALLOW_SCRIPTS) == 0)            // if scripts off for almost everybody
     {   if (gPathOwner != thereowner)         // different owner, check group
         {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_SCRIPTS == 0) || (gPathGroup != theregroup))
             { return(FALSE); }                                  // no-script area, would die
         }
     }                                                           
     //  Can we enter the destination parcel?
-    if (thereflags & PARCEL_FLAG_ALLOW_ALL_OBJECT_ENTRY == 0) 
+    if ((thereflags & PARCEL_FLAG_ALLOW_ALL_OBJECT_ENTRY) == 0) 
     {   if (gPathOwner != thereowner) 
         {   if ((thereflags & PARCEL_FLAG_ALLOW_GROUP_OBJECT_ENTRY) || (gPathGroup != theregroup))
             { return(FALSE); }
