@@ -231,10 +231,14 @@ float pathvecmagxy(vector v) { return(llVecMag(<v.x, v.y, 0>));}            // v
 //
 //  pathvaliddest - is target valid (same sim and same parcel ownership?)
 //
+key gPathAlllowedParcel;                                // last parcel checked, as cache
+
 integer pathvaliddest(vector pos) 
 {
     if (pos.x <= 0 || pos.x >= REGION_SIZE || pos.y <= 0 || pos.y >= REGION_SIZE) { return(FALSE); }
-    list theredata = llGetParcelDetails(pos, [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP]);
+    list theredata = llGetParcelDetails(pos, [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP, PARCEL_DETAILS_ID]);
+    key thereid = llList2Key(theredata,2);              // ID of the parcel
+    if (thereid == gPathAlllowedParcel) { return(TRUE); }   // checked this one already, good to go
     list heredata = llGetParcelDetails(llGetPos(), [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP]);
     integer thereflags = llGetParcelFlags(pos);         // flags for dest parcel
     key thereowner = llList2Key(theredata,0);
@@ -256,6 +260,7 @@ integer pathvaliddest(vector pos)
             { return(FALSE); }
         }
     }
+    gPathAlllowedParcel = thereid;                              // this parcel is OK
     return(TRUE);  // OK to enter destination parcel
 }
 //

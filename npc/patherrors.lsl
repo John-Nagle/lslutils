@@ -64,6 +64,7 @@
 #define PATHEXEWALKABLETROUBLE -2017            // at non-walkable location, must try recovery
 #define PATHEXEREQOUTOFSYNC  -2018              // request at move level while doing something else
 #define PATHERROFFPATH       -2019              // off the path in move. Retry.
+#define PATHERRPROHIBITED    -2020              // Point is in a prohibited area (cannot enter parcel)
 
 //
 //  List of retryable errors.  For these, try again, if there was progress on the previous try.

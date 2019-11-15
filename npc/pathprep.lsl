@@ -132,10 +132,12 @@ default
             }
             //  Got path. Do the path prep work.
             pts = [startpos] + llList2List(pts,0,-2);                   // drop status from end of points list
+#ifdef OBSOLETE
             ////pathMsg(PATH_MSG_INFO,"Static planned");                // ***TEMP***
             vector startposerr0 = llList2Vector(pts,0) - startpos;                  // should not change first point, except in Z
             if (llVecMag(<startposerr0.x,startposerr0.y,0.0>) > 0.01)            // ***TEMP***
             {   pathMsg(PATH_MSG_ERROR, "First point wrong 1, was: " + (string)llList2Vector(pts,0) + " should be " + (string)startpos); }
+#endif // OBSOLETE
 
             ////assert(llVecMag(llList2Vector(pts,0) - startpos) < 0.01); // first point of static path must always be where we are
             pts = pathclean(pts);                                 // remove dups and ultra short segments
@@ -149,9 +151,21 @@ default
                 return;                                             // empty list
             }
             vector startposerr = llList2Vector(pts,0) - startpos;                  // should not change first point, except in Z
+#ifdef OBSOLETE
             if (llVecMag(<startposerr.x,startposerr.y,0.0>) > 0.01)            // ***TEMP***
             {   pathMsg(PATH_MSG_ERROR, "First point wrong 2, was: " + (string)llList2Vector(pts,0) + " should be " + (string)startpos); }
+#endif // OBSOLETE
             ////assert(llVecMag(<startposerr.x,startposerr.y,0.0>) < 0.01);        // first point must always be where we are
+            //  Check that path does not go through a keep-out area.
+            for (i=0; i<len; i++)
+            {   vector pt = llList2Vector(pts,i);                   // point being tested
+                if (!pathvaliddest(pt))                             // if cannot go there
+                {
+                    pathMsg(PATH_MSG_WARN, "Prohibited point: " + (string)pt);  // can't go there, don't even try
+                    pathdeliversegment([],FALSE,TRUE,gPathprepPathid, PATHERRPROHIBITED); // empty set of points, no maze, done.   
+                    return;                                         // not allowed
+                }
+            }         
             //  We have a valid static path. Send it to the main planner.
             pathMsg(PATH_MSG_INFO,"Path check for obstacles. Segments: " + (string)len); 
             llMessageLinked(LINK_THIS, PATHPLANPREPPED, llList2Json(JSON_OBJECT,
