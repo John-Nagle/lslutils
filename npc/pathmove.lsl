@@ -102,6 +102,7 @@ pathmovedone(integer status, key hitobj)
     list params = ["reply", "movedone", "status", status, "pathid", gPathMoveId, "hitobj", hitobj];
     llMessageLinked(LINK_THIS, LINKMSGMOVEREPLY, llList2Json(JSON_OBJECT,params), "");   // Return result to execute task
     gPathMoveMoving = FALSE;                                    // no longer active
+    gPathMoveActive = FALSE;
     gPathMoveLastdest = ZERO_VECTOR;                            // used up destination
 }
 //
