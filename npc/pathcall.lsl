@@ -252,9 +252,9 @@ float pathLinearInterpolate(float n1 , float n2 , float fract )
 //  ease = 0.5: reasonable smoothing
 //
 float easeineaseout(float ease, float fract)
-{   float ym = pathLinearInterpolate( 0 , fract, fract );
-    float yn = pathLinearInterpolate(fract , 1 , fract );
-    float y = pathLinearInterpolate( ym , yn , fract);
+{   float ym = pathLinearInterpolate(0, ease, fract);
+    float yn = pathLinearInterpolate(ease, 1, fract);
+    float y =  pathLinearInterpolate(ym, yn,  fract);
     return(y);
 }
 
