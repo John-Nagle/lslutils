@@ -127,7 +127,12 @@ default
             pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(pts,-1) + ", "+ (string)len + " points.");  // dump list for debug
             integer status = llList2Integer(pts,-1);                // last item is status
             if (status != 0 || len < 3)            // if static path fail or we're already at destination
-            {   pathdeliversegment([], FALSE, TRUE, gPathprepPathid, status);// report error
+            {   if (llListFindList(PATHRECOVERABLES, [status]) >= 0) 
+                {   pathMsg(PATH_MSG_WARN,"Recovering from static path error " + (string)status + " at " + (string)startpos);
+                    pathmoverecover(gPathprepPathid);
+                    return;
+                }
+                pathdeliversegment([], FALSE, TRUE, gPathprepPathid, status);// report error
                 return;
             }
             //  Got path. Do the path prep work.
