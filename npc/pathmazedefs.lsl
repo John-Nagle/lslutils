@@ -1,5 +1,5 @@
 //
-//  mazedefs.lsl -- definitions for maze solver and path planner
+//  pathmazedefs.lsl -- definitions for maze solver and path planner
 //
 //  Animats
 //

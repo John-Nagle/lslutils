@@ -8,7 +8,7 @@
 //  License: GPLv3.
 //
 #include "npc/patherrors.lsl"
-#include "npc/mazedefs.lsl"
+#include "npc/pathmazedefs.lsl"
 #include "debugmsg.lsl"
 
 //

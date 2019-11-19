@@ -9,7 +9,7 @@
 //  June, 2019
 //
 #include "npc/pathbuildutils.lsl"                           // common functions
-#include "npc/mazesolvercall.lsl"
+#include "npc/pathmazesolvercall.lsl"
 //
 //  Constants
 //

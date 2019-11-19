@@ -1,5 +1,5 @@
 //
-//  mazesolvercall.lsl
+//  pathmazesolvercall.lsl
 //
 //  Finds reasonable path through a grid of squares with obstacles.
 //
@@ -9,7 +9,7 @@
 //  This file is used by callers of the maze solver. The maze solver
 //  itself is in a separate script, for memory size reasons.
 //
-#include "npc/mazedefs.lsl"
+#include "npc/pathmazedefs.lsl"
 //
 //  Format:
 //  { "request" : "mazesolve",  "verbose" : INTEGER, "serial", INTEGER,

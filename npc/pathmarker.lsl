@@ -4,7 +4,7 @@
 //  Animats
 //  July, 2019
 //
-#include "npc/mazedefs.lsl"
+#include "npc/pathmazedefs.lsl"
 integer MARKERCHANNEL = -3938235;                                // arbitrary channel number
 integer MARKERREPLYCHANNEL = -3938236;                              // reply channel
 string MARKERNAME = "Path marker, rounded (TEMP)";                        // rez this

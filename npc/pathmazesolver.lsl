@@ -1,5 +1,5 @@
 //
-//  mazesolver.lsl
+//  pathmazesolver.lsl
 //
 //  Finds reasonable path through a grid of squares with obstacles.
 //
@@ -42,7 +42,7 @@
 //
 //
 #include "npc/pathbuildutils.lsl"
-#include "npc/mazedefs.lsl"
+#include "npc/pathmazedefs.lsl"
 
 //  Constants
 //

@@ -9,7 +9,7 @@
 #ifndef PATHBUILDUTILSLSL                                   // include guard, like C/C++
 #define PATHBUILDUTILSLSL
 #include "npc/assert.lsl"                                   // assert
-#include "npc/mazedefs.lsl"
+#include "npc/pathmazedefs.lsl"
 #include "debugmsg.lsl"
 //
 //  Constants

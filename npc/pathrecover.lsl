@@ -15,7 +15,7 @@
 ///
 #include "npc/assert.lsl"                                   // assert
 #include "npc/patherrors.lsl"
-#include "npc/mazedefs.lsl"
+#include "npc/pathmazedefs.lsl"
 #include "npc/pathbuildutils.lsl"
 #include "npc/pathmovecall.lsl"
 //
