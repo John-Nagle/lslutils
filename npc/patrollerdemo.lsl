@@ -130,6 +130,7 @@ pathUpdateCallback(integer status, key hitobj )
         {   //  Turn to face avatar.
             start_anim(IDLE_ANIM);
             face_and_greet("Hello");
+            return;
         } 
         if (gAction == ACTION_PATROL)
         {   face_dir(<llSin(gFaceDir), llCos(gFaceDir), 0.0>);   // face in programmed direction
@@ -137,7 +138,13 @@ pathUpdateCallback(integer status, key hitobj )
             gAction = ACTION_IDLE;
             llResetTime();                          // reset timeout timer but keep dwell time
             debugMsg(DEBUG_MSG_INFO,"Patrol point reached.");
-        }  
+            return;
+        }
+        //  Got completion in unexpected state
+        debugMsg(DEBUG_MSG_ERROR,"Unexpected path completion in state " + (string)gAction + " Status: " + (string)status);
+        gAction = ACTION_IDLE;            
+        start_anim(IDLE_ANIM);
+
         return;
     }
     //  If had trouble getting there, but got close enough, maybe we can just say hi.

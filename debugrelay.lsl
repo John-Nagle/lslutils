@@ -90,7 +90,7 @@ buffermsg(string name, key id, integer msglev, string message)
     gMsgLog += [s];                                         // add to circular buffer
     //  Discard old messages if full or memory tight.
     while ((pathneedmem(DEBUG_MIN_MEM) || (llGetListLength(gMsgLog) > DEBUG_LOG_MAX)) && (llGetListLength(gMsgLog) > 1))
-    {   gMsgLog = llDeleteSubList(gMsgLog,1,1); }           // if memory tight, drop more messages
+    {   gMsgLog = llDeleteSubList(gMsgLog,0,0); }           // if memory tight, drop more messages
 }
 
 
