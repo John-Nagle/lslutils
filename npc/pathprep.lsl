@@ -18,15 +18,38 @@ float MINSEGMENTLENGTH = 0.025; /// 0.10;                   // minimum path segm
 
 #define PATHPLANMINMEM  3000                                // less than this, quit early and retry
 list TRIALOFFSETS = [<-1,0,0>,<1,0,0>,<0,1,0>,<0,-1,0>]; // try coming from any of these directions for start point validation
+//
 //  Globals
 //
 float gPathprepSpeed;
 float gPathprepTurnspeed;
-////integer gPathChartype;
 key gPathprepTarget;
-////float gPathWidth;
-////float gPathHeight;
 integer gPathprepPathid;
+//
+//  Stuck detection
+//
+#define PATHPREPSTALLTIME 300.0                             // stalled if no move in this time
+#define PATHPREPSTALLTRIES 20                               // and in this many tries
+integer gPathprepLastMovedPathid = 0;                       // last pathid on which character moved
+integer gPathprepLastMovedTime = 0;                         // last time moved
+vector  gPathprepLastMovedPos = ZERO_VECTOR;                // last position seen moved
+//
+//  pathstuck -- are we stuck?
+//
+//  A next to last ditch check for breaking out of stuck conditions after many minutes.
+//
+integer pathstuck(vector pos)
+{   if (llVecMag(pos-gPathprepLastMovedPos) > 0.10)         // if we moved
+    {   gPathprepLastMovedPos = pos;                        // record good pos
+        gPathprepLastMovedTime = llGetUnixTime();           // time
+        gPathprepLastMovedPathid = gPathprepPathid;         // path sequence number
+        return(FALSE);                                      // not stalled
+    }          
+    if ((llGetUnixTime() - gPathprepLastMovedTime) < PATHPREPSTALLTIME) { return(FALSE); } // not stalled yet
+    integer pathiddiff = gPathprepPathid - gPathprepLastMovedPathid;    // difference in pathid
+    if (pathiddiff < PATHPREPSTALLTRIES && pathiddiff > 0) { return(FALSE); } // not enough fails, and pathid didn't wrap around
+    return(TRUE);                                           // stuck, time for a recovery
+}
 
 //
 //  pathdeliversegment -- path planner has a segment to be executed
@@ -97,15 +120,22 @@ default
             //  Call the planner
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)gPathprepPathid + " prepping."); 
             //  Start a new planning cycle
-            //  Quick sanity check - are we in a legit place?            
             vector pos = llGetPos();                                // we are here
+            //  Are we already there?
+            if (pathvecmagxy(pos - goal) < 0.005 && llFabs(pos.z - goal.z) < gPathHeight) // if we are already there
+            {
+                pathdeliversegment([], FALSE, TRUE, gPathprepPathid, MAZESTATUSOK);// report immediate success and avoid false stuck detection
+                return;
+            }
+            if (pathstuck(pos))                                     // check for trying over and over and getting nowhere.
+            {   
+                pathMsg(PATH_MSG_ERROR,"Stuck at " + (string)pos + ". Recovering.");    // err for debug purposes, change to warn later
+                pathmoverecover(gPathprepPathid);                   // force return to a previous good point
+            }
+            //  Quick sanity check - are we in a legit place?            
             vector fullheight = <0,0,gPathHeight>;              // add this for casts from middle of character
             vector halfheight = fullheight*0.5;   
             vector p = pos-halfheight;                              // position on ground
-#ifdef OBSOLETE
-            vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
-            if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) < 0)  // use exactly the same test as in pathmove           
-#endif // OBSOLETE
             integer good = FALSE;                                   // not yet a good start point
             for (i=0; i<llGetListLength(TRIALOFFSETS); i++)         // try coming from all around the start point
             {   if (!good)
