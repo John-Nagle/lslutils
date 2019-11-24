@@ -92,7 +92,7 @@ pathTick()
     {   //  TROUBLE - the system is stalled.
         debugMsg(DEBUG_MSG_ERROR, "Stalled and reset. Last command: " + gPathcallLastCommand); // tell owner
         pathmasterreset();                          // reset other scripts
-        pathUpdateCallback(MAZESTATUSTIMEOUT, NULL_KEY);       // report problem to caller
+        pathUpdateCallback(PATHERRMAZETIMEOUT, NULL_KEY);       // report problem to caller
     }
 }
 

@@ -103,7 +103,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
             " segmentid: " + (string)segmentid + " pts: " +
             llDumpList2String(pts,","));
         gPathExeActive = TRUE;                              // so stop will return an error to pathcall
-        pathexestop(PATHEXEBADPATH1); 
+        pathexestop(PATHERRBADPATH1); 
         return; 
     } // bogus 1 point path
     if (pathid != gPathExeId)                                // starting a new path, kill any movement
@@ -127,7 +127,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
         if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL && segmentid == 0)     // if too far from current pos 
         {   pathMsg(PATH_MSG_WARN,"Bad start pos, segment " + (string)segmentid +
              " Should be at: " + (string)llList2Vector(pts,0) + " Current pos: " + (string)llGetPos());
-            pathexestop(PATHEXEBADSTARTPOS);                // we are not where we are supposed to be.
+            pathexestop(PATHERRBADSTARTPOS);                // we are not where we are supposed to be.
             return; 
         }
     }
@@ -272,9 +272,6 @@ pathexedomove()
     }
     if (gRemainingSegments != [])                       // if work
     {   
-        ////vector kfmstart = llList2Vector(gAllSegments,0);    // first point, which is where we should be
-        ////assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker
-        ////gAllSegments = llListReplaceList(gAllSegments,[pos-<0,0,gPathHeight*0.5>],0,0);   // always start from current position
         //  Start keyframe motion and obstacle detection.
         //  Offloads the space explosion of keyframe generation to another script with more free space.
         {   list segstodo = [];                             // do these now
@@ -351,7 +348,7 @@ pathexemazedeliver(string jsn)
 {
     DEBUGPRINT1("Maze deliver: " + jsn);
     string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
-    if (requesttype != "mazesolve") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
+    if (requesttype != "mazesolve") { pathexestop(PATHERRMAZEFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
     //  If a move is stopped, the maze solver may still be running and sending maze solves.
@@ -400,7 +397,7 @@ pathexemazedeliver(string jsn)
 pathexepathdeliver(string jsn) 
 {   pathMsg(PATH_MSG_INFO,"Path deliver received: " + jsn);
     string requesttype = llJsonGetValue(jsn,["reply"]);   // request type
-    if (requesttype != "path") { pathexestop(MAZESTATUSFORMAT); return; }              // ignore, not our msg
+    if (requesttype != "path") { pathexestop(PATHERRMAZEFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
     //  Results from the path planner also contain some misc, parameter updates.

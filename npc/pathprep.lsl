@@ -124,7 +124,7 @@ default
             //  Are we already there?
             if (pathvecmagxy(pos - goal) < 0.005 && llFabs(pos.z - goal.z) < gPathHeight) // if we are already there
             {
-                pathdeliversegment([], FALSE, TRUE, gPathprepPathid, MAZESTATUSOK);// report immediate success and avoid false stuck detection
+                pathdeliversegment([], FALSE, TRUE, gPathprepPathid, PATHERRMAZEOK);// report immediate success and avoid false stuck detection
                 return;
             }
             if (pathstuck(pos))                                     // check for trying over and over and getting nowhere.
@@ -167,13 +167,6 @@ default
             }
             //  Got path. Do the path prep work.
             pts = [startpos] + llList2List(pts,0,-2);                   // drop status from end of points list
-#ifdef OBSOLETE
-            ////pathMsg(PATH_MSG_INFO,"Static planned");                // ***TEMP***
-            vector startposerr0 = llList2Vector(pts,0) - startpos;                  // should not change first point, except in Z
-            if (llVecMag(<startposerr0.x,startposerr0.y,0.0>) > 0.01)            // ***TEMP***
-            {   pathMsg(PATH_MSG_ERROR, "First point wrong 1, was: " + (string)llList2Vector(pts,0) + " should be " + (string)startpos); }
-#endif // OBSOLETE
-
             ////assert(llVecMag(llList2Vector(pts,0) - startpos) < 0.01); // first point of static path must always be where we are
             pts = pathclean(pts);                                 // remove dups and ultra short segments
             ////pathMsg(PATH_MSG_INFO,"Cleaned");                       // ***TEMP***
@@ -182,14 +175,10 @@ default
             len = llGetListLength(pts);                            // update number of points after cleanup
             if (len < 2)
             {   
-                pathdeliversegment([], FALSE, TRUE, gPathprepPathid, MAZESTATUSNOPTS);        // empty set of points, no maze, done.
+                pathdeliversegment([], FALSE, TRUE, gPathprepPathid, PATHERRMAZENOPTS);        // empty set of points, no maze, done.
                 return;                                             // empty list
             }
             vector startposerr = llList2Vector(pts,0) - startpos;                  // should not change first point, except in Z
-#ifdef OBSOLETE
-            if (llVecMag(<startposerr.x,startposerr.y,0.0>) > 0.01)            // ***TEMP***
-            {   pathMsg(PATH_MSG_ERROR, "First point wrong 2, was: " + (string)llList2Vector(pts,0) + " should be " + (string)startpos); }
-#endif // OBSOLETE
             ////assert(llVecMag(<startposerr.x,startposerr.y,0.0>) < 0.01);        // first point must always be where we are
             //  Check that path does not go through a keep-out area.
             for (i=0; i<len; i++)

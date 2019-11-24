@@ -107,7 +107,7 @@ add_patrol_point(string s)
 //
 pathUpdateCallback(integer status, key hitobj )
 {   debugMsg(DEBUG_MSG_INFO, "Path update: : " + (string) status + " obstacle: " + llKey2Name(hitobj));
-    if (status == MAZESTATUSOK)          // success
+    if (status == PATHERRMAZEOK)          // success
     {   ////llOwnerSay("Pathfinding task completed.");
         if (gAction == ACTION_PURSUE)               
         {

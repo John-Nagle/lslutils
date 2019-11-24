@@ -741,11 +741,11 @@ float pathcastfoundproblem(list castresult, integer needwalkable, integer ignore
 list pathanalyzecastresult(list castresult, integer needwalkable)
 {   integer status = llList2Integer(castresult, -1);        // status is last element in list
     if (status == 0) 
-    {   if (needwalkable) { return([PATHEXENOTWALKABLE]); } // need ground support and don't have it
+    {   if (needwalkable) { return([PATHERRNOTWALKABLE]); } // need ground support and don't have it
         return([]);                                         // OK
     }
     if (status < 0)  
-    {   return([MAZESTATUSCASTFAIL]); }                     // problem, fails
+    {   return([PATHERRMAZECASTFAIL]); }                     // problem, fails
     //  Hit something. Must analyze.
     //  Hit ourself, ignore. 
     //  Hit land or walkable, ignore.
@@ -765,7 +765,7 @@ list pathanalyzecastresult(list castresult, integer needwalkable)
             return([]);                                     // we hit a walkable - good.
         }
     }
-    if (needwalkable) { return([PATHEXENOTWALKABLE]); }     // need ground support and don't have it
+    if (needwalkable) { return([PATHERRNOTWALKABLE]); }     // need ground support and don't have it
     return([]);                                             // OK
 }
 
@@ -850,13 +850,6 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
     if (numersq < 0.0) { return(NAN); }              // Error
     float numer = llSqrt(numersq);                   // must be nonnegative
     float movedistflat = (-b - numer) / (2*a);       // the smaller quadatic solution.
-#ifdef OBSOLETE
-    DEBUGPRINT1("path cell move calc.  llFabs(llVecMag((endptflat - (pntflat+dirflat*(-movedistflat))() : " 
-        + (string) llFabs(llVecMag((endptflat - (pntflat+dirflat*(-movedistflat)))))
-        + " unit cells: " + (string)unitcells + " cell size: " + (string)cellsize + " pntflat: " + (string)pntflat + " endpflat: "
-        + (string)endptflat +  " p0: " + (string)p0 + " dirflat: " + (string)dirflat + " movedistflat: "  
-        + (string)movedistflat);
-#endif // OBSOLETE
     assert(llFabs(a*movedistflat*movedistflat + b*movedistflat + c) < 0.001);   // quadratic equation check
     movedistflat = -movedistflat;                   // ***NOT SURE ABOUT THIS***
     if (movedistflat < 0) { return(NAN); }

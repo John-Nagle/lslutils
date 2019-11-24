@@ -42,7 +42,7 @@ integer pathcheckforwalkable()
     if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) >= 0)  
     {   return(0); }                                        // no problem   
     //  Trouble, there is no walkable here
-    return(PATHEXEWALKABLEFAIL);                            // fail for now, may recover later
+    return(PATHERRWALKABLEFAIL);                            // fail for now, may recover later
 }
 
 //
@@ -66,11 +66,11 @@ integer pathrecoverwalkable(list pts)
             llSetPos(recoverpos + halfheight);              // forced move to previous good position
             llSleep(0.5);                                   // give time to settle
             pathMsg(PATH_MSG_WARN,"Recovered by moving to " + (string) recoverpos);
-            return(PATHEXEWALKABLEFIXED);
+            return(PATHERRWALKABLEFIXED);
         }
     }
     pathMsg(PATH_MSG_ERROR,"Unable to recover from lack of walkable below " + (string)pos + " by recovering to any of " + llDumpList2String(pts,",")); 
-    return(PATHEXEWALKABLEFAIL);
+    return(PATHERRWALKABLEFAIL);
 }
 
 

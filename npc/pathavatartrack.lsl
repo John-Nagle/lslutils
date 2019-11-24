@@ -39,7 +39,6 @@ list gDeferredPositions = [];                   // don't retry until target move
 startup()
 {   pathinitutils();                                            // library init
     llSetTimerEvent(IDLE_POLL);                                 // check for work
-    llOwnerSay("Restart.");
 }
 
 //

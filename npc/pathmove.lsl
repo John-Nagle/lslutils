@@ -33,12 +33,12 @@
 //
 #define PATHMOVERAYTIME      0.2                            // (secs) do a cast ray for obstacles this often
 #define PATHMOVECHECKSECS   2.0                             // (secs) check this often for progress
-#define PATHEXELOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
+#define PATHERRLOOKAHEADDIST    10.0                        // (m) distance to look ahead for obstacles while moving
 #define PATHMOVEMINTARGETMOVE   4.0                         // (m) target must move this much to be re-chased
 #define PATHMOVEMINTARGETFRACT  0.5                         // (fraction) target must move this much as fract of dist to go to be re-chased.
 #define PATHMAXSAVEDGOODPOS 20                              // (count) number of previous good positions to save
-#define PATHEXEMAXCREEP     0.10                            // (m) max positional error allowed after keyframe motion
-#define PATHEXEMINGOODPOS   1.00                            // (m) minimum distance between good points
+#define PATHERRMAXCREEP     0.10                            // (m) max positional error allowed after keyframe motion
+#define PATHERRMINGOODPOS   1.00                            // (m) minimum distance between good points
 
 
 //
@@ -132,47 +132,8 @@ integer pathcheckforwalkable()
     {   return(0); }                                        // no problem   
     //  Trouble, there is no walkable here
     pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)p);
-    return(PATHEXEWALKABLEFAIL);                            // fail for now, may recover later
+    return(PATHERRWALKABLEFAIL);                            // fail for now, may recover later
 }
-
-#ifdef OBSOLETE
-//
-//  pathrecoverwalkable  -- get back onto walkable surface if possible
-//
-//  Returns 0 or error status
-//
-integer pathrecoverwalkable(integer recovering)
-{   vector pos = llGetPos();                                // we are here
-    vector fullheight = <0,0,gPathHeight>;              // add this for casts from middle of character
-    vector halfheight = fullheight*0.5;
-    vector p = pos-halfheight;                              // position on ground
-    vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;         // subtract this for bottom end of ray cast
-    if (!recovering)                                        // if we don't know yet if we are in trouble
-    {   if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) >= 0)  
-        {   pathMsg(PATH_MSG_WARN,"No need for recovery.");     // which is strange
-            return(0);                                          // no problem 
-        }
-    }
-    //  Trouble, there is no walkable here
-    //  Attempt recovery. Try to find a previous good location that's currently open and move there.
-    integer i = llGetListLength(gPathMoveLastgoodpos);      // for stored good points, most recent first
-    pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)p + ". Recovery points available: " + (string)i);
-    while (i-- > 1)                                         // for newest (len-1) to oldest (0)
-    {   vector recoverpos = llList2Vector(gPathMoveLastgoodpos,i);  // try to recover to here
-        vector prevrecoverpos = llList2Vector(gPathMoveLastgoodpos,i-1);
-        if (pathcheckcelloccupied(prevrecoverpos, recoverpos, gPathWidth,gPathHeight, gPathChartype, TRUE, FALSE) >= 0.0)
-        {   
-            llSleep(0.5);                                   // allow time for stop to take effect
-            llSetPos(recoverpos + fullheight*0.5);          // forced move to previous good position
-            llSleep(0.5);                                   // give time to settle
-            pathMsg(PATH_MSG_WARN,"Recovered by moving to " + (string) recoverpos);
-            return(PATHEXEWALKABLEFIXED);
-        }
-    }
-    pathMsg(PATH_MSG_ERROR,"Unable to recover from lack of walkable below " + (string)p + " by recovering to any of " + llDumpList2String(gPathMoveLastgoodpos,",")); 
-    return(PATHEXEWALKABLEFAIL);
-}
-#endif // OBSOLETE
 
 
 //
@@ -195,7 +156,7 @@ pathobstacleraycast(vector p, vector p1)
         vector hitpt = llList2Vector(castanalysis,1);
         pathMsg(PATH_MSG_WARN,"Move stopped by obstacle: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
                     + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);
-        pathmovedone(PATHEXEOBSTRUCTED, hitobj);  // report trouble
+        pathmovedone(PATHERROBSTRUCTED, hitobj);  // report trouble
     }
 }
 //
@@ -206,8 +167,8 @@ pathobstacleraycast(vector p, vector p1)
 pathcheckdynobstacles()
 {
     //  We need to find out which segment of the path we are currently in.
-    float lookaheaddist = PATHEXELOOKAHEADDIST;     // distance to look ahead
-    float PATHEXESEGDISTTOL = 0.20;                 // how close to segment to be in it. Keyframe error causes trouble here.
+    float lookaheaddist = PATHERRLOOKAHEADDIST;     // distance to look ahead
+    float PATHERRSEGDISTTOL = 0.20;                 // how close to segment to be in it. Keyframe error causes trouble here.
     float HUGE = 99999999999.0;                     // huge number, but INFINITY is bigger
     vector halfheight = <0,0,gPathHeight*0.5>;    // pos is at object midpoint, points are at ground
     vector pos = llGetPos() - halfheight;            // where we are now
@@ -222,7 +183,7 @@ pathcheckdynobstacles()
     {   vector p0 = llList2Vector(gKfmSegments,i);
         vector p1 = llList2Vector(gKfmSegments,i+1);
         if (!foundseg) 
-        {   float distalongseg = pathdistalongseg(pos, p0, p1, PATHEXESEGDISTTOL); // distance along seg, or INFINITY
+        {   float distalongseg = pathdistalongseg(pos, p0, p1, PATHERRSEGDISTTOL); // distance along seg, or INFINITY
             if (distalongseg < HUGE)    
             {   
                 gKfmSegmentCurrent = i;                 // advance current segment pos
@@ -230,7 +191,7 @@ pathcheckdynobstacles()
             }
         }
         if (foundseg)                                   // if pos is in this or a previous segment
-        {   float distalongseg = pathdistalongseg(pos, p0, p1, PATHEXESEGDISTTOL); // distance along seg, or NAN
+        {   float distalongseg = pathdistalongseg(pos, p0, p1, PATHERRSEGDISTTOL); // distance along seg, or NAN
             if (distalongseg < HUGE)                    // point is in capsule around segment
             {   
                 float seglength = llVecMag(p0-p1);
@@ -257,11 +218,10 @@ pathcheckdynobstacles()
     {   pathmovedone(status, NULL_KEY);                         // big trouble. Probably stuck here
         return;
     }
-    if (llVecMag(llList2Vector(gPathMoveLastgoodpos,-1) - groundpos) > PATHEXEMINGOODPOS)  // if moved to a new good pos
+    if (llVecMag(llList2Vector(gPathMoveLastgoodpos,-1) - groundpos) > PATHERRMINGOODPOS)  // if moved to a new good pos
     {   gPathMoveLastgoodpos += [groundpos];                    // save this ground level position for recovery
         if (llGetListLength(gPathMoveLastgoodpos) > PATHMAXSAVEDGOODPOS)    // limit list length
         {   gPathMoveLastgoodpos = llDeleteSubList(gPathMoveLastgoodpos,0,0); } // by removing oldest entry
-        ////llOwnerSay("Good points: " + llDumpList2String(gPathMoveLastgoodpos,",")); // ***TEMP**
     }
 
 }
@@ -276,7 +236,7 @@ pathchecktargetmoved()
     list details = llGetObjectDetails(gPathMoveTarget, [OBJECT_POS]);   // get object position
     if (details == [])
     {   pathMsg(PATH_MSG_WARN, "Pursue target left sim."); 
-        pathmovedone(PATHEXETARGETGONE, gPathMoveTarget);       // target is gone, abort pursue
+        pathmovedone(PATHERRTARGETGONE, gPathMoveTarget);       // target is gone, abort pursue
         return;
     }
     //  If pursue target moved more than half the distance to the goal, but at least 2m, replan.
@@ -286,7 +246,7 @@ pathchecktargetmoved()
     float distmoved = llVecMag(gPathMoveTargetPos - targetpos); // distance target moved since replan
     if (distmoved < PATHMOVEMINTARGETMOVE) { return; }          // has not moved enough to replan
     if (distmoved < disttotarget * PATHMOVEMINTARGETFRACT) { return; } // has not moved enough to replan
-    pathmovedone(PATHEXETARGETMOVED, gPathMoveTarget);          // target moved, must replan and chase
+    pathmovedone(PATHERRTARGETMOVED, gPathMoveTarget);          // target moved, must replan and chase
 }
 //  
 //
@@ -308,7 +268,7 @@ pathmovetimer()
             if (llVecMag(pos - gPathMoveLastpos) > 0.01)        // if moving at all
             {   return; }                                       // OK
             //  No KFM movement. Something has gone wrong. 
-            pathmovedone(MAZESTATUSKFMSTALL, NULL_KEY);         // stalled
+            pathmovedone(PATHERRMAZEKFMSTALL, NULL_KEY);         // stalled
         }
     }
 }
@@ -351,7 +311,7 @@ pathmoverequestrcvd(string jsn)
         }
         ////if (gPathMoveActive || gPathMoveMoving || gPathMoveRecovering)
         if (gPathMoveMoving || gPathMoveRecovering)         // if actively doing something else
-        {   pathmovedone(PATHEXEREQOUTOFSYNC,NULL_KEY);     // request is out of sync; we are doing something else.
+        {   pathmovedone(PATHERRREQOUTOFSYNC,NULL_KEY);     // request is out of sync; we are doing something else.
             return;
         }
         gPathMoveActive = TRUE;                             // move system is active
@@ -366,7 +326,7 @@ pathmoverequestrcvd(string jsn)
         assert(!gPathMoveRecovering);                       // should not be active and recovering at same time
         if (gPathMoveMoving)                                // if we were moving, this is a forced stop
         {   pathMsg(PATH_MSG_WARN,"Unexpected stop requested at " + (string)llGetPos());  // this should not normally happen
-            pathmovedone(PATHEXESTOPREQ,NULL_KEY);          // stop motion
+            pathmovedone(PATHERRSTOPREQ,NULL_KEY);          // stop motion
         }
         gKfmSegments = [];
         llSetTimerEvent(0.0);                               // shut down and stop timer
@@ -379,7 +339,7 @@ pathmoverequestrcvd(string jsn)
         integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
         if (gPathMoveActive || gPathMoveMoving || gPathMoveRecovering)   // motion in progress, can't do a forced recovery
         {   pathMsg(PATH_MSG_ERROR,"Recover move requested while in motion"); // Doesn't really need to be a full error, just a werning.
-            pathdonereply(PATHEXEREQOUTOFSYNC, NULL_KEY, pathid);            // end entire operation  
+            pathdonereply(PATHERRREQOUTOFSYNC, NULL_KEY, pathid);            // end entire operation  
         }     
         else 
         {   gPathMoveRecovering = TRUE;                     // now in recovery mode, until other task replies.             
@@ -477,12 +437,11 @@ pathexedokfm()
     vector kfmstart = llList2Vector(gKfmSegments,0);    // first point, which is where we should be
     assert(kfmstart != ZERO_VECTOR);                    // must not be EOF marker  
     vector pos = llGetPos();                            // we are here
-    if (pathvecmagxy(kfmstart - pos) > PATHEXEMAXCREEP)     // we are out of position
+    if (pathvecmagxy(kfmstart - pos) > PATHERRMAXCREEP)     // we are out of position
     {   pathMsg(PATH_MSG_WARN, "KFM out of position at start. At " + (string)pos + ". Should be at " + (string)kfmstart); 
-        pathmovedone(PATHEXEBADMOVEEND, NULL_KEY);       // error, must start a new operation to recover
+        pathmovedone(PATHERRBADMOVEEND, NULL_KEY);       // error, must start a new operation to recover
         return; 
     }
-    ////gKfmSegments = llListReplaceList(gKfmSegments,[pos-<0,0,gPathExeHeight*0.5>],0,0);   // always start from current position
     pathMsg(PATH_MSG_WARN,"Input to KFM: " + llDumpList2String(gKfmSegments,","));     // what to take in
     list kfmmoves = pathexebuildkfm(pos, llGetRot(), gKfmSegments);   // build list of commands to do
     if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
@@ -510,7 +469,7 @@ pathmovecollision(integer num_detected)
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                    // hit a non-walkable
             {   pathMsg(PATH_MSG_WARN,"Collided with " + llDetectedName(i));
-                pathmovedone(PATHEXECOLLISION, llDetectedKey(i)); // stop
+                pathmovedone(PATHERRCOLLISION, llDetectedKey(i)); // stop
                 return;
             }
         }

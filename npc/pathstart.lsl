@@ -29,7 +29,6 @@ float gPathcallLastDistance = 0.0;                              // distance to g
 list  gPathcallLastParams = [];                                 // params at last try
 
 integer gPathcallReset = FALSE;                                 // have we reset the system since startup?
-////integer gPathcallStarttime = 0;                                 // time last command started
 
 integer gLocalPathId = 0;                                       // current path serial number
 integer gLocalRequestId = 0;                                    // current request from user serial number
@@ -45,7 +44,6 @@ pathLinkMsg(string jsn, key hitobj)
     {   pathMsg(PATH_MSG_WARN, "Stale path completed msg discarded."); return; }
     pathMsg(PATH_MSG_WARN,"Path complete, status " + (string)status + " Time: " + (string)llGetTime());
     if (pathretry(status, hitobj)) { return; }          // attempt a retry
-    ////gPathcallStarttime = 0;                             // really done, stop clock
     pathUpdateCallback(status, hitobj);
 }
 
@@ -89,7 +87,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
     if (target != NULL_KEY)                                         // if chasing a target
     {   list details = llGetObjectDetails(target, [OBJECT_POS]);    // get object position
         if (details == [])                                          // target has disappeared
-        {   pathdonereply(PATHEXETARGETGONE,target,gLocalPathId);  // send message to self and quit
+        {   pathdonereply(PATHERRTARGETGONE,target,gLocalPathId);  // send message to self and quit
             return;
         }
         endpos = llList2Vector(details,0);                          // use this endpos
@@ -99,7 +97,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
     //  Are we allowed to go to this destination?
     if (!pathvaliddest(endpos))
     {   pathMsg(PATH_MSG_WARN,"Destination " + (string)endpos + " not allowed."); 
-        pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
+        pathdonereply(PATHERRBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
         return; 
     }
     //  Find walkable under avatar. Look straight down. Endpos must be close to navmesh or llGetStaticPath will fail.
@@ -109,7 +107,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
         vector navmeshpos = pathnearestpointonnavmesh(endpos);      // look for nearest point on navmesh (expensive)
         if (navmeshpos == ZERO_VECTOR)                              // no navmesh near endpos
         {   pathMsg(PATH_MSG_WARN, "Cannot find navmesh under goal, fails.");
-            pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
+            pathdonereply(PATHERRBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
             return; 
         }
         endpos = navmeshpos;
@@ -118,7 +116,6 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
     }
     //  Generate path
     pathprepstart(target, endpos, stopshort, TESTSPACING, gLocalPathId);
-    ////gPathcallStarttime = llGetUnixTime();                               // timestamp we started
     //  Output from pathcheckobstacles is via callbacks
 }
 //
@@ -139,7 +136,7 @@ integer pathretry(integer status, key hitobj)
     }
     float dist = pathdistance(llGetPos(), endpos, gPathWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
     if (dist < 0 || dist >= gPathcallLastDistance)                      // check for closer. negative means path distance failed. Avoids loop.
-    {   if (!dogged || status != PATHEXETARGETMOVED)                    // dogged pursue mode, keep trying even if not getting closer  
+    {   if (!dogged || status != PATHERRTARGETMOVED)                    // dogged pursue mode, keep trying even if not getting closer  
         {   pathMsg(PATH_MSG_WARN, "No retry, did not get closer. Distance " + (string)dist + "m."); return(FALSE); }   // cannot retry  
     }
     if (gPathcallLastDistance > dist) { gPathcallLastDistance = dist; } // use new value if smaller, so the initial value of infinity gets reduced

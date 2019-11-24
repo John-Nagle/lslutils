@@ -101,7 +101,6 @@ list listreplacelist(list src, list dst, integer start, integer end)
 {   assert(start >= 0);                          // no funny end-relative stuff
     assert(end >= 0);
     return(llListReplaceList(src, dst, start, end));
-    ////return src[0:start] + dst + src[end+1:]     // LSL compatibility
 }
 //
 //
@@ -125,7 +124,7 @@ float   gMazeStartZ;                // Z of start position, world coords
 integer gMazeEndX;                  // end position 
 integer gMazeEndY; 
 float   gMazeEndZ;                  // end Z position
-integer gMazeStatus;                // status code - MAZESTATUS...
+integer gMazeStatus;                // status code - PATHERRMAZE...
 vector  gP0;                        // beginning of maze, for checking only
 vector  gP1;                        // end of maze, for checking only
        
@@ -160,7 +159,6 @@ mazecellset(integer x, integer y, integer newval)
     integer w = llList2Integer(gMazeCells,listix);             // word to update
     w = (w & (~(0x3<<bitix)))| (newval<<bitix); // insert into word
     gMazeCells = llListReplaceList(gMazeCells,[w],listix, listix); // replace word
-    ////gMazeCells[listix] = w;                     // insert word
 }
 
 //
@@ -223,11 +221,9 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
         {   DEBUGPRINT1("Maze productive path at (" + (string)gMazeX + "," + (string)gMazeY + ")");
             mazetakeproductivepath();       // use it
             gMazeMdbest = mazemd(gMazeX, gMazeY, gMazeEndX, gMazeEndY);
-            ////////gMazeMdbest = gMazeMdbest -1 
             assert(gMazeMdbest >= 0);
         } else {
             integer direction = mazepickside();                                 // direction for following right wall
-            ////integer sidelr = MAZEWALLONRIGHT;                                   // always returns dir for following right wall
             //   Inner loop - wall following
             integer followstartx = gMazeX;
             integer followstarty = gMazeY;
@@ -360,7 +356,7 @@ list mazeaddpttolist(list path, integer x, integer y, float z)
     DEBUGPRINT1("(" + (string)x + "," + (string)y + "," + (string)z + ")");
     //  Memory check
     if (pathneedmem(MAZEMINMEM))
-    {   gMazeStatus = MAZESTATUSNOMEM; }            // out of memory, will abort
+    {   gMazeStatus = PATHERRMAZENOMEM; }            // out of memory, will abort
     //  Short list check
     integer val = mazepathconstruct(x, y, z, gMazePos.z);    // current point as one integer
     integer length = llGetListLength(path);
@@ -419,7 +415,7 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
         vector p1 = mazecelltopoint(x,y);                   // X and Y of next point, Z currently unknown.
         float z = pathcheckcellz(p0, p1);                   // get Z depth of cell
         if (z < 0)
-        {   gMazeStatus = MAZESTATUSCELLCHANGED;            // status of cell changed
+        {   gMazeStatus = PATHERRMAZECELLCHANGED;            // status of cell changed
             pathMsg(PATH_MSG_WARN, "Maze cell (" + (string)x + "," + (string)y + ") was empty, now occupied");
         }
         return(z);                                          // return Z value for cell. Occupancy already checked.
@@ -433,7 +429,7 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
     else if (x == gMazeEndX && y == gMazeEndY) // special case where end pt is assumed clear
     {   z = gMazeEndZ;                                      // needed to get character out of very tight spots.
         if (llFabs(z-fromz) > gPathHeight*0.5)              // if final move to maze end has a big jump in Z.
-        {   gMazeStatus = MAZESTATUSBADZ; return(-1.0); }   // fail
+        {   gMazeStatus = PATHERRMAZEBADZ; return(-1.0); }   // fail
     }
     else
     {   //  Have to test the cell.
@@ -453,7 +449,7 @@ float mazetestcell(integer fromx, integer fromy, float fromz, integer x, integer
     v = MAZEEXAMINED | barrier;
     mazecellset(x,y,v);                                     // update cells checked
     if (barrier && (x == gMazeEndX) && (y == gMazeEndY))    // if the end cell is blocked
-    {   gMazeStatus = MAZESTATUSBADEND; }                   // force abort, maze is unsolveable
+    {   gMazeStatus = PATHERRMAZEBADEND; }                   // force abort, maze is unsolveable
     DEBUGPRINT1("Tested cell (" + (string)x + "," + (string)y + ") : " + (string)(z));
     return(z);                                              // return -1 if obstacle, else Z heigth
 }
@@ -705,7 +701,7 @@ mazerequestjson(string jsn, key id)
     float endz = (float)llJsonGetValue(jsn,["endz"]);           // elevation in world coords
     vector gp0 = (vector)llJsonGetValue(jsn,["p0"]);            // for checking only
     vector gp1 = (vector)llJsonGetValue(jsn,["p1"]);            // for checking only
-    if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = MAZESTATUSBADSIZE; } // too big
+    if (sizex < 3 || sizex > MAZEMAXSIZE || sizey < 3 || sizey > MAZEMAXSIZE) { status = PATHERRMAZEBADSIZE; } // too big
     list path = [];
     if (status == 0)                                    // if params sane enough to start
     {   path = mazesolve(sizex, sizey, startx, starty, startz, endx, endy, endz); // solve the maze
@@ -714,7 +710,7 @@ mazerequestjson(string jsn, key id)
         if (llGetListLength(path) == 0 || gMazeStatus != 0)       // failed to find a path
         {   path = [];                                  // clear path
             status = gMazeStatus;                       // failed for known reason, report
-            if (status == 0) { status = MAZESTATUSNOFIND; }  // generic no-find status
+            if (status == 0) { status = PATHERRMAZENOFIND; }  // generic no-find status
         } else {
             ////path = mazeoptimizeroute(path);             // do simple optimizations
         } 
@@ -755,7 +751,6 @@ string mazerouteasstring(list route)
     {   integer val = llList2Integer(route,i);
         integer x = mazepathx(val);
         integer y = mazepathy(val);
-        ////s = s + ("(%d,%d) " % (x,y))
         s = s + "(" + (string)x + "," + (string)y + ") ";
     }
     return(s);
