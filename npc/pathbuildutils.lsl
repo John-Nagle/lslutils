@@ -333,7 +333,7 @@ vector pathnearestpointonnavmesh(vector p)
     list navmeshinfo = llGetClosestNavPoint(p,[GCNP_STATIC,TRUE,GCNP_RADIUS,5.0]);   // find reasonable point on navmesh
     if (llGetListLength(navmeshinfo) > 0)                   // if found some point on navmesh
     {   return(llList2Vector(navmeshinfo,0));   }           // we can still compute a distance
-    pathMsg(PATH_MSG_ERROR,"No navmesh near " + (string)p); // can't even find the navmesh
+    pathMsg(PATH_MSG_WARN,"No navmesh near " + (string)p);  // can't even find the navmesh
     return(ZERO_VECTOR);                                    // fails                
 }
 
