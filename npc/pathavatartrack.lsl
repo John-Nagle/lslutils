@@ -21,12 +21,10 @@
 
 
 //  Configuration
-float IDLE_POLL = 10.0;
-float MIN_MOVE_FOR_RETRY = 5.0;             // (m) minimum avatar move to trigger a retry
-integer MIN_MEMORY = 3000;                  // trouble if memory this low
-#ifndef VERBOSITY                           // define VERBOSITY to override
-#define VERBOSITY PATH_MSG_ERROR            // verbose
-#endif // VERBOSITY
+#define IDLE_POLL (10.0)                        // (s) seconds between tests for avatar movement
+#define MIN_MOVE_FOR_RETRY (5.0)                // (m) minimum avatar move to trigger a retry
+#define MIN_MEMORY (3000)                       // (bytes) trouble if memory this low
+#define MAX_VERT_DIST_TO_AVATAR (256.0)         // (b) Further than this and we assume an unreachable skybox
 
 //
 //  Targets in the sim.
@@ -83,32 +81,36 @@ avatarcheck()
         return;
     }
     //  Avatars are in the sim.
+    vector pos = llGetPos();                                // our location
     integer i;
     for (i=0; i < num_detected; i++)        
     {   key id = llList2Key(agents,i);                      // agent to examine
-        if (pathvaliddest(target_pos(id)))                  // if in same owner/group parcel, etc.
-        {                                                   // avatar of interest. Do we need to greet it?
-            integer doneix = llListFindList(gDoneTargets,[id]);     // on "done" list?
-            if (doneix >= 0)
-            {   newDoneTargets += id; }                      // keep on "done" list            
-            integer deferix = llListFindList(gDeferredTargets,[id]);// check for avatar on deferred target list
-            if (deferix >= 0)                               // if on deferred list
-            {   //  Avatar on deferred problem list. Skip if deferred and hasn't moved.
-                vector tpos = target_pos(id);               // position of target
-                vector oldtpos = llList2Vector(gDeferredPositions, deferix); // position when deferred
-                if (llVecMag(oldtpos - tpos) < MIN_MOVE_FOR_RETRY) // if avi has not moved since deferral
-                {   pathMsg(PATH_MSG_INFO,"Do not retry " + llKey2Name(id) + " at " + (string)tpos + " was at " + (string)oldtpos); // ***TEMP***       
-                    newDeferredTargets += id;               // keep on deferred list
-                    newDeferredPositions += oldtpos;        // along with its position at defer
-                } else {
-                    deferix = -1;                           // do not defer any more
-                }
-            }           
-            if(doneix < 0 && deferix < 0)                   // live target and not deferred
-            {   float dist = llVecMag(vec_to_target(id));   // pick closest target
-                if (dist > 0 && dist < closestdist) 
-                {   target = id; 
-                    closestdist = dist;
+        vector tpos = target_pos(id);                       // position of avatar
+        if (tpos != ZERO_VECTOR && (llFabs(pos.z - tpos.z) < MAX_VERT_DIST_TO_AVATAR)) // if sane position
+        {   if (pathvaliddest(tpos))                        // if in same owner/group parcel, etc.
+            {                                               // avatar of interest. Do we need to greet it?
+                integer doneix = llListFindList(gDoneTargets,[id]);     // on "done" list?
+                if (doneix >= 0)
+                {   newDoneTargets += id; }                 // keep on "done" list            
+                integer deferix = llListFindList(gDeferredTargets,[id]);// check for avatar on deferred target list
+                if (deferix >= 0)                           // if on deferred list
+                {   //  Avatar on deferred problem list. Skip if deferred and hasn't moved.
+                    vector tpos = target_pos(id);           // position of target
+                    vector oldtpos = llList2Vector(gDeferredPositions, deferix); // position when deferred
+                    if (llVecMag(oldtpos - tpos) < MIN_MOVE_FOR_RETRY) // if avi has not moved since deferral
+                    {   pathMsg(PATH_MSG_INFO,"Do not retry " + llKey2Name(id) + " at " + (string)tpos + " was at " + (string)oldtpos); // ***TEMP***       
+                        newDeferredTargets += id;           // keep on deferred list
+                        newDeferredPositions += oldtpos;    // along with its position at defer
+                    } else {
+                        deferix = -1;                       // do not defer any more
+                    }
+                }           
+                if(doneix < 0 && deferix < 0)               // live target and not deferred
+                {   float dist = llVecMag(vec_to_target(id));   // pick closest target
+                    if (dist > 0 && dist < closestdist) 
+                    {   target = id; 
+                        closestdist = dist;
+                    }
                 }
             }
         }
@@ -190,7 +192,6 @@ default
             if (reply != "trackavi") { return; }            // not ours
             key id = (key) llJsonGetValue(jsn,["id"]);
             string action = llJsonGetValue(jsn,["action"]);
-            ////gDebugMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]); // message level for debug msgs
             if (action == "done")                           // if done with avi
             {   avatardone(id); }                           // done with it
             else if (action == "defer")                     // defer until it moves
