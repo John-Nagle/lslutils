@@ -96,20 +96,26 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
         llOwnerSay("Position of target " + llKey2Name(target) + " is " + (string)endpos); // ***TEMP***
     }
     gPathcallLastParams = [target, endpos, stopshort, dogged];      // save params for restart
-    //  Find walkable under avatar. Look straight down. Startpos must be on ground.
+    //  Are we allowed to go to this destination?
     if (!pathvaliddest(endpos))
     {   pathMsg(PATH_MSG_WARN,"Destination " + (string)endpos + " not allowed."); 
         pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
         return; 
     }
-
+    //  Find walkable under avatar. Look straight down. Endpos must be close to navmesh or llGetStaticPath will fail.
     float newz = pathfindwalkable(endpos, 0.0, gPathHeight*3);             // find walkable below char
     if (newz < 0)
-    {   pathMsg(PATH_MSG_WARN,"Error looking for walkable under goal."); 
-        pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
-        return; 
+    {   pathMsg(PATH_MSG_WARN,"Cannot find walkable surface under goal near "+ (string)endpos); 
+        vector navmeshpos = pathnearestpointonnavmesh(endpos);      // look for nearest point on navmesh (expensive)
+        if (navmeshpos == ZERO_VECTOR)                              // no navmesh near endpos
+        {   pathMsg(PATH_MSG_WARN, "Cannot find navmesh under goal, fails.");
+            pathdonereply(PATHEXEBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
+            return; 
+        }
+        endpos = navmeshpos;
+    } else {
+        endpos.z = newz;                                                // use ground level found by ray cast
     }
-    endpos.z = newz;                                                // use ground level found by ray cast
     //  Generate path
     pathprepstart(target, endpos, stopshort, TESTSPACING, gLocalPathId);
     ////gPathcallStarttime = llGetUnixTime();                               // timestamp we started
