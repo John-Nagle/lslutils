@@ -53,7 +53,7 @@ bhvPursue(key target, float stopshort, float speed)
 //
 //  bhvTurn -- turn self to face heading
 //
-bhvTurn(float heading)
+bhvTurn(vector heading)
 {
 }
 
@@ -80,7 +80,7 @@ bhvStop()
 }
 
 //
-//  bhvick -- call every at least once a minute when running the path system.
+//  bhvTick -- call every at least once a minute when running the path system.
 //
 //  This is used only for a stall timer.
 //  Failure to call this will cause a script restart.
@@ -103,6 +103,8 @@ bhvSetPriority(integer priority)
 //  Callbacks
 //
 //
+#ifdef DONOTUSE // behavior defines these
+//
 //  bhvInit -- behavor is being initialized
 //  
 //  The path planning system has restarted.
@@ -110,10 +112,11 @@ bhvSetPriority(integer priority)
 bhvInit()
 {
 }
+
 //
-//  bhvDoRun -- behavior has control
+//  bhvDoStart -- behavior has control
 //
-bhvDoRun()
+bhvDoStart()
 {   
 }
 //
@@ -122,13 +125,21 @@ bhvDoRun()
 bhvDoStop()
 {
 }
+//
+//  bvhRequestDone  -- request to scheduler completed
+//
+bhvDoRequestDone(string jsn)
+{
+}
+#endif // DONOTUSE
 
 //
 //  Incoming events
 //
-//  Pass all incoming link messages to this.
+//  Pass all incoming link messages intended for us to this.
 //
-bhvLinkMessage(int num, string jsn)
+bhvSchedMessage(int num, string jsn)
 {
+    //  ***MORE***
 }
 
