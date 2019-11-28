@@ -85,6 +85,9 @@ bhvStop()
 //  This is used only for a stall timer.
 //  Failure to call this will cause a script restart.
 //
+//  **** IS THIS NECESSARY? ****
+//  **** MAYBE SCHEDULER SIMPLY CHECKS FOR ANY COMM AT ALL EVERY FEW MINUTES***
+//
 bhvTick()
 {
 }
@@ -100,38 +103,32 @@ bhvSetPriority(integer priority)
 }
 
 //
-//  Callbacks
+//  Callbacks - these must be implemented by the behavior task
 //
 //
-#ifdef DONOTUSE // behavior defines these
 //
 //  bhvInit -- behavor is being initialized
 //  
 //  The path planning system has restarted.
 //
-bhvInit()
-{
-}
+//  bhvInit()
+
 
 //
 //  bhvDoStart -- behavior has control
 //
-bhvDoStart()
-{   
-}
+//  bhvDoStart()
+
 //
 //  bhvDoStop -- behavior no longer has control
 //
-bhvDoStop()
-{
-}
+//  bhvDoStop()
+
 //
 //  bvhRequestDone  -- request to scheduler completed
 //
-bhvDoRequestDone(string jsn)
-{
-}
-#endif // DONOTUSE
+//  bhvDoRequestDone(string jsn)
+//
 
 //
 //  Incoming events

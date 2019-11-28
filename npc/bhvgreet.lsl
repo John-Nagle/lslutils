@@ -36,6 +36,8 @@ integer CHARTYPE = CHARACTER_TYPE_A;                        // humanoid
 
 #define CHARACTER_WIDTH  0.5
 #define CHARACTER_HEIGHT  (gScale.z)        // use Z height as character height
+#endif // OBSOLETE
+
 #ifndef CHARACTER_SPEED                     // overrideable
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
 #endif // CHARACTER_SPEED
@@ -49,12 +51,8 @@ string STAND_ANIM = "SEmotion-bento18";     // just when stopped
 float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                  // will stick around for this long
 float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far before we recheck on approach
-#ifndef VERBOSITY                           // define VERBOSITY to override
-#define VERBOSITY DEBUG_MSG_ERROR            // verbose
-#endif // VERBOSITY
 
 //  Configuration
-string PATROL_NOTECARD = "Patrol points";   // read this notecard for patrol points
 
 integer PATH_STALL_TIME = 300;              // path stall time
 
@@ -64,23 +62,8 @@ integer gAction = ACTION_IDLE;
 string gAnim;                   // current animation                       
 key gTarget = NULL_KEY;         // current avatar to pursue
 integer gListenChannel;         // for detecting chat
-vector gScale;                  // scale of character
-key gOwner;                     // owner of character
-key gGroup;                     // group of character
-string gName;                   // our name
-
-//  Patrol points
-integer gPatrolEnabled;
-integer gPatrolNotecardLine;
-key gPatrolNotecardQuery;
-list gPatrolPoints = [];        // list of points to patrol 
-list gPatrolPointDwell = [];    // dwell time at patrol point
-list gPatrolPointDir = [];      // direction to face on arriving
-integer gNextPatrolPoint;       // next patrol point we are going to
-vector gPatrolDestination;      // where are we going next?
-float gDwell;                   // dwell time at next patrol point
+float gDwell;                   // dwell time to wait
 float gFaceDir;                 // direction to face next
-#endif // OBSOLETE
 
 
 
@@ -241,11 +224,12 @@ bhvDoStart()
         bhvSetPriority(0);                                          // we don't need to run now, give up control
         return;
     }
+    llResetTime();                                                  // reset the clock
     gAction = ACTION__PURSUE;
     bvhAnimats([WAITING_ANIM]);                                     // applies only when stalled during movement
     bhvPursue(gTarget, GOAL_DIST*2, PURSUESPEED);                   // pursue target avatar 
     gAction = ACTION_PURSUE;
-    ////llSetTimerEvent(1.0);                                       // fast poll while moving  
+    llSetTimerEvent(1.0);                                           // fast poll while moving  
 }
 //
 //  bhvDoStop -- this behavior no longer has control
@@ -254,6 +238,7 @@ bhvDoStop()
 {
     gAction = ACTION_IDLE;                                          // we've been preempted. No pursue now.
     gTarget = NULL_KEY;                                             // need a new target later
+    llSetTimerEvent(0);                                             // don't need a timer
 }
 
 //
