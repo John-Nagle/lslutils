@@ -50,24 +50,39 @@
 //  to find something else to do.
 //
 //  
-//  ***MORE***
-
+#include "assert.lsl"
+#include "debugmsg.lsl"
+#include "npc/bhvcall.lsl"
+#include "npc/pathcall.lsl"
 //
 //  Constants
 //
 #define BHVBEHAVIORSSTRIDE 4    // stride of behavior list
 #define BHVOFFPRIORITY  0       // do not run if at this priority
-#define BHVMSGNUMSTART -1999    // link messages for scripts start here
+#define BHVMNUMSTART -1999      // link message nums (mnum) for scripts start here
+#define BHVMNUMEND  -1900       // max of 100 behaviors 
 //
 //  Globals
 //
 list gBehaviors;                // [scriptname,primnum,msgnum,priority]
-integer gBehaviorMsgnum = BHVMSGNUMSTART; // msg number for comm with behavior
+integer gBehaviorMsgnum = BHVMNUMSTART; // msg number for comm with behavior
 
 integer gActiveBehavior = -1;   // index into active behavior table 
 integer gActivePriority = 0;    // priority of active behavior
 integer gActiveToken = 0;       // sequence number for activity
-
+//
+//  init
+//
+init()
+{
+    //  Reset to ground state
+    gBehaviors = [];            // [scriptname,primnum,msgnum,priority]
+    gBehaviorMsgnum = BHVMNUMSTART; // msg number for comm with behavior
+    gActiveBehavior = -1;       // index into active behavior table 
+    gActivePriority = 0;        // priority of active behavior
+    gActiveToken = 0;           // sequence number for activity
+    llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","reset"]),"");    // reset all behaviors
+}
 //
 //  registerbehavior -- register a new behavior script
 //
@@ -96,13 +111,12 @@ integer findbehavior(integer num)
 //
 //  setpriority -- set priority of a behavior
 //
-setpriority(integer num, integer pri)
+setpriority(integer bhvix, integer pri)
 {   assert(pri >= 0);
-    integer ix = findbehavior(num);                 // index of entry
-    gBehaviors = llListReplaceList(gBehaviors,[pri],ix+3,ix+3); // replace priority
-    if (priority > gActivePriority)                 // this will start a new task
+    gBehaviors = llListReplaceList(gBehaviors,[pri],bhvix+3,bhvix+3); // replace priority
+    if (pri > gActivePriority)                      // this will start a new task
     {
-        schedbvh();                                 // run the scheduler
+        schedbhv();                                 // run the scheduler
     }
 }
 
@@ -114,55 +128,142 @@ setpriority(integer num, integer pri)
 //
 //  Returns strided index into behaviors or -1.
 //
-integer getbvhtorun()
+integer getbhvtorun()
 {
     integer ix;                                 // index into strided list
     integer pri = BHVOFFPRIORITY + 1;           // min priority of interest
     //  Get list of behaviors at winning priority
     list bhvindexes = [];                       // ones at highest priority
-    for (i=0; i<llGetListLength(gBehaviors); i += BHVBEHAVIORSSTRIDE)
+    for (ix=0; ix<llGetListLength(gBehaviors); ix += BHVBEHAVIORSSTRIDE)
     {   integer ixpri = llList2Integer(gBehaviors,ix+3); // priority at this index
         if (ixpri > pri)                        // if new highest priority
-        {   bvhindexes = [ix]; pri = ixpri; }   // restart list
+        {   bhvindexes = [ix]; pri = ixpri; }   // restart list
         else if (ixpri == pri)                  // if same as higest priority
-        {   bvhindexes += ix; }                 // add to list
+        {   bhvindexes += ix; }                 // add to list
     }
-    //  Pass 3 - pick one at random from list
-    if(llGetListLength(bvhindexes) <= 0) { return(-1); } // nothing ready to run
-    return(llList2Integer(bvhindexes,(integer)llFrand(lGetListLength(bvhindexes))));  // return some random bhv at this pri
+    //  Pick one at random from list
+    integer len = llGetListLength(bhvindexes);  // number of tasks we could run
+    if(len <= 0) { return(-1); }                // nothing ready to run
+    integer randtask = (integer)llFrand(llGetListLength(bhvindexes));
+    assert(randtask < len);                     // do not entirely trust llFrand's upper bound
+    return(llList2Integer(bhvindexes,randtask));// return some random bhv at this pri
 }
 //
-//  schedbvh - schedule and start next behavior
+//  schedbhv - schedule and start next behavior
 //
-schedbvh()
+schedbhv()
 {
     if (gActiveBehavior >= 0)                   // stop whatever was running
-    {   stopbvh(gActiveBehavior);   
+    {   stopbhv(gActiveBehavior);   
         gActiveBehavior = -1;                   // nobody running
         gActivePriority = 0;                
         gActiveToken = (gActiveToken+1)%(PATHMAXUNSIGNED-1);// advance run serial number, nonnegative
     }
-    integer ix = getbvhtorun();                 // get next behavior to run
+    integer ix = getbhvtorun();                 // get next behavior to run
     if (ix < 0) { return; }                     // nothing to run
     //  Starting new task
     gActiveBehavior = ix;
     gActivePriority = llList2Integer(gBehaviors,3); // priority of this behavior
-    startbvh(ix);
+    startbhv(ix);
 }
 //
-//  startbvh  -- start behavior
+//  startbhv  -- start behavior
 //
-startbvh(integer ix)
+startbhv(integer bhvix)
 {
     // ***MORE***
 }
 
 //
-//  stopbvh -- stop behavior
+//  stopbhv -- stop behavior
 //
-stopbvh(integer ix)
+stopbhv(integer bhvix)
 {
     // ***MORE***
+}
+
+//
+//  dopathbegin -- behavior wants to do a path request
+//
+dopathbegin(integer bhvix, string jsn)
+{   debugMsg(DEBUG_MSG_WARN,"Path begin req: " + jsn);              // get things started
+    //  ***MORE***
+}
+//
+//  doturn -- behavior wants to do a path request
+//
+doturn(integer bhvix, string jsn)
+{   debugMsg(DEBUG_MSG_WARN,"Turn req: " + jsn);
+}
+//
+//  doanim  -- behavior wants to do an animation request
+//
+doanim(integer bhvix, string jsn)
+{   debugMsg(DEBUG_MSG_WARN,"Anim req: " + jsn);              // get things started
+    //  ***MORE***
+}
+//
+//
+//  Main program
+//
+default
+{
+    on_rez(integer start_param)
+    {
+        llResetScript();
+    }
+ 
+    state_entry()
+    {
+        init();
+    }
+
+    timer()                                         // timer tick
+    {       }
+    
+    link_message(integer sender_num, integer num, string jsn, key id)
+    {   debugMsg(DEBUG_MSG_WARN, jsn);                        // ***TEMP*** dump incoming JSON
+        if (num == BHVMSGTOSCH)                    // one of our behaviors wants to talk to us
+        {
+            string reqtype = llJsonGetValue(jsn,["request"]);   // get request type
+            if (reqtype == "register")               // a behavior is checking in
+            {   registerbehavior(llJsonGetValue(jsn,["scriptname"]),
+                    (integer)llJsonGetValue(jsn,["primnum"]));   // register this behavior
+                return;
+            }
+            //  All requests after this point have a mnum
+            integer mnum = (integer)llJsonGetValue(jsn,["mnum"]);    // message number, indicates who is calling
+            integer bhvix = findbehavior(mnum);     // look up behavior
+            if (bhvix < 0)
+            {   debugMsg(DEBUG_MSG_ERROR,"Invalid mnum: " + jsn); return; }
+            if (reqtype == "priority")              // wants to set priority
+            {   
+                integer pri = (integer)llJsonGetValue(jsn,["pri"]);      // priority
+                setpriority(bhvix, pri);              // set priority - may start the behavior
+                return;
+            }
+            //  All requests past this point are only valid from the active behavior
+            //  with the current token.
+            integer token = (integer)llJsonGetValue(jsn,["token"]);
+            if (bhvix != gActiveBehavior || token != gActiveToken)  // if not allowed to control NPC now
+            {   stopbhv(bhvix);                         // tell it to stop trying
+                return;
+            }
+            if (reqtype == "pathbegin")                 // behavior wants to do a path operation
+            {   dopathbegin(bhvix, jsn);                // do the path begin operation
+            }
+            else if (reqtype == "turn")                 // behavior wants to do a path operation
+            {   doturn(bhvix, jsn);                     // do a turn operation
+            }
+            else if (reqtype == "anim")                 // do animation request
+            {   doanim(bhvix, jsn);
+            }
+        } else if (num == PATHSTARTREPLY)               // the path system is done doing something for us
+        {
+            //  ***MORE***
+        }
+        debugMsg(DEBUG_MSG_ERROR,"Invalid message to behavior scheduler: " + jsn);    // behavior error
+    }  
 }
 
 

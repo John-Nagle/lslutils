@@ -22,6 +22,10 @@
 #include "debugmsg.lsl"
 //
 //
+//  Constants
+//
+#define BHVMSGFROMSCH       1001                // from BVH scheduler, behaviors listen
+#define BHVMSGTOSCH         1002                // to BVH scheduler, scheduler listens
 
 //
 //  Globals
