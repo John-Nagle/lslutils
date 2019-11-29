@@ -277,12 +277,12 @@ default
  
     state_entry()
     {
-        ////startup();
+        gDebugMsgLevel = DEBUG_MSG_INFO;                // ***TEMP*** need way to set debug level dynamically
         bhvInit();
     }
 
     timer()                                         // timer tick
-    {   ////pathTick();                                 // timers in path library get updated
+    {   bhvTick();                                 // timers in path library get updated
         if (gAction == ACTION_TALKING)              // if talking to an avi
         {   if (llGetTime() < ATTENTION_SPAN)       // if clock has not run out
             {   return; }                           // do nothing
@@ -293,7 +293,7 @@ default
     
     link_message(integer sender_num, integer num, string jsn, key id)
     {   debugMsg(DEBUG_MSG_INFO, jsn);                        // ***TEMP*** dump incoming JSON
-        if (num == gBvhMnum)                        // if from scheduler to us
+        if (num == gBhvMnum)                        // if from scheduler to us
         {   
             bhvSchedMessage(num,jsn);               // message from scheduler
             return;

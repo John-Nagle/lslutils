@@ -16,7 +16,7 @@
 //  Startup
 //
 //  At startup, this task sends a broadcast message to all
-//  scripts in all prims, asking behaviors to register. 
+//  scripts in all prims, asking behaviors to re-register. 
 //  Behaviors send a message back, with their script name,
 //  and prim number. The scheduler registers them, 
 //  assigns them a "num" value for messages, and 
@@ -24,6 +24,8 @@
 //  on a common channel. The behavior is then live,
 //  but stopped and at zero priority. It can then
 //  request a run priority from the scheduler.
+//  Behaviors, when they start up, try to register
+//  every few seconds until registered.
 //
 //  Run
 //
@@ -64,7 +66,11 @@
 //
 //  Globals
 //
-list gBehaviors;                // [scriptname,primnum,msgnum,priority]
+list gBehaviors;                // [scriptname,linknum,msgnum,priority]
+#define BHVSCRIPTNAME(ix) (llList2String(gBehaviors,(ix)))  // structures, the hard way
+#define BHVLINKNUM(ix) (llList2Integer(gBehaviors,(ix)+1))
+#define BHVMNUM(ix) (llList2Integer(gBehaviors,(ix)+2))
+#define BHVPRIORITY(ix) (llList2Integer(gBehaviors,(ix)+3))
 integer gBehaviorMsgnum = BHVMNUMSTART; // msg number for comm with behavior
 
 integer gActiveBehavior = -1;   // index into active behavior table 
@@ -75,6 +81,7 @@ integer gActiveToken = 0;       // sequence number for activity
 //
 init()
 {
+    gDebugMsgLevel = DEBUG_MSG_INFO;                // ***TEMP*** need way to set debug level dynamically
     //  Reset to ground state
     gBehaviors = [];            // [scriptname,primnum,msgnum,priority]
     gBehaviorMsgnum = BHVMNUMSTART; // msg number for comm with behavior
@@ -88,12 +95,21 @@ init()
 //
 registerbehavior(string scriptname, integer primnum)
 {
-    if (llListFindList(gBehaviors, [scriptname]) >= 0)  // if dup, ignore
-    {   return; }
+    integer bhvix = llListFindList(gBehaviors, [scriptname]);       // index if registered
+    if (bhvix >= 0)                                                 // if already registered
+    {   assert((bhvix % BHVBEHAVIORSSTRIDE) == 0);                  // must be strided properly 
+    } else {
     //  Add new behavior to list
-    gBehaviors += [scriptname, primnum, gBehaviorMsgnum, BHVOFFPRIORITY];   // strided entry
-    debugMsg(DEBUG_MSG_WARN,"New behavior #" + (string) gBehaviorMsgnum + ": " + scriptname);
-    gBehaviorMsgnum++;
+        bhvix = llGetListLength(gBehaviors);                        // index of new behavior
+        gBehaviors += [scriptname, primnum, gBehaviorMsgnum, BHVOFFPRIORITY];   // strided entry
+        debugMsg(DEBUG_MSG_WARN,"New behavior #" + (string) gBehaviorMsgnum + ": " + scriptname);
+        gBehaviorMsgnum++;
+    }
+    //  Send register reply to appropriate prim.
+    //  Will be ignored by behaviors with other string names.
+    string jsn = llList2Json(JSON_OBJECT,["reply","register", "scriptname", BHVSCRIPTNAME(bhvix),
+        "mnum", BHVMNUM(bhvix), "schedlink",llGetLinkNumber()]);
+    llMessageLinked(BHVLINKNUM(bhvix),BHVMSGFROMSCH, jsn, "");
 }
 
 //
@@ -101,10 +117,10 @@ registerbehavior(string scriptname, integer primnum)
 //
 integer findbehavior(integer num)
 {
-    integer i;
-    for (i=0; i<llGetListLength(gBehaviors); i += BHVBEHAVIORSSTRIDE)
-    {   if (llList2Integer(gBehaviors,i+2) == num)
-        {   return(i); }                            // index into strided list
+    integer bhvix;
+    for (bhvix=0; bhvix<llGetListLength(gBehaviors); bhvix += BHVBEHAVIORSSTRIDE)
+    {   if (BHVMNUM(bhvix) == num)
+        {   return(bhvix); }                        // index into strided list
     }
     return(-1);                                     // no find  
 }
@@ -135,7 +151,7 @@ integer getbhvtorun()
     //  Get list of behaviors at winning priority
     list bhvindexes = [];                       // ones at highest priority
     for (ix=0; ix<llGetListLength(gBehaviors); ix += BHVBEHAVIORSSTRIDE)
-    {   integer ixpri = llList2Integer(gBehaviors,ix+3); // priority at this index
+    {   integer ixpri = BHVPRIORITY(ix); // priority at this index
         if (ixpri > pri)                        // if new highest priority
         {   bhvindexes = [ix]; pri = ixpri; }   // restart list
         else if (ixpri == pri)                  // if same as higest priority
@@ -159,12 +175,12 @@ schedbhv()
         gActivePriority = 0;                
         gActiveToken = (gActiveToken+1)%(PATHMAXUNSIGNED-1);// advance run serial number, nonnegative
     }
-    integer ix = getbhvtorun();                 // get next behavior to run
-    if (ix < 0) { return; }                     // nothing to run
+    integer bhvix = getbhvtorun();              // get next behavior to run
+    if (bhvix < 0) { return; }                  // nothing to run
     //  Starting new task
-    gActiveBehavior = ix;
-    gActivePriority = llList2Integer(gBehaviors,3); // priority of this behavior
-    startbhv(ix);
+    gActiveBehavior = bhvix;
+    gActivePriority = BHVPRIORITY(bhvix);        // priority of this behavior
+    startbhv(bhvix);
 }
 //
 //  startbhv  -- start behavior
@@ -228,7 +244,7 @@ default
             string reqtype = llJsonGetValue(jsn,["request"]);   // get request type
             if (reqtype == "register")               // a behavior is checking in
             {   registerbehavior(llJsonGetValue(jsn,["scriptname"]),
-                    (integer)llJsonGetValue(jsn,["primnum"]));   // register this behavior
+                    (integer)llJsonGetValue(jsn,["linknum"]));   // register this behavior
                 return;
             }
             //  All requests after this point have a mnum
@@ -251,18 +267,22 @@ default
             }
             if (reqtype == "pathbegin")                 // behavior wants to do a path operation
             {   dopathbegin(bhvix, jsn);                // do the path begin operation
+                return;
             }
             else if (reqtype == "turn")                 // behavior wants to do a path operation
             {   doturn(bhvix, jsn);                     // do a turn operation
+                return;
             }
             else if (reqtype == "anim")                 // do animation request
             {   doanim(bhvix, jsn);
+                return;
             }
+            debugMsg(DEBUG_MSG_ERROR,"Invalid message to behavior scheduler: " + jsn);    // behavior error
+
         } else if (num == PATHSTARTREPLY)               // the path system is done doing something for us
         {
             //  ***MORE***
         }
-        debugMsg(DEBUG_MSG_ERROR,"Invalid message to behavior scheduler: " + jsn);    // behavior error
     }  
 }
 

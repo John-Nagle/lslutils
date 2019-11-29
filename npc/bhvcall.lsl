@@ -30,8 +30,11 @@
 //
 //  Globals
 //
-integer gBvhMnum;                               // our "mnum", the link message number that identifies us to the scheduler
-
+integer gBhvMnum = -99999;                      // our "mnum", the link message number that identifies us to the scheduler
+integer gBhvRegistered;                         // we are not registered yet
+string gBhvThisScriptname;                      // name of this script
+integer gBhvLinkNumber = -99999;                // link number of this prim, starts bogus
+integer gBhvSchedLinkNumber = -99999;           // the scheduler's link number
 
 
 //
@@ -90,11 +93,10 @@ bhvStop()
 //  This is used only for a stall timer.
 //  Failure to call this will cause a script restart.
 //
-//  **** IS THIS NECESSARY? ****
-//  **** MAYBE SCHEDULER SIMPLY CHECKS FOR ANY COMM AT ALL EVERY FEW MINUTES***
 //
 bhvTick()
 {
+    bhvreqreg();                                        // request registration if needed
 }
 
 //
@@ -114,6 +116,44 @@ bhvSetPriority(integer priority)
 //
 bhvInit()
 {
+    gBhvMnum = 0;                               // no mnum yet
+    gBhvRegistered = FALSE;                     // not registered yet
+    gBhvLinkNumber = llGetLinkNumber();         // my prim number, for msgs
+    gBhvThisScriptname = llGetScriptName();     // name of this script
+    gBhvSchedLinkNumber = -99999;               // we don't know this yet
+    bhvreqreg();                                // try to register
+}
+//
+//  Internal functions part of every behavior
+//
+//
+//  bhvreqreg -- request registration if needed
+//
+bhvreqreg()
+{   if (gBhvRegistered) { return; }             // already done
+    //  Request register - this hooks us to the scheduler.
+    llMessageLinked(LINK_SET, BHVMSGTOSCH, llList2Json(JSON_OBJECT,["request","register", "scriptname", gBhvThisScriptname, "linknum",gBhvLinkNumber]),"");
+}
+
+//
+//  bhvregisterreply -- reply from register request
+//
+bhvregisterreply(string scriptname, integer mnum, integer schedlink)
+{
+    if (gBhvRegistered) { return; }                                         // already registered
+    if (scriptname != gBhvThisScriptname) { return; }                       // not for us
+    gBhvSchedLinkNumber = schedlink;                                        // link number of the scheduler
+    gBhvMnum = mnum;                                                        // our assigned mnum
+    gBhvRegistered = TRUE;                                                  // we are now registered
+    llOwnerSay("Registered behavior #" + (string)mnum + ": " + gBhvThisScriptname); // ***TEMP***
+}
+
+//
+//  bhvreqreply  -- some reply from scheduler on our channel
+//
+bhvreqreply(string jsn)
+{
+    llOwnerSay("Reply from scheduler: " + jsn);                             // ***TEMP***
 }
 
 //
@@ -134,7 +174,7 @@ bhvInit()
 //  bhvDoStop()
 
 //
-//  bvhRequestDone  -- request to scheduler completed
+//  bhvRequestDone  -- request to scheduler completed
 //
 //  bhvDoRequestDone(string jsn)
 //
@@ -146,6 +186,19 @@ bhvInit()
 //
 bhvSchedMessage(integer num, string jsn)
 {
-    //  ***MORE***
+    if (num == gBhvMnum)                            // intended for us
+    {   bhvreqreply(jsn); 
+        return;
+    }
+    if (num == BHVMSGFROMSCH)                       // if scheduler broadcast at startup
+    {   string reptype = llJsonGetValue(jsn,["reply"]);
+        string reqtype = llJsonGetValue(jsn,["request"]);
+        if (reptype == "register")
+        {   bhvregisterreply(llJsonGetValue(jsn,["scriptname"]), (integer)llJsonGetValue(jsn,["mnum"]), (integer)llJsonGetValue(jsn,["schedlink"])); 
+            return;
+        }
+        if (reqtype == "reset")                     // scheduler reset, must reset behavior
+        {   llResetScript(); }
+    }
 }
 
