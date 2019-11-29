@@ -88,6 +88,7 @@ init()
     gActiveBehavior = -1;       // index into active behavior table 
     gActivePriority = 0;        // priority of active behavior
     gActiveToken = 0;           // sequence number for activity
+    llOwnerSay("Resetting all behaviors");  // ***TEMP***
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","reset"]),"");    // reset all behaviors
 }
 //

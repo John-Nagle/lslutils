@@ -131,7 +131,8 @@ bhvInit()
 //
 bhvreqreg()
 {   if (gBhvRegistered) { return; }             // already done
-    //  Request register - this hooks us to the scheduler.
+    //  Request register - this hooks us to the scheduler. Broadcast, but only at startup.
+    llOwnerSay(gBhvThisScriptname + " requesting register");    // ***TEMP***
     llMessageLinked(LINK_SET, BHVMSGTOSCH, llList2Json(JSON_OBJECT,["request","register", "scriptname", gBhvThisScriptname, "linknum",gBhvLinkNumber]),"");
 }
 

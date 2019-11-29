@@ -292,10 +292,10 @@ default
     }
     
     link_message(integer sender_num, integer num, string jsn, key id)
-    {   debugMsg(DEBUG_MSG_INFO, jsn);                        // ***TEMP*** dump incoming JSON
-        if (num == gBhvMnum)                        // if from scheduler to us
+    {   debugMsg(DEBUG_MSG_INFO, jsn);                      // ***TEMP*** dump incoming JSON
+        if (num == gBhvMnum || num == BHVMSGFROMSCH)        // if from scheduler to us
         {   
-            bhvSchedMessage(num,jsn);               // message from scheduler
+            bhvSchedMessage(num,jsn);                       // message from scheduler
             return;
         }
         if (num == PATHAVATARTRACKREQUEST)                  // if avatar tracker wants us to track an avatar
@@ -316,7 +316,7 @@ default
     }
    
     
-    listen( integer channel, string name, key id, string msg)
+    listen(integer channel, string name, key id, string msg)
     {   ////llOwnerSay("Listen from id " + (string) id + ": " + msg); // ***TEMP***
         if (gAction == ACTION_IDLE && llGetAgentSize(id) != ZERO_VECTOR)    // stay around if talked to by an avi
         {   
