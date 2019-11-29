@@ -1,5 +1,5 @@
 //
-//  bvhgreet.lsl  --  greeter behavior for Animats pathfinding system
+//  bhvgreet.lsl  --  greeter behavior for Animats pathfinding system
 //  
 //  Demo for Animats pathfinding system.
 //
@@ -13,8 +13,9 @@
 //
 //  ***STARTING -- NEEDS MUCH WORK***
 //
-#include "npc/bvhcall.lsl"
+#include "npc/bhvcall.lsl"
 #include "npc/pathavatartrackcall.lsl"
+#include "npc/mathutils.lsl"
 integer ACTION_IDLE = 0;         
 integer ACTION_PURSUE = 1;
 integer ACTION_FACE = 2;
@@ -37,6 +38,8 @@ integer CHARTYPE = CHARACTER_TYPE_A;                        // humanoid
 #define CHARACTER_WIDTH  0.5
 #define CHARACTER_HEIGHT  (gScale.z)        // use Z height as character height
 #endif // OBSOLETE
+
+#define PRIORITYPURSUE  3                   // higher than patrol, lower than evade vehicle
 
 #ifndef CHARACTER_SPEED                     // overrideable
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
@@ -82,17 +85,17 @@ pathUpdateCallback(integer status, key hitobj)
             if (clear_sightline(gTarget, finaltarget))
             {            
                 debugMsg(DEBUG_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
-                bvhNavigateTo(ZERO_VECTOR, finaltarget, 0, WALKSPEED);
+                bhvNavigateTo(ZERO_VECTOR, finaltarget, 0, WALKSPEED);
             } else {
                 debugMsg(DEBUG_MSG_WARN,"Can't get in front of avatar due to obstacle.");
-                bvhAnimate([IDLE_ANIM]);            // should be greet anim
+                bhvAnimate([IDLE_ANIM]);            // should be greet anim
                 face_and_greet("Hello");
             }                             
             return;
         }
         if (gAction == ACTION_FACE)
         {   //  Turn to face avatar.
-            bvhAnimate([TALK_ANIM]);
+            bhvAnimate([TALK_ANIM]);
             face_and_greet("Hello");
             return;
         } 
@@ -104,7 +107,7 @@ pathUpdateCallback(integer status, key hitobj)
     }
     //  If had trouble getting there, but got close enough, maybe we can just say hi.
     if ((gAction == ACTION_PURSUE || gAction == ACTION_FACE) && dist_to_target(gTarget) < MAX_GREET_DIST) // if close enough to greet
-    {   bvhAnimate[(TALK_ANIM]);
+    {   bhvAnimate[(TALK_ANIM]);
         face_and_greet("Hello there.");                         // longer range greeting
         return;
     }
@@ -155,7 +158,7 @@ face_dir(vector lookdir)                        // face this way
 {
     lookdir = llVecNorm(lookdir);
     vector currentlookdir = <1,0,0>*llGetRot();
-    bvhAnimate([STAND_ANIM]);
+    bhvAnimate([STAND_ANIM]);
     if (currentlookdir * lookdir < 0.95)            // if need to turn to face
     {
         bhvTurn(lookdir);                           // face avatar
@@ -194,9 +197,9 @@ start_pursue()
 //
 greet_done(string action)
 {   gAction = ACTION_IDLE;                                          // done here
-    bhvAnimate[(IDLE_ANIM]);                                        // back to idle anim
+    bhvAnimate([IDLE_ANIM]);                                        // back to idle anim
     if (action != "") { pathavatartrackreply(gTarget,action); }     // tell tracker to defer action on this avi
-    bvhSetPriority(0);
+    bhvSetPriority(0);
 }
 
 //
@@ -210,11 +213,11 @@ requestpursue(key target)
         return;
     }
     gTarget = target;                                               // set new target
-    bvhSetPriority(PRIORITYPURSUE);                                 // request control of NPC
+    bhvSetPriority(PRIORITYPURSUE);                                 // request control of NPC
 }
 
 //
-//  bvhDoStart -- we have control of NPC
+//  bhvDoStart -- we have control of NPC
 //
 bhvDoStart()
 {
@@ -226,7 +229,7 @@ bhvDoStart()
     }
     llResetTime();                                                  // reset the clock
     gAction = ACTION__PURSUE;
-    bvhAnimats([WAITING_ANIM]);                                     // applies only when stalled during movement
+    bhvAnimats([WAITING_ANIM]);                                     // applies only when stalled during movement
     bhvPursue(gTarget, GOAL_DIST*2, PURSUESPEED);                   // pursue target avatar 
     gAction = ACTION_PURSUE;
     llSetTimerEvent(1.0);                                           // fast poll while moving  
@@ -242,7 +245,7 @@ bhvDoStop()
 }
 
 //
-//  bvhRequestDone  -- request to scheduler completed
+//  bhvRequestDone  -- request to scheduler completed
 //
 bhvDoRequestDone(string jsn)
 {
@@ -275,24 +278,24 @@ default
     state_entry()
     {
         ////startup();
-        bvhInit();
+        bhvInit();
     }
 
     timer()                                         // timer tick
-    {   pathTick();                                 // timers in path library get updated
+    {   ////pathTick();                                 // timers in path library get updated
         if (gAction == ACTION_TALKING)              // if talking to an avi
         {   if (llGetTime() < ATTENTION_SPAN)       // if clock has not run out
             {   return; }                           // do nothing
             //  Our patience is limited.
-            greet_done(gTarget,"done");             // tell tracker done with this avi.
+            greet_done("done");                     // tell tracker done with this avi.
         }
     }
     
     link_message(integer sender_num, integer num, string jsn, key id)
     {   debugMsg(DEBUG_MSG_INFO, jsn);                        // ***TEMP*** dump incoming JSON
-        if (num == gBhvMessageNum)                  // if from scheduler to us
+        if (num == gBvhMnum)                        // if from scheduler to us
         {   
-            bhvschedmessage(num,jsn);               // message from scheduler
+            bhvSchedMessage(num,jsn);               // message from scheduler
             return;
         }
         if (num == PATHAVATARTRACKREQUEST)                  // if avatar tracker wants us to track an avatar
@@ -317,7 +320,7 @@ default
     {   ////llOwnerSay("Listen from id " + (string) id + ": " + msg); // ***TEMP***
         if (gAction == ACTION_IDLE && llGetAgentSize(id) != ZERO_VECTOR)    // stay around if talked to by an avi
         {   
-            face_dir(vec_to_target(id));                 // face who's talking
+            bhvTurn(vec_to_target(id));                 // face who's talking
             llResetTime();                                  // reset attention span
         }
     }

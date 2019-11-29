@@ -30,6 +30,7 @@
 //
 //  Globals
 //
+integer gBvhMnum;                               // our "mnum", the link message number that identifies us to the scheduler
 
 
 
@@ -107,15 +108,19 @@ bhvSetPriority(integer priority)
 }
 
 //
+//  bhvInit -- behavor is being initialized
+//  
+//  The behavior has restarted.
+//
+bhvInit()
+{
+}
+
+//
 //  Callbacks - these must be implemented by the behavior task
 //
 //
-//
-//  bhvInit -- behavor is being initialized
-//  
-//  The path planning system has restarted.
-//
-//  bhvInit()
+
 
 
 //
@@ -139,7 +144,7 @@ bhvSetPriority(integer priority)
 //
 //  Pass all incoming link messages intended for us to this.
 //
-bhvSchedMessage(int num, string jsn)
+bhvSchedMessage(integer num, string jsn)
 {
     //  ***MORE***
 }
