@@ -188,15 +188,16 @@ schedbhv()
 //
 startbhv(integer bhvix)
 {
-    // ***MORE***
+    debugMsg(DEBUG_MSG_INFO,"Starting " + BHVSCRIPTNAME(gActiveBehavior)); 
+    llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["request","start"]),""); 
 }
 
 //
 //  stopbhv -- stop behavior
 //
 stopbhv(integer bhvix)
-{
-    // ***MORE***
+{   debugMsg(DEBUG_MSG_INFO,"Stopping " + BHVSCRIPTNAME(gActiveBehavior)); 
+    llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["request","stop"]),""); 
 }
 
 //
@@ -205,6 +206,11 @@ stopbhv(integer bhvix)
 dopathbegin(integer bhvix, string jsn)
 {   debugMsg(DEBUG_MSG_WARN,"Path begin req: " + jsn);              // get things started
     //  ***MORE***
+    //  ***TEMP DUMMY*** send back a fake normal completion for test purposes
+    integer status = 0;
+    key hitobj = NULL_KEY;
+    llSleep(1.0);   // prevent dummy test from going too fast
+    llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["reply","pathbegin","status",status,"hitobj",hitobj]),""); 
 }
 //
 //  doturn -- behavior wants to do a path request
@@ -214,6 +220,8 @@ doturn(integer bhvix, string jsn)
 }
 //
 //  doanim  -- behavior wants to do an animation request
+//
+//  Anim requests don't get a callback.
 //
 doanim(integer bhvix, string jsn)
 {   debugMsg(DEBUG_MSG_WARN,"Anim req: " + jsn);              // get things started
@@ -253,17 +261,19 @@ default
             integer bhvix = findbehavior(mnum);     // look up behavior
             if (bhvix < 0)
             {   debugMsg(DEBUG_MSG_ERROR,"Invalid mnum: " + jsn); return; }
-            if (reqtype == "priority")              // wants to set priority
+            if (reqtype == "priority")                  // wants to set priority
             {   
                 integer pri = (integer)llJsonGetValue(jsn,["pri"]);      // priority
-                setpriority(bhvix, pri);              // set priority - may start the behavior
+                if (pri < 0) { pri = 0; }               // prevent breaking scheduler
+                setpriority(bhvix, pri);                // set priority - may start the behavior
                 return;
             }
             //  All requests past this point are only valid from the active behavior
             //  with the current token.
             integer token = (integer)llJsonGetValue(jsn,["token"]);
             if (bhvix != gActiveBehavior || token != gActiveToken)  // if not allowed to control NPC now
-            {   stopbhv(bhvix);                         // tell it to stop trying
+            {   debugMsg(DEBUG_MSG_WARN,"Stale request from " + BHVSCRIPTNAME(bhvix) + ": " + jsn); // ignored, stale
+                stopbhv(bhvix);                         // tell it to stop trying
                 return;
             }
             if (reqtype == "pathbegin")                 // behavior wants to do a path operation

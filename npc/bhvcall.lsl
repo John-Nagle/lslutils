@@ -155,6 +155,14 @@ bhvregisterreply(string scriptname, integer mnum, integer schedlink)
 bhvreqreply(string jsn)
 {
     llOwnerSay("Reply from scheduler: " + jsn);                             // ***TEMP***
+    string reply = llJsonGetValue(jsn,["reply"]);
+    if (reply == "pathbegin")                               // movement completed
+    {   integer status = (integer)llJsonGetValue(jsn,["status"]);
+        key hitobj = (key)llJsonGetValue(jsn,["hitobj"]);
+        bhvDoRequestDone(status, hitobj);
+        return;
+    }
+    debugMsg(DEBUG_MSG_ERROR,"Unexpected reply to behavior: " + jsn);   // unexpected
 }
 
 //

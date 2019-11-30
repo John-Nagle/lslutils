@@ -50,6 +50,17 @@ vector dir_from_target(key id)
 }
 
 //
+//  is_clear_sightline -- check if point is directly visible in a straight line.
+//  Used when trying to get in front of an avatar.
+//
+integer is_clear_sightline(key id, vector lookatpos)
+{   list obstacles = llCastRay(target_pos(id), lookatpos,[]);
+    integer status = llList2Integer(obstacles,-1);
+    if (status == 0) { return(TRUE); }      // no errors, zero hits, clear sightline.
+    return(FALSE);                          // fails
+}
+
+//
 //  is_active_obstacle -- true if obstacle might move.
 //
 integer is_active_obstacle(key id)
