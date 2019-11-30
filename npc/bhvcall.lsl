@@ -15,9 +15,13 @@
 //  the world, but must send messages to the scheduler to move 
 //  or animate the NPC. This is to eliminate race conditions.
 //
+//  Behaviors must include this file.
+//
 //  ***MORE*** mostly unimplemented
 //
 //
+#ifndef BVHCALLLSL
+#define BVHCALLLSL
 #include "npc/patherrors.lsl"
 #include "debugmsg.lsl"
 //
@@ -49,6 +53,7 @@ integer gBhvSchedLinkNumber = -99999;           // the scheduler's link number
 //
 bhvNavigateTo(vector regioncorner, vector goal, float stopshort, float speed)
 {
+    bvhpathreq(regioncorner, goal, NULL_KEY, stopshort, speed, ZERO_VECTOR);
 }
 
 //
@@ -56,13 +61,15 @@ bhvNavigateTo(vector regioncorner, vector goal, float stopshort, float speed)
 //
 bhvPursue(key target, float stopshort, float speed)
 {
+    bvhpathreq(ZERO_VECTOR, ZERO_VECTOR, target, stopshort, speed, ZERO_VECTOR);
 }
 
 //
-//  bhvTurn -- turn self to face heading
+//  bhvTurn -- turn self to face heading. Heading is a unit vector in XY plane.
 //
 bhvTurn(vector heading)
 {
+    bvhpathreq(ZERO_VECTOR, llGetRootPosition(), NULL_KEY, 0, 0.1, heading);
 }
 
 //
@@ -130,8 +137,19 @@ bhvInit()
 //  Internal functions part of every behavior
 //
 //
-//  bhvreqreg -- request registration if needed
+//  bvhpathreq -- path request, via scheduler to path system
 //
+//  Handles NavigateTo, Pursue, and Turn.
+//
+bvhpathreq(vector regioncorner, vector goal, key target, float stopshort, float speed, vector finaldir)
+{
+    string jsn = llList2Json(JSON_OBJECT,["request","pathbegin","mnum",gBhvMnum,
+        "target",target, "goal",goal, "stopshort",stopshort, "speed",speed, "finaldir", finaldir]);
+    llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH,jsn,"");
+}
+
+
+
 bhvreqreg()
 {   if (gBhvRegistered) { return; }             // already done
     //  Request register - this hooks us to the scheduler. Broadcast, but only at startup.
@@ -222,4 +240,5 @@ bhvSchedMessage(integer num, string jsn)
         {   llResetScript(); }
     }
 }
+#endif // BVHCALLLSL
 
