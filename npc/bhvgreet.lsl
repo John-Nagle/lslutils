@@ -220,12 +220,13 @@ requestpursue(key target)
 }
 
 //
-//  bhvDoStart -- we have control of NPC
+//  bhvDoStart -- we now have control of NPC
 //
 bhvDoStart()
 {
-    assert(gAction == ACTION_IDLE);                                 // should be idle now
-    if (gTarget == NULL_KEY)
+    gAction = ACTION_IDLE;                                          // whatever we were doing is cancelled
+    bhvAnimate([IDLE_ANIM]);                                        // back to idle anim
+    if (gTarget == NULL_KEY)                                        // if we have no one to pursue
     {
         bhvSetPriority(0);                                          // we don't need to run now, give up control
         return;

@@ -107,6 +107,9 @@ bhvTick()
 //
 bhvSetPriority(integer priority)
 {
+    if (!gBhvRegistered)
+    {   debugMsg(DEBUG_MSG_ERROR,"Set priority before registering"); return; }  // behavior error
+    llMessageLinked(gBhvSchedLinkNumber,BHVMSGTOSCH, llList2Json(JSON_OBJECT,["request","priority","mnum",gBhvMnum,"pri",priority]),"");  // tell scheduler
 }
 
 //
@@ -156,10 +159,19 @@ bhvreqreply(string jsn)
 {
     llOwnerSay("Reply from scheduler: " + jsn);                             // ***TEMP***
     string reply = llJsonGetValue(jsn,["reply"]);
+    string request = llJsonGetValue(jsn,["request"]);
     if (reply == "pathbegin")                               // movement completed
     {   integer status = (integer)llJsonGetValue(jsn,["status"]);
         key hitobj = (key)llJsonGetValue(jsn,["hitobj"]);
         bhvDoRequestDone(status, hitobj);
+        return;
+    }
+    if (request == "start")
+    {   bhvDoStart(); 
+        return;
+    }
+    if (request == "stop")
+    {   bhvDoStop();
         return;
     }
     debugMsg(DEBUG_MSG_ERROR,"Unexpected reply to behavior: " + jsn);   // unexpected

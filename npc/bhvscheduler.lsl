@@ -114,14 +114,14 @@ registerbehavior(string scriptname, integer primnum)
 }
 
 //
-//  findbehavior -- find behavior by msgnum
+//  findbehavior -- find behavior by mnum
 //
-integer findbehavior(integer num)
+integer findbehavior(integer mnum)
 {
     integer bhvix;
     for (bhvix=0; bhvix<llGetListLength(gBehaviors); bhvix += BHVBEHAVIORSSTRIDE)
-    {   if (BHVMNUM(bhvix) == num)
-        {   return(bhvix); }                        // index into strided list
+    {   if (BHVMNUM(bhvix) == mnum)                  // if find
+        {   return(bhvix); }                        // return index into strided list
     }
     return(-1);                                     // no find  
 }
@@ -152,12 +152,13 @@ integer getbhvtorun()
     //  Get list of behaviors at winning priority
     list bhvindexes = [];                       // ones at highest priority
     for (ix=0; ix<llGetListLength(gBehaviors); ix += BHVBEHAVIORSSTRIDE)
-    {   integer ixpri = BHVPRIORITY(ix); // priority at this index
+    {   integer ixpri = BHVPRIORITY(ix);        // priority at this index
         if (ixpri > pri)                        // if new highest priority
         {   bhvindexes = [ix]; pri = ixpri; }   // restart list
         else if (ixpri == pri)                  // if same as higest priority
         {   bhvindexes += ix; }                 // add to list
     }
+    llOwnerSay("getbhvtorun hits: " + llDumpList2String(bhvindexes,","));   // ***TEMP***   
     //  Pick one at random from list
     integer len = llGetListLength(bhvindexes);  // number of tasks we could run
     if(len <= 0) { return(-1); }                // nothing ready to run
