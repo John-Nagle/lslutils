@@ -11,6 +11,7 @@
 #include "npc/pathbuildutils.lsl"                           // common functions
 #include "npc/pathmazesolvercall.lsl"
 #include "npc/pathmovecall.lsl"                             // for recover
+#include "npc/mathutils.lsl"
 //
 //  Constants
 //
@@ -72,6 +73,28 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
             llList2Json(JSON_OBJECT, ["segmentid", 0] + fixedreplypart + [llList2Json(JSON_ARRAY,[ZERO_VECTOR])]),"");    // send one ZERO_VECTOR segment as an EOF.
 }
 //
+//  dopathturn -- turn in place, synchronous, then cause a callback.
+//
+//  This can preempt a move, but we stop KFM before doing it, so this is safe against race conditions.
+//
+dopathturn(float heading, integer pathid)
+{
+    vector facedir = <llSin(heading), llCos(heading), 0.0>;     // face in programmed direction
+    float TURNRATE = 90*DEG_TO_RAD;                             // (deg/sec) turn rate
+    float PATH_ROTATION_EASE = 0.5;                             // (0..1) Rotation ease-in/ease out strength
+    rotation endrot =  RotFromXAxis(facedir);                   // finish here
+    rotation startrot = llGetRot();                             // starting from here
+    float turntime = llFabs(llAngleBetween(startrot, endrot)) / TURNRATE;  // how much time to spend turning
+    integer steps = llCeil(turntime/0.200 + 0.001);             // number of steps 
+    integer i;
+    for (i=0; i<= steps; i++)                                   // turn in 200ms steps, which is llSetRot delay
+    {   float fract = ((float)i) / steps;                       // fraction of turn (0..1)
+        float easefract = easeineaseout(PATH_ROTATION_EASE, fract); // smooth acceleration
+        llSetRot(slerp(startrot, endrot, easefract));           // interpolate rotation
+    }
+    pathdonereply(PATHERRMAZEOK, NULL_KEY, pathid);             // normal completion
+}
+//
 //  Main program of the path pre-planning task
 //
 default
@@ -97,7 +120,16 @@ default
                 startpos = pos;
                 pathMsg(PATH_MSG_INFO,"Waiting for character to stop moving.");
             } while (i-- > 0 && poserr > 0.001);                        // until position stabilizes 
-            if (i <= 0) { pathMsg(PATH_MSG_WARN, "Character not stopping on command, at " + (string)startpos); }       
+            if (i <= 0) { pathMsg(PATH_MSG_WARN, "Character not stopping on command, at " + (string)startpos); }
+            //  Common fields
+            gPathprepPathid = (integer)llJsonGetValue(jsn,["pathid"]);  // starting new pathid
+            string request = llJsonGetValue(jsn,["request"]);           // request type
+            if (request == "pathturn")                                  // is this a turn request?
+            {   dopathturn((float)llJsonGetValue(jsn,["heading"]),gPathprepPathid);  // do turn
+                return;
+            }
+            assert(request == "pathprep");                              // if not turn, had better be pathprep             
+            //  This is a path move request.                     
             //  Starting position and goal position must be on a walkable surface, not at character midpoint. 
             //  We just go down slightly less than half the character height.
             //  We're assuming a box around the character.      
@@ -106,13 +138,8 @@ default
             startpos.z = (startpos.z - startscale.z*0.45);              // approximate ground level for start point
             vector goal = (vector)llJsonGetValue(jsn,["goal"]);     // get goal point
             gPathprepTarget = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
-            ////gPathWidth = (float)llJsonGetValue(jsn,["width"]);
-            ////gPathHeight = (float)llJsonGetValue(jsn,["height"]);
             float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
-            ////gPathChartype = (integer)llJsonGetValue(jsn,["chartype"]); // usually CHARACTER_TYPE_A, humanoid
             float testspacing = (float)llJsonGetValue(jsn,["testspacing"]);
-            gPathprepPathid = (integer)llJsonGetValue(jsn,["pathid"]);
-            gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);
             gPathprepSpeed = (float)llJsonGetValue(jsn,["speed"]);
             gPathprepTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]);
             pathMsg(PATH_MSG_INFO,"Path request: " + jsn); 

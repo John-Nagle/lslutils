@@ -16,9 +16,12 @@
 
 integer ACTION_IDLE = 0;         
 integer ACTION_PURSUE = 1;
-integer ACTION_FACE = 2;
+integer ACTION_FACE = 2;                    // turn to face target, has callback
 integer ACTION_PATROL = 3;
-integer ACTION_TALKING = 4;                 // facing an avi and talking
+integer ACTION_GREET = 4;                   // face finished, do greet
+integer ACTION_DISTANT_GREET = 5;           // face finished, do distant greet msg
+integer ACTION_TALKING = 6;                 // facing an avi and talking
+integer ACTION_PATROLFACE = 7;              // completed patrol, turning to final position
 
 
 //  Configuration
@@ -122,35 +125,51 @@ pathUpdateCallback(integer status, key hitobj )
             } else {
                 debugMsg(DEBUG_MSG_WARN,"Can't get in front of avatar due to obstacle.");
                 start_anim(IDLE_ANIM);
-                face_and_greet("Hello");
+                face(gTarget, ACTION_DISTANT_GREET);
             }                             
             return;
         }
         if (gAction == ACTION_FACE)
         {   //  Turn to face avatar.
             start_anim(IDLE_ANIM);
-            face_and_greet("Hello");
+            face(gTarget, ACTION_GREET);
             return;
-        } 
+        }
+        if (gAction == ACTION_GREET)
+        {   greet("Hello");
+            return;
+        }
+        if (gAction == ACTION_DISTANT_GREET)                    // not face to face
+        {   greet("Hello there");
+            return;
+        }
+        if (gAction == ACTION_PATROLFACE)           // final face at end of patrol move
+        {   gAction = ACTION_IDLE;                  // and we go idle
+            return;
+        }
         if (gAction == ACTION_PATROL)
-        {   face_dir(<llSin(gFaceDir), llCos(gFaceDir), 0.0>);   // face in programmed direction
+        {   ////face_dir(<llSin(gFaceDir), llCos(gFaceDir), 0.0>);   // face in programmed direction
+            pathTurn(gFaceDir);                     // face in programmed direction
             start_anim(IDLE_ANIM);
-            gAction = ACTION_IDLE;
+            gAction = ACTION_PATROLFACE;            // turning to final position
             llResetTime();                          // reset timeout timer but keep dwell time
             debugMsg(DEBUG_MSG_INFO,"Patrol point reached.");
             return;
+        }
+        if (gAction == ACTION_TALKING)              // if someone near is talking
+        {   return;                                 // continue pretending to talk 
         }
         //  Got completion in unexpected state
         debugMsg(DEBUG_MSG_ERROR,"Unexpected path completion in state " + (string)gAction + " Status: " + (string)status);
         gAction = ACTION_IDLE;            
         start_anim(IDLE_ANIM);
-
         return;
     }
     //  If had trouble getting there, but got close enough, maybe we can just say hi.
     if ((gAction == ACTION_PURSUE || gAction == ACTION_FACE) && dist_to_target(gTarget) < MAX_GREET_DIST) // if close enough to greet
     {   start_anim(IDLE_ANIM);
-        face_and_greet("Hello there.");                         // longer range greeting
+        face(gTarget, ACTION_DISTANT_GREET);
+        ////face_and_greet("Hello there.");                         // longer range greeting
         return;
     }
     //  If blocked by something, deal with it.
@@ -175,7 +194,7 @@ pathUpdateCallback(integer status, key hitobj )
         if (gAction == ACTION_FACE)             // Can't get in front of avatar, greet anyway.
         {   debugMsg(DEBUG_MSG_WARN, "Can't navigate to point in front of avatar.");
             start_anim(IDLE_ANIM);
-            face_and_greet("Hello");
+            face(gTarget, ACTION_GREET);
             return;
         }
 
@@ -211,12 +230,22 @@ face_dir(vector lookdir)                        // face this way
 } 
 
 //  
-//  face_and_greet -- face in indicated direction and say hello
+//  face -- face in indicated direction
 //
-face_and_greet(string msg)                          // turn to face avi
+face(key target, integer nextstate)                 // turn to face avi
 {
-    face_dir(vec_to_target(gTarget));               // turn to face avi
-    gAction = ACTION_TALKING;
+    vector dir = vec_to_target(target);             // direction to face
+    float heading = llAtan2(dir.x,dir.y);           // direction to face as heading (0=north)
+    pathTurn(heading);                              // turn to face avi
+    gAction = nextstate;                            // on completion, greet
+}
+
+//  
+//  greet -- say hello
+//
+greet(string msg)                                   // turn to face avi
+{
+    gAction = ACTION_TALKING;                       // on completion, fake being in conversation
     llResetTime();                                  // start attention span timer.
     gDwell = ATTENTION_SPAN;                        // wait this long
     llSay(0,msg);
@@ -379,9 +408,8 @@ default
     
     listen( integer channel, string name, key id, string msg)
     {   ////llOwnerSay("Listen from id " + (string) id + ": " + msg); // ***TEMP***
-        if (gAction == ACTION_IDLE && llGetAgentSize(id) != ZERO_VECTOR)    // stay around if talked to by an avi
-        {   
-            face_dir(vec_to_target(id));                 // face who's talking
+        if ((gAction == ACTION_IDLE || gAction == ACTION_TALKING) && llGetAgentSize(id) != ZERO_VECTOR)    // stay around if talked to by an avi
+        {   face(id, ACTION_TALKING);                       // pretend to listen
             llResetTime();                                  // reset attention span
         }
     }

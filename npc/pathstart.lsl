@@ -52,11 +52,12 @@ pathLinkMsg(string jsn, key hitobj)
 //
 pathprepstart(key target, vector goal, float stopshort, float testspacing, integer pathid)
 {   pathMsg(PATH_MSG_INFO,"Path plan start req, pathid: " + (string)pathid);
-    string params = llList2Json(JSON_OBJECT, 
-        ["target",target, "goal", goal, "stopshort", stopshort, "testspacing", testspacing,
+    string params = llList2Json(JSON_OBJECT,
+        ["request","pathprep", 
+        "target",target, "goal", goal, "stopshort", stopshort, "testspacing", testspacing,
         "speed", gPathcallSpeed, "turnspeed", gPathcallTurnspeed,
-        "pathid", pathid, "msglev", gPathMsgLevel]);
-    llMessageLinked(LINK_THIS, PATHPLANREQUEST, params,"");   // send to planner  
+        "pathid", pathid]);
+    llMessageLinked(LINK_THIS, PATHPLANREQUEST, params,"");   // send to path prep 
 }
 //
 //  pathbegin -- go to indicated point or target. Internal fn.
@@ -117,6 +118,18 @@ pathstart(key target, vector endpos, float stopshort, integer dogged)
     //  Generate path
     pathprepstart(target, endpos, stopshort, TESTSPACING, gLocalPathId);
     //  Output from pathcheckobstacles is via callbacks
+}
+//
+//  pathturn -- turn in place request 
+//
+pathturn(float heading)
+{
+    gLocalPathId = (gLocalPathId+1)%(PATHMAXUNSIGNED-1);        // increment our serial number, nonnegative
+    string params = llList2Json(JSON_OBJECT,
+        ["request","pathturn",
+         "heading",heading,
+         "pathid", gLocalPathId]);
+    llMessageLinked(LINK_THIS, PATHPLANREQUEST, params,"");     // send to path prep 
 }
 //
 //  pathretry -- check if path can be retried
@@ -183,6 +196,8 @@ default
             } else if (request == "pathspeed")
             {   gPathcallSpeed = (float)llJsonGetValue(jsn,["speed"]);
                 gPathcallTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]);
+            } else if (request == "pathturn")
+            {   pathturn((float)llJsonGetValue(jsn,["heading"]));
             } else {
                 panic("Unknown path request: " + jsn);                  // unlikely
             }

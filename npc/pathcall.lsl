@@ -125,6 +125,17 @@ pathPursue(key target, float stopshort, integer dogged)
 {
     pathbegin(target, ZERO_VECTOR, stopshort, dogged);          // start pursuit.
 }
+
+//
+//  pathTurn -- turn to indicated heading.
+//
+//  Gets a callback.
+//
+pathTurn(float heading)
+{
+    llMessageLinked(LINK_THIS, PATHSTARTREQUEST, llList2Json(JSON_OBJECT,["request","pathturn",
+        "heading",heading]),"");    
+}
 //
 //  End of user API
 //
@@ -182,6 +193,7 @@ pathmasterreset()
 //
 //  Misc. support functions. For user use, not needed by the path planning system itself.
 //
+#ifdef OBSOLETE
 #ifndef RotFromXAxis 
 //  RotFromXAxis -- rotation from X axis in XY plane.
 #define RotFromXAxis(dv) llAxes2Rot(llVecNorm(dv),<0,0,1>%llVecNorm(dv),<0,0,1>)
@@ -191,7 +203,8 @@ pathmasterreset()
 //
 rotation slerp(rotation a, rotation b, float t) {
    return llAxisAngle2Rot( llRot2Axis(b /= a), t * llRot2Angle(b)) * a;
-}    
+}
+#endif // OBSOLETE  
 
 integer rand_int(integer bound)                 // bound must not exceed 2^24.
 {   return((integer)llFrand(bound)); }          // get random integer                   
@@ -258,7 +271,7 @@ float easeineaseout(float ease, float fract)
     return(y);
 }
 
-
+#ifdef OBSOLETE
 //
 //  pathFaceInDirection  --  face in desired direction
 //
@@ -279,6 +292,7 @@ pathFaceInDirection(vector lookdir)
         llSetRot(slerp(startrot, endrot, easefract));           // interpolate rotation
     }
 }
+#endif // OBSOLETE
 
 //  Check if point is directly visible in a straight line.
 //  Used when trying to get in front of an avatar.
