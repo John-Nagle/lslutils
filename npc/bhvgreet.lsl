@@ -18,9 +18,12 @@
 #include "npc/mathutils.lsl"
 integer ACTION_IDLE = 0;         
 integer ACTION_PURSUE = 1;
-integer ACTION_FACE = 2;
-////integer ACTION_PATROL = 3;
-integer ACTION_TALKING = 4;                 // facing an avi and talking
+integer ACTION_FACE = 2;                    // turn to face target, has callback
+integer ACTION_PATROL = 3;
+integer ACTION_GREET = 4;                   // face finished, do greet
+integer ACTION_DISTANT_GREET = 5;           // face finished, do distant greet msg
+integer ACTION_TALKING = 6;                 // facing an avi and talking
+integer ACTION_PATROLFACE = 7;              // completed patrol, turning to final position
 
 #ifdef OBSOLETE
 
@@ -74,7 +77,7 @@ float gDwell;                   // dwell time to wait
 float gFaceDir;                 // direction to face next
 
 
-
+#ifdef OBSOLETE
 //
 //  bhvDoRequestDone -- pathfinding is done. Analyze the result and start the next action.
 //
@@ -181,6 +184,143 @@ face_and_greet(string msg)                          // turn to face avi
     gDwell = ATTENTION_SPAN;                        // wait this long
     llSay(0,msg);
 }
+#endif // OBSOLETE
+//
+//  bhvDoRequestDone -- pathfinding is done. Analyze the result and start the next action.
+//
+bhvDoRequestDone(integer status, key hitobj)
+{   debugMsg(DEBUG_MSG_INFO, "Path update: : " + (string) status + " obstacle: " + llKey2Name(hitobj));
+    if (status == PATHERRMAZEOK)          // success
+    {   ////llOwnerSay("Pathfinding task completed.");
+        if (gAction == ACTION_PURSUE)               
+        {
+            gAction = ACTION_FACE;  
+            vector offset = dir_from_target(gTarget) * GOAL_DIST; 
+            vector finaltarget = target_pos(gTarget) + offset;
+            if (is_clear_sightline(gTarget, finaltarget))
+            {            
+                debugMsg(DEBUG_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
+                bhvNavigateTo(ZERO_VECTOR, finaltarget, 0, WALKSPEED);
+                llResetTime();
+            } else {
+                debugMsg(DEBUG_MSG_WARN,"Can't get in front of avatar due to obstacle.");
+                bhvAnimate([IDLE_ANIM]);
+                face(gTarget, ACTION_DISTANT_GREET);
+            }                             
+            return;
+        }
+        if (gAction == ACTION_FACE)
+        {   //  Turn to face avatar.
+            bhvAnimate([IDLE_ANIM]);
+            face(gTarget, ACTION_GREET);
+            return;
+        }
+        if (gAction == ACTION_GREET)
+        {   greet("Hello");
+            return;
+        }
+        if (gAction == ACTION_DISTANT_GREET)                    // not face to face
+        {   greet("Hello there");
+            return;
+        }
+        if (gAction == ACTION_PATROLFACE)           // final face at end of patrol move
+        {   gAction = ACTION_IDLE;                  // and we go idle
+            return;
+        }
+        if (gAction == ACTION_TALKING)              // if someone near is talking
+        {   return;                                 // continue pretending to talk 
+        }
+        //  Got completion in unexpected state
+        debugMsg(DEBUG_MSG_ERROR,"Unexpected path completion in state " + (string)gAction + " Status: " + (string)status);
+        gAction = ACTION_IDLE;            
+        bhvAnimate([IDLE_ANIM]);
+        return;
+    }
+    //  If had trouble getting there, but got close enough, maybe we can just say hi.
+    if ((gAction == ACTION_PURSUE || gAction == ACTION_FACE) && dist_to_target(gTarget) < MAX_GREET_DIST) // if close enough to greet
+    {   bhvAnimate([IDLE_ANIM]);
+        face(gTarget, ACTION_DISTANT_GREET);
+        ////face_and_greet("Hello there.");                         // longer range greeting
+        return;
+    }
+    //  If blocked by something, deal with it.
+    if ((gAction == ACTION_PURSUE))                                     // if going somewhere
+    {   if (is_active_obstacle(hitobj))                                 // and it might move
+        {   if (llFrand(1.0) < OBSTACLE_RETRY_PROB)                     // if random test says retry
+            {   debugMsg(DEBUG_MSG_WARN,"Obstacle " + llKey2Name(hitobj) + ",will try again.");
+                if (gAction == ACTION_PURSUE)                           // try again.
+                {   start_pursue(); }
+                else 
+                {   
+                    gDwell = 0.0;
+                }
+            } else {                                                    // no retry, give up now
+                gDwell = 0.0;                                           // no dwell time, do something else now
+                debugMsg(DEBUG_MSG_WARN,"Obstacle, will give way.");
+            }
+        }
+    }
+    //  Default - errors we don't special case.
+    {          
+        if (gAction == ACTION_FACE)             // Can't get in front of avatar, greet anyway.
+        {   debugMsg(DEBUG_MSG_WARN, "Can't navigate to point in front of avatar.");
+            bhvAnimate([IDLE_ANIM]);
+            face(gTarget, ACTION_GREET);
+            return;
+        }
+
+        if (gTarget != NULL_KEY)
+        {   debugMsg(DEBUG_MSG_WARN,"Unable to reach " + llKey2Name(gTarget) + " status: " + (string)status);
+            pathavatartrackreply(gTarget,"defer");          // tell tracker to defer action on this avi
+            ////gDeferredTargets += gTarget;    // defer action on this target
+            ////gDeferredPositions += target_pos(gTarget);  // where they are
+            gTarget = NULL_KEY;                             // not tracking anyone
+        }
+            
+        //  Failed, back to idle.
+        gAction = ACTION_IDLE;            
+        debugMsg(DEBUG_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
+        bhvAnimate([IDLE_ANIM]);
+        return;
+    }
+}
+ 
+//
+//  face_dir -- face in indicated direction
+//
+face_dir(vector lookdir)                        // face this way
+{
+    lookdir = llVecNorm(lookdir);
+    vector currentlookdir = <1,0,0>*llGetRot();
+    if (currentlookdir * lookdir < 0.95)             // if need to turn to face
+    {
+        bhvAnimate([STAND_ANIM]);
+        pathFaceInDirection(lookdir);       // face avatar
+        bhvAnimate([IDLE_ANIM]);
+    }
+} 
+
+//  
+//  face -- face in indicated direction
+//
+face(key target, integer nextstate)                 // turn to face avi
+{
+    vector dir = vec_to_target(target);             // direction to face
+    float heading = llAtan2(dir.x,dir.y);           // direction to face as heading (0=north)
+    bhvTurn(heading);                               // turn to face avi
+    gAction = nextstate;                            // on completion, greet
+}
+
+//  
+//  greet -- say hello
+//
+greet(string msg)                                   // turn to face avi
+{
+    gAction = ACTION_TALKING;                       // on completion, fake being in conversation
+    llResetTime();                                  // start attention span timer.
+    gDwell = ATTENTION_SPAN;                        // wait this long
+    llSay(0,msg);
+}
 
    
 //
@@ -191,7 +331,7 @@ start_pursue()
     gDwell = 0.0;
     bhvAnimate([WAITING_ANIM]);                                     // applies only when stalled during movement
     llSleep(2.0);                                                   // allow stop time
-    bhvPursue(gTarget, GOAL_DIST*2, TRUE);
+    bhvPursue(gTarget, GOAL_DIST*2, CHARACTER_SPEED);               // go after the avatar, stopping a bit short
     gAction = ACTION_PURSUE;
     llSetTimerEvent(1.0);                                           // fast poll while moving
 }
@@ -295,7 +435,6 @@ default
             requestpursue((key)llJsonGetValue(jsn,["id"])); // go pursue, if appropriate.
             return; 
         } 
- 
     }
     
     collision_start(integer num_detected)
@@ -312,7 +451,9 @@ default
     {   ////llOwnerSay("Listen from id " + (string) id + ": " + msg); // ***TEMP***
         if (gAction == ACTION_IDLE && llGetAgentSize(id) != ZERO_VECTOR)    // stay around if talked to by an avi
         {   
-            bhvTurn(vec_to_target(id));                 // face who's talking
+            vector dir = (vec_to_target(id));               // face who's talking
+            float heading = llAtan2(dir.x,dir.y);           // direction to face as heading (0=north)
+            bhvTurn(heading);
             llResetTime();                                  // reset attention span
         }
     }

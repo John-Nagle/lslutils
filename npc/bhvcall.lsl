@@ -65,11 +65,13 @@ bhvPursue(key target, float stopshort, float speed)
 }
 
 //
-//  bhvTurn -- turn self to face heading. Heading is a unit vector in XY plane.
+//  bhvTurn -- turn self to face heading. 0 is north, PI/2 is east.
 //
-bhvTurn(vector heading)
+bhvTurn(float heading)
 {
-    bvhpathreq(ZERO_VECTOR, llGetRootPosition(), NULL_KEY, 0, 0.1, heading);
+    string jsn = llList2Json(JSON_OBJECT,["request","pathturn","mnum",gBhvMnum,
+        "heading",heading]);
+    llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH,jsn,"");
 }
 
 //
@@ -81,6 +83,7 @@ bhvTurn(vector heading)
 //
 bhvAnimate(list anims)
 {
+    //  ***MORE***
 }
 
 //
@@ -91,7 +94,8 @@ bhvAnimate(list anims)
 //  the current movement, although not instantly.
 //
 bhvStop()
-{   
+{
+    //  ***MORE***   
 }
 
 //
@@ -139,7 +143,7 @@ bhvInit()
 //
 //  bvhpathreq -- path request, via scheduler to path system
 //
-//  Handles NavigateTo, Pursue, and Turn.
+//  Handles NavigateTo, and Pursue
 //
 bvhpathreq(vector regioncorner, vector goal, key target, float stopshort, float speed, vector finaldir)
 {
@@ -184,6 +188,12 @@ bhvreqreply(string jsn)
         bhvDoRequestDone(status, hitobj);
         return;
     }
+    if (reply == "pathturn")                               // turn completed
+    {   integer status = (integer)llJsonGetValue(jsn,["status"]);
+        bhvDoRequestDone(status, NULL_KEY);
+        return;
+    }
+
     if (request == "start")
     {   bhvDoStart(); 
         return;

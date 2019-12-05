@@ -218,6 +218,13 @@ dopathbegin(integer bhvix, string jsn)
 //
 doturn(integer bhvix, string jsn)
 {   debugMsg(DEBUG_MSG_WARN,"Turn req: " + jsn);
+    //  ***MORE***
+    //   ***TEMP DUMMY*** send back a normal completion for test purposes.
+    integer status = 0;
+    key hitobj = NULL_KEY;
+    llSleep(1.0);   // prevent dummy test from going too fast
+    llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["reply","pathturn","status",status]),""); 
+
 }
 //
 //  doanim  -- behavior wants to do an animation request
@@ -281,7 +288,7 @@ default
             {   dopathbegin(bhvix, jsn);                // do the path begin operation
                 return;
             }
-            else if (reqtype == "turn")                 // behavior wants to do a path operation
+            else if (reqtype == "pathturn")             // behavior wants to do a path operation
             {   doturn(bhvix, jsn);                     // do a turn operation
                 return;
             }
