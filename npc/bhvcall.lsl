@@ -68,10 +68,10 @@ bhvPursue(key target, float stopshort, float speed)
 //
 bhvTurn(float heading)
 {
-    string jsn = llList2Json(JSON_OBJECT,["request","pathturn","mnum",gBhvMnum,
+    string jsn = llList2Json(JSON_OBJECT,["request","pathturn","mnum",gBhvMnum,"token",gActiveToken,
         "heading",heading]);
-    llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH,jsn,"");
-}
+    llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH,jsn,"");       // ask scheduler to do it
+}       
 
 //
 //  bhvAnimate -- run list of animations.
@@ -85,7 +85,7 @@ bhvTurn(float heading)
 bhvAnimate(list anims)
 {   //  Ask scheduler to do this for us.
     string jsn = llList2Json(JSON_OBJECT,["request","anim","mnum",gBhvMnum,"token",gActiveToken,"anims",llList2Json(JSON_ARRAY,anims)]);
-    llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH, jsn, "");
+    llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH, jsn, "");     // ask scheduler to do it
 }
 
 //

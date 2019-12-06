@@ -99,7 +99,7 @@ init()
     //
     vector scale = llGetScale();                                        // scale of character, usually a dummy box
     float height = scale.z;                                             // height is scale
-    float width = llVecMag(<scale.x,scale.y,0.0>)*2.0;                  // diameter of enclosing circle
+    float width = llVecMag(<scale.x,scale.y,0.0>);                  // diameter of enclosing circle
     llOwnerSay("Character height: " + (string)height + "m. Width: " + (string)width + "m.");
     pathInit(width, height, CHARACTER_TYPE_A, gDebugMsgLevel);   // set up pathfinding system
     pathSpeed(CHARACTER_SPEED, CHARACTER_TURNSPEED_DEG*DEG_TO_RAD); // how fast to go
@@ -147,10 +147,14 @@ integer findbehavior(integer mnum)
 setpriority(integer bhvix, integer pri)
 {   assert(pri >= 0);
     gBehaviors = llListReplaceList(gBehaviors,[pri],bhvix+3,bhvix+3); // replace priority
+    if (bhvix == gActiveBehavior)                   // if request is from the currently active behavior
+    {   schedbhv();                                 // either priority drop or some kind of out of sync condition. Reschedule.
+        return;
+    }
     if (pri > gActivePriority)                      // this will start a new task
     {
         schedbhv();                                 // run the scheduler
-    }
+    } 
 }
 
 //
