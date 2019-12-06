@@ -97,12 +97,12 @@ init()
     //
     //  Init the path planning system
     //
-    vector scale = llGetScale();                                        // scale of character, usually a dummy box
-    float height = scale.z;                                             // height is scale
+    vector scale = llGetScale();                                    // scale of character, usually a dummy box
+    float height = scale.z;                                         // height is scale
     float width = llVecMag(<scale.x,scale.y,0.0>);                  // diameter of enclosing circle
     llOwnerSay("Character height: " + (string)height + "m. Width: " + (string)width + "m.");
-    pathInit(width, height, CHARACTER_TYPE_A, gDebugMsgLevel);   // set up pathfinding system
-    pathSpeed(CHARACTER_SPEED, CHARACTER_TURNSPEED_DEG*DEG_TO_RAD); // how fast to go
+    pathInit(width, height, CHARACTER_TYPE_A, gDebugMsgLevel);      // set up pathfinding system
+    pathTurnspeed(CHARACTER_TURNSPEED_DEG*DEG_TO_RAD);              // how fast to turn, rarely changed
     //  Reset all behaviors
     llOwnerSay("Resetting all behaviors.");  // ***TEMP***
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","reset"]),"");    // reset all behaviors
@@ -240,8 +240,7 @@ dopathbegin(integer bhvix, string jsn)
     llSleep(1.0);   // prevent dummy test from going too fast
     llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["reply","pathbegin","status",status,"hitobj",hitobj]),""); 
 #else
-    //  ***NEED TO ADD SPEED***
-    pathbegin(target, goal, stopshort, dogged);                     // begin path planning
+    pathBegin(target, goal, stopshort, dogged, speed);                     // begin path planning
 #endif // UNITTEST
 }
 //

@@ -4,7 +4,7 @@ John Nagle
 
 Animats
 
-June, 2019
+December, 2019
 
 (PRELIMINARY - WILL CHANGE BEFORE RELEASE)
 
@@ -72,7 +72,7 @@ The width and height define a vertical cylinder
 around the character's center. The character's collision model must fit within cylinder. If it does not,
 the character will bump into obstacles and stop.
 ### pathNavigateTo
-    pathNavigateTo(vector endpos, float stopshort)
+    pathNavigateTo(vector endpos, float stopshort, float speed)
     
 Go to the indicated location, in the current region, avoiding obstacles.
 A moving obstacle on the path ahead of the character will stop it. So will a collision.
@@ -81,24 +81,29 @@ what to do next. That's a social decision, and belongs to the character control 
 path planning system.
 
 Stop short of the target by the distance **stopshort**. This can be zero. Used mostly when approaching an avatar.
+
+**speed** is in meters per second. Reasonable values are 0.5 to 4.
+Ordinary walking speed in Second Life is 1.5 meters/sec.
+
 ### pathPursue
-    pathPursue(key target, float stopshort, integer dogged)
+    pathPursue(key target, float stopshort, integer dogged, float speed)
     
 Pursue the object **target**, usually an avatar. Stop short of the target by the distance **stopshort**, so as not to get in the avatar's face.
 1.75 to 2.0 meters is a reasonable value for **stopshort**. Setting **dogged** to TRUE makes the pursuit more determined and less polite.
 The character will keep pursuing even if the target avatar runs away.
+
+**speed** is in meters per second. Reasonable values are 0.5 to 4.
+Ordinary walking speed in Second Life is 1.5 meters/sec.
+
 ### pathStop
     pathStop()
     
 Stop any current motion. This is not usually necessary; sending a command while one is already running will stop the current movement.
 
-## pathSpeed
-    pathSpeed(float speed, float turnspeed)
+## pathTurnspeed
+    pathSpeed(float turnspeed)
     
-Sets the movement speed for future operations. 
-
-**speed** is in meters per second. Reasonable values are 0.5 to 4.
-Ordinary walking speed in Second Life is 1.5 meters/sec.
+Sets the turn speed. 
 
 **turnspeed** is the turning speed when changing direction, in radians per second.
 0.2 is a reasonable value. When in a path segment with both moving and turning,
