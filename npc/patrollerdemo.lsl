@@ -120,7 +120,7 @@ pathUpdateCallback(integer status, key hitobj )
             if (clear_sightline(gTarget, finaltarget))
             {            
                 debugMsg(DEBUG_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
-                pathNavigateTo(finaltarget, 0);
+                pathNavigateTo(finaltarget, 0, CHARACTER_SPEED);
                 llResetTime();
             } else {
                 debugMsg(DEBUG_MSG_WARN,"Can't get in front of avatar due to obstacle.");
@@ -264,7 +264,7 @@ start_pursue()
     gDwell = 0.0;
     start_anim(WAITING_ANIM);                                       // applies only when stalled during movement
     llSleep(2.0);                                                   // allow stop time
-    pathPursue(gTarget, GOAL_DIST*2, TRUE);
+    pathPursue(gTarget, GOAL_DIST*2, TRUE, CHARACTER_SPEED);
     gAction = ACTION_PURSUE;
     llSetTimerEvent(1.0);                                           // fast poll while moving
 
@@ -310,7 +310,7 @@ restart_patrol()
 {
     debugMsg(DEBUG_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
     start_anim(WAITING_ANIM);                     // applies only when stalled during movement
-    pathNavigateTo(gPatrolDestination,0);           // head for next pos
+    pathNavigateTo(gPatrolDestination,0, CHARACTER_SPEED);           // head for next pos
     gAction = ACTION_PATROL;                        // patrolling
     llSetTimerEvent(1.0);                       // fast poll while moving
 }
@@ -321,7 +321,7 @@ startup()
 {   gScale = llGetScale();                  // scale of animesh
     llOwnerSay("Character height: " + (string)CHARACTER_HEIGHT);    // ***TEMP***
     pathInit(CHARACTER_WIDTH, CHARACTER_HEIGHT, CHARACTER_TYPE_A, VERBOSITY);   // set up pathfinding system
-    pathSpeed(CHARACTER_SPEED, CHARACTER_TURNSPEED_DEG*DEG_TO_RAD); // how fast to go
+    pathTurnspeed(CHARACTER_TURNSPEED_DEG*DEG_TO_RAD); // how fast to turn
     gAction = ACTION_IDLE;
     gAnim = "";
     gOwner = llGetOwner();                  // owner of animesh

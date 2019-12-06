@@ -53,20 +53,18 @@ pathInit(float width, float height, integer chartype, integer msglev)
 }
 
 //
-//  pathSpeed -- set linear and turn speed for future moves
+//  pathTurnspeed -- set turn speed for future moves.
 //
-//
-//  speed is in meters per second. Reasonable values are 0.5 to 4.
-//  Ordinary walking speed in Second Life is 1.5 meters/sec.
+//  Usually sent once at startup. Linear speed is in every move call now.
 //
 //  turnspeed is the turning speed when changing direction, in radians per second.
 //  0.2 is a reasonable value. When in a path segment with both moving and turning,
 //  movement speed is slowed to allow the turn to complete at the usual turn rate.
 //  So characters slow down when turning corners.
 //
-pathSpeed(float speed, float turnspeed)
+pathTurnspeed(float turnspeed)
 {   llMessageLinked(LINK_THIS, PATHSTARTREQUEST, llList2Json(JSON_OBJECT,["request","pathspeed",
-        "speed",speed, "turnspeed",turnspeed]),"");
+        "turnspeed",turnspeed]),"");
 }
 
 
@@ -79,7 +77,7 @@ pathSpeed(float speed, float turnspeed)
 //  the current movement, although not instantly.
 //
 pathStop()
-{   pathNavigateTo(llGetPos(), 100.0);              // stop by navigating to where we are
+{   pathNavigateTo(llGetPos(), 100.0, 1.0);              // stop by navigating to where we are
 }
 
 //
@@ -103,9 +101,9 @@ pathTick()
 //
 //  Stop short of the target by the distance stopshort. This can be zero. 
 //
-pathNavigateTo(vector endpos, float stopshort)
+pathNavigateTo(vector endpos, float stopshort, float speed)
 {
-    pathbegin(NULL_KEY, endpos, stopshort, FALSE);             // common for pathNavigateTo and pathPursue
+    pathBegin(NULL_KEY, endpos, stopshort, FALSE, speed);             // common for pathNavigateTo and pathPursue
 }
 
 
@@ -121,9 +119,8 @@ pathNavigateTo(vector endpos, float stopshort)
 //  If the target moves, the navigate operation is terminated with an error, causing a retry.
 //  The retry heads for the new target position.
 //
-pathPursue(key target, float stopshort, integer dogged)
-{   //  ***NEED TO ADD SPEED***
-    pathbegin(target, ZERO_VECTOR, stopshort, dogged);          // start pursuit.
+pathPursue(key target, float stopshort, integer dogged, float speed)
+{   pathBegin(target, ZERO_VECTOR, stopshort, dogged, speed);          // start pursuit.
 }
 
 //
@@ -135,6 +132,20 @@ pathTurn(float heading)
 {
     llMessageLinked(LINK_THIS, PATHSTARTREQUEST, llList2Json(JSON_OBJECT,["request","pathturn",
         "heading",heading]),"");    
+}
+//
+//  pathBegin -- go to indicated point or target. Common for pursue and navigateTo
+//
+//  Go to the indicated location, in the current region, avoiding obstacles.
+//
+//  Stop short of the target by the distance stopshort. This can be zero. 
+//
+pathBegin(key target, vector endpos, float stopshort, integer dogged, float speed)
+{   if (!gPathcallInitialized) { panic("Path request made before init call"); } // don't let things start out of sequence
+    gPathcallRequestId = (gPathcallRequestId+1)%(PATHMAXUNSIGNED-1);      // request (not path) serial number, nonnegative
+    gPathcallLastCommand = llList2Json(JSON_OBJECT,["request","pathbegin","requestid",gPathcallRequestId,
+        "target",target, "goal",endpos,"stopshort",stopshort,"dogged",dogged, "speed",speed]); // save for diagnostic
+    llMessageLinked(LINK_THIS, PATHSTARTREQUEST,gPathcallLastCommand,"");
 }
 //
 //  End of user API
@@ -156,20 +167,7 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
     }
 }
 
-//
-//  pathbegin -- go to indicated point or target. Internal fn.
-//
-//  Go to the indicated location, in the current region, avoiding obstacles.
-//
-//  Stop short of the target by the distance stopshort. This can be zero. 
-//
-pathbegin(key target, vector endpos, float stopshort, integer dogged)
-{   if (!gPathcallInitialized) { panic("Path request made before init call"); } // don't let things start out of sequence
-    gPathcallRequestId = (gPathcallRequestId+1)%(PATHMAXUNSIGNED-1);      // request (not path) serial number, nonnegative
-    gPathcallLastCommand = llList2Json(JSON_OBJECT,["request","pathbegin","requestid",gPathcallRequestId,
-        "target",target, "goal",endpos,"stopshort",stopshort,"dogged",dogged]); // save for diagnostic
-    llMessageLinked(LINK_THIS, PATHSTARTREQUEST,gPathcallLastCommand,"");
-}
+
 
 //  
 //  pathmasterreset -- reset all scripts whose name begins with "path".
