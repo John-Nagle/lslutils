@@ -23,6 +23,9 @@ integer ACTION_PATROLFACE = 4;              // completed patrol, turning to fina
 
 
 //  Configuration
+
+#define PRIORITYPATROL  1                   // lower than greet, lower than evade vehicle
+
 float DETECTION_RADIUS = 60.0;      
 float GOAL_TOL = 1.0;               
 float GOAL_DIST = 1.75;                     // (m) get this close to talk
@@ -30,11 +33,6 @@ float MAX_GREET_DIST = 10.0;                // (m) if can get this close, say "H
 float OBSTACLE_RETRY_PROB = 0.7;            // (fract) Retry if random < this.
 float TESTSPACING = 0.33;                   // (fract) Multiply height and width by this to get ray cast spacing
 
-//  Character dimensions
-integer CHARTYPE = CHARACTER_TYPE_A;                        // humanoid
-
-#define CHARACTER_WIDTH  0.5
-#define CHARACTER_HEIGHT  (gScale.z)        // use Z height as character height
 #ifndef CHARACTER_SPEED                     // overrideable
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
 #endif // CHARACTER_SPEED
@@ -103,15 +101,14 @@ add_patrol_point(string s)
 //
 bhvDoRequestDone(integer status, key hitobj)
 {   debugMsg(DEBUG_MSG_INFO, "Path update: : " + (string) status + " obstacle: " + llKey2Name(hitobj));
-    if (status == PATHERRMAZEOK)          // success
+    if (status == PATHERRMAZEOK)                    // success
     {   ////llOwnerSay("Pathfinding task completed.");
         if (gAction == ACTION_PATROLFACE)           // final face at end of patrol move
         {   gAction = ACTION_IDLE;                  // and we go idle
             return;
         }
-        if (gAction == ACTION_PATROL)
-        {   ////face_dir(<llSin(gFaceDir), llCos(gFaceDir), 0.0>);   // face in programmed direction
-            bhvTurn(gFaceDir);                      // face in programmed direction
+        if (gAction == ACTION_PATROL)               // at goal
+        {   bhvTurn(gFaceDir);                      // face in programmed direction
             start_anim(IDLE_ANIM);
             gAction = ACTION_PATROLFACE;            // turning to final position
             llResetTime();                          // reset timeout timer but keep dwell time
@@ -139,8 +136,7 @@ bhvDoRequestDone(integer status, key hitobj)
             } else {                                                    // no retry, give up now
                 gDwell = 0.0;                                           // no dwell time, do something else now
                 gAction = ACTION_IDLE;                                  // which will try a different patrol point
-                debugMsg(DEBUG_MSG_WARN,"Obstacle, will give way.");
-                return;
+                debugMsg(DEBUG_MSG_WARN,"Obstacle " + llKey2Name(hitobj) + ", will give way.");
             }
         }
     }
@@ -185,16 +181,18 @@ face(key target, integer nextstate)                 // turn to face avi
     gAction = nextstate;                            // on completion, greet
 }
 
-
+//
+//  start_anim -- start indicated idle animation.
+//
+//  Single anim only; we don't need multiple here.
+//
 start_anim(string anim)
 {
     bhvAnimate([anim]);                             // new API
 }    
-
-
-
-
-
+//
+//  start_platrol -- start patrolling if allowed to do so.
+//
 start_patrol()
 {   //  Start patrolling if nothing else to do
     if (gAction == ACTION_IDLE && gPatrolEnabled && 
@@ -227,14 +225,9 @@ restart_patrol()
 
 //
 //  startup - initialization
+//
 startup()
 {
-#ifdef OBSOLETE // ***NEED TO DO CHARACTER INIT IN SCHEDULER***  
-    gScale = llGetScale();                  // scale of animesh
-    llOwnerSay("Character height: " + (string)CHARACTER_HEIGHT);    // ***TEMP***
-    pathInit(CHARACTER_WIDTH, CHARACTER_HEIGHT, CHARACTER_TYPE_A, VERBOSITY);   // set up pathfinding system
-    pathSpeed(CHARACTER_SPEED, CHARACTER_TURNSPEED_DEG*DEG_TO_RAD); // how fast to go
-#endif // OBSOLETE
     gAction = ACTION_IDLE;
     //  Start loading patrol points.
     gPatrolNotecardLine = 0;
@@ -257,11 +250,20 @@ startup()
     gPatrolNotecardQuery = llGetNotecardLine(PATROL_NOTECARD, gPatrolNotecardLine);
     
     //  Set up character
-    llOwnerSay("Restart of "+ gName);
     start_anim(IDLE_ANIM);
     string msg = gName;                     // name of character
     vector color = <1.0,1.0,1.0>;           // white
     llSetText(msg, color, 1.0);             // set hover text
+    //  Set up connection to scheduler
+    bhvInit();                              // set up scheduler system
+}
+
+//
+// bhvRegistered -- scheduler is ready to run us.
+//
+bhvRegistered()                                                     // tell controlling script to go
+{
+    bhvSetPriority(PRIORITYPATROL);                                 // now we can ask to run
 }
 
 default

@@ -53,7 +53,7 @@ integer gBhvSchedLinkNumber = -99999;           // the scheduler's link number
 //
 bhvNavigateTo(vector regioncorner, vector goal, float stopshort, float speed)
 {
-    bvhpathreq(regioncorner, goal, NULL_KEY, stopshort, speed, ZERO_VECTOR);
+    bvhpathreq(regioncorner, goal, NULL_KEY, stopshort, speed);
 }
 
 //
@@ -61,7 +61,7 @@ bhvNavigateTo(vector regioncorner, vector goal, float stopshort, float speed)
 //
 bhvPursue(key target, float stopshort, float speed)
 {
-    bvhpathreq(ZERO_VECTOR, ZERO_VECTOR, target, stopshort, speed, ZERO_VECTOR);
+    bvhpathreq(ZERO_VECTOR, ZERO_VECTOR, target, stopshort, speed);
 }
 
 //
@@ -81,9 +81,12 @@ bhvTurn(float heading)
 //  A new list replaces the old list, keeping any
 //  anims already running still running without a restart
 //
+//  ***NEED TO BE ABLE TO SPECIFY DIFFERENT TYPES OF ANIMS TO AO. BUT AO NEEDS REWRITE FIRST***
+//
 bhvAnimate(list anims)
-{
-    //  ***MORE***
+{   //  Ask scheduler to do this for us.
+    string jsn = llList2Json(JSON_OBJECT,["request","anim","mnum",gBhvMnum,"anims",llList2Json(JSON_ARRAY,anims)]);
+    llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH, jsn, "");
 }
 
 //
@@ -95,7 +98,7 @@ bhvAnimate(list anims)
 //
 bhvStop()
 {
-    //  ***MORE***   
+    bvhpathreq(ZERO_VECTOR, llGetRootPosition(), NULL_KEY, 0, 1.0);  // move to where we are now is a stop
 }
 
 //
@@ -145,10 +148,10 @@ bhvInit()
 //
 //  Handles NavigateTo, and Pursue
 //
-bvhpathreq(vector regioncorner, vector goal, key target, float stopshort, float speed, vector finaldir)
+bvhpathreq(vector regioncorner, vector goal, key target, float stopshort, float speed)
 {
     string jsn = llList2Json(JSON_OBJECT,["request","pathbegin","mnum",gBhvMnum,
-        "target",target, "goal",goal, "stopshort",stopshort, "speed",speed, "finaldir", finaldir]);
+        "target",target, "goal",goal, "stopshort",stopshort, "speed",speed]);
     llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH,jsn,"");
 }
 
@@ -172,6 +175,7 @@ bhvregisterreply(string scriptname, integer mnum, integer schedlink)
     gBhvMnum = mnum;                                                        // our assigned mnum
     gBhvRegistered = TRUE;                                                  // we are now registered
     llOwnerSay("Registered behavior #" + (string)mnum + ": " + gBhvThisScriptname); // ***TEMP***
+    bhvRegistered();                                                        // tell controlling script to go
 }
 
 //
@@ -226,6 +230,11 @@ bhvreqreply(string jsn)
 //  bhvRequestDone  -- request to scheduler completed
 //
 //  bhvDoRequestDone(string jsn)
+//
+//
+//  bhvRegistered -- scheduler is ready to run us. Initialization is done.  
+//
+//  bhvRegistered()                                                     // tell controlling script to go
 //
 
 //

@@ -25,19 +25,6 @@ integer ACTION_DISTANT_GREET = 5;           // face finished, do distant greet m
 integer ACTION_TALKING = 6;                 // facing an avi and talking
 integer ACTION_PATROLFACE = 7;              // completed patrol, turning to final position
 
-#ifdef OBSOLETE
-
-//  Configuration
-float DETECTION_RADIUS = 60.0;      
-float GOAL_TOL = 1.0;               
-float TESTSPACING = 0.33;                   // (fract) Multiply height and width by this to get ray cast spacing
-
-//  Character dimensions
-integer CHARTYPE = CHARACTER_TYPE_A;                        // humanoid
-
-#define CHARACTER_WIDTH  0.5
-#define CHARACTER_HEIGHT  (gScale.z)        // use Z height as character height
-#endif // OBSOLETE
 float GOAL_DIST = 1.75;                     // (m) get this close to talk
 float MAX_GREET_DIST = 10.0;                // (m) if can get this close, say "Hello there"
 float OBSTACLE_RETRY_PROB = 0.7;            // (fract) Retry if random < this.
@@ -76,115 +63,6 @@ integer gListenChannel;         // for detecting chat
 float gDwell;                   // dwell time to wait
 float gFaceDir;                 // direction to face next
 
-
-#ifdef OBSOLETE
-//
-//  bhvDoRequestDone -- pathfinding is done. Analyze the result and start the next action.
-//
-bhvDoRequestDone(integer status, key hitobj)
-{   debugMsg(DEBUG_MSG_INFO, "Path update: : " + (string) status + " obstacle: " + llKey2Name(hitobj));
-    if (status == PATHERRMAZEOK)          // success
-    {   ////llOwnerSay("Pathfinding task completed.");
-        if (gAction == ACTION_PURSUE)               
-        {
-            gAction = ACTION_FACE;  
-            vector offset = dir_from_target(gTarget) * GOAL_DIST; 
-            vector finaltarget = target_pos(gTarget) + offset;
-            if (is_clear_sightline(gTarget, finaltarget))
-            {            
-                debugMsg(DEBUG_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
-                bhvNavigateTo(ZERO_VECTOR, finaltarget, 0, WALKSPEED);
-            } else {
-                debugMsg(DEBUG_MSG_WARN,"Can't get in front of avatar due to obstacle.");
-                bhvAnimate([IDLE_ANIM]);            // should be greet anim
-                face_and_greet("Hello");
-            }                             
-            return;
-        }
-        if (gAction == ACTION_FACE)
-        {   //  Turn to face avatar.
-            bhvAnimate([TALK_ANIM]);
-            face_and_greet("Hello");
-            return;
-        } 
-        //  Got completion in unexpected state
-        debugMsg(DEBUG_MSG_ERROR,"Unexpected path completion in state " + (string)gAction + " Status: " + (string)status);
-        greet_done("defer");
-        return;
-        return;
-    }
-    //  If had trouble getting there, but got close enough, maybe we can just say hi.
-    if ((gAction == ACTION_PURSUE || gAction == ACTION_FACE) && dist_to_target(gTarget) < MAX_GREET_DIST) // if close enough to greet
-    {   bhvAnimate([TALK_ANIM]);
-        face_and_greet("Hello there.");                         // longer range greeting
-        return;
-    }
-    //  If blocked by something, deal with it.
-    if ((gAction == ACTION_PURSUE))                                     // if going somewhere
-    {   if (is_active_obstacle(hitobj))                                 // and it might move
-        {   if (llFrand(1.0) < OBSTACLE_RETRY_PROB)                     // if random test says retry
-            {   debugMsg(DEBUG_MSG_WARN,"Obstacle " + llKey2Name(hitobj) + ",will try again.");
-                if (gAction == ACTION_PURSUE)                           // try again.
-                {   start_pursue(); }
-                else 
-                {   
-                    gDwell = 0.0;
-                }
-            } else {                                                    // no retry, give up now
-                gDwell = 0.0;                                           // no dwell time, do something else now
-                debugMsg(DEBUG_MSG_WARN,"Obstacle, will give way.");
-            }
-        }
-    }
-    //  Default - errors we don't special case.
-    {          
-        if (gAction == ACTION_FACE)                                     // Can't get in front of avatar, greet anyway.
-        {   debugMsg(DEBUG_MSG_WARN, "Can't navigate to point in front of avatar.");
-            bhvAnimate([IDLE_ANIM]);
-            face_and_greet("Hello");
-            return;
-        }
-
-        if (gTarget != NULL_KEY)
-        {   debugMsg(DEBUG_MSG_WARN,"Unable to reach " + llKey2Name(gTarget) + " status: " + (string)status);
-            greet_done("defer");
-            return;
-        }
-            
-        //  Failed, back to idle.
-        gAction = ACTION_IDLE;            
-        debugMsg(DEBUG_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
-        greet_done("defer");
-        return;
-    }
-}
- 
-//
-//  face_dir -- face in indicated direction
-//
-face_dir(vector lookdir)                        // face this way
-{
-    lookdir = llVecNorm(lookdir);
-    vector currentlookdir = <1,0,0>*llGetRot();
-    bhvAnimate([STAND_ANIM]);
-    if (currentlookdir * lookdir < 0.95)            // if need to turn to face
-    {
-        bhvTurn(lookdir);                           // face avatar
-    }
-} 
-
-//  
-//  face_and_greet -- face in indicated direction and say hello
-//
-face_and_greet(string msg)                          // turn to face avi
-{
-    face_dir(vec_to_target(gTarget));               // turn to face avi
-    gAction = ACTION_TALKING;
-    llResetTime();                                  // start attention span timer.
-    gDwell = ATTENTION_SPAN;                        // wait this long
-    llSay(0,msg);
-}
-#endif // OBSOLETE
 //
 //  bhvDoRequestDone -- pathfinding is done. Analyze the result and start the next action.
 //
@@ -272,8 +150,6 @@ bhvDoRequestDone(integer status, key hitobj)
         if (gTarget != NULL_KEY)
         {   debugMsg(DEBUG_MSG_WARN,"Unable to reach " + llKey2Name(gTarget) + " status: " + (string)status);
             pathavatartrackreply(gTarget,"defer");          // tell tracker to defer action on this avi
-            ////gDeferredTargets += gTarget;    // defer action on this target
-            ////gDeferredPositions += target_pos(gTarget);  // where they are
             gTarget = NULL_KEY;                             // not tracking anyone
         }
             
@@ -351,7 +227,8 @@ greet_done(string action)
 //  Start it if not already pursuing someone.
 //
 requestpursue(key target)
-{   if (!(gAction == ACTION_IDLE))                                  // busy doing someone else
+{   if (!gBhvRegistered) { return; }                                // scheduler init still in progress, wait, will be repolled
+    if (!(gAction == ACTION_IDLE))                                  // busy doing someone else
     {   pathavatartrackreply(target, "busy");                       // tell the tracker to be quiet for a while.
         return;
     }
@@ -384,21 +261,13 @@ bhvDoStop()
     llSetTimerEvent(0);                                             // don't need a timer
 }
 
-#ifdef OBSOLETE
 //
-//  startup - initialization
-startup()
-{   gScale = llGetScale();                  // scale of animesh
-    llOwnerSay("Character height: " + (string)CHARACTER_HEIGHT);    // ***TEMP***
-    pathInit(CHARACTER_WIDTH, CHARACTER_HEIGHT, CHARACTER_TYPE_A, VERBOSITY);   // set up pathfinding system
-    pathSpeed(CHARACTER_SPEED, CHARACTER_TURNSPEED_DEG*DEG_TO_RAD); // how fast to go
-    gAction = ACTION_IDLE;
-    gAnim = "";
-    gOwner = llGetOwner();                  // owner of animesh
-    list groupdetails = llGetObjectDetails(llGetKey(), [OBJECT_GROUP]); // my group
-    gGroup = llList2Key(groupdetails,0);    // group of animesh
+// bhvRegistered -- scheduler is ready to run us.
+//
+bhvRegistered()                                                     // tell controlling script to go
+{
 }
-#endif // OBSOLETE
+
 
 default
 {
@@ -424,7 +293,7 @@ default
     }
     
     link_message(integer sender_num, integer num, string jsn, key id)
-    {   debugMsg(DEBUG_MSG_INFO, jsn);                      // ***TEMP*** dump incoming JSON
+    {   ////debugMsg(DEBUG_MSG_INFO, jsn);                      // ***TEMP*** dump incoming JSON
         if (num == gBhvMnum || num == BHVMSGFROMSCH)        // if from scheduler to us
         {   
             bhvSchedMessage(num,jsn);                       // message from scheduler

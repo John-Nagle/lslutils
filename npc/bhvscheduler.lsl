@@ -63,6 +63,12 @@
 #define BHVOFFPRIORITY  0       // do not run if at this priority
 #define BHVMNUMSTART -1999      // link message nums (mnum) for scripts start here
 #define BHVMNUMEND  -1900       // max of 100 behaviors 
+
+//
+//  Character defaults. Behaviors override the speed.
+//
+#define CHARACTER_SPEED  2.5                // (m/sec) speed
+#define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
 //
 //  Globals
 //
@@ -88,7 +94,17 @@ init()
     gActiveBehavior = -1;       // index into active behavior table 
     gActivePriority = 0;        // priority of active behavior
     gActiveToken = 0;           // sequence number for activity
-    llOwnerSay("Resetting all behaviors");  // ***TEMP***
+    //
+    //  Init the path planning system
+    //
+    vector scale = llGetScale();                                        // scale of character, usually a dummy box
+    float height = scale.z;                                             // height is scale
+    float width = llVecMag(<scale.x,scale.y,0.0>)*2.0;                  // diameter of enclosing circle
+    llOwnerSay("Character height: " + (string)height + "m. Width: " + (string)width + "m.");
+    pathInit(width, height, CHARACTER_TYPE_A, gDebugMsgLevel);   // set up pathfinding system
+    pathSpeed(CHARACTER_SPEED, CHARACTER_TURNSPEED_DEG*DEG_TO_RAD); // how fast to go
+    //  Reset all behaviors
+    llOwnerSay("Resetting all behaviors.");  // ***TEMP***
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","reset"]),"");    // reset all behaviors
 }
 //
@@ -181,7 +197,7 @@ schedbhv()
     if (bhvix < 0) { return; }                  // nothing to run
     //  Starting new task
     gActiveBehavior = bhvix;
-    gActivePriority = BHVPRIORITY(bhvix);        // priority of this behavior
+    gActivePriority = BHVPRIORITY(bhvix);       // priority of this behavior
     startbhv(bhvix);
 }
 //
@@ -227,13 +243,16 @@ doturn(integer bhvix, string jsn)
 
 }
 //
-//  doanim  -- behavior wants to do an animation request
+//  doanim  -- behavior wants to do an animation request.
+//  
+//  This affects only idle anims for now. So, no tray carrying, etc. at this time.
 //
 //  Anim requests don't get a callback.
 //
-doanim(integer bhvix, string jsn)
-{   debugMsg(DEBUG_MSG_WARN,"Anim req: " + jsn);              // get things started
-    //  ***MORE***
+doanim(integer bhvix, list anims)
+{   debugMsg(DEBUG_MSG_WARN,"Anim req: " + llDumpList2String(anims,","));                // get things started
+    string anim = llList2String(anims,0);                       // only first anim for now ***TEMP*** need to fix AO
+    llMessageLinked(gBhvSchedLinkNumber, 1,anim,"");            // tell our AO what we want
 }
 //
 //
@@ -293,7 +312,9 @@ default
                 return;
             }
             else if (reqtype == "anim")                 // do animation request
-            {   doanim(bhvix, jsn);
+            {   string animsjson = llJsonGetValue(jsn,["anims"]);   // get anim list
+                list anims = llJson2List(animsjson);    // get anims as string
+                doanim(bhvix, anims);
                 return;
             }
             debugMsg(DEBUG_MSG_ERROR,"Invalid message to behavior scheduler: " + jsn);    // behavior error
