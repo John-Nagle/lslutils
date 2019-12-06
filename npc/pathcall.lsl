@@ -122,7 +122,7 @@ pathNavigateTo(vector endpos, float stopshort)
 //  The retry heads for the new target position.
 //
 pathPursue(key target, float stopshort, integer dogged)
-{
+{   //  ***NEED TO ADD SPEED***
     pathbegin(target, ZERO_VECTOR, stopshort, dogged);          // start pursuit.
 }
 

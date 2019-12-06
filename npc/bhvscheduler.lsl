@@ -56,6 +56,7 @@
 #include "debugmsg.lsl"
 #include "npc/bhvcall.lsl"
 #include "npc/pathcall.lsl"
+
 //
 //  Constants
 //
@@ -81,7 +82,6 @@ integer gBehaviorMsgnum = BHVMNUMSTART; // msg number for comm with behavior
 
 integer gActiveBehavior = -1;   // index into active behavior table 
 integer gActivePriority = 0;    // priority of active behavior
-integer gActiveToken = 0;       // sequence number for activity
 //
 //  init
 //
@@ -206,7 +206,7 @@ schedbhv()
 startbhv(integer bhvix)
 {
     debugMsg(DEBUG_MSG_INFO,"Starting " + BHVSCRIPTNAME(gActiveBehavior)); 
-    llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["request","start"]),""); 
+    llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["request","start","token",gActiveToken]),""); 
 }
 
 //
@@ -222,24 +222,40 @@ stopbhv(integer bhvix)
 //
 dopathbegin(integer bhvix, string jsn)
 {   debugMsg(DEBUG_MSG_WARN,"Path begin req: " + jsn);              // get things started
+    key target = (key)llJsonGetValue(jsn,["target"]);
+    vector goal = (vector)llJsonGetValue(jsn,["goal"]);
+    float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
+    float speed = (float)llJsonGetValue(jsn,["speed"]);
+    integer dogged = (target != "") && (target != NULL_KEY);        // dogged mode if pursue target
+
+#ifdef UNITTEST
     //  ***MORE***
     //  ***TEMP DUMMY*** send back a fake normal completion for test purposes
     integer status = 0;
     key hitobj = NULL_KEY;
     llSleep(1.0);   // prevent dummy test from going too fast
     llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["reply","pathbegin","status",status,"hitobj",hitobj]),""); 
+#else
+    //  ***NEED TO ADD SPEED***
+    pathbegin(target, goal, stopshort, dogged);                     // begin path planning
+#endif // UNITTEST
 }
 //
 //  doturn -- behavior wants to do a path request
 //
 doturn(integer bhvix, string jsn)
 {   debugMsg(DEBUG_MSG_WARN,"Turn req: " + jsn);
+    float heading = (float)llJsonGetValue(jsn,["heading"]);            // get heading
+#ifdef UNITTEST
     //  ***MORE***
     //   ***TEMP DUMMY*** send back a normal completion for test purposes.
     integer status = 0;
     key hitobj = NULL_KEY;
     llSleep(1.0);   // prevent dummy test from going too fast
     llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["reply","pathturn","status",status]),""); 
+#else
+    pathTurn(heading);
+#endif // UNITTEST
 
 }
 //

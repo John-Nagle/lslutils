@@ -17,8 +17,6 @@
 //
 //  Behaviors must include this file.
 //
-//  ***MORE*** mostly unimplemented
-//
 //
 #ifndef BVHCALLLSL
 #define BVHCALLLSL
@@ -39,6 +37,7 @@ integer gBhvRegistered;                         // we are not registered yet
 string gBhvThisScriptname;                      // name of this script
 integer gBhvLinkNumber = -99999;                // link number of this prim, starts bogus
 integer gBhvSchedLinkNumber = -99999;           // the scheduler's link number
+integer gActiveToken = -99999;                  // token of the current start
 
 
 //
@@ -85,7 +84,7 @@ bhvTurn(float heading)
 //
 bhvAnimate(list anims)
 {   //  Ask scheduler to do this for us.
-    string jsn = llList2Json(JSON_OBJECT,["request","anim","mnum",gBhvMnum,"anims",llList2Json(JSON_ARRAY,anims)]);
+    string jsn = llList2Json(JSON_OBJECT,["request","anim","mnum",gBhvMnum,"token",gActiveToken,"anims",llList2Json(JSON_ARRAY,anims)]);
     llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH, jsn, "");
 }
 
@@ -150,7 +149,7 @@ bhvInit()
 //
 bvhpathreq(vector regioncorner, vector goal, key target, float stopshort, float speed)
 {
-    string jsn = llList2Json(JSON_OBJECT,["request","pathbegin","mnum",gBhvMnum,
+    string jsn = llList2Json(JSON_OBJECT,["request","pathbegin","mnum",gBhvMnum,"token",gActiveToken,
         "target",target, "goal",goal, "stopshort",stopshort, "speed",speed]);
     llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH,jsn,"");
 }
@@ -199,7 +198,8 @@ bhvreqreply(string jsn)
     }
 
     if (request == "start")
-    {   bhvDoStart(); 
+    {   gActiveToken = (integer)llJsonGetValue(jsn,["token"]);    // token of current start
+        bhvDoStart(); 
         return;
     }
     if (request == "stop")
