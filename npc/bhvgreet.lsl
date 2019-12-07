@@ -318,13 +318,22 @@ default
     
     listen(integer channel, string name, key id, string msg)
     {   ////llOwnerSay("Listen from id " + (string) id + ": " + msg); // ***TEMP***
-        if (gAction == ACTION_IDLE && llGetAgentSize(id) != ZERO_VECTOR)    // stay around if talked to by an avi
-        {   
-            vector dir = (vec_to_target(id));               // face who's talking
-            float heading = llAtan2(dir.x,dir.y);           // direction to face as heading (0=north)
-            bhvTurn(heading);
-            llResetTime();                                  // reset attention span
+        if (channel == 0)                                       // if local chat
+        {   if (gAction == ACTION_IDLE && llGetAgentSize(id) != ZERO_VECTOR)    // stay around if talked to by an avi
+            {   
+                vector dir = (vec_to_target(id));               // face who's talking
+                float heading = llAtan2(dir.x,dir.y);           // direction to face as heading (0=north)
+                bhvTurn(heading);
+                llResetTime();                                  // reset attention span
+            }
+            return;
         }
+#ifdef DEBUGCHAN
+        if (channel == DEBUGCHAN)                               // if debug control
+        {   bvhDebugCommand(msg);
+            return;
+        }
+#endif // DEBUGCHAN
     }
 }
 

@@ -137,6 +137,9 @@ bhvInit()
     gBhvLinkNumber = llGetLinkNumber();         // my prim number, for msgs
     gBhvThisScriptname = llGetScriptName();     // name of this script
     gBhvSchedLinkNumber = -99999;               // we don't know this yet
+#ifdef DEBUGCHAN 
+    llListen(DEBUGCHAN, "", llGetOwner(), "");  // listen forever for owner debug commands   
+#endif // DEBUGCHAN
     bhvreqreg();                                // try to register
 }
 //
@@ -259,5 +262,23 @@ bhvSchedMessage(integer num, string jsn)
         {   llResetScript(); }
     }
 }
+//
+//  Debug command handler
+//
+//  Can be turned on if desired.
+//
+#ifdef DEBUGCHAN                                    // listen on this channel
+bvhDebugCommand(string s)                   // incoming command
+{   list fields = llParseString2List(s,[" "],[]);   // parse into fields
+    if (llList2String(fields,0) == "msglev")        // command would be "/9999 msglev warn"
+    {   integer msglev  = llListFindList(DEBUG_MSG_NAME_LIST,[llToLower(llList2String(fields,1))]);
+        if (msglev >= 0)                            // if valid, set message level
+        {   gDebugMsgLevel = msglev;
+            llOwnerSay(llGetScriptName() + ": Debug level set to " + llList2String(fields,1)); // tell user
+            return;
+        }
+    }
+    llOwnerSay("Bad behavior debug command: " + s); // rejected
+}
+#endif // DEBUGCHAN
 #endif // BVHCALLLSL
-

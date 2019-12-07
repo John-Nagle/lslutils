@@ -330,6 +330,16 @@ default
                 gPatrolNotecardQuery = llGetNotecardLine(PATROL_NOTECARD, gPatrolNotecardLine);
             }
         }
-    }    
+    }
+
+#ifdef DEBUGCHAN    
+    listen(integer channel, string name, key id, string msg)
+    {  
+        if (channel == DEBUGCHAN)                               // if debug control
+        {   bvhDebugCommand(msg);
+            return;
+        }
+    }
+#endif // DEBUGCHAN   
 }
 
