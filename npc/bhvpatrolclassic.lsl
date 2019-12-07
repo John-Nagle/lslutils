@@ -156,6 +156,7 @@ bhvDoRequestDone(integer status, key hitobj)
 bhvDoStart()
 {
     gAction = ACTION_IDLE;                                          // whatever we were doing is cancelled
+    start_anim(IDLE_ANIM);                                          // use idle animation
     start_patrol();                                                 // go patrol to someplace
     llSetTimerEvent(IDLE_POLL);                                     // check for dwell time
 }
@@ -250,7 +251,6 @@ startup()
     gPatrolNotecardQuery = llGetNotecardLine(PATROL_NOTECARD, gPatrolNotecardLine);
     
     //  Set up character
-    start_anim(IDLE_ANIM);
     string msg = gName;                     // name of character
     vector color = <1.0,1.0,1.0>;           // white
     llSetText(msg, color, 1.0);             // set hover text
