@@ -58,8 +58,6 @@ integer PATH_STALL_TIME = 300;              // path stall time
 
 //  Global variables
 integer gAction = ACTION_IDLE;
-vector gScale;                  // scale of character
-string gName;                   // our name
 
 //  Patrol points
 integer gPatrolEnabled;
@@ -237,23 +235,13 @@ startup()
     gNextPatrolPoint = 0;
     gDwell = 0.0;                           // dwell time after patrol point reached
     gPatrolEnabled = FALSE;                 // turns on when all points loaded
-    //  Get our name
-    gName = llGetObjectName();
-    integer spaceIndex = llSubStringIndex(gName, " ");
-    if (spaceIndex >0)
-    {   gName  = llGetSubString(gName, 0, spaceIndex - 1); }       // first name of character
     if (llGetInventoryKey(PATROL_NOTECARD) == NULL_KEY)     // waypoints file no good
     {
         llSay(DEBUG_CHANNEL, "Notecard '" + PATROL_NOTECARD + "' missing or empty. Will not patrol.");
         return;
     }
     //  Start reading notecard. This may need a retry; dataserver is not reliable.
-    gPatrolNotecardQuery = llGetNotecardLine(PATROL_NOTECARD, gPatrolNotecardLine);
-    
-    //  Set up character
-    string msg = gName;                     // name of character
-    vector color = <1.0,1.0,1.0>;           // white
-    llSetText(msg, color, 1.0);             // set hover text
+    gPatrolNotecardQuery = llGetNotecardLine(PATROL_NOTECARD, gPatrolNotecardLine);   
     //  Set up connection to scheduler
     bhvInit();                              // set up scheduler system
 }

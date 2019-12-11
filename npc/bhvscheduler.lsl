@@ -71,6 +71,11 @@
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
 #define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
 //
+//  Useful fns.
+//
+#define getroot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
+
+//
 //  Globals
 //
 list gBehaviors;                // [scriptname,linknum,msgnum,priority]
@@ -107,6 +112,15 @@ init()
     //  Reset all behaviors
     llOwnerSay("Resetting all behaviors.");  // ***TEMP***
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","reset"]),"");    // reset all behaviors
+    //  Display name of character
+    string name = llList2String(llGetObjectDetails(getroot(llGetKey()),[OBJECT_NAME]),0);   // name of root prim
+    integer spaceIndex = llSubStringIndex(name, " ");
+    if (spaceIndex >0)
+    {   name  = llGetSubString(name, 0, spaceIndex - 1); }       // first name of character
+    //  Set up character
+    vector color = <1.0,1.0,1.0>;           // white
+    llSetText(name, color, 1.0);            // set hover text
+
 }
 //
 //  registerbehavior -- register a new behavior script
@@ -210,7 +224,8 @@ schedbhv()
 //
 startbhv(integer bhvix)
 {
-    debugMsg(DEBUG_MSG_INFO,"Starting " + BHVSCRIPTNAME(gActiveBehavior)); 
+    debugMsg(DEBUG_MSG_INFO,"Starting " + BHVSCRIPTNAME(gActiveBehavior));
+    pathIgnoreOldReplies();                     // make any old replies from path system stale to avoid getting out of sync
     llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["request","start","token",gActiveToken]),""); 
 }
 
@@ -285,7 +300,7 @@ pathUpdateCallback(integer status, key hitobj)
 doanim(integer bhvix, list anims)
 {   debugMsg(DEBUG_MSG_WARN,"Anim req: " + llDumpList2String(anims,","));                // get things started
     string anim = llList2String(anims,0);                       // only first anim for now ***TEMP*** need to fix AO
-    llMessageLinked(gBhvSchedLinkNumber, 1,anim,"");            // tell our AO what we want
+    llMessageLinked(LINK_THIS, 1,anim,"");                      // tell our AO what we want
 }
 //
 //

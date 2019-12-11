@@ -167,6 +167,16 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
     }
 }
 
+//
+//  pathIgnoreOldReplies -- makes all old replies "stale".
+//
+//  Used when the scheduler switches tasks, so as to avoid confusion between completions
+//
+pathIgnoreOldReplies()
+{
+    gPathcallRequestId = (gPathcallRequestId+1)%(PATHMAXUNSIGNED-1);      // request (not path) serial number, nonnegative
+}
+
 
 
 //  
