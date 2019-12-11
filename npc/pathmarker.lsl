@@ -5,10 +5,10 @@
 //  July, 2019
 //
 #include "npc/pathmazedefs.lsl"
-integer MARKERCHANNEL = -3938235;                                // arbitrary channel number
-integer MARKERREPLYCHANNEL = -3938236;                              // reply channel
-string MARKERNAME = "Path marker, rounded (TEMP)";                        // rez this
-integer LINKMSGMARKER = 1001;                                   // link message for marker                   
+integer MARKERCHANNEL = -3938235;                               // arbitrary channel number
+integer MARKERREPLYCHANNEL = -3938236;                          // reply channel
+string MARKERNAME = "Path marker, rounded (TEMP)";              // rez this
+#define LINKMSGMARKER  1020                                     // link message number for marker                   
 //
 //  Globals
 integer gListenHandle = 0;                                          // our listen handle

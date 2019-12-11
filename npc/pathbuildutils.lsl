@@ -80,7 +80,7 @@ pathinitparams(string jsn)
 //
 #ifdef MARKERS
 string MARKERLINE = "Path marker, rounded (TEMP)";
-integer LINKMSGMARKER = 1001;                               // for sending to marker service
+#define LINKMSGMARKER 1020                              // for sending to marker service
 
 //  Colors (RGBA)
 rotation TRANSGREEN = <0,0.35,0,0.5>;                          // translucent green
