@@ -4,7 +4,6 @@
 //  Demo for Animats pathfinding system.
 //
 //  Approaches any new avatar and says hello.
-//  Otherwise moves between patrol points.
 //
 //  License: GPLv3.
 //
@@ -19,11 +18,9 @@
 integer ACTION_IDLE = 0;         
 integer ACTION_PURSUE = 1;
 integer ACTION_FACE = 2;                    // turn to face target, has callback
-integer ACTION_PATROL = 3;
 integer ACTION_GREET = 4;                   // face finished, do greet
 integer ACTION_DISTANT_GREET = 5;           // face finished, do distant greet msg
 integer ACTION_TALKING = 6;                 // facing an avi and talking
-integer ACTION_PATROLFACE = 7;              // completed patrol, turning to final position
 
 float GOAL_DIST = 1.75;                     // (m) get this close to talk
 float MAX_GREET_DIST = 10.0;                // (m) if can get this close, say "Hello there"
@@ -99,10 +96,6 @@ bhvDoRequestDone(integer status, key hitobj)
         }
         if (gAction == ACTION_DISTANT_GREET)                    // not face to face
         {   greet("Hello there");
-            return;
-        }
-        if (gAction == ACTION_PATROLFACE)           // final face at end of patrol move
-        {   gAction = ACTION_IDLE;                  // and we go idle
             return;
         }
         if (gAction == ACTION_TALKING)              // if someone near is talking

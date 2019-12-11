@@ -103,6 +103,7 @@ init()
     llOwnerSay("Character height: " + (string)height + "m. Width: " + (string)width + "m.");
     pathInit(width, height, CHARACTER_TYPE_A, gDebugMsgLevel);      // set up pathfinding system
     pathTurnspeed(CHARACTER_TURNSPEED_DEG*DEG_TO_RAD);              // how fast to turn, rarely changed
+    llSleep(10.0);   // ***TEMP*** checking for race condition at startup
     //  Reset all behaviors
     llOwnerSay("Resetting all behaviors.");  // ***TEMP***
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","reset"]),"");    // reset all behaviors
@@ -178,7 +179,7 @@ integer getbhvtorun()
         else if (ixpri == pri)                  // if same as higest priority
         {   bhvindexes += ix; }                 // add to list
     }
-    llOwnerSay("getbhvtorun hits: " + llDumpList2String(bhvindexes,","));   // ***TEMP***   
+    ////llOwnerSay("getbhvtorun hits: " + llDumpList2String(bhvindexes,","));   // ***TEMP***   
     //  Pick one at random from list
     integer len = llGetListLength(bhvindexes);  // number of tasks we could run
     if(len <= 0) { return(-1); }                // nothing ready to run
@@ -262,6 +263,19 @@ doturn(integer bhvix, string jsn)
 
 }
 //
+//  pathUpdateCallback -- the path system has completed a request from us.
+//
+//  Send it back to the appropriate behavior.
+//
+//  ***CHECK FOR POSSIBILITY OF STALE RESULT***
+//  ***NEED TO INCREMENT REQUEST ID AT doStart TO GUARANTEE ANY OLD REQUESTS ARE STALE***
+//
+pathUpdateCallback(integer status, key hitobj)
+{   integer bhvix = gActiveBehavior;
+    if (bhvix < 0) { return; }          // no behavior active?
+    llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["reply","pathbegin","status",status,"hitobj",hitobj]),""); 
+}
+//
 //  doanim  -- behavior wants to do an animation request.
 //  
 //  This affects only idle anims for now. So, no tray carrying, etc. at this time.
@@ -340,7 +354,7 @@ default
 
         } else if (num == PATHSTARTREPLY)               // the path system is done doing something for us
         {
-            //  ***MORE***
+            pathLinkMsg(sender_num, num, jsn, id);      // handle
         }
     }  
 }

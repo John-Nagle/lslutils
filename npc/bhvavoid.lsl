@@ -1,14 +1,7 @@
 //
-//
 //  bhvavoid.lsl -- avoid incoming threats
 //
 //  For now, moving vehicles only
-//
-//  Uses old-format patrol points file, lines of:
-//
-//      VECTOR,DWELL,HEADING
-//  
-//  Demo for Animats pathfinding system.
 //
 //
 //  License: GPLv3.
@@ -17,7 +10,7 @@
 //  2019
 //
 #include "npc/bhvcall.lsl"
-#include "npc/mathutils.lsl"
+#include "npc/pathbuildutils.lsl"
 
 integer ACTION_IDLE = 0;
 integer ACTION_AVOIDING = 1;                // trying to avoid something
@@ -66,22 +59,57 @@ integer PATH_STALL_TIME = 300;              // path stall time
 
 //  Global variables
 integer gAction = ACTION_IDLE;
-key gThreatId = NULL_KEY;                   // incoming threat
+list gThreatList = [];                      // list of incoming threats
+integer gAvoidIndex = 0;                    // which avoid path we are taking
+vector gAvoidStart = ZERO_VECTOR;           // where we started avoiding
 float gWidth = 0.5;                         // dimensions of character
 float gHeight = 2.0;
 
 //
+//  boxpoints -- construct box around set of points and vector
+//
+//  Output is center and scale of box. Rotation per dir.
+//
+//  ***WRONG*** needs work
+//
+vector boxpoints(vector pos, vector dir, list pts)
+{   vector lobounds = -<BIG,BIG,0>;
+    vector hibounds = <BIG,BIG,0>;
+    vector crossdir = dir % <0,0,1>;        // cross direction
+    integer i;
+    for (i=0; i<llGetListLength(pts); i++)
+    { 
+        vector pt = llList2Vector(pts,i);   // next point
+        float x = (pt-pos)*dir;             // distance to pt from pos along dir
+        lobounds.x = min(lobounds.x, min(x,-x));
+        hibounds.x = max(hibounds.x, max(x,-x);
+        float y = (pt-pos)*crossdir;
+        lobounds.y = min(lobounds.y, min(y,-y));
+        hibounds.y = max(hibounds.y, max(y,-y);                 
+    }
+    //  We now have bounds relative to pos.
+    vector center = (lobounds + hibounds)*0.5;  // center of enclosing box
+    vector scale = <hibounds.x-lobounds.x,hibounds.y-lobounds.y,0>;
+    
+}
+//
 //  testavoiddir -- test avoid dir for reachability
 //
-//  Quick test for an escape direction
+//  Quick test for an escape direction.
+//  This is a cheap and conservative check, not that good on irregular terrain.
 //
 //  Test for walkable above/below pos + avoidvec.
 //  Find ground height there.
 //  Cast ray to ground height + height*0.5
 //
-vector testavoiddir(vector pos, vector avoidvec, float height)
+vector testavoiddir(vector pos, vector avoidvec)
 {
-    
+    vector p = pos + avoidvec;
+    float z = obstacleraycastvert(p+<0,0,gHeight>,p-<0,0,gHeight>);
+    if (z < 0) { return(ZERO_VECTOR); }         // no walkable here
+    p.z = z;                                    // ground level destination 
+    if (obstacleraycasthoriz(pos+<0,0,gHeight*0.5),p+<0,0,gHeight*0.5>) { return(ZERO_VECTOR); }
+    return(p);                                  // success, OK to try going there
 }
 //
 //  avoidthreat -- avoid incoming object
@@ -91,7 +119,7 @@ vector testavoiddir(vector pos, vector avoidvec, float height)
 //
 //  Returns TRUE if no threat.
 //
-integer avoidthreat(key id, float width, float height)
+integer avoidthreat(key id)
 {
     list threat = llGetObjectDetails(id,[OBJECT_POS, OBJECT_ROT, OBJECT_VELOCITY]); // data about incoming threat
     if (llGetListLength(threat) < 3) { return(FALSE); } // no object, no threat
@@ -118,7 +146,7 @@ integer avoidthreat(key id, float width, float height)
     integer dirix;
     for (dirix = 0; dirix < llGetListLength(AVOIDDIRS); i++)
     {   vector avoiddir = llList2Vector(AVOIDDIRS,i);   // direction to run
-        vector escapepnt = testavoiddir(pos,avoiddir, height); 
+        vector escapepnt = testavoiddir(pos,avoiddir); 
         if (escapepnt != ZERO_VECTOR)               // can escape this way
         debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping to " + (string)escapepnt); // heading for here
         gAction = ACTION_AVOIDING;                  // now avoiding
@@ -140,41 +168,50 @@ bhvDoRequestDone(integer status, key hitobj)
         return;
     }
     if (status == PATHERRMAZEOK)                    // success
-    {   ////llOwnerSay("Pathfinding task completed.");
-        if (gAction == ACTION_AVOIDING)
-        {   integer avoiding = avoidthreat(gThreatId,gWidth, gHeight);
-            if (avoiding) 
-            {   debugMsg(DEBUG_MSG_WARN,"Still avoiding");
-            } else {
-                gAction = ACTION_IDLE;              // we are done here
-                gThreatId = NULL_KEY;               // no threat
-                bhvSetPriority(0);                  // turn us off
-            }
-            return;
-        }
-        
-        
-         //  Got completion in unexpected state
-        debugMsg(DEBUG_MSG_ERROR,"Unexpected path completion in state " + (string)gAction + " Status: " + (string)status);
-        gAction = ACTION_IDLE;            
-        bhvSetPriority(0);
+    {   
+        ////llOwnerSay("Pathfinding task completed.");
+        gAction = ACTION_IDLE;                  // idle for now
+        startavoid();                           // avoid top threat if any
         return;
     }
     //  Obstructed while escaping
     //  If blocked by something, deal with it.
     if (gAction == ACTION_AVOIDING)  
     {
+        debugMsg(DEBUG_MSG_WARN,"Escape unsuccessful, status " + (string)status + " at " + (string)llGetRootPosition());
         //  ***NEED TO TRY ALTERNATE ESCAPE ROUTE***
         //  ***MORE***
     }                                               // if going somewhere
     //  Default - errors we don't special case.
-    {                      
-        //  Failed, back to idle.
-        gAction = ACTION_IDLE;            
-        debugMsg(DEBUG_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
-        start_anim(IDLE_ANIM);
-        return;
+    gAction = ACTION_IDLE;            
+    startavoid();                           // avoid top threat if any    
+}
+
+//
+//  startavoid -- start avoidance of threat
+//
+startavoid()
+{   if (gAction != ACTION_IDLE) { return; }                         // already dealing with a threat
+    while (llGetListLength(gThreatList) > 0)                        // while threats to handle
+    {   key id = llList2Key(gThreatList,0);                         // get oldest threat
+        integer avoiding = avoidthreat(id);                         // try to avoid threat
+        if (avoiding) 
+        {   return;                                                 // avoiding threat, end looking for one
+        }
+        gThreatList = llListDeleteList(gThreatList,0,0);            // first threat no longer a threat, delete from to-do list
     }
+    //  No threat, give up control
+    gAction = ACTION_IDLE;                                          // now idle
+    bvhSetPriority(0);                                              // done, give up control   
+}
+//
+//  requestavoid -- request to avoid something
+//
+requestavoid(key id)
+{
+    if (llListSearchList(gThreatList,[id]) >= 0) { return; }        // we have this one
+    gThreatList != id;                                              // add to threat list
+    startavoid();                                                   // start avoidance if necessary
 }
 
 //
@@ -297,6 +334,12 @@ default
             bhvSchedMessage(num,jsn);                       // message from scheduler
             return;
         }
+        if (num == PATHAVATARAVOIDREQUEST)                  // if avatar tracker wants us to avoid something
+        {   if (llJsonGetValue(jsn,["request"]) != "avoid") { return; } // not for us
+            requestavoid((key)llJsonGetValue(jsn,["id"]));  // go pursue, if appropriate.
+            return; 
+        } 
+
     }
     
     collision_start(integer num_detected)

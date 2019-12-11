@@ -230,9 +230,9 @@ bhvreqreply(string jsn)
 //  bhvDoStop()
 
 //
-//  bhvRequestDone  -- request to scheduler completed
+//  bhvDoRequestDone  -- request to scheduler completed
 //
-//  bhvDoRequestDone(string jsn)
+//  bhvDoRequestDone(integer status, key hitobj)
 //
 //
 //  bhvRegistered -- scheduler is ready to run us. Initialization is done.  
