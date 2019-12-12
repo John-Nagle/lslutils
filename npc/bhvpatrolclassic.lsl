@@ -293,7 +293,7 @@ default
         integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
         debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
         if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
-        {   llSay(0,"Excuse me."); }
+        {   bhvSay("Excuse me."); }
     }
    
     

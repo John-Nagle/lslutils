@@ -87,6 +87,15 @@ bhvAnimate(list anims)
     string jsn = llList2Json(JSON_OBJECT,["request","anim","mnum",gBhvMnum,"token",gActiveToken,"anims",llList2Json(JSON_ARRAY,anims)]);
     llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH, jsn, "");     // ask scheduler to do it
 }
+//
+//  bhvSay -- Display message to user
+//
+//  llSay has to be done from the root prim or it is prefaced with the wrong name.
+//
+bhvSay(string msg)
+{
+    llMessageLinked(gBhvSchedLinkNumber,BHVMSGTOSCH, llList2Json(JSON_OBJECT,["request","say","mnum",gBhvMnum,"token",gActiveToken, "msg",msg]),"");  // tell scheduler
+}
 
 //
 //  bhvStop -- stop current movement

@@ -188,7 +188,7 @@ greet(string msg)                                   // turn to face avi
     gAction = ACTION_TALKING;                       // on completion, fake being in conversation
     llResetTime();                                  // start attention span timer.
     gDwell = ATTENTION_SPAN;                        // wait this long
-    llSay(0,msg);
+    bhvSay(msg);
 }
 
    
@@ -265,7 +265,7 @@ bhvRegistered()                                                     // tell cont
 default
 {
     on_rez(integer start_param)
-    {
+    {   
         llResetScript();
     }
  
@@ -273,6 +273,7 @@ default
     {
         gDebugMsgLevel = DEBUG_MSG_INFO;                // ***TEMP*** need way to set debug level dynamically
         bhvInit();
+        llSetText("", <1,1,1>, 1.0);                // ***TEMP*** flush out old hover text
     }
 
     timer()                                         // timer tick
@@ -305,7 +306,7 @@ default
         integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
         debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
         if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
-        {   llSay(0,"Excuse me."); }
+        {   bhvSay("Excuse me."); }
     }
    
     

@@ -147,6 +147,17 @@ pathBegin(key target, vector endpos, float stopshort, integer dogged, float spee
         "target",target, "goal",endpos,"stopshort",stopshort,"dogged",dogged, "speed",speed]); // save for diagnostic
     llMessageLinked(LINK_THIS, PATHSTARTREQUEST,gPathcallLastCommand,"");
 }
+
+//
+//  pathIgnoreOldReplies -- makes all old replies "stale".
+//
+//  Used when the scheduler switches tasks, so as to avoid confusion between completions
+//
+pathIgnoreOldReplies()
+{
+    gPathcallRequestId = (gPathcallRequestId+1)%(PATHMAXUNSIGNED-1);      // request (not path) serial number, nonnegative
+}
+
 //
 //  End of user API
 //
@@ -167,15 +178,6 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
     }
 }
 
-//
-//  pathIgnoreOldReplies -- makes all old replies "stale".
-//
-//  Used when the scheduler switches tasks, so as to avoid confusion between completions
-//
-pathIgnoreOldReplies()
-{
-    gPathcallRequestId = (gPathcallRequestId+1)%(PATHMAXUNSIGNED-1);      // request (not path) serial number, nonnegative
-}
 
 
 
@@ -193,7 +195,7 @@ pathmasterreset()
         }
         count--;
     }
-    gPathcallRequestId = 0;                                                   // restart path IDs which keep scripts in sync
+    gPathcallRequestId = 0;                                             // restart path IDs which keep scripts in sync
     llSleep(5.0);                                                       // wait 5 secs for reset.
     llOwnerSay("Master reset complete.");                               // OK, reset
 }
@@ -201,18 +203,6 @@ pathmasterreset()
 //
 //  Misc. support functions. For user use, not needed by the path planning system itself.
 //
-#ifdef OBSOLETE
-#ifndef RotFromXAxis 
-//  RotFromXAxis -- rotation from X axis in XY plane.
-#define RotFromXAxis(dv) llAxes2Rot(llVecNorm(dv),<0,0,1>%llVecNorm(dv),<0,0,1>)
-#endif // RotFromXAxis
-//
-//  Usual SLERP function for quaternion interpolation
-//
-rotation slerp(rotation a, rotation b, float t) {
-   return llAxisAngle2Rot( llRot2Axis(b /= a), t * llRot2Angle(b)) * a;
-}
-#endif // OBSOLETE  
 
 integer rand_int(integer bound)                 // bound must not exceed 2^24.
 {   return((integer)llFrand(bound)); }          // get random integer                   
@@ -279,28 +269,7 @@ float easeineaseout(float ease, float fract)
     return(y);
 }
 
-#ifdef OBSOLETE
-//
-//  pathFaceInDirection  --  face in desired direction
-//
-//  Uses llSetRot. OK to use on characters when no pathfinding operation is in progress.
-//
-pathFaceInDirection(vector lookdir)
-{   float TURNRATE = 90*DEG_TO_RAD;                             // (deg/sec) turn rate
-    float   PATH_ROTATION_EASE = 0.5;                           // (0..1) Rotation ease-in/ease out strength
-    lookdir.z = 0.0;                                            // rotate about XY axis only
-    rotation endrot =  RotFromXAxis(lookdir);                   // finish here
-    rotation startrot = llGetRot();                             // starting from here
-    float turntime = llFabs(llAngleBetween(startrot, endrot)) / TURNRATE;  // how much time to spend turning
-    integer steps = llCeil(turntime/0.200 + 0.001);             // number of steps 
-    integer i;
-    for (i=0; i<= steps; i++)                                   // turn in 200ms steps, which is llSetRot delay
-    {   float fract = ((float)i) / steps;                       // fraction of turn (0..1)
-        float easefract = easeineaseout(PATH_ROTATION_EASE, fract); // smooth acceleration
-        llSetRot(slerp(startrot, endrot, easefract));           // interpolate rotation
-    }
-}
-#endif // OBSOLETE
+
 
 //  Check if point is directly visible in a straight line.
 //  Used when trying to get in front of an avatar.

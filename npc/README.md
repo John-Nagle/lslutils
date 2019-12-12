@@ -110,6 +110,12 @@ Sets the turn speed.
 movement speed is slowed to allow the turn to complete at the usual turn rate.
 So characters slow down when turning corners.
 
+## pathIgnoreOldReplies
+    pathIgnoreOldReplies()
+    
+Discards any callback replies from previously initiated requests. Used mostly by the behavior scheduler to keep behaviors from seeing old
+responses from preempted behaviors.
+
 ### Callbacks
 
 The calling script must call

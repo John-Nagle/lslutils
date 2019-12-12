@@ -108,7 +108,7 @@ init()
     llOwnerSay("Character height: " + (string)height + "m. Width: " + (string)width + "m.");
     pathInit(width, height, CHARACTER_TYPE_A, gDebugMsgLevel);      // set up pathfinding system
     pathTurnspeed(CHARACTER_TURNSPEED_DEG*DEG_TO_RAD);              // how fast to turn, rarely changed
-    llSleep(10.0);   // ***TEMP*** checking for race condition at startup
+    ////llSleep(10.0);   // ***TEMP*** checking for race condition at startup
     //  Reset all behaviors
     llOwnerSay("Resetting all behaviors.");  // ***TEMP***
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","reset"]),"");    // reset all behaviors
@@ -363,6 +363,11 @@ default
             {   string animsjson = llJsonGetValue(jsn,["anims"]);   // get anim list
                 list anims = llJson2List(animsjson);    // get anims as string
                 doanim(bhvix, anims);
+                return;
+            }
+            else if (reqtype == "say")                  // say something, from root prim
+            {   string msg = llJsonGetValue(jsn,["msg"]);
+                llSay(0,msg);
                 return;
             }
             debugMsg(DEBUG_MSG_ERROR,"Invalid message to behavior scheduler: " + jsn);    // behavior error
