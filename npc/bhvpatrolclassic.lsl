@@ -98,7 +98,7 @@ add_patrol_point(string s)
 //  bhvDoRequestDone -- pathfinding is done. Analyze the result and start the next action.
 //
 bhvDoRequestDone(integer status, key hitobj)
-{   debugMsg(DEBUG_MSG_INFO, "Path update: : " + (string) status + " obstacle: " + llKey2Name(hitobj));
+{   debugMsg(DEBUG_MSG_INFO, "Path update: " + (string) status + " obstacle: " + llKey2Name(hitobj));
     if (status == PATHERRMAZEOK)                    // success
     {   ////llOwnerSay("Pathfinding task completed.");
         if (gAction == ACTION_PATROLFACE)           // final face at end of patrol move
@@ -126,7 +126,15 @@ bhvDoRequestDone(integer status, key hitobj)
     //  If blocked by something, deal with it.
     if (gAction == ACTION_PATROL)                                       // if going somewhere
     {   if (is_active_obstacle(hitobj))                                 // and it might move
-        {   if (llFrand(1.0) < OBSTACLE_RETRY_PROB)                     // if random test says retry
+        {
+#ifdef OBSOLETE         
+            list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
+            integer pathfindingtype = llList2Integer(details,0);        // get pathfinding type
+            debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
+            if (pathfindingtype == OPT_AVATAR)                          // apologize if hit an avatar
+            {   bhvSay("Excuse me."); }         
+#endif // OBSOLETE        
+            if (llFrand(1.0) < OBSTACLE_RETRY_PROB)                     // if random test says retry
             {   debugMsg(DEBUG_MSG_WARN,"Obstacle " + llKey2Name(hitobj) + ", will try again.");
                 gAction = ACTION_PATROLWAIT;                        // dwell briefly
                 gDwell = 3.0;                                       // wait 3 secs
@@ -166,6 +174,24 @@ bhvDoStop()
     gAction = ACTION_IDLE;                                          // we've been preempted. No patrol now.
     llSetTimerEvent(0);                                             // don't need a timer
 }
+//
+//  bhvDoCollisionStart -- a collision has occured.
+//
+//  We don't actually have to do anything about the collision except apologise for it.
+//  The path system will stop for this, and pathstart will retry.
+//  Only avatars and physical objects generate collisions, because we're keyframe motion.
+//
+bhvDoCollisionStart(key hitobj)
+{       
+    list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
+    integer pathfindingtype = llList2Integer(details,0);        // get pathfinding type
+    debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
+    if (pathfindingtype == OPT_AVATAR)                          // apologize if hit an avatar
+    {   bhvSay("Excuse me."); }         
+}      
+
+
+bhvCollisionStart(key hitobj)
  
 
 
@@ -286,16 +312,6 @@ default
             return;
         }
     }
-    
-    collision_start(integer num_detected)
-    {   key hitobj = llDetectedKey(0);                       // first object hit
-        list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
-        integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-        debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
-        if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
-        {   bhvSay("Excuse me."); }
-    }
-   
     
     dataserver(key query_id, string data)
     {

@@ -218,6 +218,10 @@ bhvreqreply(string jsn)
     {   bhvDoStop();
         return;
     }
+    if (request == "collisionstart")                             // scheduler is telling us about a collision
+    {   bhvDoCollisionStart(llJsonGetValue(jsn,["hitobj"]));
+        return;
+    }
     debugMsg(DEBUG_MSG_ERROR,"Unexpected reply to behavior: " + jsn);   // unexpected
 }
 
@@ -248,7 +252,10 @@ bhvreqreply(string jsn)
 //
 //  bhvRegistered()                                                     // tell controlling script to go
 //
-
+//
+//  bhvCollisionStart -- we hit something
+//
+//  bhvDoCollisionStart(key hitobj)
 //
 //  Incoming events
 //

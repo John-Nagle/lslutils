@@ -378,7 +378,15 @@ default
         {
             pathLinkMsg(sender_num, num, jsn, id);      // handle
         }
-    }  
+    }
+    
+    collision_start(integer num_detected)
+    {   key hitobj = llDetectedKey(0);                  // first object hit
+        if (gActiveBehavior < 0) { return; }            // no behavior active
+        //  Tell active behavior about it.
+        llMessageLinked(BHVLINKNUM(gActiveBehavior),BHVMNUM(gActiveBehavior),llList2Json(JSON_OBJECT,["request","collisionstart","hitobj",hitobj]),""); 
+    }
+  
 }
 
 

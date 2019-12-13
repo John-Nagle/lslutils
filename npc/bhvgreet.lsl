@@ -117,7 +117,8 @@ bhvDoRequestDone(integer status, key hitobj)
     //  If blocked by something, deal with it.
     if ((gAction == ACTION_PURSUE))                                     // if going somewhere
     {   if (is_active_obstacle(hitobj))                                 // and it might move
-        {   if (llFrand(1.0) < OBSTACLE_RETRY_PROB)                     // if random test says retry
+        {   
+            if (llFrand(1.0) < OBSTACLE_RETRY_PROB)                     // if random test says retry
             {   debugMsg(DEBUG_MSG_WARN,"Obstacle " + llKey2Name(hitobj) + ",will try again.");
                 if (gAction == ACTION_PURSUE)                           // try again.
                 {   start_pursue(); }
@@ -255,6 +256,22 @@ bhvDoStop()
 }
 
 //
+//  bhvDoCollisionStart -- a collision has occured.
+//
+//  We don't actually have to do anything about the collision except apologise for it.
+//  The path system will stop for this, and pathstart will retry.
+//  Only avatars and physical objects generate collisions, because we're keyframe motion.
+//
+bhvDoCollisionStart(key hitobj)
+{       
+    list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
+    integer pathfindingtype = llList2Integer(details,0);        // get pathfinding type
+    debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
+    if (pathfindingtype == OPT_AVATAR)                          // apologize if hit an avatar
+    {   bhvSay("Excuse me."); }         
+}    
+
+//
 // bhvRegistered -- scheduler is ready to run us.
 //
 bhvRegistered()                                                     // tell controlling script to go
@@ -299,16 +316,6 @@ default
             return; 
         } 
     }
-    
-    collision_start(integer num_detected)
-    {   key hitobj = llDetectedKey(0);                       // first object hit
-        list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
-        integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-        debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
-        if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
-        {   bhvSay("Excuse me."); }
-    }
-   
     
     listen(integer channel, string name, key id, string msg)
     {   ////llOwnerSay("Listen from id " + (string) id + ": " + msg); // ***TEMP***
