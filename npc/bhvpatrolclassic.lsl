@@ -100,7 +100,7 @@ add_patrol_point(string s)
 bhvDoRequestDone(integer status, key hitobj)
 {   debugMsg(DEBUG_MSG_INFO, "Path update: " + (string) status + " obstacle: " + llKey2Name(hitobj));
     if (status == PATHERRMAZEOK)                    // success
-    {   ////llOwnerSay("Pathfinding task completed.");
+    {   
         if (gAction == ACTION_PATROLFACE)           // final face at end of patrol move
         {   gAction = ACTION_IDLE;                  // and we go idle
             return;
@@ -110,7 +110,7 @@ bhvDoRequestDone(integer status, key hitobj)
             start_anim(IDLE_ANIM);
             gAction = ACTION_PATROLFACE;            // turning to final position
             llResetTime();                          // reset timeout timer but keep dwell time
-            debugMsg(DEBUG_MSG_INFO,"Patrol point reached.");
+            debugMsg(DEBUG_MSG_INFO,"Patrol point reached:" + (string)llGetRootPosition());
             return;
         }
         if (gAction == ACTION_IDLE)                 // nothing to do, but timer runs
@@ -127,13 +127,6 @@ bhvDoRequestDone(integer status, key hitobj)
     if (gAction == ACTION_PATROL)                                       // if going somewhere
     {   if (is_active_obstacle(hitobj))                                 // and it might move
         {
-#ifdef OBSOLETE         
-            list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
-            integer pathfindingtype = llList2Integer(details,0);        // get pathfinding type
-            debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
-            if (pathfindingtype == OPT_AVATAR)                          // apologize if hit an avatar
-            {   bhvSay("Excuse me."); }         
-#endif // OBSOLETE        
             if (llFrand(1.0) < OBSTACLE_RETRY_PROB)                     // if random test says retry
             {   debugMsg(DEBUG_MSG_WARN,"Obstacle " + llKey2Name(hitobj) + ", will try again.");
                 gAction = ACTION_PATROLWAIT;                        // dwell briefly
@@ -189,22 +182,6 @@ bhvDoCollisionStart(key hitobj)
     if (pathfindingtype == OPT_AVATAR)                          // apologize if hit an avatar
     {   bhvSay("Excuse me."); }         
 }      
-
-
-bhvCollisionStart(key hitobj)
- 
-
-
-//  
-//  face -- face in indicated direction
-//
-face(key target, integer nextstate)                 // turn to face avi
-{
-    vector dir = vec_to_target(target);             // direction to face
-    float heading = llAtan2(dir.x,dir.y);           // direction to face as heading (0=north)
-    pathTurn(heading);                              // turn to face avi
-    gAction = nextstate;                            // on completion, greet
-}
 
 //
 //  start_anim -- start indicated idle animation.
