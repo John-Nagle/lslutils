@@ -116,11 +116,11 @@ init()
     string name = llList2String(llGetObjectDetails(getroot(llGetKey()),[OBJECT_NAME]),0);   // name of root prim
     integer spaceIndex = llSubStringIndex(name, " ");
     if (spaceIndex >0)
-    {   name  = llGetSubString(name, 0, spaceIndex - 1); }       // first name of character
+    {   name  = llGetSubString(name, 0, spaceIndex - 1); }          // first name of character
     //  Set up character
-    vector color = <1.0,1.0,1.0>;           // white
-    llSetText(name, color, 1.0);            // set hover text
-
+    vector color = <1.0,1.0,1.0>;                                   // white
+    llSetText(name, color, 1.0);                                    // set hover text
+    llSetTimerEvent(5.0);                                           // for stall timer check only
 }
 //
 //  registerbehavior -- register a new behavior script
@@ -319,7 +319,9 @@ default
     }
 
     timer()                                         // timer tick
-    {       }
+    {     
+        pathTick();                                 // for stall timer 
+    }
     
     link_message(integer sender_num, integer num, string jsn, key id)
     {   debugMsg(DEBUG_MSG_WARN, jsn);                        // ***TEMP*** dump incoming JSON
