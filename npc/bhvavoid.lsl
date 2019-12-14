@@ -32,17 +32,19 @@ float TESTSPACING = 0.33;                   // (fract) Multiply height and width
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
 #endif // CHARACTER_SPEED
 #define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
+#define CHARACTER_RUN_SPEED 5.5             // (m/sec) top speed run
 ////string IDLE_ANIM = "stand 2";            // idle or chatting         
 ////string STAND_ANIM = "stand 2";           // just when stopped
 ///string WAITING_ANIM = "stand arms folded";  // during planning delays
 string WAITING_ANIM = "SEmotion-bento13";   // arms folded during planning delays
 string IDLE_ANIM = "SEmotion-bento18";      // arms folded during planning delays
 string STAND_ANIM = "SEmotion-bento18";     // just when stopped
+string SCREAM_SOUND = "???";                // sound of a scream
 float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                  // will stick around for this long
 float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far before we recheck on approach
 #ifndef VERBOSITY                           // define VERBOSITY to override
-#define VERBOSITY DEBUG_MSG_ERROR            // verbose
+#define VERBOSITY DEBUG_MSG_ERROR           // verbose
 #endif // VERBOSITY
 
 //
@@ -52,9 +54,11 @@ float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far befor
 //  If we have to use the last one, trouble.
 //
 #define HALFSQRT2 0.7071
-list AVOIDDIRS [<0,1,0>,<0,-1,0>,<HALFSQRT2,HALFSQRT2,0>,<-HALFSQRT2,HALFSQRT2,0>,<0,1,0>];
+list AVOIDDIRS = [<0,1,0>,<0,-1,0>,<HALFSQRT2,HALFSQRT2,0>,<-HALFSQRT2,HALFSQRT2,0>,<0,1,0>];
 
-integer PATH_STALL_TIME = 300;              // path stall time
+#define MAXAVOIDTIME 6.0                    // (s) trigger avoid when ETA less than this
+
+#define getroot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))  
 
 
 //  Global variables
@@ -92,6 +96,8 @@ vector boxpoints(vector pos, vector dir, list pts)
     vector scale = <hibounds.x-lobounds.x,hibounds.y-lobounds.y,0>;
     
 }
+
+vector findclosestpoint(list bb, vector pos) { assert(FALSE); return(ZERO_VECTOR);} // ***UNIMPLEMENTED***
 //
 //  testavoiddir -- test avoid dir for reachability
 //
@@ -108,7 +114,7 @@ vector testavoiddir(vector pos, vector avoidvec)
     float z = obstacleraycastvert(p+<0,0,gHeight>,p-<0,0,gHeight>);
     if (z < 0) { return(ZERO_VECTOR); }         // no walkable here
     p.z = z;                                    // ground level destination 
-    if (obstacleraycasthoriz(pos+<0,0,gHeight*0.5),p+<0,0,gHeight*0.5>) { return(ZERO_VECTOR); }
+    if (obstacleraycasthoriz(pos+<0,0,gHeight*0.5>,p+<0,0,gHeight*0.5>)) { return(ZERO_VECTOR); }
     return(p);                                  // success, OK to try going there
 }
 //
@@ -117,25 +123,25 @@ vector testavoiddir(vector pos, vector avoidvec)
 //  Get direction of incoming object and move out of its way.
 //  Must work for vehicles which are longer than they are wide.
 //
-//  Returns TRUE if no threat.
+//  Returns 0 if no threat, 1 if threat being avoided, -1 if no escape
 //
 integer avoidthreat(key id)
 {
-    list threat = llGetObjectDetails(id,[OBJECT_POS, OBJECT_ROT, OBJECT_VELOCITY]); // data about incoming threat
-    if (llGetListLength(threat) < 3) { return(FALSE); } // no object, no threat
+    list threat = llGetObjectDetails(id,[OBJECT_POS, OBJECT_ROT, OBJECT_VELOCITY, OBJECT_NAME]); // data about incoming threat
+    if (llGetListLength(threat) < 3) { return(0); } // no object, no threat
     vector threatpos = llList2Vector(threat,0);     // position
-    rotation threatrot = llList2Rotation(threat,1); // rotation
+    rotation threatrot = llList2Rot(threat,1);      // rotation
     vector threatvel = llList2Vector(threat,2);     // velocity
     vector pos = llGetRootPosition();               // our position
-    vector dirtothreat = threatpos - pos;           // direction to threat
-    vector bb = llGetBoundingBox(id);               // bounding box of threat
+    list bb = llGetBoundingBox(id);                 // bounding box of threat
     vector p = findclosestpoint(bb,pos);            // find closest point on bounding box of object to pos
     vector vectothreat = p - pos;                   // direction to threat
     float disttothreat = llVecMag(vectothreat);     // distance to threat
-    float approachrate = - threatvel * llVecNorm(disttothreat); // approach rate of threat
-    if (approachrate <= 0.01) { return(FALSE); }    // not approaching
-    float eta = disttothreat / approachrate;        // time until collsion
-    if (eta > MAXAVOIDTIME) { return(FALSE); }      // not approaching fast enough to need avoidance
+    float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
+    if (approachrate <= 0.01) { return(0); }        // not approaching
+    float eta = disttothreat / approachrate;        // time until collision
+    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " ETA " + (string)eta + "s.");
+    if (eta > MAXAVOIDTIME) { return(0); }          // not approaching fast enough to need avoidance
     //  Definite threat - need to avoid.
     vector crossdir = llVecNorm(threatvel) % <0,0,1>;  // horizontal direction to escape
     //  Decide which direction to run.
@@ -144,18 +150,18 @@ integer avoidthreat(key id)
     //  If nothing works, head in threat direction and go as far as possible. Scream.
     //  ***MORE***   
     integer dirix;
-    for (dirix = 0; dirix < llGetListLength(AVOIDDIRS); i++)
-    {   vector avoiddir = llList2Vector(AVOIDDIRS,i);   // direction to run
+    for (dirix = 0; dirix < llGetListLength(AVOIDDIRS); dirix++)
+    {   vector avoiddir = llList2Vector(AVOIDDIRS,dirix);   // direction to run
         vector escapepnt = testavoiddir(pos,avoiddir); 
         if (escapepnt != ZERO_VECTOR)               // can escape this way
         debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping to " + (string)escapepnt); // heading for here
         gAction = ACTION_AVOIDING;                  // now avoiding
-        bvhNavigateTo(ZERO_VECTOR,escapepnt,CHARACTER_RUN_SPEED);
-        return(TRUE);
+        bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
+        return(1);
     }
     debugMsg(DEBUG_MSG_WARN,"Unable to escape incoming threat.");
-    llPlaySound(SCREAM);                            // scream, that's all we can do
-    return(TRUE);                                   // need to rethink statuses here
+    llPlaySound(SCREAM_SOUND,1.0);                  // scream, that's all we can do
+    return(-1);                                     // incoming threat and cannot avoid
 } 
 
 //
@@ -169,7 +175,7 @@ bhvDoRequestDone(integer status, key hitobj)
     }
     if (status == PATHERRMAZEOK)                    // success
     {   
-        ////llOwnerSay("Pathfinding task completed.");
+        debugMsg(DEBUG_MSG_INFO,"Avoid reached safe place, rechecking threat.");
         gAction = ACTION_IDLE;                  // idle for now
         startavoid();                           // avoid top threat if any
         return;
@@ -198,19 +204,20 @@ startavoid()
         if (avoiding) 
         {   return;                                                 // avoiding threat, end looking for one
         }
-        gThreatList = llListDeleteList(gThreatList,0,0);            // first threat no longer a threat, delete from to-do list
+        gThreatList = llDeleteSubList(gThreatList,0,0);             // first threat no longer a threat, delete from to-do list
     }
     //  No threat, give up control
     gAction = ACTION_IDLE;                                          // now idle
-    bvhSetPriority(0);                                              // done, give up control   
+    bhvSetPriority(0);                                              // done, give up control   
 }
 //
-//  requestavoid -- request to avoid something
+//  requestavoid -- request to avoid something, from avatar monitoring task.
 //
 requestavoid(key id)
 {
-    if (llListSearchList(gThreatList,[id]) >= 0) { return; }        // we have this one
-    gThreatList != id;                                              // add to threat list
+    if (llListFindList(gThreatList,[id]) >= 0) { return; }          // we have this one
+    debugMsg(DEBUG_MSG_WARN,"New threat: " + llKey2Name(id));       // note new threat
+    gThreatList += id;                                              // add to threat list
     startavoid();                                                   // start avoidance if necessary
 }
 
@@ -234,16 +241,6 @@ bhvDoStop()
  
 
 
-//  
-//  face -- face in indicated direction
-//
-face(key target, integer nextstate)                 // turn to face avi
-{
-    vector dir = vec_to_target(target);             // direction to face
-    float heading = llAtan2(dir.x,dir.y);           // direction to face as heading (0=north)
-    pathTurn(heading);                              // turn to face avi
-    gAction = nextstate;                            // on completion, greet
-}
 
 //
 //  start_anim -- start indicated idle animation.
@@ -253,7 +250,8 @@ face(key target, integer nextstate)                 // turn to face avi
 start_anim(string anim)
 {
     bhvAnimate([anim]);                             // new API
-}    
+}
+#ifdef OBSOLETE   
 //
 //  start_platrol -- start patrolling if allowed to do so.
 //
@@ -286,6 +284,7 @@ restart_patrol()
     bhvNavigateTo(ZERO_VECTOR,gPatrolDestination,0,CHARACTER_SPEED);  // head for next pos
     gAction = ACTION_PATROL;                        // patrolling
 }
+#endif // OBSOLETE
 
 //
 //  startup - initialization
@@ -293,14 +292,9 @@ restart_patrol()
 startup()
 {
     gAction = ACTION_IDLE;
-    //  Start loading patrol points.
-    //  Get our name
-    gName = llGetObjectName();
-    integer spaceIndex = llSubStringIndex(gName, " ");
-    if (spaceIndex >0)
-    {   gName  = llGetSubString(gName, 0, spaceIndex - 1); }       // first name of character
+    gThreatList = [];                               // no threats yet
     //  Set up connection to scheduler
-    bhvInit();                              // set up scheduler system
+    bhvInit();                                      // set up scheduler system
 }
 
 //
@@ -308,7 +302,27 @@ startup()
 //
 bhvRegistered()                                                     // tell controlling script to go
 {
-    bhvSetPriority(PRIORITYPATROL);                                 // now we can ask to run
+    //  We don't ask to run yet; we will ask for control of the NPC when there's a threat.
+    //  Simple avatar sensor - replace with something more efficient.
+    float sensorrange = 40;                                         // sense avis in this range
+    float sensorrate = 2.0;                                         // every 2 seconds
+    llSensorRepeat("", "", AGENT, sensorrange, PI, sensorrate);
+}
+
+//
+//  bhvDoCollisionStart -- a collision has occured.
+//
+//  We don't actually have to do anything about the collision.
+//  The path system will stop for this, and pathstart will retry.
+//  Only avatars and physical objects generate collisions, because we're keyframe motion.
+//
+bhvDoCollisionStart(key hitobj)
+{       
+    list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
+    integer pathfindingtype = llList2Integer(details,0);        // get pathfinding type
+    debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
+    if (pathfindingtype == OPT_AVATAR)                          // apologize if hit an avatar
+    {   bhvSay("Outta my way!"); }                              // I'm about to be hit by a vehicle!  
 }
 
 default
@@ -327,6 +341,23 @@ default
     {   bhvTick();                                  // timers in path library get updated
     }
     
+    sensor(integer num_detected)                            // nearby agents
+    {
+        vector ourpos = llGetRootPosition();                // where we are
+        integer i;
+        for (i=0; i<num_detected; i++)
+        {   vector vel = llDetectedVel(i);                  // velocity of threat
+            vector pos = llDetectedPos(i);                  // position of threat
+            if (((pos-ourpos)*vel) < -0.01)                 // if approaching us
+            {   key id = llDetectedKey(i);                  // id of agent
+                key rootid = getroot(id);                   // root, which will be different if vehicle
+                if (id != rootid)                           // incoming vehicle
+                {   requestavoid(id);                       // consider avoiding it
+                }
+            }
+        }
+    }
+    
     link_message(integer sender_num, integer num, string jsn, key id)
     {   debugMsg(DEBUG_MSG_INFO, jsn);                      // ***TEMP*** dump incoming JSON
         if (num == gBhvMnum || num == BHVMSGFROMSCH)        // if from scheduler to us
@@ -334,37 +365,28 @@ default
             bhvSchedMessage(num,jsn);                       // message from scheduler
             return;
         }
+#ifdef NOTYET
         if (num == PATHAVATARAVOIDREQUEST)                  // if avatar tracker wants us to avoid something
         {   if (llJsonGetValue(jsn,["request"]) != "avoid") { return; } // not for us
             requestavoid((key)llJsonGetValue(jsn,["id"]));  // go pursue, if appropriate.
             return; 
         } 
+#endif // NOTYET
 
     }
-    
-    collision_start(integer num_detected)
-    {   key hitobj = llDetectedKey(0);                       // first object hit
-        list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE, OBJECT_NAME]);
-        integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
-        debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
-        if (pathfindingtype == OPT_AVATAR)                      // apologize if hit an avatar
-        {   llSay(0,"Excuse me."); }
-    }
-   
-}
 
 #ifdef DEBUGCHAN    
     listen(integer channel, string name, key id, string msg)
     {  
         if (channel == DEBUGCHAN)                               // if debug control
-        {   bvhDebugCommand(msg);
+        {   bhvDebugCommand(msg);
             return;
         }
     }
 #endif // DEBUGCHAN   
 }
 
-
+#ifdef OBSOLETE
 
 
 
@@ -409,3 +431,4 @@ list pathGetBoundingBoxWorld(key id)
     }
     return([mincorner, maxcorner]);                 // min and max corners, in world coordinates
 }
+#endif // OBSOLETE
