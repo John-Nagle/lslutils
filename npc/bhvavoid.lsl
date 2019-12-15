@@ -177,6 +177,62 @@ integer testprotectiveobstacle(vector targetpos, vector threatpos)
     //  ***MORE***
     return(FALSE);                              // ***TEMP***
 }
+
+//
+//  evaluatethreat -- is incoming object a threat?
+//
+//  Get direction of incoming object and move out of its way.
+//  Must work for vehicles which are longer than they are wide.
+//
+//  Returns TRUE if a threat.
+//
+integer evalthreat(key id)
+{
+    list threat = llGetObjectDetails(id,[OBJECT_POS, OBJECT_ROT, OBJECT_VELOCITY, OBJECT_NAME]); // data about incoming threat
+    if (llGetListLength(threat) < 3) { return(FALSE); } // no object, no threat
+    vector threatpos = llList2Vector(threat,0);     // position
+    rotation threatrot = llList2Rot(threat,1);      // rotation
+    vector threatvel = llList2Vector(threat,2);     // velocity
+    vector pos = llGetRootPosition();               // our position
+    vector p = findclosestpoint(id, pos);           // find closest point on bounding box of object to pos
+    vector vectothreat = p - pos;                   // direction to threat
+    float disttothreat = llVecMag(vectothreat);     // distance to threat
+    float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
+    if (approachrate <= 0.01) { return(FALSE); }    // not approaching
+    float eta = disttothreat / approachrate;        // time until collision
+    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " at " + (string)p + " ETA " + (string)eta + "s.");
+    if (eta > MAXAVOIDTIME) { return(FALSE); }       // not approaching fast enough to need avoidance
+    //  Definite threat - need to avoid.
+    return(TRUE);
+}
+#ifdef OBSOLETE
+    vector dirfromthreat = llVecNorm(<-vectothreat.x,-vectothreat.y,0.0>); // away from threat
+    rotation rotfromthreat = RotFromXAxis(dirfromthreat); // rotation from X axis
+    ////vector crossdir = llVecNorm(threatvel) % <0,0,1>;  // horizontal direction to escape
+    //  Decide which direction to run.
+    //  Prefer to run crosswise to direction of threat, but will 
+    //  consider running away and 45 degrees. So 5 possiblities to try.
+    //  If nothing works, head in threat direction and go as far as possible. Scream.
+    //  ***MORE***
+    float disttorun = 4.0;                          // Run 4 meters to get out of the way of most vehicles ***REEXAMINE***
+    integer dirix;
+    for (dirix = 0; dirix < llGetListLength(AVOIDDIRS); dirix++)
+    {   vector avoiddir = llList2Vector(AVOIDDIRS,dirix)*rotfromthreat;   // direction to run, relative to dirfromthreat
+        vector escapepnt = testavoiddir(pos,avoiddir*disttorun); 
+        if (escapepnt != ZERO_VECTOR)               // can escape this way
+        {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping to " + (string)escapepnt); // heading for here
+            gAction = ACTION_AVOIDING;              // now avoiding
+            bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
+            return(1);                              // evading threat
+        }
+    }
+    debugMsg(DEBUG_MSG_WARN,"Unable to escape incoming threat.");
+    bhvSay("STOP! HELP!");
+    ////llPlaySound(SCREAM_SOUND,1.0);                  // scream, that's all we can do
+    return(-1);                                     // incoming threat and cannot avoid
+}
+#endif // OBSOLETE 
+
 //
 //  avoidthreat -- avoid incoming object
 //
@@ -264,11 +320,15 @@ startavoid()
 {   if (gAction != ACTION_IDLE) { return; }                         // already dealing with a threat
     while (llGetListLength(gThreatList) > 0)                        // while threats to handle
     {   key id = llList2Key(gThreatList,0);                         // get oldest threat
-        integer avoiding = avoidthreat(id);                         // try to avoid threat
-        if (avoiding) 
-        {   return;                                                 // avoiding threat, end looking for one
+        integer threatstatus = avoidthreat(id);                     // try to avoid threat
+        if (threatstatus == 0) 
+        {   gThreatList = llDeleteSubList(gThreatList,0,0);         // first threat no longer a threat, delete from to-do list
+        } else if (threatstatus == 1) {
+            return;                                                 // doing something about the threat already
+        } else {                                                    // big trouble, no escape
+            //  ***MORE***
         }
-        gThreatList = llDeleteSubList(gThreatList,0,0);             // first threat no longer a threat, delete from to-do list
+        
     }
     //  No threat, give up control
     gAction = ACTION_IDLE;                                          // now idle
@@ -278,11 +338,11 @@ startavoid()
 //  requestavoid -- request to avoid something, from avatar monitoring task.
 //
 requestavoid(key id)
-{   llOwnerSay("Threat list before add: " + llDumpList2String(gThreatList,","));   // ***TEMP***
-    if (llListFindList(gThreatList,[id]) >= 0) { return; }          // we have this one
+{   if (llListFindList(gThreatList,[id]) >= 0) { return; }          // we have this one
+    if (!evalthreat(id)) { return; }                                // not a threat, ignore
     debugMsg(DEBUG_MSG_WARN,"New threat: " + llKey2Name(id));       // note new threat
     gThreatList += id;                                              // add to threat list
-    startavoid();                                                   // start avoidance if necessary
+    bhvSetPriority(PRIORITYAVOID);                                  // we need control of the NPC immediately
 }
 
 //
@@ -293,6 +353,7 @@ bhvDoStart()
     gAction = ACTION_IDLE;                                          // whatever we were doing is cancelled
     start_anim(IDLE_ANIM);                                          // use idle animation
     llSetTimerEvent(IDLE_POLL);                                     // check for dwell time
+    startavoid();                                                   // do we need to avoid something? Probably.
 }
 //
 //  bhvDoStop -- this behavior no longer has control
@@ -317,7 +378,7 @@ start_anim(string anim)
 //  startup - initialization
 //
 startup()
-{
+{   pathinitutils();                                // init library
     gAction = ACTION_IDLE;
     gThreatList = [];                               // no threats yet
     //  Set up connection to scheduler
