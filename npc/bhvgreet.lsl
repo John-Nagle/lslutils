@@ -10,7 +10,6 @@
 //  Animats
 //  November 2019
 //
-//  ***STARTING -- NEEDS MUCH WORK***
 //
 #include "npc/bhvcall.lsl"
 #include "npc/pathavatartrackcall.lsl"
@@ -331,7 +330,7 @@ default
         }
 #ifdef DEBUGCHAN
         if (channel == DEBUGCHAN)                               // if debug control
-        {   bvhDebugCommand(msg);
+        {   bhvDebugCommand(msg);
             return;
         }
 #endif // DEBUGCHAN

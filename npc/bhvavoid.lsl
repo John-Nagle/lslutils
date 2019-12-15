@@ -21,12 +21,7 @@ integer ACTION_CANNOTAVOID = 2;             // unable to avoid
 
 #define PRIORITYAVOID  4                    // higher than most behaviors
 
-float DETECTION_RADIUS = 60.0;      
-float GOAL_TOL = 1.0;               
-float GOAL_DIST = 1.75;                     // (m) get this close to talk
-float MAX_GREET_DIST = 10.0;                // (m) if can get this close, say "Hello there"
-float OBSTACLE_RETRY_PROB = 0.7;            // (fract) Retry if random < this.
-float TESTSPACING = 0.33;                   // (fract) Multiply height and width by this to get ray cast spacing
+#define DETECTION_RADIUS 50.0               // look for moving vehicles this range      
 
 #ifndef CHARACTER_SPEED                     // overrideable
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
@@ -41,11 +36,6 @@ string IDLE_ANIM = "SEmotion-bento18";      // arms folded during planning delay
 string STAND_ANIM = "SEmotion-bento18";     // just when stopped
 string SCREAM_SOUND = "???";                // sound of a scream
 float IDLE_POLL = 10.0;
-float ATTENTION_SPAN = 20;                  // will stick around for this long
-float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far before we recheck on approach
-#ifndef VERBOSITY                           // define VERBOSITY to override
-#define VERBOSITY DEBUG_MSG_ERROR           // verbose
-#endif // VERBOSITY
 
 //
 //  Avoid directions - try escaping in these directions.               
@@ -284,7 +274,7 @@ startavoid()
 //  requestavoid -- request to avoid something, from avatar monitoring task.
 //
 requestavoid(key id)
-{
+{   llOwnerSay("Threat list before add: " + llDumpList2String(gThreatList,","));   // ***TEMP***
     if (llListFindList(gThreatList,[id]) >= 0) { return; }          // we have this one
     debugMsg(DEBUG_MSG_WARN,"New threat: " + llKey2Name(id));       // note new threat
     gThreatList += id;                                              // add to threat list
@@ -381,11 +371,14 @@ default
         for (i=0; i<num_detected; i++)
         {   vector vel = llDetectedVel(i);                  // velocity of threat
             vector pos = llDetectedPos(i);                  // position of threat
-            if (((pos-ourpos)*vel) < -0.01)                 // if approaching us
+            float approachrate = -llVecNorm(pos-ourpos)*vel; // approach rate
+            ////llOwnerSay("Avatar " + llDetectedName(i) + " at " + (string) pos + " vel " + (string)vel + " approachrate " + (string)approachrate); // ***TEMP***
+            if (approachrate > 0.01)                        // if approaching us
             {   key id = llDetectedKey(i);                  // id of agent
                 key rootid = getroot(id);                   // root, which will be different if vehicle
                 if (id != rootid)                           // incoming vehicle
-                {   requestavoid(id);                       // consider avoiding it
+                {   llOwnerSay("Inbound vehicle " + llKey2Name(rootid) + " at " + (string) pos + " vel " + (string)vel + " approachrate " + (string)approachrate); // ***TEMP***
+                    requestavoid(rootid);                   // consider avoiding it
                 }
             }
         }
@@ -412,7 +405,8 @@ default
     listen(integer channel, string name, key id, string msg)
     {  
         if (channel == DEBUGCHAN)                               // if debug control
-        {   bhvDebugCommand(msg);
+        {   bhvDebugCommand("Hello");   // ***TEMP***
+            bhvDebugCommand(msg);
             return;
         }
     }

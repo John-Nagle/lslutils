@@ -317,7 +317,7 @@ default
     listen(integer channel, string name, key id, string msg)
     {  
         if (channel == DEBUGCHAN)                               // if debug control
-        {   bvhDebugCommand(msg);
+        {   bhvDebugCommand(msg);
             return;
         }
     }

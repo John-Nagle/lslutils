@@ -284,7 +284,7 @@ bhvSchedMessage(integer num, string jsn)
 //  Can be turned on if desired.
 //
 #ifdef DEBUGCHAN                                    // listen on this channel
-bvhDebugCommand(string s)                   // incoming command
+bhvDebugCommand(string s)                   // incoming command
 {   list fields = llParseString2List(s,[" "],[]);   // parse into fields
     if (llList2String(fields,0) == "msglev")        // command would be "/9999 msglev warn"
     {   integer msglev  = llListFindList(DEBUG_MSG_NAME_LIST,[llToLower(llList2String(fields,1))]);
