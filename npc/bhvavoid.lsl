@@ -96,8 +96,65 @@ vector boxpoints(vector pos, vector dir, list pts)
     vector scale = <hibounds.x-lobounds.x,hibounds.y-lobounds.y,0>;
     
 }
+//
+//  findclosestpoint -- find closest point on threat object bounding box.
+//
+//  Simple version - closest point is always a corner. 
+//  Not going to implement GJK algorithm in LSL for this.
+//
+vector findclosestpoint(key id, vector pos)
+{   list bb = pathGetBoundingBoxWorld(id);      // get bounding box in world coords
+    vector bblower = llList2Vector(bb,0);       // these define an axis aligned box with 8 corners.
+    vector bbupper = llList2Vector(bb,1);
+    //  Find the corner closest to pos.
+    vector closestpt = bblower;
+    if (llFabs(bbupper.x - pos.x) < llFabs(bblower.x - pos.x)) { closestpt.x = bbupper.x; }
+    if (llFabs(bbupper.y - pos.y) < llFabs(bblower.y - pos.y)) { closestpt.y = bbupper.y; }
+    if (llFabs(bbupper.z - pos.z) < llFabs(bblower.x - pos.z)) { closestpt.z = bbupper.z; }
+    return(closestpt);
+}
 
-vector findclosestpoint(list bb, vector pos) { assert(FALSE); return(ZERO_VECTOR);} // ***UNIMPLEMENTED***
+float pathMin(float a, float b) { if (a<b) { return(a); } else { return(b); }} // usual min and max, avoiding name clashes
+float pathMax(float a, float b) { if (a>b) { return(a); } else { return(b); }}
+//
+//  pathGetBoundingBoxWorld -- get object bounding box in world coordinates
+//
+//  LSL gives us the bounding box in object coordinates. We have to rotate it
+//  and get the limits.  One vertex at a time.
+//
+list pathGetBoundingBoxWorld(key id)
+{
+    list info = llGetObjectDetails(id, [OBJECT_POS, OBJECT_ROT]) + llGetBoundingBox(id);
+    vector pos = llList2Vector(info, 0);            // position in world coords
+    rotation rot = llList2Rot(info, 1);             // rotation in world coords
+    integer ix; 
+    integer iy;
+    integer iz;
+    //  Convert each corner of the original bounding box to world coordinates.
+    vector mincorner;                               // bounding box in world coords
+    vector maxcorner;
+    integer first = TRUE;                           // first time through
+    for (ix=0; ix<2; ix++)                          // do all vertices of bounding box
+    {   vector vx = llList2Vector(info, ix+2);
+        for (iy=0; iy<2; iy++)
+        {   vector vy = llList2Vector(info, iy+2);
+            for (iz=0; iz<2; iz++)
+            {   vector vz = llList2Vector(info, iz+2);
+                vector pt = <vx.x, vy.y, vz.z>;     // one corner of the bounding box in obj coords
+                vector ptworld = pt * rot + pos;    // in world coords
+                if (first)
+                {   mincorner = ptworld;
+                    maxcorner = ptworld;
+                    first = FALSE;
+                }  else {
+                    mincorner = <pathMin(mincorner.x,ptworld.x), pathMin(mincorner.y, ptworld.y), pathMin(mincorner.z, ptworld.z)>;
+                    maxcorner = <pathMax(maxcorner.x,ptworld.x), pathMax(maxcorner.y, ptworld.y), pathMax(maxcorner.z, ptworld.z)>; 
+                }
+            }
+        }
+    }
+    return([mincorner, maxcorner]);                 // min and max corners, in world coordinates
+}
 //
 //  testavoiddir -- test avoid dir for reachability
 //
@@ -117,6 +174,19 @@ vector testavoiddir(vector pos, vector avoidvec)
     if (obstacleraycasthoriz(pos+<0,0,gHeight*0.5>,p+<0,0,gHeight*0.5>)) { return(ZERO_VECTOR); }
     return(p);                                  // success, OK to try going there
 }
+
+//
+//  testprotectiveobstacle -- is there a protective obstacle between target and threat?
+//
+//  A walkable or a static obstacle is protective.
+//  One cast ray at waist height.
+//  Targetpos and threatpos must be at ground level.
+//
+integer testprotectiveobstacle(vector targetpos, vector threatpos)
+{
+    //  ***MORE***
+    return(FALSE);                              // ***TEMP***
+}
 //
 //  avoidthreat -- avoid incoming object
 //
@@ -133,14 +203,13 @@ integer avoidthreat(key id)
     rotation threatrot = llList2Rot(threat,1);      // rotation
     vector threatvel = llList2Vector(threat,2);     // velocity
     vector pos = llGetRootPosition();               // our position
-    list bb = llGetBoundingBox(id);                 // bounding box of threat
-    vector p = findclosestpoint(bb,pos);            // find closest point on bounding box of object to pos
+    vector p = findclosestpoint(id, pos);           // find closest point on bounding box of object to pos
     vector vectothreat = p - pos;                   // direction to threat
     float disttothreat = llVecMag(vectothreat);     // distance to threat
     float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
     if (approachrate <= 0.01) { return(0); }        // not approaching
     float eta = disttothreat / approachrate;        // time until collision
-    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " ETA " + (string)eta + "s.");
+    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " at " + (string)p + " ETA " + (string)eta + "s.");
     if (eta > MAXAVOIDTIME) { return(0); }          // not approaching fast enough to need avoidance
     //  Definite threat - need to avoid.
     vector crossdir = llVecNorm(threatvel) % <0,0,1>;  // horizontal direction to escape
@@ -157,10 +226,11 @@ integer avoidthreat(key id)
         debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping to " + (string)escapepnt); // heading for here
         gAction = ACTION_AVOIDING;                  // now avoiding
         bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
-        return(1);
+        return(1);                                  // evading threat
     }
     debugMsg(DEBUG_MSG_WARN,"Unable to escape incoming threat.");
-    llPlaySound(SCREAM_SOUND,1.0);                  // scream, that's all we can do
+    bhvSay("STOP! HELP!");
+    ////llPlaySound(SCREAM_SOUND,1.0);                  // scream, that's all we can do
     return(-1);                                     // incoming threat and cannot avoid
 } 
 
@@ -238,9 +308,6 @@ bhvDoStop()
     gAction = ACTION_IDLE;                                          // we've been preempted. No patrol now.
     llSetTimerEvent(0);                                             // don't need a timer
 }
- 
-
-
 
 //
 //  start_anim -- start indicated idle animation.
@@ -251,40 +318,6 @@ start_anim(string anim)
 {
     bhvAnimate([anim]);                             // new API
 }
-#ifdef OBSOLETE   
-//
-//  start_platrol -- start patrolling if allowed to do so.
-//
-start_patrol()
-{   //  Start patrolling if nothing else to do
-    if (gAction == ACTION_IDLE && gPatrolEnabled && 
-        llGetTime() > gDwell)      
-    {   llResetTime(); 
-        //  Pick a random patrol point different from the last one.
-        integer newpnt;
-        integer bound = llGetListLength(gPatrolPoints); // want 0..bound-1
-        if (bound < 1)
-        {   llSay(DEBUG_CHANNEL,"No patrol points, cannot patrol."); return; }
-        do { newpnt = rand_int(bound);  }
-        while (newpnt == gNextPatrolPoint);
-        gNextPatrolPoint = newpnt;
-        gPatrolDestination = llList2Vector(gPatrolPoints, gNextPatrolPoint);
-        gDwell = llList2Float(gPatrolPointDwell, gNextPatrolPoint);
-        gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
-        restart_patrol();
-    }  
-}
-//
-//  restart_patrol -- start patrol to previously selected point.
-//
-restart_patrol()
-{
-    debugMsg(DEBUG_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
-    start_anim(WAITING_ANIM);                       // applies only when stalled during movement
-    bhvNavigateTo(ZERO_VECTOR,gPatrolDestination,0,CHARACTER_SPEED);  // head for next pos
-    gAction = ACTION_PATROL;                        // patrolling
-}
-#endif // OBSOLETE
 
 //
 //  startup - initialization
@@ -386,49 +419,4 @@ default
 #endif // DEBUGCHAN   
 }
 
-#ifdef OBSOLETE
 
-
-
-float pathMin(float a, float b) { if (a<b) { return(a); } else { return(b); }} // usual min and max, avoiding name clashes
-float pathMax(float a, float b) { if (a>b) { return(a); } else { return(b); }}
-//
-//  pathGetBoundingBoxWorld -- get object bounding box in world coordinates
-//
-//  LSL gives us the bounding box in object coordinates. We have to rotate it
-//  and get the limits.  One vertex at a time.
-//
-list pathGetBoundingBoxWorld(key id)
-{
-    list info = llGetObjectDetails(id, [OBJECT_POS, OBJECT_ROT]) + llGetBoundingBox(id);
-    vector pos = llList2Vector(info, 0);            // position in world coords
-    rotation rot = llList2Rot(info, 1);             // rotation in world coords
-    integer ix; 
-    integer iy;
-    integer iz;
-    //  Convert each corner of the original bounding box to world coordinates.
-    vector mincorner;                               // bounding box in world coords
-    vector maxcorner;
-    integer first = TRUE;                           // first time through
-    for (ix=0; ix<2; ix++)                          // do all vertices of bounding box
-    {   vector vx = llList2Vector(info, ix+2);
-        for (iy=0; iy<2; iy++)
-        {   vector vy = llList2Vector(info, iy+2);
-            for (iz=0; iz<2; iz++)
-            {   vector vz = llList2Vector(info, iz+2);
-                vector pt = <vx.x, vy.y, vz.z>;     // one corner of the bounding box in obj coords
-                vector ptworld = pt * rot + pos;    // in world coords
-                if (first)
-                {   mincorner = ptworld;
-                    maxcorner = ptworld;
-                    first = FALSE;
-                }  else {
-                    mincorner = <pathMin(mincorner.x,ptworld.x), pathMin(mincorner.y, ptworld.y), pathMin(mincorner.z, ptworld.z)>;
-                    maxcorner = <pathMax(maxcorner.x,ptworld.x), pathMax(maxcorner.y, ptworld.y), pathMax(maxcorner.z, ptworld.z)>; 
-                }
-            }
-        }
-    }
-    return([mincorner, maxcorner]);                 // min and max corners, in world coordinates
-}
-#endif // OBSOLETE
