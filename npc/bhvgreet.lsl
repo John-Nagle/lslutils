@@ -28,7 +28,7 @@ float OBSTACLE_RETRY_PROB = 0.7;            // (fract) Retry if random < this.
 
 
 
-#define PRIORITYPURSUE  3                   // higher than patrol, lower than evade vehicle
+#define PRIORITYPURSUE  PRIORITY_TASK       // higher than patrol, lower than evade vehicle
 
 #ifndef CHARACTER_SPEED                     // overrideable
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
@@ -211,7 +211,7 @@ greet_done(string action)
 {   gAction = ACTION_IDLE;                                          // done here
     bhvAnimate([IDLE_ANIM]);                                        // back to idle anim
     if (action != "") { pathavatartrackreply(gTarget,action); }     // tell tracker to defer action on this avi
-    bhvSetPriority(0);
+    bhvSetPriority(PRIORITY_OFF);                                   // give up control of the NPC
 }
 
 //
@@ -238,7 +238,7 @@ bhvDoStart()
     bhvAnimate([IDLE_ANIM]);                                        // back to idle anim
     if (gTarget == NULL_KEY)                                        // if we have no one to pursue
     {
-        bhvSetPriority(0);                                          // we don't need to run now, give up control
+        bhvSetPriority(PRIORITY_OFF);                               // we don't need to run now, give up control
         return;
     }
     llResetTime();                                                  // reset the clock

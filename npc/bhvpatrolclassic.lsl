@@ -24,7 +24,7 @@ integer ACTION_PATROLFACE = 4;              // completed patrol, turning to fina
 
 //  Configuration
 
-#define PRIORITYPATROL  1                   // lower than greet, lower than evade vehicle
+#define PRIORITYPATROL  PRIORITY_BACKGROUND // lower than greet, lower than evade vehicle
 
 float DETECTION_RADIUS = 60.0;      
 float GOAL_TOL = 1.0;               
@@ -46,9 +46,6 @@ string STAND_ANIM = "SEmotion-bento18";     // just when stopped
 float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                  // will stick around for this long
 float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far before we recheck on approach
-#ifndef VERBOSITY                           // define VERBOSITY to override
-#define VERBOSITY DEBUG_MSG_ERROR            // verbose
-#endif // VERBOSITY
 
 //  Configuration
 string PATROL_NOTECARD = "Patrol points";   // read this notecard for patrol points

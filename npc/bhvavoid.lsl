@@ -19,9 +19,10 @@ integer ACTION_CANNOTAVOID = 2;             // unable to avoid
 
 //  Configuration
 
-#define PRIORITYAVOID  4                    // higher than most behaviors
+#define PRIORITY_AVOID  PRIORITY_URGENT     // higher than most behaviors
 
-#define DETECTION_RADIUS 50.0               // look for moving vehicles this range      
+#define DETECTION_RADIUS 50.0               // look for moving vehicles this range
+#define AVOID_DIST 4.0                      // (m) move this far each try to get out of the way
 
 #ifndef CHARACTER_SPEED                     // overrideable
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
@@ -58,7 +59,7 @@ integer gAvoidIndex = 0;                    // which avoid path we are taking
 vector gAvoidStart = ZERO_VECTOR;           // where we started avoiding
 float gWidth = 0.5;                         // dimensions of character
 float gHeight = 2.0;
-
+#ifdef OBSOLETE
 //
 //  boxpoints -- construct box around set of points and vector
 //
@@ -86,6 +87,7 @@ vector boxpoints(vector pos, vector dir, list pts)
     vector scale = <hibounds.x-lobounds.x,hibounds.y-lobounds.y,0>;
     
 }
+#endif // OBSOLETE
 //
 //  findclosestpoint -- find closest point on threat object bounding box.
 //
@@ -174,7 +176,8 @@ vector testavoiddir(vector pos, vector avoidvec)
 //
 integer testprotectiveobstacle(vector targetpos, vector threatpos)
 {
-    //  ***MORE***
+    //  ***MORE*** Not the right test. 
+    ///if (obstacleraycasthoriz(targetpos+<0,0,gHeight*0.5>,threatpos+<0,0,gHeight*0.5>)) { return(TRUE); }
     return(FALSE);                              // ***TEMP***
 }
 
@@ -205,33 +208,7 @@ integer evalthreat(key id)
     //  Definite threat - need to avoid.
     return(TRUE);
 }
-#ifdef OBSOLETE
-    vector dirfromthreat = llVecNorm(<-vectothreat.x,-vectothreat.y,0.0>); // away from threat
-    rotation rotfromthreat = RotFromXAxis(dirfromthreat); // rotation from X axis
-    ////vector crossdir = llVecNorm(threatvel) % <0,0,1>;  // horizontal direction to escape
-    //  Decide which direction to run.
-    //  Prefer to run crosswise to direction of threat, but will 
-    //  consider running away and 45 degrees. So 5 possiblities to try.
-    //  If nothing works, head in threat direction and go as far as possible. Scream.
-    //  ***MORE***
-    float disttorun = 4.0;                          // Run 4 meters to get out of the way of most vehicles ***REEXAMINE***
-    integer dirix;
-    for (dirix = 0; dirix < llGetListLength(AVOIDDIRS); dirix++)
-    {   vector avoiddir = llList2Vector(AVOIDDIRS,dirix)*rotfromthreat;   // direction to run, relative to dirfromthreat
-        vector escapepnt = testavoiddir(pos,avoiddir*disttorun); 
-        if (escapepnt != ZERO_VECTOR)               // can escape this way
-        {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping to " + (string)escapepnt); // heading for here
-            gAction = ACTION_AVOIDING;              // now avoiding
-            bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
-            return(1);                              // evading threat
-        }
-    }
-    debugMsg(DEBUG_MSG_WARN,"Unable to escape incoming threat.");
-    bhvSay("STOP! HELP!");
-    ////llPlaySound(SCREAM_SOUND,1.0);                  // scream, that's all we can do
-    return(-1);                                     // incoming threat and cannot avoid
-}
-#endif // OBSOLETE 
+
 
 //
 //  avoidthreat -- avoid incoming object
@@ -266,7 +243,7 @@ integer avoidthreat(key id)
     //  consider running away and 45 degrees. So 5 possiblities to try.
     //  If nothing works, head in threat direction and go as far as possible. Scream.
     //  ***MORE***
-    float disttorun = 4.0;                          // Run 4 meters to get out of the way of most vehicles ***REEXAMINE***
+    float disttorun = AVOID_DIST;                    // Run 4 meters to get out of the way of most vehicles 
     integer dirix;
     for (dirix = 0; dirix < llGetListLength(AVOIDDIRS); dirix++)
     {   vector avoiddir = llList2Vector(AVOIDDIRS,dirix)*rotfromthreat;   // direction to run, relative to dirfromthreat
@@ -279,7 +256,7 @@ integer avoidthreat(key id)
         }
     }
     debugMsg(DEBUG_MSG_WARN,"Unable to escape incoming threat.");
-    bhvSay("STOP! HELP!");
+    bhvSay("STOP!");
     ////llPlaySound(SCREAM_SOUND,1.0);                  // scream, that's all we can do
     return(-1);                                     // incoming threat and cannot avoid
 } 
@@ -342,7 +319,7 @@ requestavoid(key id)
     if (!evalthreat(id)) { return; }                                // not a threat, ignore
     debugMsg(DEBUG_MSG_WARN,"New threat: " + llKey2Name(id));       // note new threat
     gThreatList += id;                                              // add to threat list
-    bhvSetPriority(PRIORITYAVOID);                                  // we need control of the NPC immediately
+    bhvSetPriority(PRIORITY_AVOID);                                 // we need control of the NPC immediately
 }
 
 //
@@ -392,7 +369,7 @@ bhvRegistered()                                                     // tell cont
 {
     //  We don't ask to run yet; we will ask for control of the NPC when there's a threat.
     //  Simple avatar sensor - replace with something more efficient.
-    float sensorrange = 40;                                         // sense avis in this range
+    float sensorrange = DETECTION_RADIUS;                           // sense avis in this range
     float sensorrate = 2.0;                                         // every 2 seconds
     llSensorRepeat("", "", AGENT, sensorrange, PI, sensorrate);
 }
@@ -410,7 +387,9 @@ bhvDoCollisionStart(key hitobj)
     integer pathfindingtype = llList2Integer(details,0);        // get pathfinding type
     debugMsg(DEBUG_MSG_WARN, "Collided with " + llList2String(details,1));
     if (pathfindingtype == OPT_AVATAR)                          // apologize if hit an avatar
-    {   bhvSay("Outta my way!"); }                              // I'm about to be hit by a vehicle!  
+    {   bhvSay("Outta my way!"); }                              // I'm about to be hit by a vehicle!
+    else 
+    {   bhvSay("OW!"); } 
 }
 
 default

@@ -30,6 +30,17 @@
 #define BHVMSGTOSCH         1002                // to BVH scheduler, scheduler listens
 
 //
+//  Standard priorities
+//
+#define PRIORITY_OFF        0                   // do not run this behavior
+#define PRIORITY_BACKGROUND 10                  // background activity, do when nothing else to do
+#define PRIORITY_TASK       20                  // doing something useful
+#define PRIORITY_URGENT     30                  // something urgent needs doing
+#define PRIORITY_SURVIVAL   40                  // emergency survival action
+
+#define PRIORITY_TASK_BOOST 1                   // add this to keep control during a task not to be interrupted
+
+//
 //  Globals
 //
 integer gBhvMnum = -99999;                      // our "mnum", the link message number that identifies us to the scheduler
