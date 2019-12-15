@@ -202,21 +202,25 @@ integer avoidthreat(key id)
     debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " at " + (string)p + " ETA " + (string)eta + "s.");
     if (eta > MAXAVOIDTIME) { return(0); }          // not approaching fast enough to need avoidance
     //  Definite threat - need to avoid.
-    vector crossdir = llVecNorm(threatvel) % <0,0,1>;  // horizontal direction to escape
+    vector dirfromthreat = llVecNorm(<-vectothreat.x,-vectothreat.y,0.0>); // away from threat
+    rotation rotfromthreat = RotFromXAxis(dirfromthreat); // rotation from X axis
+    ////vector crossdir = llVecNorm(threatvel) % <0,0,1>;  // horizontal direction to escape
     //  Decide which direction to run.
     //  Prefer to run crosswise to direction of threat, but will 
     //  consider running away and 45 degrees. So 5 possiblities to try.
     //  If nothing works, head in threat direction and go as far as possible. Scream.
-    //  ***MORE***   
+    //  ***MORE***
+    float disttorun = 4.0;                          // Run 4 meters to get out of the way of most vehicles ***REEXAMINE***
     integer dirix;
     for (dirix = 0; dirix < llGetListLength(AVOIDDIRS); dirix++)
-    {   vector avoiddir = llList2Vector(AVOIDDIRS,dirix);   // direction to run
-        vector escapepnt = testavoiddir(pos,avoiddir); 
+    {   vector avoiddir = llList2Vector(AVOIDDIRS,dirix)*rotfromthreat;   // direction to run, relative to dirfromthreat
+        vector escapepnt = testavoiddir(pos,avoiddir*disttorun); 
         if (escapepnt != ZERO_VECTOR)               // can escape this way
-        debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping to " + (string)escapepnt); // heading for here
-        gAction = ACTION_AVOIDING;                  // now avoiding
-        bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
-        return(1);                                  // evading threat
+        {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping to " + (string)escapepnt); // heading for here
+            gAction = ACTION_AVOIDING;              // now avoiding
+            bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
+            return(1);                              // evading threat
+        }
     }
     debugMsg(DEBUG_MSG_WARN,"Unable to escape incoming threat.");
     bhvSay("STOP! HELP!");
