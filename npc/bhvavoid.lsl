@@ -100,6 +100,7 @@ setsensortime(float secs)
 {   if (secs < MIN_SENSOR_PERIOD) { secs = MIN_SENSOR_PERIOD; } // apply minimum
     if (secs > IDLE_SENSOR_PERIOD) { secs = IDLE_SENSOR_PERIOD; } // apply max
     if (secs == gSensorPeriod) { return; }    // no change
+    debugMsg(DEBUG_MSG_WARN,"Sensor period now " + (string)secs);   // ***TEMP*** as warn
     llSensorRepeat("", "", AGENT, DETECTION_RADIUS, PI, secs);
     gSensorPeriod = secs;                     // save for later
 }
@@ -438,7 +439,7 @@ default
             {   key id = llDetectedKey(i);                  // id of agent
                 key rootid = getroot(id);                   // root, which will be different if vehicle
                 if (id != rootid)                           // incoming vehicle
-                {   llOwnerSay("Inbound vehicle " + llKey2Name(rootid) + " at " + (string) pos + " vel " + (string)vel + " approachrate " + (string)approachrate); // ***TEMP***
+                {   ////llOwnerSay("Inbound vehicle " + llKey2Name(rootid) + " at " + (string) pos + " vel " + (string)vel + " approachrate " + (string)approachrate); // ***TEMP***
                     requestavoid(rootid);                   // consider avoiding it
                 }
             }
