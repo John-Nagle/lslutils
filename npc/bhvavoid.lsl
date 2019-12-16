@@ -23,6 +23,8 @@ integer ACTION_CANNOTAVOID = 2;             // unable to avoid
 
 #define DETECTION_RADIUS 50.0               // look for moving vehicles this range
 #define AVOID_DIST 4.0                      // (m) move this far each try to get out of the way
+#define IDLE_SENSOR_PERIOD 2.0              // (s) sensor poll rate when no nearby targets
+#define MIN_SENSOR_PERIOD 0.2               // (s) sensor poll rate max
 
 #ifndef CHARACTER_SPEED                     // overrideable
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
@@ -36,7 +38,8 @@ string WAITING_ANIM = "SEmotion-bento13";   // arms folded during planning delay
 string IDLE_ANIM = "SEmotion-bento18";      // arms folded during planning delays
 string STAND_ANIM = "SEmotion-bento18";     // just when stopped
 string SCREAM_SOUND = "???";                // sound of a scream
-float IDLE_POLL = 10.0;
+#define IDLE_POLL 10.0                      // for stall timer tick if used
+#define SAFE_IDLE_TIME 15.0                 // idle this long, stop polling fast
 
 //
 //  Avoid directions - try escaping in these directions.               
@@ -47,7 +50,7 @@ float IDLE_POLL = 10.0;
 #define HALFSQRT2 0.7071
 list AVOIDDIRS = [<0,1,0>,<0,-1,0>,<HALFSQRT2,HALFSQRT2,0>,<-HALFSQRT2,HALFSQRT2,0>,<0,1,0>];
 
-#define MAXAVOIDTIME 6.0                    // (s) trigger avoid when ETA less than this
+#define MAX_AVOID_TIME 6.0                  // (s) trigger avoid when ETA less than this
 
 #define getroot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))  
 
@@ -59,6 +62,8 @@ integer gAvoidIndex = 0;                    // which avoid path we are taking
 vector gAvoidStart = ZERO_VECTOR;           // where we started avoiding
 float gWidth = 0.5;                         // dimensions of character
 float gHeight = 2.0;
+float gSensorPeriod = 0.0;                  // Current sensor poll rate
+integer gLastThreatTime = 0;                // time last threat seen
 #ifdef OBSOLETE
 //
 //  boxpoints -- construct box around set of points and vector
@@ -88,6 +93,16 @@ vector boxpoints(vector pos, vector dir, list pts)
     
 }
 #endif // OBSOLETE
+//
+//  setsensortime -- set current sensor poll rate
+//
+setsensortime(float secs)
+{   if (secs < MIN_SENSOR_PERIOD) { secs = MIN_SENSOR_PERIOD; } // apply minimum
+    if (secs > IDLE_SENSOR_PERIOD) { secs = IDLE_SENSOR_PERIOD; } // apply max
+    if (secs == gSensorPeriod) { return; }    // no change
+    llSensorRepeat("", "", AGENT, DETECTION_RADIUS, PI, secs);
+    gSensorPeriod = secs;                     // save for later
+}
 //
 //  findclosestpoint -- find closest point on threat object bounding box.
 //
@@ -204,7 +219,12 @@ integer evalthreat(key id)
     if (approachrate <= 0.01) { return(FALSE); }    // not approaching
     float eta = disttothreat / approachrate;        // time until collision
     debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " at " + (string)p + " ETA " + (string)eta + "s.");
-    if (eta > MAXAVOIDTIME) { return(FALSE); }       // not approaching fast enough to need avoidance
+    gLastThreatTime = llGetUnixTime();              // record last threat time to decide when things are quiet
+    if (eta > MAX_AVOID_TIME)                       // not a threat now, but step up polling
+    {   float fastpoll = eta*0.1;                   // to 10% of ETA
+        if (fastpoll < gSensorPeriod) { setsensortime(fastpoll); } // poll faster to follow inbound threat
+        return(FALSE);                              // not approaching fast enough to need avoidance
+    }
     //  Definite threat - need to avoid.
     return(TRUE);
 }
@@ -233,7 +253,7 @@ integer avoidthreat(key id)
     if (approachrate <= 0.01) { return(0); }        // not approaching
     float eta = disttothreat / approachrate;        // time until collision
     debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " at " + (string)p + " ETA " + (string)eta + "s.");
-    if (eta > MAXAVOIDTIME) { return(0); }          // not approaching fast enough to need avoidance
+    if (eta > MAX_AVOID_TIME) { return(0); }        // not approaching fast enough to need avoidance
     //  Definite threat - need to avoid.
     vector dirfromthreat = llVecNorm(<-vectothreat.x,-vectothreat.y,0.0>); // away from threat
     rotation rotfromthreat = RotFromXAxis(dirfromthreat); // rotation from X axis
@@ -284,10 +304,10 @@ bhvDoRequestDone(integer status, key hitobj)
         debugMsg(DEBUG_MSG_WARN,"Escape unsuccessful, status " + (string)status + " at " + (string)llGetRootPosition());
         //  ***NEED TO TRY ALTERNATE ESCAPE ROUTE***
         //  ***MORE***
-    }                                               // if going somewhere
+    }                                                               // if going somewhere
     //  Default - errors we don't special case.
     gAction = ACTION_IDLE;            
-    startavoid();                           // avoid top threat if any    
+    startavoid();                                                   // avoid top threat if any    
 }
 
 //
@@ -304,12 +324,11 @@ startavoid()
             return;                                                 // doing something about the threat already
         } else {                                                    // big trouble, no escape
             //  ***MORE***
-        }
-        
+        }       
     }
     //  No threat, give up control
     gAction = ACTION_IDLE;                                          // now idle
-    bhvSetPriority(0);                                              // done, give up control   
+    bhvSetPriority(PRIORITY_OFF);                                   // done, give up control   
 }
 //
 //  requestavoid -- request to avoid something, from avatar monitoring task.
@@ -369,9 +388,7 @@ bhvRegistered()                                                     // tell cont
 {
     //  We don't ask to run yet; we will ask for control of the NPC when there's a threat.
     //  Simple avatar sensor - replace with something more efficient.
-    float sensorrange = DETECTION_RADIUS;                           // sense avis in this range
-    float sensorrate = 2.0;                                         // every 2 seconds
-    llSensorRepeat("", "", AGENT, sensorrange, PI, sensorrate);
+    setsensortime(IDLE_SENSOR_PERIOD);                                // start scanning for threats
 }
 
 //
@@ -426,7 +443,16 @@ default
                 }
             }
         }
+        if (llGetUnixTime() - gLastThreatTime > SAFE_IDLE_TIME) // if nothing going on
+        {    setsensortime(IDLE_SENSOR_PERIOD);             // no action lately, return to slow polling
+        }
+
     }
+    
+    no_sensor()                                             // no targets, return to idle poll rate
+    {   setsensortime(IDLE_SENSOR_PERIOD);                    // slow poll
+    }
+
     
     link_message(integer sender_num, integer num, string jsn, key id)
     {   debugMsg(DEBUG_MSG_INFO, jsn);                      // ***TEMP*** dump incoming JSON

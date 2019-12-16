@@ -182,7 +182,7 @@ bvhpathreq(vector regioncorner, vector goal, key target, float stopshort, float 
 bhvreqreg()
 {   if (gBhvRegistered) { return; }             // already done
     //  Request register - this hooks us to the scheduler. Broadcast, but only at startup.
-    llOwnerSay(gBhvThisScriptname + " requesting register");    // ***TEMP***
+    debugMsg(DEBUG_MSG_WARN, gBhvThisScriptname + " requesting register");  
     llMessageLinked(LINK_SET, BHVMSGTOSCH, llList2Json(JSON_OBJECT,["request","register", "scriptname", gBhvThisScriptname, "linknum",gBhvLinkNumber]),"");
 }
 
@@ -196,7 +196,7 @@ bhvregisterreply(string scriptname, integer mnum, integer schedlink)
     gBhvSchedLinkNumber = schedlink;                                        // link number of the scheduler
     gBhvMnum = mnum;                                                        // our assigned mnum
     gBhvRegistered = TRUE;                                                  // we are now registered
-    llOwnerSay("Registered behavior #" + (string)mnum + ": " + gBhvThisScriptname); // ***TEMP***
+    debugMsg(DEBUG_MSG_WARN,"Registered behavior #" + (string)mnum + ": " + gBhvThisScriptname); // 
     bhvRegistered();                                                        // tell controlling script to go
 }
 
@@ -205,7 +205,7 @@ bhvregisterreply(string scriptname, integer mnum, integer schedlink)
 //
 bhvreqreply(string jsn)
 {
-    llOwnerSay("Reply from scheduler: " + jsn);                             // ***TEMP***
+    ////llOwnerSay("Reply from scheduler: " + jsn);                             // ***TEMP***
     string reply = llJsonGetValue(jsn,["reply"]);
     string request = llJsonGetValue(jsn,["request"]);
     if (reply == "pathbegin")                               // movement completed
