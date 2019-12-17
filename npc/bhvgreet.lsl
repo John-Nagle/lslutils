@@ -110,7 +110,6 @@ bhvDoRequestDone(integer status, key hitobj)
     if ((gAction == ACTION_PURSUE || gAction == ACTION_FACE) && dist_to_target(gTarget) < MAX_GREET_DIST) // if close enough to greet
     {   bhvAnimate([IDLE_ANIM]);
         face(gTarget, ACTION_DISTANT_GREET);
-        ////face_and_greet("Hello there.");                         // longer range greeting
         return;
     }
     //  If blocked by something, deal with it.
@@ -150,6 +149,7 @@ bhvDoRequestDone(integer status, key hitobj)
         gAction = ACTION_IDLE;            
         debugMsg(DEBUG_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
         bhvAnimate([IDLE_ANIM]);
+        bhvSetPriority(PRIORITY_OFF);                                   // give up control of the NPC
         return;
     }
 }
