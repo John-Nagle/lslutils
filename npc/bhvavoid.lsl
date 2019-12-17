@@ -48,7 +48,7 @@ string SCREAM_SOUND = "???";                // sound of a scream
 //  If we have to use the last one, trouble.
 //
 #define HALFSQRT2 0.7071
-list AVOIDDIRS = [<0,1,0>,<0,-1,0>,<HALFSQRT2,HALFSQRT2,0>,<-HALFSQRT2,HALFSQRT2,0>,<0,1,0>];
+list AVOIDDIRS = [<0,1,0>,<0,-1,0>,<HALFSQRT2,HALFSQRT2,0>,<-HALFSQRT2,HALFSQRT2,0>,<1,0,0>];
 
 #define MAX_AVOID_TIME 6.0                  // (s) trigger avoid when ETA less than this
 
@@ -177,9 +177,15 @@ vector testavoiddir(vector pos, vector avoidvec)
 {
     vector p = pos + avoidvec;
     float z = obstacleraycastvert(p+<0,0,gHeight>,p-<0,0,gHeight>);
-    if (z < 0) { return(ZERO_VECTOR); }         // no walkable here
+    if (z < 0) 
+    {   debugMsg(DEBUG_MSG_WARN,"No walkable below avoid dest at " + (string)p);
+        return(ZERO_VECTOR);                    // no walkable here
+    }
     p.z = z;                                    // ground level destination 
-    if (obstacleraycasthoriz(pos+<0,0,gHeight*0.5>,p+<0,0,gHeight*0.5>)) { return(ZERO_VECTOR); }
+    if (obstacleraycasthoriz(pos+<0,0,gHeight*0.5>,p+<0,0,gHeight*0.5>)) 
+    {   debugMsg(DEBUG_MSG_WARN,"Obstacle blocks avoid move from " + (string)(pos+<0,0,gHeight*0.5>) + " to " + (string)(p+<0,0,gHeight*0.5>));
+        return(ZERO_VECTOR); 
+    }
     return(p);                                  // success, OK to try going there
 }
 
