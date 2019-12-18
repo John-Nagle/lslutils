@@ -194,13 +194,27 @@ vector testavoiddir(vector pos, vector avoidvec)
 //
 //  A walkable or a static obstacle is protective.
 //  One cast ray at waist height.
-//  Targetpos and threatpos must be at ground level.
+//  Targetpos and threatpos must be at waist level.
 //
-integer testprotectiveobstacle(vector targetpos, vector threatpos)
+integer testprotectiveobstacle(vector targetpos, vector threatpos, key threatid)
 {
-    //  ***MORE*** Not the right test. 
-    ///if (obstacleraycasthoriz(targetpos+<0,0,gHeight*0.5>,threatpos+<0,0,gHeight*0.5>)) { return(TRUE); }
-    return(FALSE);                              // ***TEMP***
+    //  If there is anything between target and threat, don't run away.
+    //  This includes physical objects and avatars, which don't provide much protection.
+    //  Realistic, though. 
+    list castresult = castray(targetpos,threatpos,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
+    integer status = llList2Integer(castresult, -1);        // status is last element in list
+    if (status <= 0) { return(FALSE); }                     // nothing in between, threat real
+    //  Hit something. Must analyze.
+    //  Hit ourself, ignore.
+    //  Hit threat, ignore. 
+    integer i;
+    for (i=0; i<3*status; i+=3)                             // check objects hit. Check two, because the first one might be ourself
+    {
+        key hitobj = llList2Key(castresult, i+0);           // get object hit
+        if (hitobj != gPathSelfObject && hitobj != threatid)// if hit something other than self or threat
+        {   return(TRUE); }                                 // found protective object
+    }
+    return(FALSE);  
 }
 
 //
@@ -261,6 +275,7 @@ integer avoidthreat(key id)
     float eta = disttothreat / approachrate;        // time until collision
     debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " at " + (string)p + " ETA " + (string)eta + "s.");
     if (eta > MAX_AVOID_TIME) { return(0); }        // not approaching fast enough to need avoidance
+    if (testprotectiveobstacle(pos,threatpos, id)) { return(0); } // protective obstacle between threat and target - no need to run
     //  Definite threat - need to avoid.
     vector dirfromthreat = llVecNorm(<-vectothreat.x,-vectothreat.y,0.0>); // away from threat
     rotation rotfromthreat = RotFromXAxis(dirfromthreat); // rotation from X axis
