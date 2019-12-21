@@ -771,7 +771,11 @@ default
     {   if (num == MAZESOLVEREQUEST)
         {   mazerequestjson(jsn, id);                   // solve maze
         } else if (num == PATHPARAMSINIT)
-        {   pathinitparams(jsn); }                      // initialize globals (width, height, etc.)
+        {   pathinitparams(jsn);                        // initialize globals (width, height, etc.)
+        } else if (num == DEBUG_MSGLEV_BROADCAST)       // set debug message level for this task
+        {   debugMsgLevelSet(jsn);
+        }
+
     }
 
 }

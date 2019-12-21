@@ -482,6 +482,8 @@ default
             bhvSchedMessage(num,jsn);                       // message from scheduler
             return;
         }
+        if (num == DEBUG_MSGLEV_BROADCAST)                  // set message level from broadcast
+        {   debugMsgLevelSet(jsn); return; }
     }
 
 }

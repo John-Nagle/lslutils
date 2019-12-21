@@ -201,7 +201,10 @@ default
             {   pathMsg(PATH_MSG_ERROR,"Invalid msg: " + jsn); }
         
         } else if (num == PATHPARAMSINIT)
-        {   pathinitparams(jsn); }                              // initialize params
+        {   pathinitparams(jsn);                               // initialize params
+        } else if (num == DEBUG_MSGLEV_BROADCAST)               // set debug message level for this task
+        {   debugMsgLevelSet(jsn);
+        }
     }
     
     

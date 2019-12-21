@@ -112,7 +112,11 @@ default
     {   if (num == LINKMSGRECOVERREQUEST)               // recovery request
         {   pathrecoverrequest(jsn,id); 
         } else if (num == PATHPARAMSINIT)
-        {   pathinitparams(jsn); }                      // initialize params
+        {   pathinitparams(jsn);                        // initialize params
+        } else if (num == DEBUG_MSGLEV_BROADCAST)               // set debug message level for this task
+        {   debugMsgLevelSet(jsn);
+        }
+
     }
     
 }

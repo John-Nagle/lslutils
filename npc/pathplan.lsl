@@ -295,7 +295,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
         vector bp0 = llList2Vector(path,0);
         vector bp1 = llList2Vector(path,1);
         //  Start the maze solver
-        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathChartype, gPathWidth, gPathLastObstacle, gPathId, gSegmentId, gPathMsgLevel); 
+        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathChartype, gPathWidth, gPathLastObstacle, gPathId, gSegmentId); 
         if (status) 
         {   pathMsg(PATH_MSG_WARN,"Unable to start maze solver. Status: " + (string)status); 
             //  Create a dummy maze solve result and send it to path execution just to transmit the status.
@@ -375,8 +375,10 @@ default
             jsn = "";                                   // Release string, which is big here. 
             pathmazesolverdone(pathid, segmentid, status);  // maze solver is done, can do some more planning
         } else if (num == PATHPARAMSINIT)
-        {   pathinitparams(jsn); }                          // initialize params
-
+        {   pathinitparams(jsn);                            // initialize params
+        } else if (num == DEBUG_MSGLEV_BROADCAST)               // set debug message level for this task
+        {   debugMsgLevelSet(jsn);
+        }
     }
 }
 

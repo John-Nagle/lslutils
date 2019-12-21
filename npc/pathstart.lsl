@@ -206,7 +206,10 @@ default
         } else if (num == PATHPLANREPLY)                                // reply from planner
         {   pathLinkMsg(jsn,id);                                        // will retry, or will reply to user
         } else if (num == PATHPARAMSINIT)
-        {   pathinitparams(jsn); }                                      // initialize params
+        {   pathinitparams(jsn);                                        // initialize params
+        } else if (num == DEBUG_MSGLEV_BROADCAST)               // set debug message level for this task
+        {   debugMsgLevelSet(jsn);
+        }
     }
 }
              

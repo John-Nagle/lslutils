@@ -34,7 +34,7 @@ float gMazeCellSize;                                // cell size of maze
 //  The start and end cells are assumed to be clear. The caller must check that.
 //
 //
-integer mazesolverstart(vector p0, vector p1, float width, float height, integer chartype, float probespacing, key hitobj, integer pathid, integer segmentid, integer msglev) 
+integer mazesolverstart(vector p0, vector p1, float width, float height, integer chartype, float probespacing, key hitobj, integer pathid, integer segmentid) 
 {
     //  Lay out the rectangle for the maze
     integer MAXMAZESIZE = 41;                           // ***TEMP*** belongs elsewhere
@@ -83,7 +83,6 @@ integer mazesolverstart(vector p0, vector p1, float width, float height, integer
     pathMsg(PATH_MSG_INFO, "Sending job to maze solver, pathid: " + (string)pathid + " segmentid: " + (string)segmentid);
     llMessageLinked(LINK_THIS, MAZESOLVEREQUEST, llList2Json(JSON_OBJECT, [
         "request", "mazesolve",                     // type of request
-        "msglev", msglev,                           // debug use - maze solver will print messages
         "probespacing", probespacing,               // distance between ray casts in height dir
         "cellsize", gMazeCellSize,                  // size of a maze cell. Typically 0.333 meter
         "pathid", pathid,                           // path we are working on

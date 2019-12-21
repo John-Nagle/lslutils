@@ -313,7 +313,9 @@ default
         {   if (llJsonGetValue(jsn,["request"]) != "trackavi") { return; } // not for us
             requestpursue((key)llJsonGetValue(jsn,["id"])); // go pursue, if appropriate.
             return; 
-        } 
+        }
+        if (num == DEBUG_MSGLEV_BROADCAST)                  // set message level from broadcast
+        {   debugMsgLevelSet(jsn); return; }
     }
     
     listen(integer channel, string name, key id, string msg)

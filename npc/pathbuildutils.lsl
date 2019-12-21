@@ -72,7 +72,6 @@ pathinitparams(string jsn)
     gPathWidth = (float)llJsonGetValue(jsn,["width"]);        // gPathWidth
     gPathHeight = (float)llJsonGetValue(jsn,["height"]);      // height
     gPathChartype = (integer)llJsonGetValue(jsn,["chartype"]);// character type
-    gPathMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]);  // get message level
     assert(gPathWidth > 0 && gPathHeight > 0);              // sanity check
 }
 //

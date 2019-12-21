@@ -31,7 +31,7 @@
 //  We ship the debug message level across so the tracking task knows what to print.
 //
 #define pathavatartrackreply(id, action) \
-    llMessageLinked(LINK_THIS, PATHAVATARTRACKREPLY, llList2Json(JSON_OBJECT,["reply","trackavi","id",(id),"action",(action), "msglev", (gDebugMsgLevel)]),"") 
+    llMessageLinked(LINK_THIS, PATHAVATARTRACKREPLY, llList2Json(JSON_OBJECT,["reply","trackavi","id",(id),"action",(action)]),"") 
     
 //  Request message format is JSON with message num PATHAVATARTRACKREQUEST, format:
 //

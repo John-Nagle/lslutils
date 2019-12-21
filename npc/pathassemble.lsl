@@ -468,7 +468,9 @@ default
         } else if (num == MAZEPATHSTOP)                 // planner wants us to stop
         {   pathexestop(0);                             // normal stop commanded
         } else if (num == PATHPARAMSINIT)
-        {   pathinitparams(jsn); }                      // initialize params
-
+        {   pathinitparams(jsn);                        // initialize params
+        } else if (num == DEBUG_MSGLEV_BROADCAST)               // set debug message level for this task
+        {    debugMsgLevelSet(jsn);
+        }
     }
 }

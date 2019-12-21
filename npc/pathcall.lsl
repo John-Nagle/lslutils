@@ -40,7 +40,7 @@ integer gPathcallRequestId = 0;                                 // path serial n
 //  around the character's center. The character's collision model must fit within cylinder. 
 //  If it does not, the character will bump into obstacles and stop.
 //
-pathInit(float width, float height, integer chartype, integer msglev)
+pathInit(float width, float height, integer chartype)
 {
     if (!gPathcallReset)
     {   pathmasterreset();                          // reset everybody
@@ -48,7 +48,7 @@ pathInit(float width, float height, integer chartype, integer msglev)
     } // everybody has been reset
     //  Broadcast params to everybody.
     llMessageLinked(LINK_THIS,PATHPARAMSINIT,llList2Json(JSON_OBJECT,["request","pathparams",
-        "msglev",msglev, "width",width, "height",height,"chartype",chartype]),"");
+        "width",width, "height",height,"chartype",chartype]),"");
     gPathcallInitialized = TRUE;                    // initialized
 }
 

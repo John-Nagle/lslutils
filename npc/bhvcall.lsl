@@ -287,10 +287,6 @@ bhvSchedMessage(integer num, string jsn)
                 (float)llJsonGetValue(jsn,["height"]),(float)llJsonGetValue(jsn,["width"])); 
             return;
         }
-        if (reqtype == "msglev")                    // if setting message level broadcast
-        {   gDebugMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]); 
-            return;
-        }
         if (reqtype == "reset")                     // scheduler reset, must reset behavior
         {   llResetScript(); }
     }

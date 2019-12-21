@@ -138,6 +138,7 @@ bhvbroadcastmsglev(integer msglev)
 {   gDebugMsgLevel = msglev;                    // set message level
     llOwnerSay("Setting debug message level to " + (string)msglev); // set msg lev
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","msglev","msglev",msglev]),""); // tell everybody
+    debugMsgLevelBroadcast(msglev);             // send to path system
 }
 
 #endif // BHVDEBUG
@@ -146,7 +147,6 @@ bhvbroadcastmsglev(integer msglev)
 //
 init()
 {
-    gDebugMsgLevel = DEBUG_MSG_WARN;                // ***TEMP*** need way to set debug level dynamically
     //  Reset to ground state
     gBehaviors = [];            // [scriptname,primnum,msgnum,priority]
     gBehaviorMsgnum = BHVMNUMSTART; // msg number for comm with behavior
@@ -160,7 +160,7 @@ init()
     gHeight = scale.z;                                              // height is scale
     gWidth = llVecMag(<scale.x,scale.y,0.0>);                       // diameter of enclosing circle
     llOwnerSay("Character height: " + (string)gHeight + "m. Width: " + (string)gWidth + "m.");
-    pathInit(gWidth, gHeight, CHARACTER_TYPE_A, gDebugMsgLevel);      // set up pathfinding system
+    pathInit(gWidth, gHeight, CHARACTER_TYPE_A);                    // set up pathfinding system
     pathTurnspeed(CHARACTER_TURNSPEED_DEG*DEG_TO_RAD);              // how fast to turn, rarely changed
     //  Reset all behaviors
     llOwnerSay("Resetting all behaviors.");  // ***TEMP***

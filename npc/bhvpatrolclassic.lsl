@@ -284,7 +284,8 @@ default
         {   
             bhvSchedMessage(num,jsn);                       // message from scheduler
             return;
-        }
+        } else if (num == DEBUG_MSGLEV_BROADCAST)       // set message level from broadcast
+        {   debugMsgLevelSet(jsn); }
     }
     
     dataserver(key query_id, string data)

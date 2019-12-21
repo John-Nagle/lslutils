@@ -236,7 +236,7 @@ default
 {
     state_entry()
     {   gRootkey = llGetLinkKey(LINK_ROOT);                                 // only listen to our own root prim
-        gLogChannel = llListen(LOG_CHANNEL, "", "", "");                    // listen forever on LOG_CHANNEL and DEBUG_CHANNEL
+        gLogChannel = llListen(DEBUG_LOG_CHANNEL, "", "", "");              // listen forever on DEBUG_LOG_CHANNEL and DEBUG_CHANNEL
         gDebugChannel = llListen(DEBUG_CHANNEL, "", "", "");
     }
     
@@ -248,7 +248,7 @@ default
     //  Message on debug channel. Relay.
     listen(integer channel, string name, key id, string message)
     {   ////llOwnerSay("Channel " + (string)channel + ": " + message);   // ***TEMP***
-        if (channel == LOG_CHANNEL) { logchanmsg(name, id, message); }
+        if (channel == DEBUG_LOG_CHANNEL) { logchanmsg(name, id, message); }
         else if (channel == DEBUG_CHANNEL) { debugchanmsg(name, id, message); }
     }
 }

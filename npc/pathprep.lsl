@@ -64,7 +64,7 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
 {   //  Fixed part of the reply. Just add "points" at the end.
     list fixedreplypart = ["reply","path", "pathid", pathid, "status", status, "hitobj", NULL_KEY,
                 "target", gPathprepTarget, "speed", gPathprepSpeed, "turnspeed", gPathprepTurnspeed,               // pass speed setting to execution module
-                "width", gPathWidth, "height", gPathHeight, "chartype", gPathChartype, "msglev", gPathMsgLevel,
+                "width", gPathWidth, "height", gPathHeight, "chartype", gPathChartype, 
                 "points"];                                  // just add points at the end
     assert(path == []);
     assert(!ismaze);                                        // not during prep
@@ -224,7 +224,11 @@ default
                 "speed", gPathprepSpeed, "turnspeed", gPathprepTurnspeed,
                 "pathid", gPathprepPathid, "points", llList2Json(JSON_ARRAY,pts)]),"");
         } else if (num == PATHPARAMSINIT)
-        {   pathinitparams(jsn); }                                      // initialize params
+        {   pathinitparams(jsn);                                       // initialize params
+        } else if (num == DEBUG_MSGLEV_BROADCAST)               // set debug message level for this task
+        {   debugMsgLevelSet(jsn);
+        }
+
   
     }
 }
