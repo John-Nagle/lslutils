@@ -93,7 +93,7 @@ buffermsg(string name, key id, integer msglev, string message)
     {   gMsgLog = llDeleteSubList(gMsgLog,0,0); }           // if memory tight, drop more messages
 }
 
-
+#ifdef OBSOLETE
 //
 //  logdump  -- dump log to llOwnerSay
 //
@@ -107,17 +107,7 @@ logdump(string why)
     }
     llOwnerSay("=== END STORED LOG DUMP ===");
 }
-
-//
-//  logverbose -- turn verbose mode on/off
-//
-logverbose(integer newmode)
-{   gVerbose = newmode;                                     // set verbose mode
-    if (gVerbose)
-    {   llOwnerSay("Verbose mode on."); }
-    else 
-    {   llOwnerSay("Verbose mode off."); }
-}
+#endif // OBSOLETE
 
 logdumptoim(string why)
 {   integer IMMAXLEN = 1000;                                // conservative max IM length
@@ -146,6 +136,7 @@ logdumptoowner(string why)
     }
     llOwnerSay("=== STORED LOG DUMP END ===");
 }
+#ifdef OBSOLETE
 //
 //  logdumptodebug -- dump to debug channel
 //
@@ -158,7 +149,7 @@ logdumptoowner(string why)
     }
     llSay(DEBUG_CHANNEL,"=== STORED LOG DUMP END ===");
 }
-
+#endif // OBSOLETE
 
 
 //
@@ -193,20 +184,6 @@ seriouserrormsg(string name, key id, string message)
 //
 logchanmsg(string name, key id, string message)
 {   message = llStringTrim(message, STRING_TRIM);           // remove unwanted whitespace
-    //  Check for commands
-    if (llSubStringIndex(message, "dump") == 0) 
-    {   logdump("Dump command"); 
-        gMsgLog = []; 
-        return;
-    } 
-    if (llSubStringIndex(message, "verbose") == 0) 
-    {   logverbose(TRUE); 
-        return;
-    }
-    if (llSubStringIndex(message, "quiet") == 0)
-    {   logverbose(FALSE);
-        return;
-    }
     if (id != gRootkey)                                     // not a command, must come from own object        
     {   if (pathGetRoot(id) != gRootkey) { return; }
     }
@@ -251,4 +228,15 @@ default
         if (channel == DEBUG_LOG_CHANNEL) { logchanmsg(name, id, message); }
         else if (channel == DEBUG_CHANNEL) { debugchanmsg(name, id, message); }
     }
+    
+    link_message(integer sender_num, integer num, string jsn, key id)
+    {   if (num == DEBUG_MSGLEV_BROADCAST)       // set message level from broadcast sent by dialog
+        {   gVerbose = (integer)llJsonGetValue(jsn,["verbose"]);          // set verbosity level
+            if ((integer)llJsonGetValue(jsn,["dumplog"]))                 // dialog user pushed the dump button
+            {   logdumptoowner("Log dump requested"); }
+        }
+    }
+
+    
+    
 }

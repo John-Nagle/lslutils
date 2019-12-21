@@ -89,6 +89,7 @@ integer gActiveBehavior = -1;   // index into active behavior table
 integer gActivePriority = 0;    // priority of active behavior
 float gHeight = -1;             // height and width for NPC
 float gWidth = -1;
+integer gVerbose = FALSE;       // verbose mode on for debug
 //
 //  Debug system
 //
@@ -126,7 +127,12 @@ bhvmsglevdialog(key toucherid)
         if (i == gDebugMsgLevel) { s = "⬤ " + s; }      // add dot
         buttons += s;
     }
-    buttons += [" "," ","Reset"];               // fill line and add reset button
+    buttons += "Dump log";                      // Dump log now
+    if (gVerbose)                               // verbose checkbox 
+    {   buttons += "Verbose ☒"; }
+    else 
+    {   buttons += "Verbose ☐";}
+    buttons += "Reset";                         // fill line and add reset button
     gBhvDialogTime = llGetUnixTime();           // timestamp for dialog removal
     llOwnerSay("Popping up dialog box");    // ***TEMP***
     llDialog(toucherid, BHVDIALOGINFO, buttons, BHVDIALOGCHANNEL);
@@ -134,11 +140,11 @@ bhvmsglevdialog(key toucherid)
 //
 //  bhvbroadcastmsglev -- send message level to everybody
 //
-bhvbroadcastmsglev(integer msglev)
+bhvbroadcastmsglev(integer msglev, integer verbose, integer dumplog)
 {   gDebugMsgLevel = msglev;                    // set message level
     llOwnerSay("Setting debug message level to " + (string)msglev); // set msg lev
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","msglev","msglev",msglev]),""); // tell everybody
-    debugMsgLevelBroadcast(msglev);             // send to path system
+    debugMsgLevelBroadcast(msglev, verbose, dumplog);             // send to path system
 }
 
 #endif // BHVDEBUG
@@ -448,10 +454,9 @@ default
     
 #ifdef BHVDEBUG                                            // enable debug interface
     
-    touch_start(integer total_number)
-    {   llOwnerSay("Touched");  // ***TEMP***
-        key toucherid = llDetectedKey(0);
-        llListenRemove(gBhvDialogListenHandle);           // just in case                 
+    touch_start(integer total_number)               // brings up debug menu
+    {   key toucherid = llDetectedKey(0);
+        llListenRemove(gBhvDialogListenHandle);     // just in case                 
         gBhvDialogListenHandle = 0;    
         if (toucherid != llGetOwner())              // owner only              
         {   return;
@@ -464,17 +469,25 @@ default
     listen(integer channel, string name, key id, string message)
     {   
         llListenRemove(gBhvDialogListenHandle);     // remove dialog
-        gBhvDialogListenHandle = 0;                 // no longer listening                   
+        gBhvDialogListenHandle = 0;                 // no longer listening  
+        integer dumplog = FALSE;                    // not dumping log yet                 
         integer buttonIndex = bhvmsglevindex(message); // is it a valid button?
         if (buttonIndex >= 0)
-        {   bhvbroadcastmsglev(buttonIndex);        // yes, tell everybody
+        {   
+            gDebugMsgLevel = buttonIndex;           // new button index
         } else if (message == "Reset")              // reset this script which restarts everybody
         {   llResetScript(); 
         } else if (message == " ")                  // unused button
         {   return; 
+        } else if (llSubStringIndex(message,"Verbose") >= 0)    // toggle verbose mode
+        {   gVerbose = !gVerbose;                   // toggle verbose mode 
+        } else if (message == "Dump log")           // time to dump log
+        {   dumplog = TRUE;                         // do it
         } else {
             llSay(DEBUG_CHANNEL, "Dialog option bug: "+ message); // bad
+            return;
         }
+        bhvbroadcastmsglev(buttonIndex, gVerbose, dumplog);   // tell everybody
     }
 #endif // BHVDEBUG
   

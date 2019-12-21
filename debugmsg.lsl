@@ -40,7 +40,7 @@ debugMsgFn(integer level, string msg)                           // print debug m
 //
 #define debugMsgLevelSet(jsn) {    gDebugMsgLevel = (integer)llJsonGetValue((jsn),["msglev"]);}  // set message level
 //
-//  debugMsgLevelBroadcast -- send broadcast msg to set message level
+//  debugMsgLevelBroadcast -- send broadcast msg to set message level and other debug params
 //
-#define debugMsgLevelBroadcast(msglev) { llMessageLinked(LINK_SET,DEBUG_MSGLEV_BROADCAST,llList2Json(JSON_OBJECT,["request","msglev","msglev",(msglev)]),""); }
+#define debugMsgLevelBroadcast(msglev, verbose, dumplog) { llMessageLinked(LINK_SET,DEBUG_MSGLEV_BROADCAST,llList2Json(JSON_OBJECT,["request","msglev","msglev",(msglev), "verbose",(verbose),"dumplog",(dumplog)]),""); }
 #endif // DEBUGMSGLSL

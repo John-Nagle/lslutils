@@ -279,7 +279,7 @@ default
     }
     
     link_message(integer sender_num, integer num, string jsn, key id)
-    {   debugMsg(DEBUG_MSG_INFO, jsn);                      // ***TEMP*** dump incoming JSON
+    {   ////debugMsg(DEBUG_MSG_INFO, jsn);                      // ***TEMP*** dump incoming JSON
         if (num == gBhvMnum || num == BHVMSGFROMSCH)        // if from scheduler to us
         {   
             bhvSchedMessage(num,jsn);                       // message from scheduler
