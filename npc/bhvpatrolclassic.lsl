@@ -309,15 +309,5 @@ default
             }
         }
     }
-
-#ifdef DEBUGCHAN    
-    listen(integer channel, string name, key id, string msg)
-    {  
-        if (channel == DEBUGCHAN)                               // if debug control
-        {   bhvDebugCommand(msg);
-            return;
-        }
-    }
-#endif // DEBUGCHAN   
 }
 

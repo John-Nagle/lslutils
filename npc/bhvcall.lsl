@@ -45,10 +45,12 @@
 //
 integer gBhvMnum = -99999;                      // our "mnum", the link message number that identifies us to the scheduler
 integer gBhvRegistered;                         // we are not registered yet
-string gBhvThisScriptname;                      // name of this script
+string  gBhvThisScriptname;                     // name of this script
 integer gBhvLinkNumber = -99999;                // link number of this prim, starts bogus
 integer gBhvSchedLinkNumber = -99999;           // the scheduler's link number
 integer gActiveToken = -99999;                  // token of the current start
+float   gBhvHeight = -1.0;                      // height of NPC
+float   gBhvWidth = -1.0;                       // width of NPC
 
 
 //
@@ -157,9 +159,6 @@ bhvInit()
     gBhvLinkNumber = llGetLinkNumber();         // my prim number, for msgs
     gBhvThisScriptname = llGetScriptName();     // name of this script
     gBhvSchedLinkNumber = -99999;               // we don't know this yet
-#ifdef DEBUGCHAN 
-    llListen(DEBUGCHAN, "", llGetOwner(), "");  // listen forever for owner debug commands   
-#endif // DEBUGCHAN
     bhvreqreg();                                // try to register
 }
 //
@@ -189,12 +188,14 @@ bhvreqreg()
 //
 //  bhvregisterreply -- reply from register request
 //
-bhvregisterreply(string scriptname, integer mnum, integer schedlink)
+bhvregisterreply(string scriptname, integer mnum, integer schedlink, float height, float width)
 {
     if (gBhvRegistered) { return; }                                         // already registered
     if (scriptname != gBhvThisScriptname) { return; }                       // not for us
     gBhvSchedLinkNumber = schedlink;                                        // link number of the scheduler
     gBhvMnum = mnum;                                                        // our assigned mnum
+    gBhvHeight = height;                                                    // set height and width of NPC
+    gBhvWidth = width;
     gBhvRegistered = TRUE;                                                  // we are now registered
     debugMsg(DEBUG_MSG_WARN,"Registered behavior #" + (string)mnum + ": " + gBhvThisScriptname); // 
     bhvRegistered();                                                        // tell controlling script to go
@@ -219,10 +220,9 @@ bhvreqreply(string jsn)
         bhvDoRequestDone(status, NULL_KEY);
         return;
     }
-
     if (request == "start")
     {   gActiveToken = (integer)llJsonGetValue(jsn,["token"]);    // token of current start
-        bhvDoStart(); 
+        bhvDoStart();
         return;
     }
     if (request == "stop")
@@ -282,30 +282,17 @@ bhvSchedMessage(integer num, string jsn)
     {   string reptype = llJsonGetValue(jsn,["reply"]);
         string reqtype = llJsonGetValue(jsn,["request"]);
         if (reptype == "register")
-        {   bhvregisterreply(llJsonGetValue(jsn,["scriptname"]), (integer)llJsonGetValue(jsn,["mnum"]), (integer)llJsonGetValue(jsn,["schedlink"])); 
+        {   //  Then do register.
+            bhvregisterreply(llJsonGetValue(jsn,["scriptname"]), (integer)llJsonGetValue(jsn,["mnum"]), (integer)llJsonGetValue(jsn,["schedlink"]),
+                (float)llJsonGetValue(jsn,["height"]),(float)llJsonGetValue(jsn,["width"])); 
+            return;
+        }
+        if (reqtype == "msglev")                    // if setting message level broadcast
+        {   gDebugMsgLevel = (integer)llJsonGetValue(jsn,["msglev"]); 
             return;
         }
         if (reqtype == "reset")                     // scheduler reset, must reset behavior
         {   llResetScript(); }
     }
 }
-//
-//  Debug command handler
-//
-//  Can be turned on if desired.
-//
-#ifdef DEBUGCHAN                                    // listen on this channel
-bhvDebugCommand(string s)                   // incoming command
-{   list fields = llParseString2List(s,[" "],[]);   // parse into fields
-    if (llList2String(fields,0) == "msglev")        // command would be "/9999 msglev warn"
-    {   integer msglev  = llListFindList(DEBUG_MSG_NAME_LIST,[llToLower(llList2String(fields,1))]);
-        if (msglev >= 0)                            // if valid, set message level
-        {   gDebugMsgLevel = msglev;
-            llOwnerSay(llGetScriptName() + ": Debug level set to " + llList2String(fields,1)); // tell user
-            return;
-        }
-    }
-    llOwnerSay("Bad behavior debug command: " + s); // rejected
-}
-#endif // DEBUGCHAN
 #endif // BVHCALLLSL

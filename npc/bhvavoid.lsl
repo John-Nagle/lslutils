@@ -48,7 +48,7 @@ string SCREAM_SOUND = "???";                // sound of a scream
 //  If we have to use the last one, trouble.
 //
 #define HALFSQRT2 0.7071
-list AVOIDDIRS = [<0,1,0>,<0,-1,0>,<HALFSQRT2,HALFSQRT2,0>,<-HALFSQRT2,HALFSQRT2,0>,<1,0,0>];
+list AVOIDDIRS = [<0,1,0>,<0,-1,0>,<HALFSQRT2,HALFSQRT2,0>,<HALFSQRT2,-HALFSQRT2,0>,<1,0,0>];
 
 #define MAX_AVOID_TIME 6.0                  // (s) trigger avoid when ETA less than this
 #define MAX_AVOID_TRIES 10                  // (cnt) after this many tries to avoid, give up
@@ -235,6 +235,8 @@ integer evalthreat(key id)
 //
 //  Returns 0 if no threat, 1 if threat being avoided, -1 if no escape
 //
+//  ***WRONG*** something is reversed here. Getting paths that lead towards the threat.
+//
 integer avoidthreat(key id)
 {
     list threat = llGetObjectDetails(id,[OBJECT_POS, OBJECT_ROT, OBJECT_VELOCITY, OBJECT_NAME]); // data about incoming threat
@@ -249,7 +251,7 @@ integer avoidthreat(key id)
     float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
     if (approachrate <= 0.01) { return(0); }        // not approaching
     float eta = disttothreat / approachrate;        // time until collision
-    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " at " + (string)p + " ETA " + (string)eta + "s.");
+    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " at " + (string)p + " vec to threat " + (string)vectothreat + " ETA " + (string)eta + "s.");
     if (eta > MAX_AVOID_TIME) { return(0); }        // not approaching fast enough to need avoidance
     if (testprotectiveobstacle(pos,threatpos, id)) { return(0); } // protective obstacle between threat and target - no need to run
     //  Definite threat - need to avoid.
@@ -269,7 +271,8 @@ integer avoidthreat(key id)
         avoiddir.y = avoiddir.y * (float)gAvoidDirSign;    // reverse direction for each use, to avoid bias
         vector escapepnt = testavoiddir(pos,avoiddir*disttorun); 
         if (escapepnt != ZERO_VECTOR)               // can escape this way
-        {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping to " + (string)escapepnt); // heading for here
+        {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping threat by moving from " + (string)pos + " to " + (string)escapepnt); // heading for here
+            assert(avoiddir * dirfromthreat < 0);   // must be AWAY from threat ***TEMP*** ***FAILING***
             gAction = ACTION_AVOIDING;              // now avoiding
             gNextAvoid = (gNextAvoid+1) % adlen;    // advance starting point cyclically
             bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
@@ -479,26 +482,8 @@ default
             bhvSchedMessage(num,jsn);                       // message from scheduler
             return;
         }
-#ifdef NOTYET
-        if (num == PATHAVATARAVOIDREQUEST)                  // if avatar tracker wants us to avoid something
-        {   if (llJsonGetValue(jsn,["request"]) != "avoid") { return; } // not for us
-            requestavoid((key)llJsonGetValue(jsn,["id"]));  // go pursue, if appropriate.
-            return; 
-        } 
-#endif // NOTYET
-
     }
 
-#ifdef DEBUGCHAN    
-    listen(integer channel, string name, key id, string msg)
-    {  
-        if (channel == DEBUGCHAN)                               // if debug control
-        {   bhvDebugCommand("Hello");   // ***TEMP***
-            bhvDebugCommand(msg);
-            return;
-        }
-    }
-#endif // DEBUGCHAN   
 }
 
 

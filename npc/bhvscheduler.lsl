@@ -87,6 +87,60 @@ integer gBehaviorMsgnum = BHVMNUMSTART; // msg number for comm with behavior
 
 integer gActiveBehavior = -1;   // index into active behavior table 
 integer gActivePriority = 0;    // priority of active behavior
+float gHeight = -1;             // height and width for NPC
+float gWidth = -1;
+//
+//  Debug system
+//
+#ifdef BHVDEBUG                                                     // if debug menu enabled
+//
+//  Debug dialog info
+//
+integer gBhvDialogChannel;                             
+integer gBhvDialogListenHandle;
+integer gBhvDialogTime = 0;                             
+list BHVMSGLEVBUTTONS = DEBUG_MSG_NAME_LIST;
+string BHVDIALOGINFO = "\nNPC debug options.";
+#define BHVDIALOGTIMEOUT 30.0                                       // remove listen
+
+//
+//  bhvmsglevindex -- get msg level from button pushed
+//
+integer bhvmsglevindex(string message)
+{   string pstring = llStringTrim(llDumpList2String(llParseString2List(message,["⬤"],[" "]),""),STRING_TRIM);
+    integer i;
+    for (i = 0; i < llGetListLength(BHVMSGLEVBUTTONS); i++)
+    {   if (llList2String(BHVMSGLEVBUTTONS,i) == pstring) { return(i); }}  // find
+    return(-1);                         // no find
+}
+//
+//  bhvmsglevdialog
+//
+bhvmsglevdialog(key toucherid)
+{   llListenRemove(gBhvDialogListenHandle);                                        // delete any old listens for this                  
+    gBhvDialogListenHandle = llListen(gBhvDialogChannel, "", toucherid, "");       // listening for reply
+    list buttons = [];                          // no buttons yet
+    buttons += "Reset";                         // add reset button
+    integer i;
+    for (i=0; i<llGetListLength(BHVMSGLEVBUTTONS); i++)
+    {   string s = llList2String(BHVMSGLEVBUTTONS,i);   // get msg level name
+        if (i == gDebugMsgLevel) { s = "⬤ " + s; }      // add dot
+        buttons += s;
+    }
+    gBhvDialogTime = llGetUnixTime();           // timestamp for dialog removal
+    llOwnerSay("Popping up dialog box");    // ***TEMP***
+    llDialog(toucherid, BHVDIALOGINFO, buttons, gBhvDialogChannel);
+}
+//
+//  bhvbroadcastmsglev -- send message level to everybody
+//
+bhvbroadcastmsglev(integer msglev)
+{   gDebugMsgLevel = msglev;                    // set message level
+    llOwnerSay("Setting debug message level to " + (string)msglev); // set msg lev
+    llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","msglev","msglev",msglev]),""); // tell everybody
+}
+
+#endif // BHVDEBUG
 //
 //  init
 //
@@ -103,12 +157,11 @@ init()
     //  Init the path planning system
     //
     vector scale = llGetScale();                                    // scale of character, usually a dummy box
-    float height = scale.z;                                         // height is scale
-    float width = llVecMag(<scale.x,scale.y,0.0>);                  // diameter of enclosing circle
-    llOwnerSay("Character height: " + (string)height + "m. Width: " + (string)width + "m.");
-    pathInit(width, height, CHARACTER_TYPE_A, gDebugMsgLevel);      // set up pathfinding system
+    gHeight = scale.z;                                              // height is scale
+    gWidth = llVecMag(<scale.x,scale.y,0.0>);                       // diameter of enclosing circle
+    llOwnerSay("Character height: " + (string)gHeight + "m. Width: " + (string)gWidth + "m.");
+    pathInit(gWidth, gHeight, CHARACTER_TYPE_A, gDebugMsgLevel);      // set up pathfinding system
     pathTurnspeed(CHARACTER_TURNSPEED_DEG*DEG_TO_RAD);              // how fast to turn, rarely changed
-    ////llSleep(10.0);   // ***TEMP*** checking for race condition at startup
     //  Reset all behaviors
     llOwnerSay("Resetting all behaviors.");  // ***TEMP***
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","reset"]),"");    // reset all behaviors
@@ -140,7 +193,7 @@ registerbehavior(string scriptname, integer primnum)
     //  Send register reply to appropriate prim.
     //  Will be ignored by behaviors with other string names.
     string jsn = llList2Json(JSON_OBJECT,["reply","register", "scriptname", BHVSCRIPTNAME(bhvix),
-        "mnum", BHVMNUM(bhvix), "schedlink",llGetLinkNumber()]);
+        "mnum", BHVMNUM(bhvix), "schedlink",llGetLinkNumber(),"height",gHeight, "width", gWidth]);
     llMessageLinked(BHVLINKNUM(bhvix),BHVMSGFROMSCH, jsn, "");
 }
 
@@ -282,9 +335,6 @@ doturn(integer bhvix, string jsn)
 //
 //  Send it back to the appropriate behavior.
 //
-//  ***CHECK FOR POSSIBILITY OF STALE RESULT***
-//  ***NEED TO INCREMENT REQUEST ID AT doStart TO GUARANTEE ANY OLD REQUESTS ARE STALE***
-//
 pathUpdateCallback(integer status, key hitobj)
 {   integer bhvix = gActiveBehavior;
     if (bhvix < 0) { return; }          // no behavior active?
@@ -320,9 +370,18 @@ default
 
     timer()                                         // timer tick
     {     
-        pathTick();                                 // for stall timer 
+        pathTick();                                 // for stall timer
+#ifdef BHVDEBUG
+        {   //  Get rid of dead dialog if any
+            if (gBhvDialogListenHandle != 0)
+            {   if (llGetUnixTime() - gBhvDialogTime > BHVDIALOGTIMEOUT) // if dead dialog listen to flush
+                {   llListenRemove(gBhvDialogListenHandle);
+                    gBhvDialogListenHandle = 0; 
+                }
+            }       
+        } 
+#endif // BHVDEBUG
     }
-    
     link_message(integer sender_num, integer num, string jsn, key id)
     {   debugMsg(DEBUG_MSG_WARN, jsn);                        // ***TEMP*** dump incoming JSON
         if (num == BHVMSGTOSCH)                    // one of our behaviors wants to talk to us
@@ -386,6 +445,36 @@ default
         //  Tell active behavior about it.
         llMessageLinked(BHVLINKNUM(gActiveBehavior),BHVMNUM(gActiveBehavior),llList2Json(JSON_OBJECT,["request","collisionstart","hitobj",hitobj]),""); 
     }
+    
+#ifdef BHVDEBUG                                            // enable debug interface
+    
+    touch_start(integer total_number)
+    {   llOwnerSay("Touched");  // ***TEMP***
+        key toucherid = llDetectedKey(0);
+        llListenRemove(gBhvDialogListenHandle);           // just in case                 
+        gBhvDialogListenHandle = 0;    
+        if (toucherid != llGetOwner())              // owner only              
+        {   return;
+        }
+        bhvmsglevdialog(toucherid);
+    }
+    
+    
+    
+    listen(integer channel, string name, key id, string message)
+    {   
+        llListenRemove(gBhvDialogListenHandle);     // remove dialog
+        gBhvDialogListenHandle = 0;                 // no longer listening                   
+        integer buttonIndex = bhvmsglevindex(message); // is it a valid button?
+        if (buttonIndex >= 0)
+        {   bhvbroadcastmsglev(buttonIndex);        // yes, tell everybody
+        } else if (message == "Reset")              // reset this script which restarts everybody
+        {   llResetScript(); 
+        } else {
+            llSay(DEBUG_CHANNEL, "Dialog option bug: "+ message); // bad
+        }
+    }
+#endif // BHVDEBUG
   
 }
 

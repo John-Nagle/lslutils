@@ -328,12 +328,6 @@ default
             }
             return;
         }
-#ifdef DEBUGCHAN
-        if (channel == DEBUGCHAN)                               // if debug control
-        {   bhvDebugCommand(msg);
-            return;
-        }
-#endif // DEBUGCHAN
     }
 }
 
