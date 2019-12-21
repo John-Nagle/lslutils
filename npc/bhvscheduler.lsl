@@ -96,7 +96,7 @@ float gWidth = -1;
 //
 //  Debug dialog info
 //
-integer gBhvDialogChannel;                             
+#define BHVDIALOGCHANNEL -22748364                                  // arbitrary and local
 integer gBhvDialogListenHandle;
 integer gBhvDialogTime = 0;                             
 list BHVMSGLEVBUTTONS = DEBUG_MSG_NAME_LIST;
@@ -118,18 +118,18 @@ integer bhvmsglevindex(string message)
 //
 bhvmsglevdialog(key toucherid)
 {   llListenRemove(gBhvDialogListenHandle);                                        // delete any old listens for this                  
-    gBhvDialogListenHandle = llListen(gBhvDialogChannel, "", toucherid, "");       // listening for reply
+    gBhvDialogListenHandle = llListen(BHVDIALOGCHANNEL, "", toucherid, "");       // listening for reply
     list buttons = [];                          // no buttons yet
-    buttons += "Reset";                         // add reset button
     integer i;
     for (i=0; i<llGetListLength(BHVMSGLEVBUTTONS); i++)
     {   string s = llList2String(BHVMSGLEVBUTTONS,i);   // get msg level name
         if (i == gDebugMsgLevel) { s = "⬤ " + s; }      // add dot
         buttons += s;
     }
+    buttons += [" "," ","Reset"];               // fill line and add reset button
     gBhvDialogTime = llGetUnixTime();           // timestamp for dialog removal
     llOwnerSay("Popping up dialog box");    // ***TEMP***
-    llDialog(toucherid, BHVDIALOGINFO, buttons, gBhvDialogChannel);
+    llDialog(toucherid, BHVDIALOGINFO, buttons, BHVDIALOGCHANNEL);
 }
 //
 //  bhvbroadcastmsglev -- send message level to everybody
@@ -146,7 +146,7 @@ bhvbroadcastmsglev(integer msglev)
 //
 init()
 {
-    gDebugMsgLevel = DEBUG_MSG_INFO;                // ***TEMP*** need way to set debug level dynamically
+    gDebugMsgLevel = DEBUG_MSG_WARN;                // ***TEMP*** need way to set debug level dynamically
     //  Reset to ground state
     gBehaviors = [];            // [scriptname,primnum,msgnum,priority]
     gBehaviorMsgnum = BHVMNUMSTART; // msg number for comm with behavior
@@ -470,6 +470,8 @@ default
         {   bhvbroadcastmsglev(buttonIndex);        // yes, tell everybody
         } else if (message == "Reset")              // reset this script which restarts everybody
         {   llResetScript(); 
+        } else if (message == " ")                  // unused button
+        {   return; 
         } else {
             llSay(DEBUG_CHANNEL, "Dialog option bug: "+ message); // bad
         }
