@@ -127,6 +127,7 @@ bhvmsglevdialog(key toucherid)
         if (i == gDebugMsgLevel) { s = "⬤ " + s; }      // add dot
         buttons += s;
     }
+    buttons += [" "," "];                       // filler to align buttons
     buttons += "Dump log";                      // Dump log now
     if (gVerbose)                               // verbose checkbox 
     {   buttons += "Verbose ☒"; }
@@ -180,6 +181,7 @@ init()
     vector color = <1.0,1.0,1.0>;                                   // white
     llSetText(name, color, 1.0);                                    // set hover text
     llSetTimerEvent(5.0);                                           // for stall timer check only
+    bhvbroadcastmsglev(gDebugMsgLevel, gVerbose, FALSE);            // set initial message level
 }
 //
 //  registerbehavior -- register a new behavior script
@@ -487,7 +489,7 @@ default
             llSay(DEBUG_CHANNEL, "Dialog option bug: "+ message); // bad
             return;
         }
-        bhvbroadcastmsglev(buttonIndex, gVerbose, dumplog);   // tell everybody
+        bhvbroadcastmsglev(gDebugMsgLevel, gVerbose, dumplog);   // tell everybody
     }
 #endif // BHVDEBUG
   
