@@ -257,6 +257,9 @@ integer avoidthreat(key id)
     //  Definite threat - need to avoid.
     vector dirfromthreat = llVecNorm(<-vectothreat.x,-vectothreat.y,0.0>); // away from threat
     rotation rotfromthreat = RotFromXAxis(dirfromthreat); // rotation from X axis
+    vector checkdir = <1,0,0>*rotfromthreat;        // ***TEMP***
+    float checkval = dirfromthreat * checkdir;
+    assert(llFabs(1 - checkval) < 0.001);           // ***TEMP*** check that rotation was computed properly
     ////vector crossdir = llVecNorm(threatvel) % <0,0,1>;  // horizontal direction to escape
     //  Decide which direction to run.
     //  Prefer to run crosswise to direction of threat, but will 
@@ -266,13 +269,15 @@ integer avoidthreat(key id)
     integer adlen = llGetListLength(AVOIDDIRS);     // length of avoid dir list
     integer i;
     for (i = 0; i < adlen; adlen++)                 // try all dirs
-    {   integer dirix = (i + gNextAvoid) % adlen;   // starting after one used last time          
-        vector avoiddir = llList2Vector(AVOIDDIRS,dirix)*rotfromthreat;   // direction to run, relative to dirfromthreat
-        avoiddir.y = avoiddir.y * (float)gAvoidDirSign;    // reverse direction for each use, to avoid bias
-        vector escapepnt = testavoiddir(pos,avoiddir*disttorun); 
+    {   integer dirix = (i + gNextAvoid) % adlen;   // starting after one used last time
+        vector avoidbasedir = llList2Vector(AVOIDDIRS,dirix); // direction in space before rotation
+        avoidbasedir.y = avoidbasedir.y * (float)gAvoidDirSign;    // reverse direction for each use, to avoid predictability    
+        vector avoiddir = avoidbasedir*rotfromthreat;   // direction to run, away or sideways from threat
+        vector escapepnt = testavoiddir(pos,avoiddir*disttorun); // see if avoid dir is valid
         if (escapepnt != ZERO_VECTOR)               // can escape this way
         {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping threat by moving from " + (string)pos + " to " + (string)escapepnt); // heading for here
-            assert(avoiddir * dirfromthreat < 0);   // must be AWAY from threat ***TEMP*** ***FAILING***
+            debugMsg(DEBUG_MSG_WARN,"avoiddir: " + (string)avoiddir + " dirfromthreat: " + (string)dirfromthreat); // heading for here
+            assert(avoiddir * dirfromthreat < 0.01);   // must be AWAY from threat ***TEMP*** ***FAILING***
             gAction = ACTION_AVOIDING;              // now avoiding
             gNextAvoid = (gNextAvoid+1) % adlen;    // advance starting point cyclically
             bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
