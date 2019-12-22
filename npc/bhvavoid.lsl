@@ -235,8 +235,6 @@ integer evalthreat(key id)
 //
 //  Returns 0 if no threat, 1 if threat being avoided, -1 if no escape
 //
-//  ***WRONG*** something is reversed here. Getting paths that lead towards the threat.
-//
 integer avoidthreat(key id)
 {
     list threat = llGetObjectDetails(id,[OBJECT_POS, OBJECT_ROT, OBJECT_VELOCITY, OBJECT_NAME]); // data about incoming threat
@@ -276,15 +274,18 @@ integer avoidthreat(key id)
         vector avoidbasedir = llList2Vector(AVOIDDIRS,dirix); // direction in space before rotation
         avoidbasedir.y = avoidbasedir.y * (float)gAvoidDirSign;    // reverse direction for each use, to avoid predictability    
         vector avoiddir = avoidbasedir*rotfromthreat;   // direction to run, away or sideways from threat
+        
         vector escapepnt = testavoiddir(pos,avoiddir*disttorun); // see if avoid dir is valid
         if (escapepnt != ZERO_VECTOR)               // can escape this way
-        {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping threat by moving from " + (string)pos + " to " + (string)escapepnt); // heading for here
-            debugMsg(DEBUG_MSG_WARN,"avoiddir: " + (string)avoiddir + " dirfromthreat: " + (string)dirfromthreat); // heading for here
-            assert(avoiddir * dirfromthreat < 0.01);   // must be AWAY from threat ***TEMP*** ***FAILING***
-            gAction = ACTION_AVOIDING;              // now avoiding
-            gNextAvoid = (gNextAvoid+1) % adlen;    // advance starting point cyclically
-            bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
-            return(1);                              // evading threat
+        {   if (distpointtoline(escapepnt, p, p + threatvel) > disttopath) // if improves over doing nothing
+            {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping threat by moving from " + (string)pos + " to " + (string)escapepnt); // heading for here
+                debugMsg(DEBUG_MSG_WARN,"avoiddir: " + (string)avoiddir + " dirfromthreat: " + (string)dirfromthreat); // heading for here
+                assert(avoiddir * dirfromthreat < 0.01);   // must be AWAY from threat ***TEMP*** ***FAILING***
+                gAction = ACTION_AVOIDING;              // now avoiding
+                gNextAvoid = (gNextAvoid+1) % adlen;    // advance starting point cyclically
+                bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
+                return(1);                              // evading threat
+            }
         }
     }
     debugMsg(DEBUG_MSG_WARN,"Unable to escape incoming threat.");
@@ -297,12 +298,13 @@ integer avoidthreat(key id)
 //  bhvDoRequestDone -- pathfinding is done. Analyze the result and start the next action.
 //
 bhvDoRequestDone(integer status, key hitobj)
-{   debugMsg(DEBUG_MSG_INFO, "Avoid update: " + (string) status + " obstacle: " + llKey2Name(hitobj));
+{   debugMsg(DEBUG_MSG_WARN, "Avoid update: " + (string) status + " obstacle: " + llKey2Name(hitobj));
     if (gAction == ACTION_IDLE)                 // why did we even get a completion?
     {   bhvSetPriority(PRIORITY_OFF);           // turn us off
         return;
     }
-    gAction = ACTION_IDLE;                      // idle, no path operation in progress
+    assert(gAction == ACTION_AVOIDING);         // we must be avoiding
+    gAction = ACTION_IDLE;                      // and now idle, no path operation in progress   
     if (status == PATHERRMAZEOK)                // success
     {   
         debugMsg(DEBUG_MSG_INFO,"Avoid move reached safe place, rechecking threat.");
@@ -311,20 +313,14 @@ bhvDoRequestDone(integer status, key hitobj)
     }
     //  Obstructed while escaping
     //  If blocked by something, deal with it.
-    if (gAction == ACTION_AVOIDING)  
-    {
-        debugMsg(DEBUG_MSG_WARN,"Avoid unsuccessful, status " + (string)status + " at " + (string)llGetRootPosition());
-        gAvoidTries++;
-        if (gAvoidTries >= MAX_AVOID_TRIES)
-        {   debugMsg(DEBUG_MSG_ERROR,"Unable to avoid threat after many tries at " + (string)llGetRootPosition()); // Either broken or being griefed
-            
-            bhvSetPriority(PRIORITY_OFF);                           // turn us off
-            return;
-        }                                                              
-        restartavoid();                                             // try again
-    }                                                               
-    //  Default - should not actually get here.
-    startavoid();                                                   // avoid top threat if any    
+    debugMsg(DEBUG_MSG_WARN,"Avoid unsuccessful, status " + (string)status + " at " + (string)llGetRootPosition());
+    gAvoidTries++;
+    if (gAvoidTries >= MAX_AVOID_TRIES)
+    {   debugMsg(DEBUG_MSG_ERROR,"Unable to avoid threat after many tries at " + (string)llGetRootPosition()); // Either broken or being griefed            
+        bhvSetPriority(PRIORITY_OFF);                               // turn us off
+        return;
+    }                                                              
+    restartavoid();                                                 // otherwise try again
 }
 
 //
@@ -341,13 +337,15 @@ startavoid()
 //  restartavoid -- start avoidance of threat
 //
 restartavoid()
-{   if (gAction != ACTION_IDLE) { return; }                         // already dealing with a threat
+{   assert(gAction == ACTION_IDLE);                                 // must be idle when called
+    ////if (gAction != ACTION_IDLE) { return; }                         // already dealing with a threat
     while (llGetListLength(gThreatList) > 0)                        // while threats to handle
     {   key id = llList2Key(gThreatList,0);                         // get oldest threat
         integer threatstatus = avoidthreat(id);                     // try to avoid threat
         if (threatstatus == 0) 
         {   gThreatList = llDeleteSubList(gThreatList,0,0);         // first threat no longer a threat, delete from to-do list
         } else if (threatstatus == 1) {
+            assert(gAction == ACTION_AVOIDING);                     // should be avoiding now
             return;                                                 // doing something about the threat already
         } else {                                                    // big trouble, no escape
             debugMsg(DEBUG_MSG_ERROR,"Unable to avoid threat by any path from " + (string)llGetRootPosition()); // Either broken or being griefed
