@@ -248,12 +248,15 @@ integer avoidthreat(key id)
     vector p = findclosestpoint(id, pos);           // find closest point on bounding box of object to pos
     vector vectothreat = p - pos;                   // direction to threat
     float disttothreat = llVecMag(vectothreat);     // distance to threat
+    if (disttothreat < 0.001) { return(-1); }       // threat is upon us, no escape, also avoid divide by zero.
     float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
     if (approachrate <= 0.01) { return(0); }        // not approaching
     float eta = disttothreat / approachrate;        // time until collision
     debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " at " + (string)p + " vec to threat " + (string)vectothreat + " ETA " + (string)eta + "s.");
     if (eta > MAX_AVOID_TIME) { return(0); }        // not approaching fast enough to need avoidance
     if (testprotectiveobstacle(pos,threatpos, id)) { return(0); } // protective obstacle between threat and target - no need to run
+    float disttopath =  distpointtoline(pos, p, p + threatvel); // distance from line threat is traveling
+    if (disttopath - gBhvWidth*0.5 > AVOID_DIST) { return(0); }    // will pass by at safe distance
     //  Definite threat - need to avoid.
     vector dirfromthreat = llVecNorm(<-vectothreat.x,-vectothreat.y,0.0>); // away from threat
     rotation rotfromthreat = RotFromXAxis(dirfromthreat); // rotation from X axis
