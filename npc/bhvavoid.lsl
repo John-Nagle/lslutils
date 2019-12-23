@@ -14,7 +14,6 @@
 
 integer ACTION_IDLE = 0;
 integer ACTION_AVOIDING = 1;                // trying to avoid something
-integer ACTION_CANNOTAVOID = 2;             // unable to avoid
 
 
 //  Configuration
@@ -215,7 +214,7 @@ integer evalthreat(key id)
     float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
     if (approachrate <= 0.01) { return(FALSE); }    // not approaching
     float eta = disttothreat / approachrate;        // time until collision
-    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " at " + (string)p + " ETA " + (string)eta + "s.");
+    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,3) + " at " + (string)p + " ETA " + (string)eta + "s.");
     gLastThreatTime = llGetUnixTime();              // record last threat time to decide when things are quiet
     if (eta > MAX_AVOID_TIME)                       // not a threat now, but step up polling
     {   float fastpoll = eta*0.1;                   // to 10% of ETA
@@ -238,7 +237,7 @@ integer evalthreat(key id)
 integer avoidthreat(key id)
 {
     list threat = llGetObjectDetails(id,[OBJECT_POS, OBJECT_ROT, OBJECT_VELOCITY, OBJECT_NAME]); // data about incoming threat
-    if (llGetListLength(threat) < 3) { return(0); } // no object, no threat
+    if (llGetListLength(threat) < 4) { return(0); } // no object, no threat
     vector threatpos = llList2Vector(threat,0);     // position
     rotation threatrot = llList2Rot(threat,1);      // rotation
     vector threatvel = llList2Vector(threat,2);     // velocity
@@ -250,7 +249,7 @@ integer avoidthreat(key id)
     float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
     if (approachrate <= 0.01) { return(0); }        // not approaching
     float eta = disttothreat / approachrate;        // time until collision
-    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,4) + " at " + (string)p + " vec to threat " + (string)vectothreat + " ETA " + (string)eta + "s.");
+    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,3) + " at " + (string)p + " vec to threat " + (string)vectothreat + " ETA " + (string)eta + "s.");
     if (eta > MAX_AVOID_TIME) { return(0); }        // not approaching fast enough to need avoidance
     if (testprotectiveobstacle(pos,threatpos, id)) { return(0); } // protective obstacle between threat and target - no need to run
     float disttopath =  distpointtoline(pos, p, p + threatvel); // distance from line threat is traveling
@@ -269,7 +268,7 @@ integer avoidthreat(key id)
     float disttorun = AVOID_DIST;                    // Run 4 meters to get out of the way of most vehicles 
     integer adlen = llGetListLength(AVOIDDIRS);     // length of avoid dir list
     integer i;
-    for (i = 0; i < adlen; adlen++)                 // try all dirs
+    for (i = 0; i < adlen; i++)                     // try all dirs
     {   integer dirix = (i + gNextAvoid) % adlen;   // starting after one used last time
         vector avoidbasedir = llList2Vector(AVOIDDIRS,dirix); // direction in space before rotation
         avoidbasedir.y = avoidbasedir.y * (float)gAvoidDirSign;    // reverse direction for each use, to avoid predictability    
@@ -292,7 +291,16 @@ integer avoidthreat(key id)
     bhvSay("STOP!");
     ////llPlaySound(SCREAM_SOUND,1.0);                  // scream, that's all we can do
     return(-1);                                     // incoming threat and cannot avoid
-} 
+}
+//
+//  doneavoid -- done with all requests, give control back to scheduler
+//
+doneavoid()
+{   debugMsg(DEBUG_MSG_WARN,"Avoiding done.");      // All done with avoids for now
+    assert(gAction == ACTION_IDLE);                 // must not have something running
+    gThreatList = [];                               // clear to-do list.           
+    bhvSetPriority(PRIORITY_OFF);                   // turn us off
+}
 
 //
 //  bhvDoRequestDone -- pathfinding is done. Analyze the result and start the next action.
@@ -300,7 +308,7 @@ integer avoidthreat(key id)
 bhvDoRequestDone(integer status, key hitobj)
 {   debugMsg(DEBUG_MSG_WARN, "Avoid update: " + (string) status + " obstacle: " + llKey2Name(hitobj));
     if (gAction == ACTION_IDLE)                 // why did we even get a completion?
-    {   bhvSetPriority(PRIORITY_OFF);           // turn us off
+    {   restartavoid();                         // see if anything needs doing
         return;
     }
     assert(gAction == ACTION_AVOIDING);         // we must be avoiding
@@ -317,10 +325,10 @@ bhvDoRequestDone(integer status, key hitobj)
     gAvoidTries++;
     if (gAvoidTries >= MAX_AVOID_TRIES)
     {   debugMsg(DEBUG_MSG_ERROR,"Unable to avoid threat after many tries at " + (string)llGetRootPosition()); // Either broken or being griefed            
-        bhvSetPriority(PRIORITY_OFF);                               // turn us off
+        doneavoid();                            // turn us off
         return;
     }                                                              
-    restartavoid();                                                 // otherwise try again
+    restartavoid();                             // otherwise try again
 }
 
 //
@@ -338,7 +346,7 @@ startavoid()
 //
 restartavoid()
 {   assert(gAction == ACTION_IDLE);                                 // must be idle when called
-    ////if (gAction != ACTION_IDLE) { return; }                         // already dealing with a threat
+    debugMsg(DEBUG_MSG_WARN,(string)llGetListLength(gThreatList) + " threats queued"); // ***TEMP***
     while (llGetListLength(gThreatList) > 0)                        // while threats to handle
     {   key id = llList2Key(gThreatList,0);                         // get oldest threat
         integer threatstatus = avoidthreat(id);                     // try to avoid threat
@@ -349,13 +357,14 @@ restartavoid()
             return;                                                 // doing something about the threat already
         } else {                                                    // big trouble, no escape
             debugMsg(DEBUG_MSG_ERROR,"Unable to avoid threat by any path from " + (string)llGetRootPosition()); // Either broken or being griefed
-            bhvSetPriority(PRIORITY_OFF);                           // give up. Stay put and wait for threat to abate
+            gAction = ACTION_IDLE; 
+            doneavoid();                                            // give up 
             return;  
         }             
     }
     //  No threat, give up control
     gAction = ACTION_IDLE;                                          // now idle
-    bhvSetPriority(PRIORITY_OFF);                                   // done, give up control   
+    doneavoid();                                                    // done, give up control   
 }
 //
 //  requestavoid -- request to avoid something, from avatar monitoring task.
