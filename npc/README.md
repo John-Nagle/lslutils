@@ -60,13 +60,10 @@ current position and try to follow the new plan.
 ## Path planning system usage
 ### Calls
 ### pathInit
-    pathInit(float width, float height, integer chartype, integer msglev)
+    pathInit(float width, float height, integer chartype)
     
 Sets up the path planning system. **width** and **height** are the dimensions of the character. **chartype**
 is the pathfinding type of the character, usually **CHARACTER_TYPE_A** for humanoid forms taller than they are wide.
-The **msglev** parameter turns on debugging information. Values are PATH_MSG_ERROR (which is zero). 
-PATH_MSG_WARN, PATH_MSG_INFO, and PATH_MSG_DEBUG, which turn on increasing levels of debug information. 
-Just put a zero there for normal operation.
 
 The width and height define a vertical cylinder
 around the character's center. The character's collision model must fit within cylinder. If it does not,
