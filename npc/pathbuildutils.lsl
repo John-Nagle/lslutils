@@ -171,7 +171,7 @@ integer pathpointinsegment(vector p, vector p0, vector p1)
     if (enddot < 0 || enddot > alldot) { return(FALSE); }                // outside endpoints
     return(distpointtoline(p,p0,p1) < PATHPOINTONSEGDIST);              // point must be near infinite line
 }
- 
+#ifdef OBSOLETE  // using closestpointtoline now
 //
 //  distpointtoline -- point to line distance, infinite line
 //
@@ -191,6 +191,47 @@ float distpointtoline(vector p, vector p0, vector p1)
         pb = p0;                        // zero length line case
      }
      return (llVecMag(p - pb));             // return distance
+}
+#endif // OBSOLETE
+
+//
+//  closestpointonline -- closest point on a line, infinite line
+//
+//  Formula from geomalgorithms.com
+//
+vector closestpointonline(vector p, vector p0, vector p1)
+{
+     vector v = p1 - p0;                // the line
+     vector w = p - p0;                 
+     float c1 = w*v;
+     float c2 = v*v;                    // length squared
+     vector pb;
+     if (c2 > 0.00001)                  // nonzero line length
+     {  float b = c1 / c2;              // would divide by 0 for null line
+        pb = p0 + b * v;                // closest point on line to p
+     } else {
+        pb = p0;                        // zero length line case
+     }
+     return (pb);                       // return distance
+}
+//
+//  distpointtoline -- point to line distance, infinite line, nonnegative
+//
+#define distpointtoline(p, p0, p1) (llVecMag((p) - closestpointonline((p),(p0),(p1))))
+//
+//  distpointtolinexysigned  -- signed distance from point to line in XY plane
+//
+//  ***UNTESTED***
+//
+float distpointtolinexysigned(vector p, vector p0, vector p1)
+{   p.z = 0;
+    p0.z = 0;
+    p1.z = 0;
+    vector pb = closestpointonline(p,p0,p1);        // closest point on line
+    float dist = llVecMag(pb-p);                    // unsigned distance
+    vector pbcross = (pb-p) % (p1-p0);              // cross product, for direction
+    if (pbcross.z < 0) { dist = -dist; }            // flip sign if on right
+    return(dist);                                   // return signed distance    
 }
 
 //

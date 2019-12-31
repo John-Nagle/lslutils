@@ -85,9 +85,8 @@ setsensortime(float secs)
 //  Simple version - closest point is always a corner. 
 //  Not going to implement GJK algorithm in LSL for this.
 //
-vector findclosestpoint(key id, vector pos)
-{   list bb = pathGetBoundingBoxWorld(id);      // get bounding box in world coords
-    vector bblower = llList2Vector(bb,0);       // these define an axis aligned box with 8 corners.
+vector findclosestpoint(key id, vector pos, list bb)
+{   vector bblower = llList2Vector(bb,0);       // these define an axis aligned box with 8 corners.
     vector bbupper = llList2Vector(bb,1);
     //  Find the corner closest to pos.
     vector closestpt = bblower;
@@ -96,6 +95,142 @@ vector findclosestpoint(key id, vector pos)
     if (llFabs(bbupper.z - pos.z) < llFabs(bblower.x - pos.z)) { closestpt.z = bbupper.z; }
     return(closestpt);
 }
+////#ifdef NOTYET // new algorithm for deciding which way to evade ***UNTESTED***
+//
+//  evadelims  -- get distance limits for evasion, left and right side of velocity vector
+//
+//  This projects the bounding box of the threat along the threat's movement vector,
+//  and returns the distance between the target and the bounding box on each side.
+//
+//  If leftlim > gWidth + safemargin, collision possible on left. Evade further left.
+//  if righlim < -(gWidth + safemargin), collision possible on right. Evade further right.
+//  If a collision is possible on both sides, evade in the direction that has the smallest
+//  magnitude. That's the shortest distance to escape.
+//
+//  Returns [leftlim, rightlim]
+//
+list evadelims(vector targetpos, vector threatpos, vector threatvel, list bbworld)
+{   float leftlim = INFINITY;
+    float rightlim = -INFINITY;
+    integer ix;
+    integer iy;
+    for (ix=0; ix<2; ix++)                                              // try all bounding box points
+    {   for (iy=0; iy<2; iy++)
+        {   vector vx = llList2Vector(bbworld,ix);                    // both X values
+            vector vy = llList2Vector(bbworld,iy);                    // both Y values
+            vector bbpnt = <vx.x,vy.y,0>;   // a bounding box point
+            float signeddistfromline = distpointtolinexysigned(targetpos, bbpnt, bbpnt+threatvel); // dist between target and projected threat
+            if (signeddistfromline < leftlim) { leftlim = signeddistfromline; } // update bounds of projected threat
+            if (signeddistfromline > rightlim) { rightlim = signeddistfromline; }
+        }
+    }
+    //  Z check so as not to evade low flying aircraft, overpasses, other floors, etc.
+    {
+        vector bblo = llList2Vector(bbworld,0);
+        vector bbhi = llList2Vector(bbworld,1);
+        float HEIGHTSAFETYFACTOR = 2.0;
+        if ((targetpos.z + gBhvHeight*HEIGHTSAFETYFACTOR > bbhi.z) || (targetpos.z - gBhvHeight*HEIGHTSAFETYFACTOR < bblo.z))
+        {   debugMsg(DEBUG_MSG_WARN,"No threat, big altitude difference");
+            return([INFINITY,-INFINITY]);
+        }       
+    }
+    llOwnerSay("evade lims: " + llDumpList2String([leftlim,rightlim],",")); // ***TEMP***
+    return([leftlim, rightlim]);   
+}
+//
+//  evadedir -- pick direction to evade to, or ZERO_VECTOR if fail
+//
+vector evadedir(vector targetpos, vector threatpos, vector threatvel, list bbworld)
+{   threatvel.z = 0;                                // assume move in XY plane
+    list lims = evadelims(targetpos, threatpos, threatvel, bbworld);    // find evasion limits
+    float leftlim = llList2Float(lims,0);           // get left and right lim from result
+    float rightlim = llList2Float(lims,1);
+    float evade = 0.0;                              // which way to evade, >0 is left.
+    float safedist = gWidth*0.5 + AVOID_DIST;
+    //  Ugly way to get evade dir. Clean this up.
+    if (leftlim > safedist) 
+    {   if (rightlim < -safedist) 
+        {   if (-rightlim > leftlim)
+            {   evade = rightlim; }
+            else
+            {   evade = leftlim; }
+        } else {
+            evade = leftlim; 
+        }
+   } else if (rightlim < -safedist)
+   {    evade = leftlim; }
+   if (evade == 0.0) { return(ZERO_VECTOR); }   // no need to evade
+   threatvel.z = 0;
+   if (llVecMag(threatvel) < 0.001) { return(ZERO_VECTOR); } // not moving, and avoid null unit vector
+   threatvel = llVecNorm(threatvel);            // vel, normalized 
+   vector crossdir = threatvel % <0,0,1>;       // crosswise dir
+   if (evade < 0) { crossdir = -crossdir; }     // preferred evade dir
+   return(crossdir);   
+}
+
+//
+//  avoidthreat -- avoid incoming object
+//
+//  Get direction of incoming object and move out of its way.
+//  Must work for vehicles which are longer than they are wide.
+//
+//  Returns 0 if no threat, 1 if threat being avoided, -1 if no escape
+//
+integer avoidthreat(key id)
+{
+    list threat = llGetObjectDetails(id,[OBJECT_POS, OBJECT_ROT, OBJECT_VELOCITY, OBJECT_NAME]); // data about incoming threat
+    if (llGetListLength(threat) < 4) { return(0); } // no object, no threat
+    vector threatpos = llList2Vector(threat,0);     // position
+    rotation threatrot = llList2Rot(threat,1);      // rotation
+    vector threatvel = llList2Vector(threat,2);     // velocity
+    vector targetpos = llGetRootPosition();         // our position
+    list bb = pathGetBoundingBoxWorld(id);          // find bounding box in world coords
+    vector p = findclosestpoint(id, targetpos, bb); // find closest point on bounding box of object to pos
+    vector vectothreat = p - targetpos;             // direction to threat
+    float disttothreat = llVecMag(vectothreat);     // distance to threat
+    if (disttothreat < 0.001) { return(-1); }       // threat is upon us, no escape, also avoid divide by zero.
+    float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
+    if (approachrate <= 0.01) { return(0); }        // not approaching
+    float eta = disttothreat / approachrate;        // time until collision
+    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,3) + " at " + (string)p + " vec to threat " + (string)vectothreat + " ETA " + (string)eta + "s.");
+    if (eta > MAX_AVOID_TIME) { return(0); }        // not approaching fast enough to need avoidance
+    if (testprotectiveobstacle(targetpos, threatpos, id)) { return(0); } // protective obstacle between threat and target - no need to run
+    float disttopath =  distpointtoline(targetpos, p, p + threatvel); // distance from line threat is traveling
+    if (disttopath - gBhvWidth*0.5 > AVOID_DIST) { return(0); }    // will pass by at safe distance
+    //  Check which way to avoid
+    vector evadevec = evadedir(targetpos, threatpos, threatvel, bb); // get which way to best evade
+    if (evadevec == ZERO_VECTOR) { return(0); }     // no need to avoid
+    //  Definite threat - need to avoid.
+    //  Decide which direction to run.
+    //  Prefer to run crosswise to direction of threat, but will 
+    //  consider running away at 45 degrees or straight ahead
+    float disttorun = AVOID_DIST;                    // Run 4 meters to get out of the way of most vehicles 
+    integer i;
+    integer DIRTRIES = 3;                           // try 3 dirs, 0, 45 degrees, 90 degrees
+    vector threatvelnorm = llVecNorm(threatvel);    // direction threat is traveling
+    for (i = 0; i < DIRTRIES; i++)                  // try several directions
+    {   float fract = (float)((i+gNextAvoid) % DIRTRIES) / (float)(DIRTRIES-1); // fraction for weighting
+        vector avoiddir = llVecNorm(evadevec*fract + threatvelnorm*(1.0-fract));
+        vector escapepnt = testavoiddir(targetpos,avoiddir*disttorun); // see if avoid dir is valid
+        if (escapepnt != ZERO_VECTOR)               // can escape this way
+        {   if (distpointtoline(escapepnt, p, p + threatvel) > disttopath) // if improves over doing nothing
+            {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping threat by moving from " + (string)targetpos + " to " + (string)escapepnt); // heading for here
+                debugMsg(DEBUG_MSG_WARN,"avoiddir: " + (string)avoiddir + " fract: " + (string)fract); // heading for here
+                ////assert(avoiddir * dirfromthreat < 0.01);   // must be AWAY from threat ***TEMP*** ***FAILING***
+                gAction = ACTION_AVOIDING;              // now avoiding
+                gNextAvoid = (gNextAvoid+1) % DIRTRIES;    // advance starting point cyclically
+                bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
+                return(1);                              // evading threat
+            }
+        }
+    }
+    debugMsg(DEBUG_MSG_WARN,"Unable to escape incoming threat.");
+    bhvSay("STOP!");
+    ////llPlaySound(SCREAM_SOUND,1.0);                  // scream, that's all we can do
+    return(-1);                                     // incoming threat and cannot avoid
+}
+
+////#endif // NOTYET
 
 float pathMin(float a, float b) { if (a<b) { return(a); } else { return(b); }} // usual min and max, avoiding name clashes
 float pathMax(float a, float b) { if (a>b) { return(a); } else { return(b); }}
@@ -193,7 +328,7 @@ integer testprotectiveobstacle(vector targetpos, vector threatpos, key threatid)
 }
 
 //
-//  evaluatethreat -- is incoming object a threat?
+//  evaluatethreat -- is incoming object a threat?  Quick check
 //
 //  Get direction of incoming object and move out of its way.
 //  Must work for vehicles which are longer than they are wide.
@@ -207,9 +342,10 @@ integer evalthreat(key id)
     vector threatpos = llList2Vector(threat,0);     // position
     rotation threatrot = llList2Rot(threat,1);      // rotation
     vector threatvel = llList2Vector(threat,2);     // velocity
-    vector pos = llGetRootPosition();               // our position
-    vector p = findclosestpoint(id, pos);           // find closest point on bounding box of object to pos
-    vector vectothreat = p - pos;                   // direction to threat
+    vector targetpos = llGetRootPosition();         // our position
+    list bb = pathGetBoundingBoxWorld(id);          // find bounding box in world coords
+    vector p = findclosestpoint(id, targetpos, bb); // find closest point on bounding box of object to pos
+    vector vectothreat = p - targetpos;             // direction to threat
     float disttothreat = llVecMag(vectothreat);     // distance to threat
     float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
     if (approachrate <= 0.01) { return(FALSE); }    // not approaching
@@ -225,7 +361,7 @@ integer evalthreat(key id)
     return(TRUE);
 }
 
-
+#ifdef OBSOLETE
 //
 //  avoidthreat -- avoid incoming object
 //
@@ -242,7 +378,8 @@ integer avoidthreat(key id)
     rotation threatrot = llList2Rot(threat,1);      // rotation
     vector threatvel = llList2Vector(threat,2);     // velocity
     vector pos = llGetRootPosition();               // our position
-    vector p = findclosestpoint(id, pos);           // find closest point on bounding box of object to pos
+    list bb = pathGetBoundingBoxWorld(id);          // find bounding box in world coords
+    vector p = findclosestpoint(id, pos,bb);        // find closest point on bounding box of object to pos
     vector vectothreat = p - pos;                   // direction to threat
     float disttothreat = llVecMag(vectothreat);     // distance to threat
     if (disttothreat < 0.001) { return(-1); }       // threat is upon us, no escape, also avoid divide by zero.
@@ -292,6 +429,7 @@ integer avoidthreat(key id)
     ////llPlaySound(SCREAM_SOUND,1.0);                  // scream, that's all we can do
     return(-1);                                     // incoming threat and cannot avoid
 }
+#endif // OBSOLETE
 //
 //  doneavoid -- done with all requests, give control back to scheduler
 //
