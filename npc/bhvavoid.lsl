@@ -154,15 +154,17 @@ vector evadedir(vector targetpos, vector threatpos, vector threatvel, list bbwor
     {   llOwnerSay("No collision predicted.");
         return(ZERO_VECTOR);
     }
-    //  OK, collision possible. Which way do we evade? Shortest move dist.
-    float evade = leftlim + safedist;               // assume evade to right
-    if (leftlim < -rightlim)                        // if shorter escape to left 
-    {   evade = rightlim - safedist; }              // evade to left
+    //  OK, collision possible. Which way do we evade?  Shortest move that will get us safe.
+    //  So, don't cross in front of approaching vehicle.
+    float evade = leftlim - safedist;               // assume evade to left
+    if (-leftlim > rightlim)                        // if shorter escape to right ????? ***NOT SURE ABOUT THIS***
+    {   evade = rightlim + safedist; }              // evade to right
     if (evade == 0.0) { return(ZERO_VECTOR); }      // no need to evade
     threatvel.z = 0;
     if (llVecMag(threatvel) < 0.001) { return(ZERO_VECTOR); } // not moving, and avoid null unit vector
     threatvel = llVecNorm(threatvel);               // vel, normalized 
     vector crossdir = threatvel % <0,0,1>;          // crosswise dir
+    llOwnerSay("evade: " + (string)(crossdir*evade) + " threatvel: " + (string)threatvel);   // ***TEMP***
     return(crossdir*evade);                         // evade this way by this much   
 }
 
@@ -211,7 +213,7 @@ integer avoidthreat(key id)
     vector threatvelnorm = llVecNorm(threatvel);    // direction threat is traveling
     for (i = 0; i < DIRTRIES; i++)                  // try several directions
     {   float fract = (float)((i+gNextAvoid) % DIRTRIES) / (float)(DIRTRIES-1); // fraction for weighting
-        vector avoiddir = llVecNorm(evadevec*fract + threatvelnorm*(1.0-fract));
+        vector avoiddir = llVecNorm(evadevec*(1.0-fract) + threatvelnorm*(fract));
         vector escapepnt = testavoiddir(targetpos,avoiddir*disttorun); // see if avoid dir is valid
         if (escapepnt != ZERO_VECTOR)               // can escape this way
         {   if (distpointtoline(escapepnt, p, p + threatvel) > disttopath) // if improves over doing nothing
