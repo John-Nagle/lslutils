@@ -146,6 +146,7 @@ pathBegin(key target, vector endpos, float stopshort, integer dogged, float spee
     gPathcallLastCommand = llList2Json(JSON_OBJECT,["request","pathbegin","requestid",gPathcallRequestId,
         "target",target, "goal",endpos,"stopshort",stopshort,"dogged",dogged, "speed",speed]); // save for diagnostic
     llMessageLinked(LINK_THIS, PATHSTARTREQUEST,gPathcallLastCommand,"");
+    gPathcallStarttime = llGetUnixTime();                               // start the stall timer
 }
 
 //
