@@ -211,9 +211,12 @@ integer avoidthreat(key id)
     float disttorun = llVecMag(evadevec);           // how far to evade 
     integer i;
     vector threatvelnorm = llVecNorm(threatvel);    // direction threat is traveling
+    vector evadevecnorm = llVecNorm(evadevec);      // ideal direction to evade
     for (i = 0; i < DIRTRIES; i++)                  // try several directions
     {   float fract = (float)((i+gNextAvoid) % DIRTRIES) / (float)(DIRTRIES-1); // fraction for weighting
-        vector avoiddir = llVecNorm(evadevec*(1.0-fract) + threatvelnorm*(fract));
+        float evadeangle = fract*PI;                     // fraction of a half circle
+        ////vector avoiddir = llVecNorm(evadevec*(1.0-fract) + threatvelnorm*(fract));
+        vector avoiddir = llCos(evadeangle)*evadevecnorm + llSin(evadeangle)*threatvelnorm; // Try across half circle starting at avoiddir
         vector escapepnt = testavoiddir(targetpos,avoiddir*disttorun); // see if avoid dir is valid
         if (escapepnt != ZERO_VECTOR)               // can escape this way
         {   if (distpointtoline(escapepnt, p, p + threatvel) > disttopath) // if improves over doing nothing
