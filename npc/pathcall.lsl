@@ -17,12 +17,19 @@
 #define PATHCALLSTALLTIME 300 ////120                                   // if stalled for 120 seconds, reset everything 
 //
 //  Globals
-
+//
 integer gPathcallReset = FALSE;                                 // have we reset the system since startup?
 integer gPathcallStarttime = 0;                                 // time last command started
 integer gPathcallInitialized = FALSE;                           // not initialized yet
 string  gPathcallLastCommand = "None";                          // last JSON sent to start
 integer gPathcallRequestId = 0;                                 // path serial number
+//
+//  State used after a restart and reinit
+float   gPathcallWidth;                                         // dimensions and type of character
+float   gPathcallHeight;
+integer gPathcallChartype;
+float   gPathcallTurnspeed = 1.57079;                           // 90*DEG_TO_RAD default if not set, 90 degrees per second
+integer gPathcallVerbose = FALSE;                               // not in verbose mode by default
 
 
 
@@ -46,6 +53,10 @@ pathInit(float width, float height, integer chartype)
     {   pathmasterreset();                          // reset everybody
         gPathcallReset = TRUE; 
     } // everybody has been reset
+    //  Save params for path system crash recovery
+    gPathcallWidth = width;                         // dimensions of character
+    gPathcallHeight = height;
+    gPathcallChartype = chartype;                   // its character type
     //  Broadcast params to everybody.
     llMessageLinked(LINK_THIS,PATHPARAMSINIT,llList2Json(JSON_OBJECT,["request","pathparams",
         "width",width, "height",height,"chartype",chartype]),"");
@@ -63,7 +74,8 @@ pathInit(float width, float height, integer chartype)
 //  So characters slow down when turning corners.
 //
 pathTurnspeed(float turnspeed)
-{   llMessageLinked(LINK_THIS, PATHSTARTREQUEST, llList2Json(JSON_OBJECT,["request","pathspeed",
+{   gPathcallTurnspeed = turnspeed;                 // save for path system crash recovery
+    llMessageLinked(LINK_THIS, PATHSTARTREQUEST, llList2Json(JSON_OBJECT,["request","pathspeed",
         "turnspeed",turnspeed]),"");
 }
 
@@ -90,6 +102,11 @@ pathTick()
     {   //  TROUBLE - the system is stalled.
         debugMsg(DEBUG_MSG_ERROR, "Stalled and reset. Last command: " + gPathcallLastCommand); // tell owner
         pathmasterreset();                          // reset other scripts
+        llSleep(10.0);                              // wait for reset
+        //  Rebroadcast params to everybody. These were lost during the restart.
+        llMessageLinked(LINK_THIS,PATHPARAMSINIT,llList2Json(JSON_OBJECT,["request","pathparams",
+            "width",gPathcallWidth, "height",gPathcallHeight,"gPathcallChartype",gPathcallChartype]),"");
+        debugMsgLevelBroadcast(gDebugMsgLevel, gPathcallVerbose, FALSE);// send debug params to path system
         pathUpdateCallback(PATHERRMAZETIMEOUT, NULL_KEY);       // report problem to caller
     }
 }
