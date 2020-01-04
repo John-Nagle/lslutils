@@ -135,7 +135,7 @@ bhvmsglevdialog(key toucherid)
     {   buttons += "Verbose ☐";}
     buttons += "Reset";                         // fill line and add reset button
     gBhvDialogTime = llGetUnixTime();           // timestamp for dialog removal
-    llOwnerSay("Popping up dialog box");    // ***TEMP***
+    ////llOwnerSay("Popping up dialog box");    // ***TEMP***
     llDialog(toucherid, BHVDIALOGINFO, buttons, BHVDIALOGCHANNEL);
 }
 #endif // BHVDEBUG
