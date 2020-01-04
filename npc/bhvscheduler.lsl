@@ -138,6 +138,7 @@ bhvmsglevdialog(key toucherid)
     llOwnerSay("Popping up dialog box");    // ***TEMP***
     llDialog(toucherid, BHVDIALOGINFO, buttons, BHVDIALOGCHANNEL);
 }
+#endif // BHVDEBUG
 //
 //  bhvbroadcastmsglev -- send message level to everybody
 //
@@ -147,8 +148,6 @@ bhvbroadcastmsglev(integer msglev, integer verbose, integer dumplog)
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","msglev","msglev",msglev]),""); // tell everybody
     debugMsgLevelBroadcast(msglev, verbose, dumplog);             // send to path system
 }
-
-#endif // BHVDEBUG
 //
 //  init
 //
