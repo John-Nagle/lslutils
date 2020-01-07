@@ -165,11 +165,11 @@ init()
     vector scale = llGetScale();                                    // scale of character, usually a dummy box
     gHeight = scale.z;                                              // height is scale
     gWidth = llVecMag(<scale.x,scale.y,0.0>);                       // diameter of enclosing circle
-    llOwnerSay("Character height: " + (string)gHeight + "m. Width: " + (string)gWidth + "m.");
+    debugMsg(DEBUG_MSG_WARN,"Resetting. character height: " + (string)gHeight + "m. Width: " + (string)gWidth + "m.");
     pathInit(gWidth, gHeight, CHARACTER_TYPE_A);                    // set up pathfinding system
     pathTurnspeed(CHARACTER_TURNSPEED_DEG*DEG_TO_RAD);              // how fast to turn, rarely changed
     //  Reset all behaviors
-    llOwnerSay("Resetting all behaviors.");  // ***TEMP***
+    ////llOwnerSay("Resetting all behaviors.");  // ***TEMP***
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","reset"]),"");    // reset all behaviors
     //  Display name of character
     string name = llList2String(llGetObjectDetails(getroot(llGetKey()),[OBJECT_NAME]),0);   // name of root prim
@@ -390,7 +390,7 @@ default
 #endif // BHVDEBUG
     }
     link_message(integer sender_num, integer num, string jsn, key id)
-    {   debugMsg(DEBUG_MSG_WARN, jsn);                        // ***TEMP*** dump incoming JSON
+    {   ////debugMsg(DEBUG_MSG_WARN, jsn);                        // ***TEMP*** dump incoming JSON
         if (num == BHVMSGTOSCH)                    // one of our behaviors wants to talk to us
         {
             string reqtype = llJsonGetValue(jsn,["request"]);   // get request type
