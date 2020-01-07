@@ -34,6 +34,7 @@ integer gPathprepPathid;
 integer gPathprepLastMovedPathid = 0;                       // last pathid on which character moved
 integer gPathprepLastMovedTime = 0;                         // last time moved
 vector  gPathprepLastMovedPos = ZERO_VECTOR;                // last position seen moved
+vector  gPathprepPrevPos = ZERO_VECTOR;                     // previous position, for navmesh stuck check
 //
 //  pathstuck -- are we stuck?
 //
@@ -41,7 +42,8 @@ vector  gPathprepLastMovedPos = ZERO_VECTOR;                // last position see
 //
 integer pathstuck(vector pos)
 {   if (llVecMag(pos-gPathprepLastMovedPos) > 0.10)         // if we moved
-    {   gPathprepLastMovedPos = pos;                        // record good pos
+    {   gPathprepPrevPos = gPathprepLastMovedPos;           // previous place we were good at
+        gPathprepLastMovedPos = pos;                        // record good pos
         gPathprepLastMovedTime = llGetUnixTime();           // time
         gPathprepLastMovedPathid = gPathprepPathid;         // path sequence number
         return(FALSE);                                      // not stalled
@@ -184,7 +186,19 @@ default
             pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(pts,-1) + ", "+ (string)len + " points.");  // dump list for debug
             integer status = llList2Integer(pts,-1);                // last item is status
             if (status != 0 || len < 3)            // if static path fail or we're already at destination
-            {   if (llListFindList(PATHRECOVERABLES, [status]) >= 0) 
+            {   //  Bug check - sometimes llGetStaticPath returns PU_FAILURE_UNREACHABLE when the problem is that the current position is inescapable.
+                //  This tends to happen very close to vertical objects like railings.
+                //  This gets treated as a PU_FAILURE_INVALID_START, which causes a recover cycle to the last good point.
+                if (status == PU_FAILURE_UNREACHABLE && gPathprepPrevPos != ZERO_VECTOR)    // if special case for false bad destination bug in llGetStaticPath
+                {   //  Can we go backwards to the previous point? If not, it's a bad navmesh point and we must recover.
+                    pts = pathtrimmedstaticpath(startpos, gPathprepPrevPos, 0.0, gPathWidth + PATHSTATICTOL); // compute path back to previous good point
+                    integer statusback = llList2Integer(pts,-1);
+                    if (statusback != 0)                                // can't go back to previous point. We are must recover
+                    {   pathMsg(PATH_MSG_ERROR, "False unreachable error from get static path at " + (string)startpos + " Reverse status: " + (string)statusback); // ***TEMP*** make warning after debugging
+                        status = PU_FAILURE_INVALID_START;              // change status to bad starting point
+                    }           
+                }
+                if (llListFindList(PATHRECOVERABLES, [status]) >= 0) 
                 {   pathMsg(PATH_MSG_WARN,"Recovering from static path error " + (string)status + " at " + (string)startpos);
                     pathmoverecover(gPathprepPathid);
                     return;
