@@ -194,7 +194,7 @@ default
                     pts = pathtrimmedstaticpath(startpos, gPathprepPrevPos, 0.0, gPathWidth + PATHSTATICTOL); // compute path back to previous good point
                     integer statusback = llList2Integer(pts,-1);
                     if (statusback != 0)                                // can't go back to previous point. We are must recover
-                    {   pathMsg(PATH_MSG_ERROR, "False unreachable error from get static path at " + (string)startpos + " Reverse status: " + (string)statusback); // ***TEMP*** make warning after debugging
+                    {   pathMsg(PATH_MSG_ERROR, "Bogus static unreach err at " + (string)startpos + " Rev. stat: " + (string)statusback); // ***TEMP*** make warning after debugging
                         status = PU_FAILURE_INVALID_START;              // change status to bad starting point
                     }           
                 }
