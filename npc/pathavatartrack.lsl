@@ -25,13 +25,19 @@
 #define MIN_MOVE_FOR_RETRY (5.0)                // (m) minimum avatar move to trigger a retry
 #define MIN_MEMORY (3000)                       // (bytes) trouble if memory this low
 #define MAX_VERT_DIST_TO_AVATAR (256.0)         // (b) Further than this and we assume an unreachable skybox
+#define MIN_TIME_FOR_RETRY (15.0)               // (s) Min time for exponential backofff
+#define EXPONENTIAL_BACKOFF (2.0)               // (no units) scale for exponential backoff
 
 //
 //  Targets in the sim.
 //
 list gDoneTargets = [];                         // we have said hello
+
+//  These all have the same subscript
 list gDeferredTargets = [];                     // trouble with these, wait and retry
 list gDeferredPositions = [];                   // don't retry until target moves
+list gDeferredTimes = [];                       // time of next attempt
+list gDeferredIntervals = [];                   // interval for time backoff
 
 //
 //  startup - initialization
@@ -61,6 +67,8 @@ avatarcheck()
     list newDoneTargets;
     list newDeferredTargets;
     list newDeferredPositions;
+    list newDeferredTimes;
+    list newDeferredIntervals;
     //  Get all agents on same owner parcels in region.
     //  Don't do agent search if tight on memory.
     //  This will clear lists and start all avatar actions over, so
@@ -69,7 +77,7 @@ avatarcheck()
     if (!pathneedmem(MIN_MEMORY))                      // if not tight on memory
     {   agents = llGetAgentList(AGENT_LIST_PARCEL_OWNER,[]);    // get all agents in sim  
     } else {
-        pathMsg(PATH_MSG_WARN,"Out of memory, clearing avatar list.");  // unlikely, but good backup
+        debugMsg(DEBUG_MSG_WARN,"Out of memory, clearing avatar list.");  // unlikely, but good backup
     }
     integer num_detected = llGetListLength(agents);
     if (num_detected == 0)                          // nobody around
@@ -81,6 +89,7 @@ avatarcheck()
     }
     //  Avatars are in the sim.
     vector pos = llGetPos();                                // our location
+    integer now = llGetUnixTime();                          // time now
     integer i;
     for (i=0; i < num_detected; i++)        
     {   key id = llList2Key(agents,i);                      // agent to examine
@@ -96,11 +105,17 @@ avatarcheck()
                 {   //  Avatar on deferred problem list. Skip if deferred and hasn't moved.
                     vector tpos = target_pos(id);           // position of target
                     vector oldtpos = llList2Vector(gDeferredPositions, deferix); // position when deferred
-                    if (llVecMag(oldtpos - tpos) < MIN_MOVE_FOR_RETRY) // if avi has not moved since deferral
-                    {   pathMsg(PATH_MSG_INFO,"Do not retry " + llKey2Name(id) + " at " + (string)tpos + " was at " + (string)oldtpos); // ***TEMP***       
+                    integer oldtime = llList2Integer(gDeferredTimes, deferix);   // time of next retry even if no move
+                    integer oldinterval = llList2Integer(gDeferredIntervals, deferix); // time of next retry
+                    if (llVecMag(oldtpos - tpos) < MIN_MOVE_FOR_RETRY && oldtime > now) // if avi has not moved since deferral and no timeout yet
+                    {   debugMsg(DEBUG_MSG_INFO,"Do not retry " + llKey2Name(id) + " at " + (string)tpos + " was at " + (string)oldtpos); // ***TEMP***
+                        integer interval = (integer)(oldinterval*EXPONENTIAL_BACKOFF); // increase interval for next time       
                         newDeferredTargets += id;           // keep on deferred list
                         newDeferredPositions += oldtpos;    // along with its position at defer
+                        newDeferredTimes += (now + interval); // next retry time
+                        newDeferredIntervals += (interval);  // increase interval
                     } else {
+                        debugMsg(DEBUG_MSG_WARN, "Can now retry " + llKey2Name(id) + " after " + (string)(now-oldtime) + "s.");    // ***TEMP***
                         deferix = -1;                       // do not defer any more
                     }
                 }           
@@ -117,7 +132,9 @@ avatarcheck()
     //  Update all lists to new values. 
     gDoneTargets = newDoneTargets;              // only keep greeted targets still in range
     gDeferredTargets = newDeferredTargets;
-    gDeferredPositions = newDeferredPositions;  
+    gDeferredPositions = newDeferredPositions;
+    gDeferredTimes = newDeferredTimes;
+    gDeferredIntervals = newDeferredIntervals;  
     if (target != NULL_KEY)                     // if there is an avatar to be dealt with
     {
         //  New target found. Go to it.
@@ -139,6 +156,8 @@ avatardone(key id)
     //  Remove from deferred list. Shouldn't be on there anyway.
     gDeferredTargets = llDeleteSubList(gDeferredTargets, targetix, targetix);
     gDeferredPositions = llDeleteSubList(gDeferredPositions, targetix, targetix);
+    gDeferredTimes = llDeleteSubList(gDeferredTimes, targetix, targetix);
+    gDeferredIntervals = llDeleteSubList(gDeferredIntervals, targetix, targetix);
     avatarcheck();                                      // and start up the next request                   
 }
 //
@@ -153,8 +172,11 @@ avatardefer(key id)
     integer targetix = llListFindList(gDeferredTargets,[id]);         // if was on deferred list
     if (targetix >= 0) { return; }                      // already on on deferred lists
     //  Add to deferred list
+    integer now = llGetUnixTime();                      // time now
     gDeferredTargets += [id];
     gDeferredPositions += [avipos];                     // pos of avatar, not us
+    gDeferredTimes += (now + MIN_TIME_FOR_RETRY);       // set next retry time
+    gDeferredIntervals += MIN_TIME_FOR_RETRY;           // set initial retry time
     avatarcheck();                                      // and start up the next request                   
 }
 //
@@ -186,7 +208,7 @@ default
     link_message(integer sender_num, integer num, string jsn, key id)
     {   //  Reply from behavior task is main message here.
         if (num == PATHAVATARTRACKREPLY)                    // if ours
-        {   pathMsg(PATH_MSG_INFO,"Rcvd: " + jsn);          // show incoming JSN
+        {   debugMsg(DEBUG_MSG_INFO,"Rcvd: " + jsn);          // show incoming JSN
             string reply = llJsonGetValue(jsn,["reply"]);
             if (reply != "trackavi") { return; }            // not ours
             key id = (key) llJsonGetValue(jsn,["id"]);
@@ -198,7 +220,7 @@ default
             else if (action == "busy")                      // busy, don't bother me for a while
             {   avatarbusy(); }
             else
-            {   pathMsg(PATH_MSG_ERROR,"Invalid msg: " + jsn); }
+            {   debugMsg(DEBUG_MSG_ERROR,"Invalid msg: " + jsn); }
         
         } else if (num == PATHPARAMSINIT)
         {   pathinitparams(jsn);                               // initialize params
