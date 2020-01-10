@@ -191,10 +191,10 @@ default
                 //  This gets treated as a PU_FAILURE_INVALID_START, which causes a recover cycle to the last good point.
                 if (status == PU_FAILURE_UNREACHABLE && gPathprepPrevPos != ZERO_VECTOR)    // if special case for false bad destination bug in llGetStaticPath
                 {   //  Can we go backwards to the previous point? If not, it's a bad navmesh point and we must recover.
-                    pts = pathtrimmedstaticpath(startpos, gPathprepPrevPos, 0.0, gPathWidth + PATHSTATICTOL); // compute path back to previous good point
+                    pts = pathtrimmedstaticpath(startpos, gPathprepPrevPos-halfheight, 0.0, gPathWidth + PATHSTATICTOL); // compute path back to previous good point
                     integer statusback = llList2Integer(pts,-1);
                     if (statusback != 0)                                // can't go back to previous point. We are must recover
-                    {   pathMsg(PATH_MSG_ERROR, "Bogus static unreach err at " + (string)startpos + " Rev. stat: " + (string)statusback); // ***TEMP*** make warning after debugging
+                    {   pathMsg(PATH_MSG_ERROR, "Bogus static unreach: " + (string)startpos + " to " + (string)(gPathprepPrevPos-halfheight) + " stat " + (string)statusback); // ***TEMP*** make warning after debugging
                         status = PU_FAILURE_INVALID_START;              // change status to bad starting point
                     }           
                 }
