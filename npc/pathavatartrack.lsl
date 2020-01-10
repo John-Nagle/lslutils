@@ -84,7 +84,9 @@ avatarcheck()
     {
         gDoneTargets = [];                          // clear everything
         gDeferredTargets = [];
-        gDeferredPositions = [];                      
+        gDeferredPositions = [];
+        gDeferredTimes = [];
+        gDeferredIntervals = [];                     
         return;
     }
     //  Avatars are in the sim.
@@ -99,31 +101,34 @@ avatarcheck()
             {                                               // avatar of interest. Do we need to greet it?
                 integer doneix = llListFindList(gDoneTargets,[id]);     // on "done" list?
                 if (doneix >= 0)
-                {   newDoneTargets += id; }                 // keep on "done" list            
-                integer deferix = llListFindList(gDeferredTargets,[id]);// check for avatar on deferred target list
-                if (deferix >= 0)                           // if on deferred list
-                {   //  Avatar on deferred problem list. Skip if deferred and hasn't moved.
-                    vector tpos = target_pos(id);           // position of target
-                    vector oldtpos = llList2Vector(gDeferredPositions, deferix); // position when deferred
-                    integer oldtime = llList2Integer(gDeferredTimes, deferix);   // time of next retry even if no move
-                    integer oldinterval = llList2Integer(gDeferredIntervals, deferix); // time of next retry
-                    if (llVecMag(oldtpos - tpos) < MIN_MOVE_FOR_RETRY && oldtime > now) // if avi has not moved since deferral and no timeout yet
-                    {   debugMsg(DEBUG_MSG_INFO,"Do not retry " + llKey2Name(id) + " at " + (string)tpos + " was at " + (string)oldtpos); // ***TEMP***
-                        integer interval = (integer)(oldinterval*EXPONENTIAL_BACKOFF); // increase interval for next time       
-                        newDeferredTargets += id;           // keep on deferred list
-                        newDeferredPositions += oldtpos;    // along with its position at defer
-                        newDeferredTimes += (now + interval); // next retry time
-                        newDeferredIntervals += (interval);  // increase interval
-                    } else {
-                        debugMsg(DEBUG_MSG_WARN, "Can now retry " + llKey2Name(id) + " after " + (string)(now-oldtime) + "s.");    // ***TEMP***
-                        deferix = -1;                       // do not defer any more
-                    }
-                }           
-                if(doneix < 0 && deferix < 0)               // live target and not deferred
-                {   float dist = llVecMag(vec_to_target(id));   // pick closest target
-                    if (dist > 0 && dist < closestdist) 
-                    {   target = id; 
-                        closestdist = dist;
+                {   newDoneTargets += id; }                 // keep on "done" list 
+                else                                        // not done, see if time to do it.
+                {           
+                    integer deferix = llListFindList(gDeferredTargets,[id]);// check for avatar on deferred target list
+                    if (deferix >= 0)                           // if on deferred list
+                    {   //  Avatar on deferred problem list. Skip if deferred and hasn't moved.
+                        vector tpos = target_pos(id);           // position of target
+                        vector oldtpos = llList2Vector(gDeferredPositions, deferix); // position when deferred
+                        integer oldtime = llList2Integer(gDeferredTimes, deferix);   // time of next retry even if no move
+                        integer oldinterval = llList2Integer(gDeferredIntervals, deferix); // time of next retry
+                        if (llVecMag(oldtpos - tpos) < MIN_MOVE_FOR_RETRY && oldtime > now) // if avi has not moved since deferral and no timeout yet
+                        {   debugMsg(DEBUG_MSG_INFO,"Do not retry " + llKey2Name(id) + " at " + (string)tpos + " was at " + (string)oldtpos); // ***TEMP***
+                            integer interval = (integer)(oldinterval*EXPONENTIAL_BACKOFF); // increase interval for next time       
+                            newDeferredTargets += id;           // keep on deferred list
+                            newDeferredPositions += oldtpos;    // along with its position at defer
+                            newDeferredTimes += (now + interval);// next retry time
+                            newDeferredIntervals += (interval);  // increase interval
+                        } else {
+                            debugMsg(DEBUG_MSG_WARN, "Can now retry " + llKey2Name(id) + " after " + (string)oldinterval + "s.");    // ***TEMP***
+                            deferix = -1;                       // do not defer any more
+                        }
+                    }        
+                    if(deferix < 0)                             // live target and not deferred
+                    {   float dist = llVecMag(vec_to_target(id));// pick closest target
+                        if (dist > 0 && dist < closestdist) 
+                        {   target = id; 
+                            closestdist = dist;
+                        }
                     }
                 }
             }
