@@ -19,7 +19,6 @@
 #include "npc/pathavatartrackcall.lsl"
 
 
-
 //  Configuration
 #define IDLE_POLL (10.0)                        // (s) seconds between tests for avatar movement
 #define MIN_MOVE_FOR_RETRY (5.0)                // (m) minimum avatar move to trigger a retry
@@ -46,6 +45,7 @@ startup()
 {   pathinitutils();                                            // library init
     llSetTimerEvent(IDLE_POLL);                                 // check for work
 }
+
 
 //
 //  startavatar -- start working on indicated avatar
@@ -97,7 +97,7 @@ avatarcheck()
     {   key id = llList2Key(agents,i);                      // agent to examine
         vector tpos = target_pos(id);                       // position of avatar
         if (tpos != ZERO_VECTOR && (llFabs(pos.z - tpos.z) < MAX_VERT_DIST_TO_AVATAR)) // if sane position
-        {   if (pathvaliddest(tpos))                        // if in same owner/group parcel, etc.
+        {   if (pathvaliddest(tpos))                        // if in same owner/group parcel, etc. and not in moving vehicle
             {                                               // avatar of interest. Do we need to greet it?
                 integer doneix = llListFindList(gDoneTargets,[id]);     // on "done" list?
                 if (doneix >= 0)

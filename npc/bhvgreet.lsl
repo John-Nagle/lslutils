@@ -191,6 +191,23 @@ greet(string msg)                                   // turn to face avi
     bhvSay(msg);
 }
 
+#define getroot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))  // move to common code
+
+//
+//  inmovingvehicle -- true if avatar in moving vehicle
+//
+integer inmovingvehicle(key id)
+{   key rootid = getroot(id);                                   // avi if not setting, else sit root
+    if (id == rootid) { return(FALSE); }                        // not sitting
+    list objinfo = llGetObjectDetails(rootid, [OBJECT_VELOCITY]);  // get velocity of sitting object
+    if (llGetListLength(objinfo) < 1) { return(FALSE); }        // failed to get velocity
+    float vel = llVecMag(llList2Vector(objinfo,0));             // get velocity
+    if (vel < 0.001) { return(FALSE); }                         // don't approach
+    {   debugMsg(DEBUG_MSG_WARN,llKey2Name(id) + " is in a moving vehicle, do not greet");
+        return(TRUE);                                           // no greet
+    }
+}
+
    
 //
 //  start_pursue -- start pursuing avatar.
@@ -221,6 +238,10 @@ greet_done(string action)
 //
 requestpursue(key target)
 {   if (!gBhvRegistered) { return; }                                // scheduler init still in progress, wait, will be repolled
+    if (inmovingvehicle(target))                                    // if in a moving vehicle
+    {   pathavatartrackreply(target,"defer");                       // try again later
+        return;
+    }
     if (!(gAction == ACTION_IDLE))                                  // busy doing someone else
     {   pathavatartrackreply(target, "busy");                       // tell the tracker to be quiet for a while.
         return;
@@ -299,6 +320,13 @@ default
             {   return; }                           // do nothing
             //  Our patience is limited.
             greet_done("done");                     // tell tracker done with this avi.
+        } else if (gAction == ACTION_PURSUE)        // if pursuing
+        {   if (inmovingvehicle(gTarget))           // if avi is in a moving vehicle
+            {   debugMsg(DEBUG_MSG_WARN,"Pursuit aborted");                
+                bhvStop();                                  // abort pursue now
+                pathavatartrackreply(gTarget,"defer");      // tell tracker to wait on this one
+                bhvSetPriority(PRIORITY_OFF);               // stop greeting now, do something else
+            }
         }
     }
     

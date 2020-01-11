@@ -18,16 +18,16 @@
 //  Behaviors must include this file.
 //
 //
-#ifndef BVHCALLLSL
-#define BVHCALLLSL
+#ifndef BHVCALLLSL
+#define BHVCALLLSL
 #include "npc/patherrors.lsl"
 #include "debugmsg.lsl"
 //
 //
 //  Constants
 //
-#define BHVMSGFROMSCH       1001                // from BVH scheduler, behaviors listen
-#define BHVMSGTOSCH         1002                // to BVH scheduler, scheduler listens
+#define BHVMSGFROMSCH       1001                // from BHV scheduler, behaviors listen
+#define BHVMSGTOSCH         1002                // to BHV scheduler, scheduler listens
 
 //
 //  Standard priorities
@@ -65,7 +65,7 @@ float   gBhvWidth = -1.0;                       // width of NPC
 //
 bhvNavigateTo(vector regioncorner, vector goal, float stopshort, float speed)
 {
-    bvhpathreq(regioncorner, goal, NULL_KEY, stopshort, speed);
+    bhvpathreq(regioncorner, goal, NULL_KEY, stopshort, speed);
 }
 
 //
@@ -73,7 +73,7 @@ bhvNavigateTo(vector regioncorner, vector goal, float stopshort, float speed)
 //
 bhvPursue(key target, float stopshort, float speed)
 {
-    bvhpathreq(ZERO_VECTOR, ZERO_VECTOR, target, stopshort, speed);
+    bhvpathreq(ZERO_VECTOR, ZERO_VECTOR, target, stopshort, speed);
 }
 
 //
@@ -119,7 +119,7 @@ bhvSay(string msg)
 //
 bhvStop()
 {
-    bvhpathreq(ZERO_VECTOR, llGetRootPosition(), NULL_KEY, 0, 1.0);  // move to where we are now is a stop
+    bhvpathreq(ZERO_VECTOR, llGetRootPosition(), NULL_KEY, 0, 1.0);  // move to where we are now is a stop
 }
 
 //
@@ -165,11 +165,11 @@ bhvInit()
 //  Internal functions part of every behavior
 //
 //
-//  bvhpathreq -- path request, via scheduler to path system
+//  bhvpathreq -- path request, via scheduler to path system
 //
 //  Handles NavigateTo, and Pursue
 //
-bvhpathreq(vector regioncorner, vector goal, key target, float stopshort, float speed)
+bhvpathreq(vector regioncorner, vector goal, key target, float stopshort, float speed)
 {
     string jsn = llList2Json(JSON_OBJECT,["request","pathbegin","mnum",gBhvMnum,"token",gActiveToken,
         "target",target, "goal",goal, "stopshort",stopshort, "speed",speed]);
@@ -291,4 +291,4 @@ bhvSchedMessage(integer num, string jsn)
         {   llResetScript(); }
     }
 }
-#endif // BVHCALLLSL
+#endif // BHVCALLLSL
