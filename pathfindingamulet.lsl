@@ -13,6 +13,7 @@
 //
 float GLOWON = 0.50;                    // glow value when on
 float LOOKRANGE = 50.0;                 // (m) range to ray cast
+float MAXWALKABLEDEG = 64.0;            // (degrees) max slope for walkable
 //
 //  Names of pathfinding types, for display.
 //
@@ -43,6 +44,8 @@ mouselooktouch()
     integer status = llList2Integer(castresult,-1);
     if (status <= 0) { return; }                    // no hit or error
     integer i;
+    integer covered = FALSE;                        // something is covering the walkable
+    integer walkable = FALSE;                       // found walkable
     for (i=0; i<3*status; i+=3)                     // advance through strided list
     {
         key hitid = llList2Key(castresult,i+0);           // key of hit
@@ -70,14 +73,31 @@ mouselooktouch()
         {   if (phantom) 
             {   pftypename = "Phantom"; }
             else if (physics)
-            {   pftypename = "Physics object"; }
+            {   pftypename = "Physics object"; covered = TRUE; }
             else
-            {   pftypename = "Movable obstacle"; }
+            {   pftypename = "Movable obstacle"; covered = TRUE; }
+        } else if (pftype == OPT_WALKABLE)              // for walkables, have to check slope
+        {
+            float slopedeg = RAD_TO_DEG*llAcos(hitnormal*<0,0,1>);  // slope of walkable
+            if (slopedeg > MAXWALKABLEDEG)              // if too steep
+            {   pftypename += ", but not here; " + (string)llCeil(slopedeg) + "° slope";
+            } else {
+                walkable = TRUE;
+            }
+        } else if (pftype == OPT_AVATAR || pftype == OPT_CHARACTER)
+        {   covered = TRUE;                             // these can cover something
         }
         llSay(0,hitname + " (" + pftypename + ")");     // result 
         integer stopix = llListFindList(PFSTOPS,[pftype]);// is this a type to stop for?
-        if (stopix >= 0) { return; }                    // yes, done
-    }  
+        if (stopix >= 0)                                // if stops search
+        {   if (covered) { walkable = FALSE; }       // if covered, not walkable
+            if (walkable) 
+            {   llSay(0,"CAN walk here."); }
+            else
+            {   llSay(0,"CANNOT walk here."); }
+            return;
+        }
+    }
 }
 //
 //  Default state - inactive.
