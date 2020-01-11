@@ -35,8 +35,6 @@ list PFSTOPS = [OPT_WALKABLE, OPT_STATIC_OBSTACLE,OPT_EXCLUSION_VOLUME];
 //
 mouselooktouch()
 {
-    ////llOwnerSay("Mouselook touch");          // ***TEMP***
-    ///vector pos = llGetPos();                        // position of avatar
     vector pos = llGetCameraPos();                  // position of camera
     rotation rot = llGetRot();                      // direction of mouselook
     vector castpos = pos + <LOOKRANGE,0,0>*rot;     // far end of ray cast
@@ -85,6 +83,7 @@ mouselooktouch()
 //  Default state - inactive.
 //
 //  Click on amulet to activate.
+//
 default
 {
     state_entry()
@@ -109,8 +108,7 @@ state active
     {
         llSetPrimitiveParams([PRIM_GLOW,ALL_SIDES,GLOWON,
             PRIM_FULLBRIGHT,ALL_SIDES, TRUE]); // glow
-        llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA);
-        
+        llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA);        
     }
     
     run_time_permissions(integer perm)
@@ -133,6 +131,24 @@ state active
         {   mouselooktouch();               // mouselook touch event
         }
     }
-
+    
+    changed(integer change)
+    {
+        if (change & CHANGED_REGION)        // if changed region, often have to re-request permissions
+        {
+            llSetTimerEvent(1.0);           // ask in timer until we get them
+        }
+    }
+    
+    timer()
+    {
+        integer perms = llGetPermissions(); // what permissions do we have?
+        if (perms & (PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA))  // if have needed perms
+        {   llSetTimerEvent(0.0);           // no more asking
+            return;
+        }
+        llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA); // ask again
+        llOwnerSay("Re-requesting permissions after region cross.");
+    }
 }
 
