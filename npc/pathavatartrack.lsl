@@ -34,7 +34,7 @@ list gDoneTargets = [];                         // we have said hello
 
 //  These all have the same subscript
 list gDeferredTargets = [];                     // trouble with these, wait and retry
-list gDeferredPositions = [];                   // don't retry until target moves
+////list gDeferredPositions = [];                   // don't retry until target moves
 list gDeferredTimes = [];                       // time of next attempt
 list gDeferredIntervals = [];                   // interval for time backoff
 
@@ -43,7 +43,7 @@ list gDeferredIntervals = [];                   // interval for time backoff
 //
 startup()
 {   pathinitutils();                                            // library init
-    llSetTimerEvent(IDLE_POLL);                                 // check for work
+    ////llSetTimerEvent(IDLE_POLL);                                 // check for work
 }
 
 
@@ -62,11 +62,12 @@ startavatar(key id)
 //
 avatarcheck()
 {
+    assert(gPathWidth > 0);                             // checks that initialization happened first
     float closestdist = 99999;              
     key target = NULL_KEY;                     
     list newDoneTargets;
     list newDeferredTargets;
-    list newDeferredPositions;
+    ////list newDeferredPositions;
     list newDeferredTimes;
     list newDeferredIntervals;
     //  Get all agents on same owner parcels in region.
@@ -84,13 +85,13 @@ avatarcheck()
     {
         gDoneTargets = [];                          // clear everything
         gDeferredTargets = [];
-        gDeferredPositions = [];
+        ////gDeferredPositions = [];
         gDeferredTimes = [];
         gDeferredIntervals = [];                     
         return;
     }
     //  Avatars are in the sim.
-    vector pos = llGetPos();                                // our location
+    vector pos = llGetRootPosition();                       // our location
     integer now = llGetUnixTime();                          // time now
     integer i;
     for (i=0; i < num_detected; i++)        
@@ -108,14 +109,14 @@ avatarcheck()
                     if (deferix >= 0)                           // if on deferred list
                     {   //  Avatar on deferred problem list. Skip if deferred and hasn't moved.
                         vector tpos = target_pos(id);           // position of target
-                        vector oldtpos = llList2Vector(gDeferredPositions, deferix); // position when deferred
+                        ////vector oldtpos = llList2Vector(gDeferredPositions, deferix); // position when deferred
                         integer oldtime = llList2Integer(gDeferredTimes, deferix);   // time of next retry even if no move
                         integer oldinterval = llList2Integer(gDeferredIntervals, deferix); // time of next retry
-                        if (llVecMag(oldtpos - tpos) < MIN_MOVE_FOR_RETRY && oldtime > now) // if avi has not moved since deferral and no timeout yet
-                        {   debugMsg(DEBUG_MSG_INFO,"Do not retry " + llKey2Name(id) + " at " + (string)tpos + " was at " + (string)oldtpos); // ***TEMP***
+                        if (oldtime > now)                      // if timed out, can look again
+                        {   debugMsg(DEBUG_MSG_INFO,"Do not retry " + llKey2Name(id) + " at " + (string)tpos + " for " + (string)(oldtime-now)   + "s."); // ***TEMP***
                             integer interval = (integer)(oldinterval*EXPONENTIAL_BACKOFF); // increase interval for next time       
                             newDeferredTargets += id;           // keep on deferred list
-                            newDeferredPositions += oldtpos;    // along with its position at defer
+                            ////newDeferredPositions += oldtpos;    // along with its position at defer
                             newDeferredTimes += (now + interval);// next retry time
                             newDeferredIntervals += (interval);  // increase interval
                         } else {
@@ -124,7 +125,8 @@ avatarcheck()
                         }
                     }        
                     if(deferix < 0)                             // live target and not deferred
-                    {   float dist = llVecMag(vec_to_target(id));// pick closest target
+                    {   ////float dist = llVecMag(tpos-pos);        // pick closest target
+                        float dist = pathdistance(pos, tpos, gPathWidth, gPathChartype); // pick closest reachable target
                         if (dist > 0 && dist < closestdist) 
                         {   target = id; 
                             closestdist = dist;
@@ -137,7 +139,7 @@ avatarcheck()
     //  Update all lists to new values. 
     gDoneTargets = newDoneTargets;              // only keep greeted targets still in range
     gDeferredTargets = newDeferredTargets;
-    gDeferredPositions = newDeferredPositions;
+    ////gDeferredPositions = newDeferredPositions;
     gDeferredTimes = newDeferredTimes;
     gDeferredIntervals = newDeferredIntervals;  
     if (target != NULL_KEY)                     // if there is an avatar to be dealt with
@@ -160,7 +162,7 @@ avatardone(key id)
     if (targetix < 0) { return; }                       // not on deferred lists
     //  Remove from deferred list. Shouldn't be on there anyway.
     gDeferredTargets = llDeleteSubList(gDeferredTargets, targetix, targetix);
-    gDeferredPositions = llDeleteSubList(gDeferredPositions, targetix, targetix);
+    ////gDeferredPositions = llDeleteSubList(gDeferredPositions, targetix, targetix);
     gDeferredTimes = llDeleteSubList(gDeferredTimes, targetix, targetix);
     gDeferredIntervals = llDeleteSubList(gDeferredIntervals, targetix, targetix);
     avatarcheck();                                      // and start up the next request                   
@@ -179,7 +181,7 @@ avatardefer(key id)
     //  Add to deferred list
     integer now = llGetUnixTime();                      // time now
     gDeferredTargets += [id];
-    gDeferredPositions += [avipos];                     // pos of avatar, not us
+    ////gDeferredPositions += [avipos];                     // pos of avatar, not us
     gDeferredTimes += (now + MIN_TIME_FOR_RETRY);       // set next retry time
     gDeferredIntervals += MIN_TIME_FOR_RETRY;           // set initial retry time
     avatarcheck();                                      // and start up the next request                   
@@ -228,7 +230,8 @@ default
             {   debugMsg(DEBUG_MSG_ERROR,"Invalid msg: " + jsn); }
         
         } else if (num == PATHPARAMSINIT)
-        {   pathinitparams(jsn);                               // initialize params
+        {   pathinitparams(jsn);                            // initialize params
+            llSetTimerEvent(IDLE_POLL);                     // start checking for work
         } else if (num == DEBUG_MSGLEV_BROADCAST)               // set debug message level for this task
         {   debugMsgLevelSet(jsn);
         }

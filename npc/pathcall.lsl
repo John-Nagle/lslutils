@@ -58,7 +58,7 @@ pathInit(float width, float height, integer chartype)
     gPathcallHeight = height;
     gPathcallChartype = chartype;                   // its character type
     //  Broadcast params to everybody.
-    llMessageLinked(LINK_THIS,PATHPARAMSINIT,llList2Json(JSON_OBJECT,["request","pathparams",
+    llMessageLinked(LINK_SET,PATHPARAMSINIT,llList2Json(JSON_OBJECT,["request","pathparams",
         "width",width, "height",height,"chartype",chartype]),"");
     gPathcallInitialized = TRUE;                    // initialized
 }

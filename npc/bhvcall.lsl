@@ -51,6 +51,7 @@ integer gBhvSchedLinkNumber = -99999;           // the scheduler's link number
 integer gActiveToken = -99999;                  // token of the current start
 float   gBhvHeight = -1.0;                      // height of NPC
 float   gBhvWidth = -1.0;                       // width of NPC
+float   gBhvChartype = -1;                      // character type of NPC
 
 
 //
@@ -188,7 +189,7 @@ bhvreqreg()
 //
 //  bhvregisterreply -- reply from register request
 //
-bhvregisterreply(string scriptname, integer mnum, integer schedlink, float height, float width)
+bhvregisterreply(string scriptname, integer mnum, integer schedlink, float height, float width, integer chartype)
 {
     if (gBhvRegistered) { return; }                                         // already registered
     if (scriptname != gBhvThisScriptname) { return; }                       // not for us
@@ -196,6 +197,7 @@ bhvregisterreply(string scriptname, integer mnum, integer schedlink, float heigh
     gBhvMnum = mnum;                                                        // our assigned mnum
     gBhvHeight = height;                                                    // set height and width of NPC
     gBhvWidth = width;
+    gBhvChartype = chartype;                                                // our character type
     gBhvRegistered = TRUE;                                                  // we are now registered
     debugMsg(DEBUG_MSG_WARN,"Registered behavior #" + (string)mnum + ": " + gBhvThisScriptname); // 
     bhvRegistered();                                                        // tell controlling script to go
@@ -284,7 +286,7 @@ bhvSchedMessage(integer num, string jsn)
         if (reptype == "register")
         {   //  Then do register.
             bhvregisterreply(llJsonGetValue(jsn,["scriptname"]), (integer)llJsonGetValue(jsn,["mnum"]), (integer)llJsonGetValue(jsn,["schedlink"]),
-                (float)llJsonGetValue(jsn,["height"]),(float)llJsonGetValue(jsn,["width"])); 
+                (float)llJsonGetValue(jsn,["height"]),(float)llJsonGetValue(jsn,["width"]), (integer)llJsonGetValue(jsn,["chartype"])); 
             return;
         }
         if (reqtype == "reset")                     // scheduler reset, must reset behavior

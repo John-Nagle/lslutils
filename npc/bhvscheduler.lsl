@@ -90,6 +90,7 @@ integer gActivePriority = 0;    // priority of active behavior
 float gHeight = -1;             // height and width for NPC
 float gWidth = -1;
 integer gVerbose = FALSE;       // verbose mode on for debug
+integer gChartype = CHARACTER_TYPE_A;   // humanoid
 //
 //  Debug system
 //
@@ -166,7 +167,7 @@ init()
     gHeight = scale.z;                                              // height is scale
     gWidth = llVecMag(<scale.x,scale.y,0.0>);                       // diameter of enclosing circle
     debugMsg(DEBUG_MSG_WARN,"Resetting. character height: " + (string)gHeight + "m. Width: " + (string)gWidth + "m.");
-    pathInit(gWidth, gHeight, CHARACTER_TYPE_A);                    // set up pathfinding system
+    pathInit(gWidth, gHeight, gChartype);                           // set up pathfinding system
     pathTurnspeed(CHARACTER_TURNSPEED_DEG*DEG_TO_RAD);              // how fast to turn, rarely changed
     //  Reset all behaviors
     ////llOwnerSay("Resetting all behaviors.");  // ***TEMP***
@@ -200,7 +201,7 @@ registerbehavior(string scriptname, integer primnum)
     //  Send register reply to appropriate prim.
     //  Will be ignored by behaviors with other string names.
     string jsn = llList2Json(JSON_OBJECT,["reply","register", "scriptname", BHVSCRIPTNAME(bhvix),
-        "mnum", BHVMNUM(bhvix), "schedlink",llGetLinkNumber(),"height",gHeight, "width", gWidth]);
+        "mnum", BHVMNUM(bhvix), "schedlink",llGetLinkNumber(),"height",gHeight, "width", gWidth,"chartype",gChartype]);
     llMessageLinked(BHVLINKNUM(bhvix),BHVMSGFROMSCH, jsn, "");
 }
 

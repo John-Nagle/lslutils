@@ -384,7 +384,7 @@ vector pathnearestpointonnavmesh(vector p)
 //
 //  Returns < 0 if fail
 //
-float pathdistance(vector startpos, vector endpos, float gPathWidth, integer gPathChartype)
+float pathdistance(vector startpos, vector endpos, float width, integer chartype)
 {
     vector scale = llGetScale();
     vector startposorig = startpos;                         // 
@@ -396,7 +396,7 @@ float pathdistance(vector startpos, vector endpos, float gPathWidth, integer gPa
     list path;
     integer status = 1;
     if (startpos.z >= 0 && endpos.z >= 0)               // if find walkable worked
-    {   path = llGetStaticPath(startpos, endpos, gPathWidth*0.5, [CHARACTER_TYPE,gPathChartype]);
+    {   path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);
         status = llList2Integer(path,-1);               // status is last value
     }
     if (status != 0)                                    // trouble finding navmesh, use backup plan
@@ -405,7 +405,7 @@ float pathdistance(vector startpos, vector endpos, float gPathWidth, integer gPa
         if (startpos == ZERO_VECTOR) { return(-1.0); }
         endpos = pathnearestpointonnavmesh(endposorig);     // for both ends
         if (endpos == ZERO_VECTOR) { return(-1.0); }
-        path = llGetStaticPath(startpos, endpos, gPathWidth*0.5, [CHARACTER_TYPE,gPathChartype]);
+        path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);
         status = llList2Integer(path,-1);                   // status is last value
         if (status != 0) 
         {   pathMsg(PATH_MSG_WARN, "Static path error: " + (string)status +  (string)startpos + " to " + (string)endpos + 
