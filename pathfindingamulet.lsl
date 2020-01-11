@@ -13,7 +13,8 @@
 //
 float GLOWON = 0.50;                    // glow value when on
 float LOOKRANGE = 50.0;                 // (m) range to ray cast
-//  Names of pathfinding types
+//
+//  Names of pathfinding types, for display.
 //
 list PFNAMES = [
 "Movable obstacles, movable phantoms, physical, or volumedetect object",
@@ -23,6 +24,11 @@ list PFNAMES = [
 "Static obstacle",
 "Material volume",
 "Exclusion volume"];
+//
+//  List of pathfinding types which stop the search.
+//  These are the ones that contribute to the static navmesh.
+//
+list PFSTOPS = [OPT_WALKABLE, OPT_STATIC_OBSTACLE,OPT_EXCLUSION_VOLUME];
 
 //
 //  mouseloooktouch -- clicked on something in mouselook
@@ -34,28 +40,46 @@ mouselooktouch()
     vector pos = llGetCameraPos();                  // position of camera
     rotation rot = llGetRot();                      // direction of mouselook
     vector castpos = pos + <LOOKRANGE,0,0>*rot;     // far end of ray cast
-    list castresult = llCastRay(pos, castpos, [RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY]); // get target info
+    list castresult = llCastRay(pos, castpos, [RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY,RC_DETECT_PHANTOM,TRUE,RC_MAX_HITS,10]); // get target info
     ////llOwnerSay("Cast result to " + (string)castpos + ": " + llDumpList2String(castresult,",")); // ***TEMP***
     integer status = llList2Integer(castresult,-1);
     if (status <= 0) { return; }                    // no hit or error
-    key hitid = llList2Key(castresult,0);           // key of hit
-    vector hitpos = llList2Vector(castresult,1);    // pos of hit
-    vector hitnormal = llList2Vector(castresult,2); // normal at hit
-    string hitname = "Ground";
-    integer pftype = OPT_OTHER;
-    if (hitid != NULL_KEY)                          // if not ground
-    {   hitname = llKey2Name(hitid);                // name of hit
-        list props = llGetObjectDetails(hitid,[OBJECT_NAME,OBJECT_PATHFINDING_TYPE]); // obj info
-        if (props == [])
-        {   llSay(0,"Target object not found."); return; }
-        hitname = llList2String(props,0);           // name
-        pftype = llList2Integer(props,1);           // pathfinding type
-    } else {                                        // is ground
-        pftype = OPT_WALKABLE;                      // ground is walkable
-    }
-    string pftypename = "Other";
-    if (pftype >= 0) { pftypename = llList2String(PFNAMES,pftype); } // name of type
-    llSay(0,hitname + " (" + pftypename + ")");     // result  
+    integer i;
+    for (i=0; i<3*status; i+=3)                     // advance through strided list
+    {
+        key hitid = llList2Key(castresult,i+0);           // key of hit
+        vector hitpos = llList2Vector(castresult,i+1);    // pos of hit
+        vector hitnormal = llList2Vector(castresult,i+2); // normal at hit
+        string hitname = "Ground";
+        integer pftype = OPT_OTHER;
+        integer physics = FALSE;
+        integer phantom = FALSE;
+        if (hitid != NULL_KEY)                          // if not ground
+        {   hitname = llKey2Name(hitid);                // name of hit
+            list props = llGetObjectDetails(hitid,[OBJECT_NAME,OBJECT_PATHFINDING_TYPE,OBJECT_PHYSICS,OBJECT_PHANTOM]); // obj info
+            if (props == [])
+            {   llSay(0,"Target object not found."); return; }
+            hitname = llList2String(props,0);           // name
+            pftype = llList2Integer(props,1);           // pathfinding type
+            physics = llList2Integer(props,2);          // true if physical
+            phantom = llList2Integer(props,3);          // true if phantom
+        } else {                                        // is ground
+            pftype = OPT_WALKABLE;                      // ground is walkable
+        }
+        string pftypename = "Other";
+        if (pftype >= 0) { pftypename = llList2String(PFNAMES,pftype); } // name of type
+        if (pftype == OPT_LEGACY_LINKSET)               // need more analysis for this pathfinding type
+        {   if (phantom) 
+            {   pftypename = "Phantom"; }
+            else if (physics)
+            {   pftypename = "Physics object"; }
+            else
+            {   pftypename = "Movable obstacle"; }
+        }
+        llSay(0,hitname + " (" + pftypename + ")");     // result 
+        integer stopix = llListFindList(PFSTOPS,[pftype]);// is this a type to stop for?
+        if (stopix >= 0) { return; }                    // yes, done
+    }  
 }
 //
 //  Default state - inactive.
