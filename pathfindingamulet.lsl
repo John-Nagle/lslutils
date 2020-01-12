@@ -98,6 +98,7 @@ mouselooktouch()
             return;
         }
     }
+    llSay(0,"Out of range.");                       // object not in scan range
 }
 //
 //  Default state - inactive.
@@ -170,12 +171,12 @@ state active
         integer perms = llGetPermissions(); // what permissions do we have?
         if (perms & (PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA))  // if have needed perms
         {   llSetTimerEvent(0.0);           // no more asking
-            llOwnerSay("Have perms after region cross.");   // ***TEMP***
+            ////llOwnerSay("Have perms after region cross.");   // ***TEMP***
             llTakeControls(CONTROL_ML_LBUTTON,TRUE,FALSE);  // take controls when recovering permissions
             return;
         }
         llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA); // ask again
-        llOwnerSay("Re-requesting permissions after region cross.");
+        ////llOwnerSay("Re-requesting permissions after region cross.");
     }
 }
 
