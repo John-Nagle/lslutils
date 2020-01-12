@@ -154,10 +154,15 @@ state active
     
     changed(integer change)
     {
-        if (change & CHANGED_REGION)        // if changed region, often have to re-request permissions
+        if (change & (CHANGED_REGION | CHANGED_TELEPORT))   // if changed region, often have to re-request permissions
         {
             llSetTimerEvent(1.0);           // ask in timer until we get them
         }
+    }
+    
+    attach(key id)
+    {   if (id == NULL_KEY) { return; }     // detach
+        llSetTimerEvent(1.0);               // ask for perms in timer 
     }
     
     timer()
@@ -165,6 +170,8 @@ state active
         integer perms = llGetPermissions(); // what permissions do we have?
         if (perms & (PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA))  // if have needed perms
         {   llSetTimerEvent(0.0);           // no more asking
+            llOwnerSay("Have perms after region cross.");   // ***TEMP***
+            llTakeControls(CONTROL_ML_LBUTTON,TRUE,FALSE);  // take controls when recovering permissions
             return;
         }
         llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA); // ask again
