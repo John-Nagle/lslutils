@@ -113,13 +113,10 @@ avatarcheck()
                         integer oldtime = llList2Integer(gDeferredTimes, deferix);   // time of next retry even if no move
                         integer oldinterval = llList2Integer(gDeferredIntervals, deferix); // time of next retry
                         if (oldtime > now)                      // if timed out, can look again
-                        {   debugMsg(DEBUG_MSG_INFO,"Do not retry " + llKey2Name(id) + " at " + (string)tpos + " for " + (string)(oldtime-now)   + "s."); // ***TEMP***
-                            integer interval = (integer)(oldinterval*EXPONENTIAL_BACKOFF); // increase interval for next time       
-                            newDeferredTargets += id;           // keep on deferred list
-                            ////newDeferredPositions += oldtpos;    // along with its position at defer
-                            newDeferredTimes += (now + interval);// next retry time
-                            newDeferredIntervals += (interval);  // increase interval
-                        } else {
+                        {   newDeferredTargets += id;           // keep on deferred list
+                            newDeferredTimes += oldtime;        // next retry time
+                            newDeferredIntervals += oldinterval;  // same interval
+                        } else {                                // delay time expired, can try again
                             debugMsg(DEBUG_MSG_WARN, "Can now retry " + llKey2Name(id) + " after " + (string)oldinterval + "s.");    // ***TEMP***
                             deferix = -1;                       // do not defer any more
                         }
@@ -127,7 +124,15 @@ avatarcheck()
                     if(deferix < 0)                             // live target and not deferred
                     {   ////float dist = llVecMag(tpos-pos);        // pick closest target
                         float dist = pathdistance(pos, tpos, gPathWidth, gPathChartype); // pick closest reachable target
-                        if (dist > 0 && dist < closestdist) 
+                        if (dist < 0.0)                         // not statically reachable
+                        {   float interval = MIN_TIME_FOR_RETRY;// put on deferred list
+                            newDeferredTargets += id;           // keep on deferred list
+                            ////newDeferredPositions += oldtpos;    // along with its position at defer
+                            newDeferredTimes += (now + interval);// next retry time
+                            newDeferredIntervals += (interval);  // increase interval
+                        
+                        }
+                        if (dist > 0 && dist < closestdist)      // if meaningful distance, keep closest
                         {   target = id; 
                             closestdist = dist;
                         }
@@ -175,17 +180,24 @@ avatardone(key id)
 avatardefer(key id)
 {   integer ix = llListFindList(gDoneTargets,[id]);     // look up in "done" list
     if (ix >= 0) { return; }                            // if done, don't add to defer list
-    vector avipos = target_pos(id);                     // get pos of target. Will retry when it moves.
-    integer targetix = llListFindList(gDeferredTargets,[id]);         // if was on deferred list
-    if (targetix >= 0) { return; }                      // already on on deferred lists
-    //  Add to deferred list
     integer now = llGetUnixTime();                      // time now
-    gDeferredTargets += [id];
-    ////gDeferredPositions += [avipos];                     // pos of avatar, not us
-    gDeferredTimes += (now + MIN_TIME_FOR_RETRY);       // set next retry time
-    gDeferredIntervals += MIN_TIME_FOR_RETRY;           // set initial retry time
+    integer interval = (integer)MIN_TIME_FOR_RETRY;     // default deferral period
+    integer targetix = llListFindList(gDeferredTargets,[id]);         // if was on deferred list
+    if (targetix >= 0)                                  // if already on list, boost time
+    {   integer interval = llList2Integer(gDeferredIntervals,targetix);
+        interval = (integer)(interval*EXPONENTIAL_BACKOFF); // increase interval for next time
+        gDeferredTimes = llListReplaceList(gDeferredTimes,[now+interval],ix,ix);
+        gDeferredIntervals = llListReplaceList(gDeferredIntervals,[interval],ix,ix);
+    } else {                                            // if not on list, add it
+        gDeferredTargets += [id];                       // add to deferred list
+        gDeferredTimes += (now + interval);             // set next retry time
+        gDeferredIntervals += interval;                 // set initial retry interval
+    }
+    debugMsg(DEBUG_MSG_WARN,"Defer " + llKey2Name(id) + " for " + (string)(interval)   + "s."); // ***TEMP***         
     avatarcheck();                                      // and start up the next request                   
 }
+
+
 //
 //  avatarbusy -- busy, don't bother me for a while
 //
@@ -232,7 +244,8 @@ default
         } else if (num == PATHPARAMSINIT)
         {   pathinitparams(jsn);                            // initialize params
             llSetTimerEvent(IDLE_POLL);                     // start checking for work
-        } else if (num == DEBUG_MSGLEV_BROADCAST)               // set debug message level for this task
+            llOwnerSay("Avatar track init");                // ***TEMP***
+        } else if (num == DEBUG_MSGLEV_BROADCAST)           // set debug message level for this task
         {   debugMsgLevelSet(jsn);
         }
     }
