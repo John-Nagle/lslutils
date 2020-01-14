@@ -134,7 +134,7 @@ state active
     }
     
     run_time_permissions(integer perm)
-    {   llOwnerSay("Got perms: " + (string)perm);
+    {   ////llOwnerSay("Got perms: " + (string)perm);
         if (perm & PERMISSION_TAKE_CONTROLS)
         {   llTakeControls(CONTROL_ML_LBUTTON,TRUE,FALSE); }
     }
@@ -172,12 +172,12 @@ state active
         integer perms = llGetPermissions(); // what permissions do we have?
         if ((perms & (PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA)) == (PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA)) // if have needed perms
         {   llSetTimerEvent(0.0);           // no more asking
-            llOwnerSay("Have perms, taking controls.");   // ***TEMP***
+            ////llOwnerSay("Have perms, taking controls.");   // ***TEMP***
             llTakeControls(CONTROL_ML_LBUTTON,TRUE,FALSE);  // take controls when recovering permissions
             return;
         }
         llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA); // ask again
-        llOwnerSay("Re-requesting permissions.");
+        ////llOwnerSay("Re-requesting permissions.");
     }
 }
 
