@@ -20,9 +20,9 @@ float MOVEDIST = 4.0;                                       // (m) distance to m
 float MOVESPEED = 3.0;                                      // (m/sec) speed of movement
 float ATTACKTIME = 4.0;                                     // (sec) time for attack
 float LOOKDIST = 2.0;                                       // (m) distance to look ahead for threat
-string RUNANIM = "run";                                     // (anim name) anim for running
-string STANDANIM = "stand";                                 // (anim name) anim for standing
-string ATTACKANIM = "jump";                                 // (anim name) anim for attacking
+string RUNANIM = "Werewolf_Run";                            // (anim name) anim for running
+string STANDANIM = "Werewolf_Howl";                         // (anim name) anim for standing
+string ATTACKANIM = "Werewolf_Attack 1";                    // (anim name) anim for attacking
 
 //  State constants
 //
@@ -49,7 +49,7 @@ key getparcelid(vector pos)
 //  domove -- move in current direction
 //
 domove(float distance, float speed)
-{   list kfmmove = [<distance,0,0>,ZERO_ROTATION,speed/distance];
+{   list kfmmove = [<distance,0,0>*llGetRootRotation(),ZERO_ROTATION,speed/distance];
     llStopObjectAnimation(STANDANIM);
     llStopObjectAnimation(ATTACKANIM);        
     llStartObjectAnimation(RUNANIM); 
@@ -104,7 +104,7 @@ key getroot(key id)
 float castray(vector frompt, vector topt)
 {
     list castresult = llCastRay(frompt, topt, [RC_MAX_HITS,3,RC_DATA_FLAGS,RC_GET_ROOT_KEY]);   // look for obstacle ahead
-    llOwnerSay("Cast result at " + (string) frompt + ": " + llDumpList2String(castresult,","));     // ***TEMP***
+    ////llOwnerSay("Cast result at " + (string) frompt + ": " + llDumpList2String(castresult,","));     // ***TEMP***
     integer status = llList2Integer(castresult,-1);             // status is at end
     if (status < 0) { return(-1); }                             // fails
     integer i;
@@ -123,7 +123,7 @@ float castray(vector frompt, vector topt)
 //  A simple state machine
 //
 dotimer()
-{   llOwnerSay("Timer state: " + (string)gState);               // ***TEMP***
+{   ////llOwnerSay("Timer state: " + (string)gState);               // ***TEMP***
     if (gState == STATE_RUN)                                    // if running
     {   //  Cast ray to see if obstacle detected
         vector pos = llGetRootPosition();
@@ -131,13 +131,14 @@ dotimer()
         vector aheadpt = pos + <LOOKDIST,0,0>*rot;              // other end of ray cast
         if (getparcelid(aheadpt) != gParcelid)                  // if going off parcel
         {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]); // stop movement
-            dodone();                                           // we are done
-            llOwnerSay("Edge of parcel");                       // ***TEMP***
+            doattack(STATE_DONE);                               // we are done
+            llOwnerSay("Edge of parcel reached.");              // ***TEMP***
             return;
         }                        
         float dist = castray(pos,aheadpt);                      // look ahead for an obstacle
         if (dist <= LOOKDIST)                                   // target detected
-        {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]); // stop movement 
+        {   llOwnerSay("Obstacle ahead.");                      // ***TEMP***
+            llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]); // stop movement 
             doattack(STATE_DONE);                               // attack it and stop
             return;
         }
@@ -177,6 +178,14 @@ default
     
     timer()
     {   dotimer();
+    }
+    
+    touch_start(integer num_detected)
+    {
+        if(gState == STATE_DONE)
+        {   domove(MOVEDIST, MOVESPEED);                    // back to running
+            dotimer();                                      // initial check
+        }
     }
     
     moving_end()
