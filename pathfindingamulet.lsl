@@ -11,9 +11,10 @@
 //
 //  Constants
 //
-float GLOWON = 0.50;                    // glow value when on
+float GLOWON = 0.25;                    // glow value when on
 float LOOKRANGE = 50.0;                 // (m) range to ray cast
 float MAXWALKABLEDEG = 64.0;            // (degrees) max slope for walkable
+integer AMULETLINK = 2;                 // which link should glow 
 //
 //  Names of pathfinding types, for display.
 //
@@ -109,7 +110,7 @@ default
 {
     state_entry()
     {   //  Inactivate amulet
-        llSetPrimitiveParams([PRIM_GLOW,ALL_SIDES,0.0,
+        llSetLinkPrimitiveParams(AMULETLINK,[PRIM_GLOW,ALL_SIDES,0.0,
             PRIM_FULLBRIGHT,ALL_SIDES, FALSE]);
         llReleaseControls();     
     }
@@ -127,13 +128,13 @@ state active
 {
     state_entry()
     {
-        llSetPrimitiveParams([PRIM_GLOW,ALL_SIDES,GLOWON,
+        llSetLinkPrimitiveParams(AMULETLINK,[PRIM_GLOW,ALL_SIDES,GLOWON,
             PRIM_FULLBRIGHT,ALL_SIDES, TRUE]); // glow
         llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA);        
     }
     
     run_time_permissions(integer perm)
-    {   ////llOwnerSay("Got perms: " + (string)perm);
+    {   llOwnerSay("Got perms: " + (string)perm);
         if (perm & PERMISSION_TAKE_CONTROLS)
         {   llTakeControls(CONTROL_ML_LBUTTON,TRUE,FALSE); }
     }
@@ -169,14 +170,14 @@ state active
     timer()
     {
         integer perms = llGetPermissions(); // what permissions do we have?
-        if (perms & (PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA))  // if have needed perms
+        if ((perms & (PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA)) == (PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA)) // if have needed perms
         {   llSetTimerEvent(0.0);           // no more asking
-            ////llOwnerSay("Have perms after region cross.");   // ***TEMP***
+            llOwnerSay("Have perms, taking controls.");   // ***TEMP***
             llTakeControls(CONTROL_ML_LBUTTON,TRUE,FALSE);  // take controls when recovering permissions
             return;
         }
         llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS|PERMISSION_TRACK_CAMERA); // ask again
-        ////llOwnerSay("Re-requesting permissions after region cross.");
+        llOwnerSay("Re-requesting permissions.");
     }
 }
 
