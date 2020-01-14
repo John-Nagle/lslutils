@@ -130,13 +130,15 @@ dotimer()
         rotation rot = llGetRootRotation();
         vector aheadpt = pos + <LOOKDIST,0,0>*rot;              // other end of ray cast
         if (getparcelid(aheadpt) != gParcelid)                  // if going off parcel
-        {   dodone();                                           // we are done
+        {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]); // stop movement
+            dodone();                                           // we are done
             llOwnerSay("Edge of parcel");                       // ***TEMP***
             return;
         }                        
         float dist = castray(pos,aheadpt);                      // look ahead for an obstacle
         if (dist <= LOOKDIST)                                   // target detected
-        {   doattack(STATE_DONE);                               // attack it and stop
+        {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]); // stop movement 
+            doattack(STATE_DONE);                               // attack it and stop
             return;
         }
         return;
