@@ -11,7 +11,7 @@
 //  November 2019
 //
 //
-#include "npc/bhvcall.lsl"
+#include "npc/bhv/bhvcall.lsl"
 #include "npc/pathavatartrackcall.lsl"
 #include "npc/mathutils.lsl"
 integer ACTION_IDLE = 0;         

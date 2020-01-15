@@ -54,7 +54,7 @@
 //  
 #include "assert.lsl"
 #include "debugmsg.lsl"
-#include "npc/bhvcall.lsl"
+#include "npc/bhv/bhvcall.lsl"
 #include "npc/pathcall.lsl"
 
 //
