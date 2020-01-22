@@ -63,7 +63,8 @@ domove(float distance, float speed)
     llStartObjectAnimation(RUNANIM); 
     llSetKeyframedMotion(kfmmove, [KFM_MODE, KFM_FORWARD]);     // begin motion
     gState = STATE_RUN;                                         // run state 
-    llSetTimerEvent(0.2);                                       // speed for cast ray polls                    
+    llSetTimerEvent(0.2);                                       // speed for cast ray polls
+    dotimer();                                                  // and do one right now                    
 }
 
 //
@@ -174,7 +175,7 @@ doturn()
     ////rotation rot = llGetRootRotation();                         // facing direction
     vector dir = <-1,0,0>;                                      // opposite old direction
     dir.z = 0;                                                  // in plane
-    float randomstrength = 0.2;                                 // how much randomness
+    float randomstrength = 1.0;                                 // how much randomness
     dir += <0,llFrand(randomstrength*2)-randomstrength,0>;      // random crosswise perturbation   
     rotation turnrot = llRotBetween(<1,0,0>,llVecNorm(dir));    // turn needed for next direction
     list kfmmove = [<0,0,0>,turnrot,0.5];                       // turn only
