@@ -30,7 +30,9 @@ integer STATE_STAND = 0;                                    // starting up
 integer STATE_RUN = 1;                                      // running
 integer STATE_THREATEN = 2;                                 // threatening attack
 integer STATE_ATTACK = 3;                                   // attacking something in front
-integer STATE_DONE = 4;                                     // done
+integer STATE_OBSTACLE = 4;                                 // hit obstacle
+integer STATE_TURN = 5;                                     // turn around, with some randomness
+integer STATE_DONE = 6;                                     // done
 
 
 
@@ -44,6 +46,12 @@ key gParcelid;                                              // parcel ID at star
 //
 key getparcelid(vector pos)
 {   return(llList2Key(llGetParcelDetails(pos, [PARCEL_DETAILS_ID]),0)); }
+
+//
+//  rotfromxaxis -- rotation from X axis in XY plane, given vector
+//
+rotation RotFromXAxis(vector dv)
+{   return(llAxes2Rot(llVecNorm(dv),<0,0,1>%llVecNorm(dv),<0,0,1>));}
 
 //
 //  domove -- move in current direction
@@ -131,7 +139,7 @@ dotimer()
         vector aheadpt = pos + <LOOKDIST,0,0>*rot;              // other end of ray cast
         if (getparcelid(aheadpt) != gParcelid)                  // if going off parcel
         {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]); // stop movement
-            doattack(STATE_DONE);                               // we are done
+            doattack(STATE_OBSTACLE);                           // we are done
             llOwnerSay("Edge of parcel reached.");              // ***TEMP***
             return;
         }                        
@@ -139,7 +147,7 @@ dotimer()
         if (dist <= LOOKDIST)                                   // target detected
         {   llOwnerSay("Obstacle ahead.");                      // ***TEMP***
             llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]); // stop movement 
-            doattack(STATE_DONE);                               // attack it and stop
+            doattack(STATE_OBSTACLE);                           // attack it and stop
             return;
         }
         return;
@@ -151,15 +159,42 @@ dotimer()
     {   domove(MOVEDIST, MOVESPEED);                            // get going
     } else if (gState == STATE_DONE)
     {   dodone();
-    }           
+    } else if (gState == STATE_OBSTACLE)                        // if need to turn
+    {   doturn();                                               // turn around and go back
+    }         
+}
+
+//
+//  doturn -- turn around and go back
+//
+//  Apply some randomness to direction
+//
+doturn()
+{
+    ////rotation rot = llGetRootRotation();                         // facing direction
+    vector dir = <-1,0,0>;                                      // opposite old direction
+    dir.z = 0;                                                  // in plane
+    float randomstrength = 0.2;                                 // how much randomness
+    dir += <0,llFrand(randomstrength*2)-randomstrength,0>;      // random crosswise perturbation   
+    rotation turnrot = llRotBetween(<1,0,0>,llVecNorm(dir));    // turn needed for next direction
+    list kfmmove = [<0,0,0>,turnrot,0.5];                       // turn only
+    llStopObjectAnimation(RUNANIM);
+    llStopObjectAnimation(ATTACKANIM);        
+    llStartObjectAnimation(STANDANIM); 
+    llSetKeyframedMotion(kfmmove, [KFM_MODE, KFM_FORWARD]);     // begin motion
+    llOwnerSay("Turning");
+    gState = STATE_TURN;                                        // now turning
+    llSetTimerEvent(0.0);                                       // no ray casting during turn   
 }
 
 //
 //  domoveend -- movement has completed
 //
 domoveend()
-{   if (gState == STATE_RUN)                                   // if was moving
+{   if (gState == STATE_RUN)                                    // if was moving
     {   doattack(STATE_THREATEN);                               // do threaten attack
+    } else if (gState == STATE_TURN)                            // if was turning
+    {   domove(MOVEDIST, MOVESPEED);                            // now move again
     }
 }
 
@@ -187,6 +222,15 @@ default
             dotimer();                                      // initial check
         }
     }
+
+#ifdef NOTYET    
+    collision_start(integer num_detected)
+    {   integer i;
+        for (i=0; i<num_detected; i++)
+        {   key id = llDetectedKey(i);
+        }
+    }
+#endif // NOTYET
     
     moving_end()
     {   domoveend(); }   
