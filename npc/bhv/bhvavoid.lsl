@@ -49,7 +49,7 @@ string SCREAM_SOUND = "???";                // sound of a scream
 ////#define HALFSQRT2 0.7071
 ////list AVOIDDIRS = [<0,1,0>,<0,-1,0>,<HALFSQRT2,HALFSQRT2,0>,<HALFSQRT2,-HALFSQRT2,0>,<1,0,0>];
 
-#define DIRTRIES 3                          // number of directions to try when avoiding
+#define DIRTRIES 5                          // number of directions to try when avoiding
 
 #define MAX_AVOID_TIME 6.0                  // (s) trigger avoid when ETA less than this
 #define MAX_AVOID_TRIES 10                  // (cnt) after this many tries to avoid, give up
@@ -190,12 +190,28 @@ integer avoidthreat(key id)
     vector vectothreat = p - targetpos;             // direction to threat
     float disttothreat = llVecMag(vectothreat);     // distance to threat
     ////llOwnerSay("Vec to threat: " + (string)vectothreat + " threatvel: " + (string)threatvel ); // ***TEMP***
+#ifdef OBSOLETE
     if (disttothreat < 0.001)
     {   return(-1); }                               // threat is upon us, no escape, also avoid divide by zero.
     float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
     if (approachrate <= 0.01) 
     {   return(0); }                                // not approaching
     float eta = disttothreat / approachrate;        // time until collision
+#endif // OBSOLETE
+    float approachrate = 1.0;                       // assume moderate approach rate
+    float eta = 0.0;                                // assume threat is here
+    if (disttothreat > 0.001)                       // if positive distance to threat
+    {   approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
+        if (approachrate <= 0.01) 
+        {   return(0); }                            // not approaching
+        eta = disttothreat / approachrate;          // time until collision
+        if (disttothreat < AVOID_DIST)              // if too close
+        {   eta = 0.0; }                            // force evade regardless of speed
+    } else {                                        // threat is upon us
+        //  We are within the bounding box of the threat. Get out of here now.
+        vectothreat = targetpos - threatpos;        // use direction to center of threat 
+        debugMsg(DEBUG_MSG_WARN,"Inside bounding box of threat. Get out of here.");                                            
+    }
     debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,3) + " at " + (string)p + " vec to threat " + (string)vectothreat + " ETA " + (string)eta + "s.");
     if (eta > MAX_AVOID_TIME) { return(0); }        // not approaching fast enough to need avoidance
     if (testprotectiveobstacle(targetpos, threatpos, id)) { return(0); } // protective obstacle between threat and target - no need to run
@@ -220,7 +236,7 @@ integer avoidthreat(key id)
         vector escapepnt = testavoiddir(targetpos,avoiddir*disttorun); // see if avoid dir is valid
         if (escapepnt != ZERO_VECTOR)               // can escape this way
         {   if (distpointtoline(escapepnt, p, p + threatvel) > disttopath) // if improves over doing nothing
-            {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping threat by moving from " + (string)targetpos + " to " + (string)escapepnt); // heading for here
+            {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping by moving " + (string)disttorun + "m from " + (string)targetpos + " to " + (string)escapepnt); // heading for here
                 debugMsg(DEBUG_MSG_WARN,"avoiddir: " + (string)avoiddir + " fract: " + (string)fract); // heading for here
                 gAction = ACTION_AVOIDING;              // now avoiding
                 gNextAvoid = (gNextAvoid+1) % DIRTRIES;    // advance starting point cyclically

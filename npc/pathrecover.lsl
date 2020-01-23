@@ -60,12 +60,17 @@ integer pathrecoverwalkable(list pts)
     {   vector recoverpos = llList2Vector(pts,i);           // try to recover to here
         vector prevrecoverpos = llList2Vector(pts,i-1);
         vector halfheight = <0,0,gPathHeight*0.5>;
-        if (pathcheckcelloccupied(prevrecoverpos, recoverpos, TRUE, FALSE) >= 0.0)
-        {   
+        if (pathcheckcelloccupied(prevrecoverpos, recoverpos, TRUE, FALSE) >= 0.0) // if clear to go there
+        {   pathMsg(PATH_MSG_WARN,"Recovering by move to " + (string) recoverpos);
+            if (obstacleraycasthoriz(pos+halfheight, recoverpos+halfheight))    // we are going through a solid obstacle!
+            {   //  This is an emergency measure and we must log it. We do the move as a phantom, to avoid pushing things around.
+                pathMsg(PATH_MSG_ERROR,"Recovery blind move goes through an obstacle between " + (string)pos + " and " + (string)recoverpos);
+            }
             llSleep(0.5);                                   // allow time for stop to take effect
+            llSetPrimitiveParams([PRIM_PHANTOM, TRUE]);     // set to phantom for forced move to avoid collisions
             llSetPos(recoverpos + halfheight);              // forced move to previous good position
             llSleep(0.5);                                   // give time to settle
-            pathMsg(PATH_MSG_WARN,"Recovered by moving to " + (string) recoverpos);
+            llSetPrimitiveParams([PRIM_PHANTOM, FALSE]);    // back to normal solidity
             return(PATHERRWALKABLEFIXED);
         }
     }
