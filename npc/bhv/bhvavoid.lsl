@@ -54,7 +54,8 @@ string SCREAM_SOUND = "???";                // sound of a scream
 
 #define MAX_AVOID_TIME 6.0                  // (s) trigger avoid when ETA less than this
 #define MAX_AVOID_TRIES 10                  // (cnt) after this many tries to avoid, give up
-#define PROTECTIVE_HEIGHT 0.8               // height that will stop an obstacle
+#define PROTECTIVE_HEIGHT 0.8               // (m) obstacle height that will stop an theat
+#define MAX_STATIONARY_TIME 15.0            // (s) we are stationary if did not move for this long
 
 #define getroot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))  
 
@@ -68,6 +69,8 @@ float gSensorPeriod = 0.0;                  // Current sensor poll rate
 integer gLastThreatTime = 0;                // time last threat seen
 integer gNextAvoid = 0;                     // next entry in AVOIDDIRS to use
 integer gAvoidTries = 0;                    // no avoid tries yet
+vector gLastSelfPos;                        // last position of NPC, for move check
+integer gLastSelfMovetime;                  // last time NPC moved
 
 //
 //  setsensortime -- set current sensor poll rate
@@ -197,18 +200,21 @@ integer avoidthreat(key id)
     rotation threatrot = llList2Rot(threat,1);      // rotation
     vector threatvel = llList2Vector(threat,2);     // velocity
     vector targetpos = llGetRootPosition();         // our position
+    integer stationary = (llVecMag(targetpos - gLastSelfPos) < 0.01) 
+        && (llGetUnixTime() > gLastSelfMovetime + MAX_STATIONARY_TIME); // true if NPC did not move recently
     list bb = pathGetBoundingBoxWorld(id);          // find bounding box in world coords
     vector p = findclosestpoint(id, targetpos, bb); // find closest point on bounding box of object to pos
     vector vectothreat = p - targetpos;             // direction to threat
     vectothreat.z = 0;                              // ignore height diff here, caught elsewhere.
     float disttothreat = llVecMag(vectothreat);     // distance to threat
-    llOwnerSay("Avoid, Vec to threat: " + (string)vectothreat + " threatvel: " + (string)threatvel ); // ***TEMP***
+    ////llOwnerSay("Avoid, Vec to threat: " + (string)vectothreat + " threatvel: " + (string)threatvel ); // ***TEMP***
     float approachrate = 1.0;                       // assume moderate approach rate
     float eta = 1.0;                                // assume threat is here
     if (disttothreat > 0.001)                       // if positive distance to threat
     {   approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
-        if (approachrate <= 0.01 && disttothreat > REACT_DIST) 
-        {   debugMsg(DEBUG_MSG_WARN,"Not a threat. Approach rate " + (string)approachrate + " Distance " + (string)disttothreat); // ***TEMP***
+        if (approachrate <= 0.01 && (disttothreat > REACT_DIST || !stationary)) 
+        {   debugMsg(DEBUG_MSG_WARN,"Not a threat. Approach rate " + (string)approachrate 
+                + " Dist " + (string)disttothreat + " stationary: " + (string)stationary); // ***TEMP***
             return(0);                              // not a threat
         }
         if (disttothreat > REACT_DIST && approachrate > 0.01)  // if not too close, use approach rate for calc
@@ -229,7 +235,8 @@ integer avoidthreat(key id)
         debugMsg(DEBUG_MSG_WARN,"Inside bounding box of threat. Get out of here.");                                            
     }
     vectothreat.z = 0;                              // in XY plane
-    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,3) + " at " + (string)p + " vec to threat " + (string)vectothreat + " ETA " + (string)eta + "s.");
+    debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,3) + " at " + (string)p + " vec to threat " + (string)vectothreat 
+        + " ETA " + (string)eta + "s stationary: " + (string)stationary);
     if (eta > MAX_AVOID_TIME) { return(0); }        // not approaching fast enough to need avoidance
     if (testprotectiveobstacle(targetpos, threatpos, id)) { return(0); } // protective obstacle between threat and target - no need to run
     float disttopath =  distpointtoline(targetpos, p, p + threatvel); // distance from line threat is traveling
@@ -581,6 +588,10 @@ default
             return;                                         // not initialized yet
         }
         vector ourpos = llGetRootPosition();                // where we are
+        if (llVecMag(ourpos - gLastSelfPos) > 0.01)         // if we moved
+        {   gLastSelfPos = ourpos;                          // our new pos
+            gLastSelfMovetime = llGetUnixTime();            // when we were last there
+        }
         integer i;
         for (i=0; i<num_detected; i++)                      // for all avatars in range
         {   key id = llDetectedKey(i);                      // avatar id
@@ -596,7 +607,12 @@ default
     }
     
     no_sensor()                                             // no targets, return to idle poll rate
-    {   setsensortime(IDLE_SENSOR_PERIOD);                    // slow poll
+    {   vector ourpos = llGetRootPosition();                // where we are
+        if (llVecMag(ourpos - gLastSelfPos) > 0.01)         // if we moved
+        {   gLastSelfPos = ourpos;                          // our new pos
+            gLastSelfMovetime = llGetUnixTime();            // when we were last there
+        }
+        setsensortime(IDLE_SENSOR_PERIOD);                   // slow poll
     }
 
     
