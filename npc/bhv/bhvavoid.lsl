@@ -202,15 +202,7 @@ integer avoidthreat(key id)
     vector vectothreat = p - targetpos;             // direction to threat
     vectothreat.z = 0;                              // ignore height diff here, caught elsewhere.
     float disttothreat = llVecMag(vectothreat);     // distance to threat
-    ////llOwnerSay("Vec to threat: " + (string)vectothreat + " threatvel: " + (string)threatvel ); // ***TEMP***
-#ifdef OBSOLETE
-    if (disttothreat < 0.001)
-    {   return(-1); }                               // threat is upon us, no escape, also avoid divide by zero.
-    float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
-    if (approachrate <= 0.01) 
-    {   return(0); }                                // not approaching
-    float eta = disttothreat / approachrate;        // time until collision
-#endif // OBSOLETE
+    llOwnerSay("Avoid, Vec to threat: " + (string)vectothreat + " threatvel: " + (string)threatvel ); // ***TEMP***
     float approachrate = 1.0;                       // assume moderate approach rate
     float eta = 1.0;                                // assume threat is here
     if (disttothreat > 0.001)                       // if positive distance to threat
@@ -233,8 +225,7 @@ integer avoidthreat(key id)
         {    threatvel = -llVecNorm(vectothreat);   // fake velocity vector
         } else {
             threatvel = <1,0,0>*threatrot;          // we're inside the object. Go sideways. Might help
-        }
-            
+        }           
         debugMsg(DEBUG_MSG_WARN,"Inside bounding box of threat. Get out of here.");                                            
     }
     vectothreat.z = 0;                              // in XY plane
