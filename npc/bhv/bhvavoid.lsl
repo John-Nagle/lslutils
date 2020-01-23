@@ -22,6 +22,7 @@ integer ACTION_AVOIDING = 1;                // trying to avoid something
 
 #define DETECTION_RADIUS 50.0               // look for moving vehicles this range
 #define AVOID_DIST 4.0                      // (m) move this far each try to get out of the way
+#define REACT_DIST 2.0                      // (m) this close and get away from it
 #define IDLE_SENSOR_PERIOD 2.0              // (s) sensor poll rate when no nearby targets
 #define MIN_SENSOR_PERIOD 0.2               // (s) sensor poll rate max
 
@@ -66,7 +67,6 @@ vector gAvoidStart = ZERO_VECTOR;           // where we started avoiding
 float gSensorPeriod = 0.0;                  // Current sensor poll rate
 integer gLastThreatTime = 0;                // time last threat seen
 integer gNextAvoid = 0;                     // next entry in AVOIDDIRS to use
-integer gAvoidDirSign = 1;                  // +1 or -1
 integer gAvoidTries = 0;                    // no avoid tries yet
 
 //
@@ -80,6 +80,18 @@ setsensortime(float secs)
     llSensorRepeat("", "", AGENT, DETECTION_RADIUS, PI, secs);
     gSensorPeriod = secs;                     // save for later
 }
+
+//
+//  invehicle -- true if avatar in moving vehicle
+//
+integer invehicle(key id)
+{   key rootid = getroot(id);                                   // avi if not setting, else sit root
+    if (id == rootid) { return(FALSE); }                        // not sitting
+    list objinfo = llGetObjectDetails(rootid, [OBJECT_PHYSICS]);  // get physics status of sitting object
+    if (llGetListLength(objinfo) < 1) { return(FALSE); }        // failed to get velocity
+    return(llList2Integer(objinfo,0));                          // in vehicle if sitting and physics on
+}
+
 //
 //  findclosestpoint -- find closest point on threat object bounding box.
 //
@@ -188,6 +200,7 @@ integer avoidthreat(key id)
     list bb = pathGetBoundingBoxWorld(id);          // find bounding box in world coords
     vector p = findclosestpoint(id, targetpos, bb); // find closest point on bounding box of object to pos
     vector vectothreat = p - targetpos;             // direction to threat
+    vectothreat.z = 0;                              // ignore height diff here, caught elsewhere.
     float disttothreat = llVecMag(vectothreat);     // distance to threat
     ////llOwnerSay("Vec to threat: " + (string)vectothreat + " threatvel: " + (string)threatvel ); // ***TEMP***
 #ifdef OBSOLETE
@@ -199,24 +212,37 @@ integer avoidthreat(key id)
     float eta = disttothreat / approachrate;        // time until collision
 #endif // OBSOLETE
     float approachrate = 1.0;                       // assume moderate approach rate
-    float eta = 0.0;                                // assume threat is here
+    float eta = 1.0;                                // assume threat is here
     if (disttothreat > 0.001)                       // if positive distance to threat
     {   approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
-        if (approachrate <= 0.01) 
-        {   return(0); }                            // not approaching
-        eta = disttothreat / approachrate;          // time until collision
-        if (disttothreat < AVOID_DIST)              // if too close
-        {   eta = 0.0; }                            // force evade regardless of speed
+        if (approachrate <= 0.01 && disttothreat > REACT_DIST) 
+        {   debugMsg(DEBUG_MSG_WARN,"Not a threat. Approach rate " + (string)approachrate + " Distance " + (string)disttothreat); // ***TEMP***
+            return(0);                              // not a threat
+        }
+        if (disttothreat > REACT_DIST && approachrate > 0.01)  // if not too close, use approach rate for calc
+        {   eta = disttothreat / approachrate;  }   // time until collision                             // force evade regardless of speed
+        else                                        // very close
+        {
+            vectothreat = threatpos - targetpos;    // use direction to center of threat
+            threatvel = -llVecNorm(vectothreat);    // fake velocity vector
+        }
     } else {                                        // threat is upon us
         //  We are within the bounding box of the threat. Get out of here now.
-        vectothreat = targetpos - threatpos;        // use direction to center of threat 
+        vectothreat = threatpos - targetpos;        // use direction to center of threat
+        if (llVecMag(vectothreat) > 0.001)
+        {    threatvel = -llVecNorm(vectothreat);   // fake velocity vector
+        } else {
+            threatvel = <1,0,0>*threatrot;          // we're inside the object. Go sideways. Might help
+        }
+            
         debugMsg(DEBUG_MSG_WARN,"Inside bounding box of threat. Get out of here.");                                            
     }
+    vectothreat.z = 0;                              // in XY plane
     debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,3) + " at " + (string)p + " vec to threat " + (string)vectothreat + " ETA " + (string)eta + "s.");
     if (eta > MAX_AVOID_TIME) { return(0); }        // not approaching fast enough to need avoidance
     if (testprotectiveobstacle(targetpos, threatpos, id)) { return(0); } // protective obstacle between threat and target - no need to run
     float disttopath =  distpointtoline(targetpos, p, p + threatvel); // distance from line threat is traveling
-    if (disttopath - gBhvWidth*0.5 > AVOID_DIST) { return(0); }    // will pass by at safe distance
+    if (disttopath - gBhvWidth*0.5 > AVOID_DIST && disttothreat > REACT_DIST) { return(0); }    // will pass by at safe distance
     //  Check which way to avoid
     vector evadevec = evadedir(targetpos, threatpos, threatvel, bb); // get which way to best evade
     if (evadevec == ZERO_VECTOR) { return(0); }     // no need to avoid
@@ -235,7 +261,7 @@ integer avoidthreat(key id)
         vector avoiddir = llCos(evadeangle)*evadevecnorm + llSin(evadeangle)*threatvelnorm; // Try across half circle starting at avoiddir
         vector escapepnt = testavoiddir(targetpos,avoiddir*disttorun); // see if avoid dir is valid
         if (escapepnt != ZERO_VECTOR)               // can escape this way
-        {   if (distpointtoline(escapepnt, p, p + threatvel) > disttopath) // if improves over doing nothing
+        {   ////if (distpointtoline(escapepnt, p, p + threatvel) > disttopath) // if improves over doing nothing
             {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping by moving " + (string)disttorun + "m from " + (string)targetpos + " to " + (string)escapepnt); // heading for here
                 debugMsg(DEBUG_MSG_WARN,"avoiddir: " + (string)avoiddir + " fract: " + (string)fract); // heading for here
                 gAction = ACTION_AVOIDING;              // now avoiding
@@ -304,6 +330,8 @@ list pathGetBoundingBoxWorld(key id)
 //  Find ground height there.
 //  Cast ray to ground height + height*0.5
 //
+//  Pos is center of NPC.
+//
 vector testavoiddir(vector pos, vector avoidvec)
 {
     vector p = pos + avoidvec;
@@ -312,9 +340,9 @@ vector testavoiddir(vector pos, vector avoidvec)
     {   debugMsg(DEBUG_MSG_WARN,"No walkable below avoid dest at " + (string)p);
         return(ZERO_VECTOR);                    // no walkable here
     }
-    p.z = z;                                    // ground level destination 
-    if (obstacleraycasthoriz(pos+<0,0,gBhvHeight*0.5>,p+<0,0,gBhvHeight*0.5>)) 
-    {   debugMsg(DEBUG_MSG_WARN,"Obstacle blocks avoid move from " + (string)(pos+<0,0,gBhvHeight*0.5>) + " to " + (string)(p+<0,0,gBhvHeight*0.5>));
+    p.z = z + gBhvHeight*0.5;                   // ground level destination 
+    if (obstacleraycasthoriz(pos,p)) 
+    {   debugMsg(DEBUG_MSG_WARN,"Obstacle blocks avoid move from " + (string)(pos) + " to " + (string)(p));
         return(ZERO_VECTOR); 
     }
     return(p);                                  // success, OK to try going there
@@ -370,12 +398,15 @@ integer evalthreat(key id)
     vector vectothreat = p - targetpos;                 // direction to threat
     float disttothreat = llVecMag(vectothreat);     // distance to threat
     float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
-    if (approachrate <= 0.01) { return(FALSE); }    // not approaching
-    float eta = disttothreat / approachrate;        // time until collision
+    if (approachrate <= 0.01 && disttothreat > REACT_DIST) { return(FALSE); }    // not approaching and not close
+    float eta = 1.0;                                // assume 1 sec to collision
+    if (llFabs(approachrate) > 0.001)               // if moving, compute a real ETA
+    {   eta = disttothreat / approachrate;  }       // time until collision
     debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,3) + " at " + (string)p + " ETA " + (string)eta + "s.");
     gLastThreatTime = llGetUnixTime();              // record last threat time to decide when things are quiet
     if (eta > MAX_AVOID_TIME)                       // not a threat now, but step up polling
     {   float fastpoll = eta*0.1;                   // to 10% of ETA
+        if (disttothreat < AVOID_DIST) { fastpoll = MIN_SENSOR_PERIOD; } // if nearby threat, keep polling fast regardless of speed
         if (fastpoll < gSensorPeriod) { setsensortime(fastpoll); } // poll faster to follow inbound threat
         return(FALSE);                              // not approaching fast enough to need avoidance
     }
@@ -430,7 +461,6 @@ startavoid()
 {
     gAvoidTries = 0;                                                // no retries yet
     gNextAvoid = 0;                                                 // start from beginning
-    gAvoidDirSign = -gAvoidDirSign;                                 // reverse direction of tries for next threat  
     restartavoid();                                                 // and look for something to avoid
 }
 //
@@ -520,7 +550,7 @@ bhvRegistered()                                                     // tell cont
 }
 
 //
-//  bhvDoCollisionStart -- a collision has occured.
+//  bhvDoCollisionStart -- a collision has occured while this behavor has control.
 //
 //  We don't actually have to do anything about the collision.
 //  The path system will stop for this, and pathstart will retry.
@@ -534,7 +564,8 @@ bhvDoCollisionStart(key hitobj)
     if (pathfindingtype == OPT_AVATAR)                          // apologize if hit an avatar
     {   bhvSay("Outta my way!"); }                              // I'm about to be hit by a vehicle!
     else 
-    {   bhvSay("OW!"); } 
+    {   bhvSay("OW!"); }
+    setsensortime(MIN_SENSOR_PERIOD);                           // start fast polling for evasion
 }
 
 default
@@ -554,21 +585,17 @@ default
     }
     
     sensor(integer num_detected)                            // nearby agents
-    {
+    {   if (!gBhvRegistered)
+        {   
+            return;                                         // not initialized yet
+        }
         vector ourpos = llGetRootPosition();                // where we are
         integer i;
-        for (i=0; i<num_detected; i++)
-        {   vector vel = llDetectedVel(i);                  // velocity of threat
-            vector pos = llDetectedPos(i);                  // position of threat
-            float approachrate = -llVecNorm(pos-ourpos)*vel; // approach rate
-            ////llOwnerSay("Avatar " + llDetectedName(i) + " at " + (string) pos + " vel " + (string)vel + " approachrate " + (string)approachrate); // ***TEMP***
-            if (approachrate > 0.01)                        // if approaching us
-            {   key id = llDetectedKey(i);                  // id of agent
-                key rootid = getroot(id);                   // root, which will be different if vehicle
-                if (id != rootid)                           // incoming vehicle
-                {   ////llOwnerSay("Inbound vehicle " + llKey2Name(rootid) + " at " + (string) pos + " vel " + (string)vel + " approachrate " + (string)approachrate); // ***TEMP***
-                    requestavoid(rootid);                   // consider avoiding it
-                }
+        for (i=0; i<num_detected; i++)                      // for all avatars in range
+        {   key id = llDetectedKey(i);                      // avatar id
+            if (invehicle(id))                              // if in a vehicle
+            {   key rootid = getroot(id);                   // vehicle key
+                requestavoid(rootid);                       // consider avoiding it
             }
         }
         if (llGetUnixTime() - gLastThreatTime > SAFE_IDLE_TIME) // if nothing going on
@@ -583,7 +610,7 @@ default
 
     
     link_message(integer sender_num, integer num, string jsn, key id)
-    {   debugMsg(DEBUG_MSG_INFO, jsn);                      // ***TEMP*** dump incoming JSON
+    {   ////debugMsg(DEBUG_MSG_INFO, jsn);                      // ***TEMP*** dump incoming JSON
         if (num == gBhvMnum || num == BHVMSGFROMSCH)        // if from scheduler to us
         {   
             bhvSchedMessage(num,jsn);                       // message from scheduler

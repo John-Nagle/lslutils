@@ -196,6 +196,7 @@ registerbehavior(string scriptname, integer primnum)
         bhvix = llGetListLength(gBehaviors);                        // index of new behavior
         gBehaviors += [scriptname, primnum, gBehaviorMsgnum, BHVOFFPRIORITY];   // strided entry
         debugMsg(DEBUG_MSG_WARN,"New behavior #" + (string) gBehaviorMsgnum + ": " + scriptname);
+        llOwnerSay("New behavior #" + (string) gBehaviorMsgnum + ": " + scriptname); // ***TEMP***
         gBehaviorMsgnum++;
     }
     //  Send register reply to appropriate prim.
@@ -402,9 +403,11 @@ default
             }
             //  All requests after this point have a mnum
             integer mnum = (integer)llJsonGetValue(jsn,["mnum"]);    // message number, indicates who is calling
-            integer bhvix = findbehavior(mnum);     // look up behavior
+            integer bhvix = findbehavior(mnum);         // look up behavior
             if (bhvix < 0)
-            {   debugMsg(DEBUG_MSG_ERROR,"Invalid mnum: " + jsn); return; }
+            {   debugMsg(DEBUG_MSG_WARN,"Unregistered behavior: " + jsn); // probably still initializing
+                return;
+            }
             if (reqtype == "priority")                  // wants to set priority
             {   
                 integer pri = (integer)llJsonGetValue(jsn,["pri"]);      // priority
