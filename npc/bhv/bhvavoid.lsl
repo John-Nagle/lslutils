@@ -236,7 +236,7 @@ integer avoidthreat(key id)
     }
     vectothreat.z = 0;                              // in XY plane
     debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,3) + " at " + (string)p + " vec to threat " + (string)vectothreat 
-        + " ETA " + (string)eta + "s stationary: " + (string)stationary);
+        + " ETA " + (string)eta + "s stationary: " + (string)stationary + " approach rate: " + (string)approachrate);
     if (eta > MAX_AVOID_TIME) { return(0); }        // not approaching fast enough to need avoidance
     if (testprotectiveobstacle(targetpos, threatpos, id)) { return(0); } // protective obstacle between threat and target - no need to run
     float disttopath =  distpointtoline(targetpos, p, p + threatvel); // distance from line threat is traveling
