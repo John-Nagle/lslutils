@@ -47,8 +47,6 @@ string SCREAM_SOUND = "???";                // sound of a scream
 //  All must be vectors of length 1.
 //  If we have to use the last one, trouble.
 //
-////#define HALFSQRT2 0.7071
-////list AVOIDDIRS = [<0,1,0>,<0,-1,0>,<HALFSQRT2,HALFSQRT2,0>,<HALFSQRT2,-HALFSQRT2,0>,<1,0,0>];
 
 #define DIRTRIES 5                          // number of directions to try when avoiding
 
@@ -111,7 +109,6 @@ vector findclosestpoint(key id, vector pos, list bb)
     if (llFabs(bbupper.z - pos.z) < llFabs(bblower.x - pos.z)) { closestpt.z = bbupper.z; }
     return(closestpt);
 }
-////#ifdef NOTYET // new algorithm for deciding which way to evade ***UNTESTED***
 //
 //  evadelims  -- get distance limits for evasion, left and right side of velocity vector
 //
@@ -255,11 +252,11 @@ integer avoidthreat(key id)
     for (i = 0; i < DIRTRIES; i++)                  // try several directions
     {   float fract = (float)((i+gNextAvoid) % DIRTRIES) / (float)(DIRTRIES-1); // fraction for weighting
         float evadeangle = fract*PI;                     // fraction of a half circle
-        ////vector avoiddir = llVecNorm(evadevec*(1.0-fract) + threatvelnorm*(fract));
         vector avoiddir = llCos(evadeangle)*evadevecnorm + llSin(evadeangle)*threatvelnorm; // Try across half circle starting at avoiddir
         vector escapepnt = testavoiddir(targetpos,avoiddir*disttorun); // see if avoid dir is valid
         if (escapepnt != ZERO_VECTOR)               // can escape this way
-        {   ////if (distpointtoline(escapepnt, p, p + threatvel) > disttopath) // if improves over doing nothing
+        {   ////***REEXAMINE THIS CHECK*** - removed to make evade ahead of vehicle work
+            ////if (distpointtoline(escapepnt, p, p + threatvel) > disttopath) // if improves over doing nothing
             {   debugMsg(DEBUG_MSG_WARN,"Incoming threat - escaping by moving " + (string)disttorun + "m from " + (string)targetpos + " to " + (string)escapepnt); // heading for here
                 debugMsg(DEBUG_MSG_WARN,"avoiddir: " + (string)avoiddir + " fract: " + (string)fract); // heading for here
                 gAction = ACTION_AVOIDING;              // now avoiding
@@ -274,8 +271,6 @@ integer avoidthreat(key id)
     ////llPlaySound(SCREAM_SOUND,1.0);                  // scream, that's all we can do
     return(-1);                                     // incoming threat and cannot avoid
 }
-
-////#endif // NOTYET
 
 float pathMin(float a, float b) { if (a<b) { return(a); } else { return(b); }} // usual min and max, avoiding name clashes
 float pathMax(float a, float b) { if (a>b) { return(a); } else { return(b); }}
@@ -376,7 +371,9 @@ integer testprotectiveobstacle(vector targetpos, vector threatpos, key threatid)
 }
 
 //
-//  evaluatethreat -- is incoming object a threat?  Quick check
+//  evaluatethreat -- is incoming object a threat?  Quick check.
+//
+//  This check is made before taking control of the NPC.
 //
 //  Get direction of incoming object and move out of its way.
 //  Must work for vehicles which are longer than they are wide.
@@ -391,12 +388,23 @@ integer evalthreat(key id)
     rotation threatrot = llList2Rot(threat,1);      // rotation
     vector threatvel = llList2Vector(threat,2);     // velocity
     vector targetpos = llGetRootPosition();         // our position
+    integer stationary = (llVecMag(targetpos - gLastSelfPos) < 0.01) 
+        && (llGetUnixTime() > gLastSelfMovetime + MAX_STATIONARY_TIME); // true if NPC did not move recently
     list bb = pathGetBoundingBoxWorld(id);          // find bounding box in world coords
     vector p = findclosestpoint(id, targetpos, bb); // find closest point on bounding box of object to pos
     vector vectothreat = p - targetpos;                 // direction to threat
     float disttothreat = llVecMag(vectothreat);     // distance to threat
     float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
-    if (approachrate <= 0.01 && disttothreat > REACT_DIST) { return(FALSE); }    // not approaching and not close
+    //  Do we need to even consider this threat?
+    //  If not approaching and (threat not close or NPC stationary), ignore.
+    //  The idea is that the NPC can closely approach a non-moving vehicle but can't sit there and block it.
+    //  If the NPC can't approach non-moving vehicles, it can't get around them.
+    if (approachrate <= 0.01 && (disttothreat > REACT_DIST || !stationary)) 
+    {   debugMsg(DEBUG_MSG_WARN,"No threat. Approach rate " + (string)approachrate 
+            + " Dist " + (string)disttothreat + " stationary: " + (string)stationary); // ***TEMP***
+        return(FALSE);                              // not a threat
+    }       
+    ////if (approachrate <= 0.01 && disttothreat > REACT_DIST) { return(FALSE); }    // not approaching and not close
     float eta = 1.0;                                // assume 1 sec to collision
     if (llFabs(approachrate) > 0.001)               // if moving, compute a real ETA
     {   eta = disttothreat / approachrate;  }       // time until collision
