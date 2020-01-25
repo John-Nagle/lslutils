@@ -25,6 +25,7 @@ integer ACTION_AVOIDING = 1;                // trying to avoid something
 #define REACT_DIST 2.0                      // (m) this close and get away from it
 #define IDLE_SENSOR_PERIOD 2.0              // (s) sensor poll rate when no nearby targets
 #define MIN_SENSOR_PERIOD 0.2               // (s) sensor poll rate max
+#define CLOSE_SENSOR_PERIOD 0.5             // (s) sensor poll rate when close to threat
 
 #ifndef CHARACTER_SPEED                     // overrideable
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
@@ -400,11 +401,15 @@ integer evalthreat(key id)
     //  The idea is that the NPC can closely approach a non-moving vehicle but can't sit there and block it.
     //  If the NPC can't approach non-moving vehicles, it can't get around them.
     if (approachrate <= 0.01 && (disttothreat > REACT_DIST || !stationary)) 
-    {   debugMsg(DEBUG_MSG_WARN,"No threat. Approach rate " + (string)approachrate 
-            + " Dist " + (string)disttothreat + " stationary: " + (string)stationary); // ***TEMP***
+    {   ////debugMsg(DEBUG_MSG_WARN,"No threat. Approach rate " + (string)approachrate 
+        ////    + " Dist " + (string)disttothreat + " stationary: " + (string)stationary); // ***TEMP***
+        //  If close, speed up sensor polling.
+        if (disttothreat < AVOID_DIST)
+        {   gLastThreatTime = llGetUnixTime();      // reset time for sensor slowdown
+            if (CLOSE_SENSOR_PERIOD < gSensorPeriod)  { setsensortime(CLOSE_SENSOR_PERIOD); } 
+        }          
         return(FALSE);                              // not a threat
     }       
-    ////if (approachrate <= 0.01 && disttothreat > REACT_DIST) { return(FALSE); }    // not approaching and not close
     float eta = 1.0;                                // assume 1 sec to collision
     if (llFabs(approachrate) > 0.001)               // if moving, compute a real ETA
     {   eta = disttothreat / approachrate;  }       // time until collision
@@ -412,11 +417,12 @@ integer evalthreat(key id)
     gLastThreatTime = llGetUnixTime();              // record last threat time to decide when things are quiet
     if (eta > MAX_AVOID_TIME)                       // not a threat now, but step up polling
     {   float fastpoll = eta*0.1;                   // to 10% of ETA
-        if (disttothreat < AVOID_DIST) { fastpoll = MIN_SENSOR_PERIOD; } // if nearby threat, keep polling fast regardless of speed
+        if (disttothreat < AVOID_DIST) { fastpoll = CLOSE_SENSOR_PERIOD; } // if nearby threat, keep polling fast regardless of speed
         if (fastpoll < gSensorPeriod) { setsensortime(fastpoll); } // poll faster to follow inbound threat
+        gLastThreatTime = llGetUnixTime();          // reset time for sensor slowdown
         return(FALSE);                              // not approaching fast enough to need avoidance
     }
-    //  Definite threat - need to avoid.
+    //  Real threat - need to try to avoid.
     return(TRUE);
 }
 
