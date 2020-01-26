@@ -141,12 +141,12 @@ dotimer()
         if (getparcelid(aheadpt) != gParcelid)                  // if going off parcel
         {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]); // stop movement
             doattack(STATE_OBSTACLE);                           // we are done
-            llOwnerSay("Edge of parcel reached.");              // ***TEMP***
+            ////llOwnerSay("Edge of parcel reached.");              // ***TEMP***
             return;
         }                        
         float dist = castray(pos,aheadpt);                      // look ahead for an obstacle
         if (dist <= LOOKDIST)                                   // target detected
-        {   llOwnerSay("Obstacle ahead.");                      // ***TEMP***
+        {   ////llOwnerSay("Obstacle ahead.");                      // ***TEMP***
             llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]); // stop movement 
             doattack(STATE_OBSTACLE);                           // attack it and stop
             return;
@@ -183,7 +183,7 @@ doturn()
     llStopObjectAnimation(ATTACKANIM);        
     llStartObjectAnimation(STANDANIM); 
     llSetKeyframedMotion(kfmmove, [KFM_MODE, KFM_FORWARD]);     // begin motion
-    llOwnerSay("Turning");
+    ////llOwnerSay("Turning");
     gState = STATE_TURN;                                        // now turning
     llSetTimerEvent(0.0);                                       // no ray casting during turn   
 }
@@ -223,15 +223,6 @@ default
             dotimer();                                      // initial check
         }
     }
-
-#ifdef NOTYET    
-    collision_start(integer num_detected)
-    {   integer i;
-        for (i=0; i<num_detected; i++)
-        {   key id = llDetectedKey(i);
-        }
-    }
-#endif // NOTYET
     
     moving_end()
     {   domoveend(); }   
