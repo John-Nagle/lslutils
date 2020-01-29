@@ -15,7 +15,7 @@
 //  2019
 //
 #include "npc/pathbuildutils.lsl"
-#include "npc/pathcall.lsl"
+#include "npc/mathutils.lsl"
 #include "npc/pathavatartrackcall.lsl"
 
 
