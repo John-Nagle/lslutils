@@ -371,6 +371,12 @@ default
     {
         llResetScript();
     }
+    
+    changed(integer change)
+    {
+        if (change & CHANGED_REGION_START)                      // region restart
+        {   llResetScript(); }                                  // reset the NPC completely
+    }
  
     state_entry()
     {

@@ -219,6 +219,7 @@ pathmasterreset()
     llOwnerSay("Master reset complete.");                               // OK, reset
 }
 
+#ifdef OBSOLETE // Moved to mathutils
 //
 //  Misc. support functions. For user use, not needed by the path planning system itself.
 //
@@ -299,6 +300,7 @@ integer clear_sightline(key id, vector lookatpos)
     debugMsg(DEBUG_MSG_WARN, "Clear sightline status " + (string)status + " hits: " + (string)obstacles);
     return(FALSE);                          // fails
 }
+#endif // OBSOLETE
 
 
 
