@@ -132,6 +132,37 @@ integer pathplanadvance()
             pathdeliversegment([], FALSE, TRUE, gReqPathid, PATHERRMAZECASTFAIL);    // empty set of points, no maze, done.
             return(TRUE);                                       // failure
         }
+        //  Compute distance from pos to spot before next obstacle.
+        float hitbackedup = llVecMag(endcast-pos);              // dist to end if no horiz obstacle                  
+        if (hitdist != INFINITY)                                // if there was a horizontal obstacle
+        {                                                       // compute point just before it.
+            hitbackedup = hitdist-gPathWidth;                   // back up just enough to get clear
+        }
+        //  Enforce sanity of hitbackedup and gDistalongseg.
+        assert(gDistalongseg >= 0);                             // ***TEMP***
+        if (hitbackedup < 0.0) { hitbackedup = 0.0; }           // but don't back up through previous point, previously verified clear
+        if (hitbackedup + gDistalongseg > fulllength) { hitbackedup = fulllength - gDistalongseg; } // can potentially be off the end, so avoid that.
+#define VERTCHECK   // too wordy, do differently
+#ifdef VERTCHECK
+        //  Scan from pos to hit point, vertical ray casts, for walkables.
+        //  This is to catch ground-level non-walkable areas not seen by horizontal casts
+        {
+            vector fullheight = <0,0,gPathHeight>;              // add this for casts from middle of character
+            vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;     // subtract this for bottom end of ray cast
+            float alongdist;                                    // distance along seg
+            for (alongdist = 0; alongdist < hitbackedup; alongdist += gPathWidth) // advance along segment testing vertically
+            {
+                vector p = pos + alongdist*dir;                 // position on ground
+                if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) < 0) // if found a non-walkable location 
+                {                                               // problem
+                    hitdist = alongdist - gPathWidth;           // cut back hitdist to here
+                    if (hitdist < 0.0) { hitdist = 0.0; }       // but never negative 
+                    alongdist = INFINITY;                       // force loop exit now
+                    pathMsg(PATH_MSG_WARN,"No walkable during planning at " + (string)p); // ***TEMP***
+                }
+            }           
+        }
+#endif // VERTCHECK
         if (hitdist == INFINITY)                                // completely clear segment
         {
             gPathPoints += [gP1];                               // completely empty segment
@@ -144,12 +175,14 @@ integer pathplanadvance()
             gP1 = llList2Vector(gPts,gCurrentix+1);             // next position
             gDistalongseg = 0.0;                                // starting new segment
         } else {                                                // there is an obstruction
+#ifdef OBSOLETE // done above
             assert(hitdist >= 0.0);                             // ***TEMP*** 
             assert(gDistalongseg >= 0);                         // ***TEMP***
             float hitbackedup = hitdist-gPathWidth;                 // back up just enough to get clear
             if (hitbackedup < 0.0) { hitbackedup = 0.0; }       // but don't back up through previous point, previously verified clear
             ////float hitbackedup = hitdist-gPathWidth*0.5;             // back up just enough to get clear
             if (hitbackedup + gDistalongseg > fulllength) { hitbackedup = fulllength - gDistalongseg; } // can potentially be off the end, so avoid that.
+#endif // OBSOLETE
             vector interpt0 = pos + dir*(hitbackedup);          // back away from obstacle.
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
                 " hit dist along segment: " + (string)(gDistalongseg+hitbackedup)); 
@@ -182,7 +215,7 @@ integer pathplanadvance()
             {   pathdeliversegment(gPathPoints, FALSE, FALSE, gReqPathid, 0);       // points so far, no maze, not done.
             } else if (npts == 1)                               // maze started at starting point
             {   // ***TEMP*** really
-                pathMsg(PATH_MSG_WARN, "One point segment ignored: " + (string)llList2Vector(gPathPoints,-1) + " Maze start: " + (string)interpt0);
+                ////pathMsg(PATH_MSG_WARN, "One point segment ignored: " + (string)llList2Vector(gPathPoints,-1) + " Maze start: " + (string)interpt0);
             }
             pathdeliversegment([interpt0, interpt1], TRUE, FALSE, gReqPathid, 0);// bounds of a maze area, maze, not done
             doingmaze = TRUE;                                   // maze solver is running, so quit here for now
