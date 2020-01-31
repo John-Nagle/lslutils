@@ -132,7 +132,7 @@ integer pathcheckforwalkable()
     {   return(0); }                                        // no problem   
     //  Trouble, there is no walkable here
     pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)p);
-    return(PATHERRWALKABLEFAIL);                            // fail for now, may recover later
+    return(PATHERRWALKABLETROUBLE);                         // fail for now, may recover later
 }
 
 

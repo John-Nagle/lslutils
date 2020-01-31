@@ -155,8 +155,10 @@ integer pathplanadvance()
                 vector p = pos + alongdist*dir;                 // position on ground
                 if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) < 0) // if found a non-walkable location 
                 {                                               // problem
-                    hitdist = alongdist - gPathWidth;           // cut back hitdist to here
-                    if (hitdist < 0.0) { hitdist = 0.0; }       // but never negative 
+                    ////hitdist = alongdist - gPathWidth;           // cut back hitdist to here
+                    hitbackedup = alongdist - gPathWidth*1.5;   // cut back hitdist to clear bad spot
+                    hitdist = alongdist;                        // force non-infinite case
+                    if (hitbackedup < 0.0) { hitbackedup = 0.0; } // but never negative 
                     alongdist = INFINITY;                       // force loop exit now
                     pathMsg(PATH_MSG_WARN,"No walkable during planning at " + (string)p); // ***TEMP***
                 }

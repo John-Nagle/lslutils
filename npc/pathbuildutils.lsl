@@ -583,6 +583,19 @@ integer obstaclecheckpath(vector p0, vector p1, float probespacing)
     {   DEBUGPRINT1("Obstacle check path from " + (string)p0 + " " + (string)p1 + " hit at " + (string)(p0 + llVecNorm(p1-p0)*disttohit));
         return(FALSE);
     }
+    //  Check for walkability below the path. We have to do this to prevent path straightening onto
+    //  un-walkable areas.
+    vector fullheight = <0,0,gPathHeight>;              // add this for casts from middle of character
+    vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;     // subtract this for bottom end of ray cast
+    vector dir = llVecNorm(p1-p0);                      // direction, p0 to p1
+    float dist = llVecMag(p1-p0);                       // distance, p0 to p1
+    float alongdist;                                    // distance along seg
+    for (alongdist = 0; alongdist < dist; alongdist += gPathWidth) // advance along segment testing vertically
+    {
+        vector p = p0 + alongdist*dir;                  // position on ground
+        if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) < 0) // if found a non-walkable location 
+        {   return(FALSE); }                            // fails
+    }
     return(TRUE);                                               // success
 }
 //
