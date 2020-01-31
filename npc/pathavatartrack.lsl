@@ -102,9 +102,9 @@ avatarcheck()
             {                                               // avatar of interest. Do we need to greet it?
                 integer doneix = llListFindList(gDoneTargets,[id]);     // on "done" list?
                 if (doneix >= 0)
-                {   newDoneTargets += id; }                 // keep on "done" list 
-                else                                        // not done, see if time to do it.
-                {           
+                {   newDoneTargets += id; }                     // keep on "done" list 
+                else                                            // not done, see if time to do it.
+                {   float dist = -1.0;                          // distance to target, < 0 means don't do it     
                     integer deferix = llListFindList(gDeferredTargets,[id]);// check for avatar on deferred target list
                     if (deferix >= 0)                           // if on deferred list
                     {   //  Avatar on deferred problem list. Skip if deferred and hasn't moved.
@@ -112,30 +112,26 @@ avatarcheck()
                         ////vector oldtpos = llList2Vector(gDeferredPositions, deferix); // position when deferred
                         integer oldtime = llList2Integer(gDeferredTimes, deferix);   // time of next retry even if no move
                         integer oldinterval = llList2Integer(gDeferredIntervals, deferix); // time of next retry
-                        if (oldtime > now)                      // if timed out, can look again
-                        {   newDeferredTargets += id;           // keep on deferred list
-                            newDeferredTimes += oldtime;        // next retry time
-                            newDeferredIntervals += oldinterval;  // same interval
-                        } else {                                // delay time expired, can try again
-                            debugMsg(DEBUG_MSG_WARN, "Can now retry " + llKey2Name(id) + " after " + (string)oldinterval + "s.");    // ***TEMP***
-                            deferix = -1;                       // do not defer any more
+                        //  Keep on deferred list. Will be removed only when done or out of range.
+                        newDeferredTargets += id;               // keep on deferred list
+                        newDeferredTimes += oldtime;            // next retry time
+                        newDeferredIntervals += oldinterval;    // same interval
+                        if (oldtime < now)                      // if delay time expired
+                        {   debugMsg(DEBUG_MSG_WARN, "Can now retry " + llKey2Name(id) + " after wait of " + (string)oldinterval + "s.");   
+                            dist = pathdistance(pos, tpos, gPathWidth, gPathChartype); // distance to target along path, < 0 if unreachable
                         }
-                    }        
-                    if(deferix < 0)                             // live target and not deferred
-                    {   ////float dist = llVecMag(tpos-pos);        // pick closest target
-                        float dist = pathdistance(pos, tpos, gPathWidth, gPathChartype); // pick closest reachable target
+                    } else {                                    // not on deferred list    
+                        dist = pathdistance(pos, tpos, gPathWidth, gPathChartype); // distance to target along path, < 0 if unreachable
                         if (dist < 0.0)                         // not statically reachable
                         {   float interval = MIN_TIME_FOR_RETRY;// put on deferred list
-                            newDeferredTargets += id;           // keep on deferred list
-                            ////newDeferredPositions += oldtpos;    // along with its position at defer
+                            newDeferredTargets += id;           // add to deferred list
                             newDeferredTimes += (now + interval);// next retry time
-                            newDeferredIntervals += (interval);  // increase interval
-                        
+                            newDeferredIntervals += (interval);  // initial interval                       
                         }
-                        if (dist > 0 && dist < closestdist)      // if meaningful distance, keep closest
-                        {   target = id; 
-                            closestdist = dist;
-                        }
+                    }
+                    if (dist > 0 && dist < closestdist)         // if meaningful distance, keep closest
+                    {   target = id;                            // new closest target
+                        closestdist = dist;                     // dist to closest target
                     }
                 }
             }
@@ -144,7 +140,6 @@ avatarcheck()
     //  Update all lists to new values. 
     gDoneTargets = newDoneTargets;              // only keep greeted targets still in range
     gDeferredTargets = newDeferredTargets;
-    ////gDeferredPositions = newDeferredPositions;
     gDeferredTimes = newDeferredTimes;
     gDeferredIntervals = newDeferredIntervals;  
     if (target != NULL_KEY)                     // if there is an avatar to be dealt with
@@ -165,9 +160,8 @@ avatardone(key id)
     gDoneTargets += [id];                               // add to "done" list.
     integer targetix = llListFindList(gDeferredTargets,[id]);         // if was on deferred list
     if (targetix < 0) { return; }                       // not on deferred lists
-    //  Remove from deferred list. Shouldn't be on there anyway.
+    //  Remove from deferred list if still there.
     gDeferredTargets = llDeleteSubList(gDeferredTargets, targetix, targetix);
-    ////gDeferredPositions = llDeleteSubList(gDeferredPositions, targetix, targetix);
     gDeferredTimes = llDeleteSubList(gDeferredTimes, targetix, targetix);
     gDeferredIntervals = llDeleteSubList(gDeferredIntervals, targetix, targetix);
     avatarcheck();                                      // and start up the next request                   
@@ -184,7 +178,7 @@ avatardefer(key id)
     integer interval = (integer)MIN_TIME_FOR_RETRY;     // default deferral period
     integer targetix = llListFindList(gDeferredTargets,[id]);         // if was on deferred list
     if (targetix >= 0)                                  // if already on list, boost time
-    {   integer interval = llList2Integer(gDeferredIntervals,targetix);
+    {   interval = llList2Integer(gDeferredIntervals,targetix);
         interval = (integer)(interval*EXPONENTIAL_BACKOFF); // increase interval for next time
         gDeferredTimes = llListReplaceList(gDeferredTimes,[now+interval],ix,ix);
         gDeferredIntervals = llListReplaceList(gDeferredIntervals,[interval],ix,ix);
