@@ -51,21 +51,43 @@ integer pathcheckforwalkable()
 //  Returns 0 or error status
 //
 integer pathrecoverwalkable(list pts)
-{   vector pos = llGetPos();                                // we are here
+{   vector pos = llGetPos();                                // we are here, halfheight level position
     //  Trouble, there is no walkable here
     //  Attempt recovery. Try to find a previous good location that's currently open and move there.
     integer i = llGetListLength(pts);                       // for stored good points, most recent first
     pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)pos + ". Recovery points available: " + (string)i);
     while (i-- > 1)                                         // for newest (len-1) to oldest (0)
-    {   vector recoverpos = llList2Vector(pts,i);           // try to recover to here
+    {   vector recoverpos = llList2Vector(pts,i);           // try to recover to here - ground level position
         vector prevrecoverpos = llList2Vector(pts,i-1);
         vector halfheight = <0,0,gPathHeight*0.5>;
         if (pathcheckcelloccupied(prevrecoverpos, recoverpos, TRUE, FALSE) >= 0.0) // if clear to go there
         {   pathMsg(PATH_MSG_WARN,"Recovering by move to " + (string) recoverpos);
+            //  Debug check - if recovery goes through something, what is it? 
+            list castresult = castray(pos,recoverpos+halfheight,PATHCASTRAYOPTSOBS);  // Horizontal cast at full height, any hit is bad
+            float result = pathcastfoundproblem(castresult, FALSE, FALSE);     // if any hits at all, other than self, fail
+            if (result != INFINITY)                                     // if something there
+            {   integer status = llList2Integer(castresult,-1); // ray cast status
+                integer j;
+                list hitnames;
+                for (j=0; j<3*status; j+=3)                             // strided list search
+                {   key hitobj = llList2Key(castresult, j+0);           // get name of object hit by raycast
+                    if (hitobj != gPathSelfObject)                      // if hit something other than self
+                    {   if (hitobj == NULL_KEY)                         // null key is ground
+                        {   hitnames += "Ground"; }
+                        else                                            // other object
+                        {   hitnames += llKey2Name(hitobj); }           // accum names                      
+                    }
+                }
+                pathMsg(PATH_MSG_ERROR,"Recovery blind move goes through (" + llDumpList2String(hitnames,",") +
+                    ") between " + (string)pos + " and " + (string)(recoverpos+halfheight));
+            }
+#ifdef OBSOLETE        
             if (obstacleraycasthoriz(pos, recoverpos+halfheight))    // we are going through a solid obstacle!
-            {   //  This is an emergency measure and we must log it. We do the move as a phantom, to avoid pushing things around.
+            {   //  This is an emergency measure and we must log it. 
                 pathMsg(PATH_MSG_ERROR,"Recovery blind move goes through an obstacle between " + (string)pos + " and " + (string)(recoverpos+halfheight));
             }
+#endif // OBSOLETE
+            //  We do the move as a phantom, to avoid pushing things around.
             llSleep(0.5);                                   // allow time for stop to take effect
             llSetPrimitiveParams([PRIM_PHANTOM, TRUE]);     // set to phantom for forced move to avoid collisions
             llSetPos(recoverpos + halfheight);              // forced move to previous good position

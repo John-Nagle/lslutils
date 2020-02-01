@@ -15,6 +15,35 @@ This note describes how to write new behaviors for Animats NPCs.
 
 (MORE)
 
+## Constructing the NPC.
+This system is for humanoid characters which can turn in place.
+It's not well suited to characters which are longer than they are wide,
+such as horses and dogs. They won't look right when they move.
+
+### Prim link setup
+
+#### Root prim
+- A root prim which starts as a cube. Its height is the height of
+the NPC. The diameter of the cylinder which would enclose it is the
+width of the NPC. Put all the "path..." scripts in here. They
+do keyframe moves, so they need to be in the root prim.
+(NOTE: Rename "avatar track task" to "svcavatartrack" and put in
+behavior prim).
+
+Animations and sounds also go in the root prim.
+
+#### Animesh child prim
+- The animesh child prim, linked to the root prim. Set to
+"Physics model: None". 
+
+Pick one child prim for the behavior scripts and put them all in that prim.
+The animesh child prim is a good choice, but it doesn't matter.
+
+#### Debug relay prim
+The "Debug relay" script should go in a prim that has no other scripts.
+It listens on the DEBUG_CHANNEL channel for scripts in other prims having
+problems. Since prims can't listen to themselves, it has to go in its own prim.
+
 ## Behaviors
 
 Animats NPCs get their behavior from behavior scripts. Each behavior is
