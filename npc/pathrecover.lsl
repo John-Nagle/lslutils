@@ -63,23 +63,28 @@ integer pathrecoverwalkable(list pts)
         if (pathcheckcelloccupied(prevrecoverpos, recoverpos, TRUE, FALSE) >= 0.0) // if clear to go there
         {   pathMsg(PATH_MSG_WARN,"Recovering by move to " + (string) recoverpos);
             //  Debug check - if recovery goes through something, what is it? 
-            list castresult = castray(pos,recoverpos+halfheight,PATHCASTRAYOPTSOBS);  // Horizontal cast at full height, any hit is bad
+            vector dv = recoverpos+halfheight-pos;          // vector to recovery point
+            vector startcast = pos + llVecNorm(dv)*gPathWidth; // start cast 1 width away from self to avoid reporting collision as flythrough
+            list castresult = castray(startcast,recoverpos+halfheight,PATHCASTRAYOPTSOBS);  // Horizontal cast at full height, any hit is bad
             float result = pathcastfoundproblem(castresult, FALSE, FALSE);     // if any hits at all, other than self, fail
             if (result != INFINITY)                                     // if something there
             {   integer status = llList2Integer(castresult,-1); // ray cast status
                 integer j;
-                list hitnames;
                 for (j=0; j<3*status; j+=3)                             // strided list search
                 {   key hitobj = llList2Key(castresult, j+0);           // get name of object hit by raycast
+                    vector hitpos = llList2Vector(castresult,j+1);      // where hit
+                    string hitname;
                     if (hitobj != gPathSelfObject)                      // if hit something other than self
                     {   if (hitobj == NULL_KEY)                         // null key is ground
-                        {   hitnames += "Ground"; }
+                        {   hitname = "Ground"; }
                         else                                            // other object
-                        {   hitnames += llKey2Name(hitobj); }           // accum names                      
+                        {   hitname = llKey2Name(hitobj);               // name of object
+                            hitname += " " + (string)llList2Vector(llGetObjectDetails(hitobj,[OBJECT_POS]),0); // position of hit object
+                        }                      
                     }
+                    pathMsg(PATH_MSG_WARN,"Recovery move hit " + hitname + " at " + (string)hitpos);
                 }
-                pathMsg(PATH_MSG_ERROR,"Recovery blind move goes through (" + llDumpList2String(hitnames,",") +
-                    ") between " + (string)pos + " and " + (string)(recoverpos+halfheight));
+                pathMsg(PATH_MSG_ERROR,"Recovery move goes through objects between " + (string)startcast + " and " + (string)(recoverpos+halfheight));
             }
 #ifdef OBSOLETE        
             if (obstacleraycasthoriz(pos, recoverpos+halfheight))    // we are going through a solid obstacle!
