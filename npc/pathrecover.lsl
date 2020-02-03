@@ -25,7 +25,8 @@
 //
 //  Globals
 //
-integer gPathrecoverId = 0;                                    // current path ID
+integer gPathrecoverId = 0;                                 // current path ID
+vector  gLastRecoverListPoint;                              // last entry on recover points at last near move    
 
 //
 //  pathcheckforwalkable  -- is there a walkable below here?
@@ -138,9 +139,17 @@ integer pathrecoverwalkable(list pts)
     //  Trouble, there is no walkable here
     //  Attempt recovery. Try to find a previous good location that's currently open and move there.
     pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)pos + ". Recovery points available: " + (string)llGetListLength(pts));
-    vector recoverpos = findnearbyopenpos();        // try a nearby point. Recoverpos is at ground height
+    vector recoverpos = ZERO_VECTOR;                // no recoveryh position found yet
+    if (llListFindList(pts,[gLastRecoverListPoint]) >= 0) // this is a test to see if we are in a nearby recovery loop
+    {   pathMsg(PATH_MSG_WARN,"Previous near point recovery too recent for another one."); // don't try a nearby position
+    } else {                                        // look for a nearby position
+        recoverpos = findnearbyopenpos();           // try a nearby point. Recoverpos is at ground height
+        if (recoverpos != ZERO_VECTOR)              // using nearby point
+        {   gLastRecoverListPoint = llList2Vector(pts,-1);  // can't do this again until entire recovery point list used up - loop avoidance
+        }
+    }
     if (recoverpos == ZERO_VECTOR)                  // that didn't work
-    {   recoverpos = findrecoveropenpos(pts);       // try all recovery points
+    {   recoverpos = findrecoveropenpos(pts);       // try all stored recovery points
     }
     if (recoverpos == ZERO_VECTOR)                  // nothing worked, tell owner
     {   pathMsg(PATH_MSG_ERROR,"Unable to recover from lack of walkable below " + (string)pos + " by recovering to any of " + llDumpList2String(pts,",")); 
