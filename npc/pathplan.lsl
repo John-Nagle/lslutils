@@ -122,8 +122,9 @@ integer pathplanadvance()
         float fulllength = llVecMag(gP1-gP0);                   // full segment length
         vector dir = llVecNorm(gP1-gP0);                        // direction of segment
         vector pos = gP0 + dir*gDistalongseg;                   // current working position
-        vector endcast = gP1 + dir * gPathWidth*0.5;                // check to far side of area to avoid missing partial obstacle at end
-        ////vector endcast = gP1;                                   // Don't search beyond p1; hits ground on downslopes
+        ////vector endcast = gP1 + dir * gPathWidth*0.5;                // check to far side of area to avoid missing partial obstacle at end
+        vector endcast = gP1 + dir * gPathWidth;                // check to far side of area plus extra halfwidth to avoid missing partial obstacle at end
+
         float hitdist = castbeam(pos, endcast, gTestspacing, TRUE,
                 PATHCASTRAYOPTS);
         pathMsg(PATH_MSG_INFO,"Checked " + (string)pos + " to " + (string)endcast + " for obstacles. Hit dist: "+ (string)hitdist);
