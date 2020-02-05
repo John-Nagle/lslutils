@@ -143,8 +143,6 @@ integer pathplanadvance()
         assert(gDistalongseg >= 0);                             // ***TEMP***
         if (hitbackedup < 0.0) { hitbackedup = 0.0; }           // but don't back up through previous point, previously verified clear
         if (hitbackedup + gDistalongseg > fulllength) { hitbackedup = fulllength - gDistalongseg; } // can potentially be off the end, so avoid that.
-#define VERTCHECK   // too wordy, do differently
-#ifdef VERTCHECK
         //  Scan from pos to hit point, vertical ray casts, for walkables.
         //  This is to catch ground-level non-walkable areas not seen by horizontal casts
         {
@@ -165,7 +163,6 @@ integer pathplanadvance()
                 }
             }           
         }
-#endif // VERTCHECK
         if (hitdist == INFINITY)                                // completely clear segment
         {
             gPathPoints += [gP1];                               // completely empty segment
@@ -178,14 +175,6 @@ integer pathplanadvance()
             gP1 = llList2Vector(gPts,gCurrentix+1);             // next position
             gDistalongseg = 0.0;                                // starting new segment
         } else {                                                // there is an obstruction
-#ifdef OBSOLETE // done above
-            assert(hitdist >= 0.0);                             // ***TEMP*** 
-            assert(gDistalongseg >= 0);                         // ***TEMP***
-            float hitbackedup = hitdist-gPathWidth;                 // back up just enough to get clear
-            if (hitbackedup < 0.0) { hitbackedup = 0.0; }       // but don't back up through previous point, previously verified clear
-            ////float hitbackedup = hitdist-gPathWidth*0.5;             // back up just enough to get clear
-            if (hitbackedup + gDistalongseg > fulllength) { hitbackedup = fulllength - gDistalongseg; } // can potentially be off the end, so avoid that.
-#endif // OBSOLETE
             vector interpt0 = pos + dir*(hitbackedup);          // back away from obstacle.
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
                 " hit dist along segment: " + (string)(gDistalongseg+hitbackedup)); 
