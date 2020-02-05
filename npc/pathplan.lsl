@@ -145,6 +145,7 @@ integer pathplanadvance()
         if (hitbackedup + gDistalongseg > fulllength) { hitbackedup = fulllength - gDistalongseg; } // can potentially be off the end, so avoid that.
         //  Scan from pos to hit point, vertical ray casts, for walkables.
         //  This is to catch ground-level non-walkable areas not seen by horizontal casts
+        float endz = pos.z;                                     // Z height at start of segment
         {
             vector fullheight = <0,0,gPathHeight>;              // add this for casts from middle of character
             vector mazedepthmargin = <0,0,MAZEBELOWGNDTOL>;     // subtract this for bottom end of ray cast
@@ -152,7 +153,9 @@ integer pathplanadvance()
             for (alongdist = 0; alongdist < hitbackedup; alongdist += gPathWidth) // advance along segment testing vertically
             {
                 vector p = pos + alongdist*dir;                 // position on ground
-                if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) < 0) // if found a non-walkable location 
+                ////if (obstacleraycastvert(p+fullheight,p-mazedepthmargin) < 0) // if found a non-walkable location 
+                float z = obstacleraycastvert(p+fullheight,p-mazedepthmargin);// Z height here, or <0 if not walkable
+                if (z < 0)                                      // if found a non-walkable location
                 {                                               // problem
                     ////hitdist = alongdist - gPathWidth;           // cut back hitdist to here
                     hitbackedup = alongdist - gPathWidth*1.5;   // cut back hitdist to clear bad spot
@@ -160,11 +163,13 @@ integer pathplanadvance()
                     if (hitbackedup < 0.0) { hitbackedup = 0.0; } // but never negative 
                     alongdist = INFINITY;                       // force loop exit now
                     pathMsg(PATH_MSG_WARN,"No walkable during planning at " + (string)p); // ***TEMP***
+                } else {                                        // this is the Z height to use
+                    endz = z;
                 }
             }           
         }
         if (hitdist == INFINITY)                                // completely clear segment
-        {
+        {   gP1.z = endz;                                       // apply Z adjustment to keep feet on ground
             gPathPoints += [gP1];                               // completely empty segment
             gCurrentix += 1;                                    // advance to next segment
             if (gCurrentix >= llGetListLength(gPts)-1)          // done
@@ -176,6 +181,7 @@ integer pathplanadvance()
             gDistalongseg = 0.0;                                // starting new segment
         } else {                                                // there is an obstruction
             vector interpt0 = pos + dir*(hitbackedup);          // back away from obstacle.
+            interpt0.z = endz;                                  // apply Z adjustment to keep feet on ground
             pathMsg(PATH_MSG_INFO,"Hit obstacle at segment #" + (string)gCurrentix + " " + (string) interpt0 + 
                 " hit dist along segment: " + (string)(gDistalongseg+hitbackedup)); 
             //  That's it. Now look for the other side of the obstacle.
