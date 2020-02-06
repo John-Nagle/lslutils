@@ -23,6 +23,7 @@ integer ACTION_AVOIDING = 1;                // trying to avoid something
 #define DETECTION_RADIUS 50.0               // look for moving vehicles this range
 #define AVOID_DIST 4.0                      // (m) move this far each try to get out of the way
 #define REACT_DIST 2.0                      // (m) this close and get away from it
+#define SENSE_DIST 10.0                     // (m) this close and poll fast
 #define IDLE_SENSOR_PERIOD 2.0              // (s) sensor poll rate when no nearby targets
 #define MIN_SENSOR_PERIOD 0.2               // (s) sensor poll rate max
 #define CLOSE_SENSOR_PERIOD 0.5             // (s) sensor poll rate when close to threat
@@ -246,7 +247,8 @@ integer avoidthreat(key id)
     //  Decide which direction to run.
     //  Prefer to run crosswise to direction of threat, but will 
     //  consider running away at 45 degrees or straight ahead
-    float disttorun = llVecMag(evadevec);           // how far to evade 
+    ////float disttorun = llVecMag(evadevec);           // how far to evade
+    float disttorun = gBhvWidth*0.5 + AVOID_DIST;   // always evade by a fixed distance. Will evade again if necessary
     integer i;
     vector threatvelnorm = llVecNorm(threatvel);    // direction threat is traveling
     vector evadevecnorm = llVecNorm(evadevec);      // ideal direction to evade
@@ -390,7 +392,7 @@ integer evalthreat(key id)
     vector threatvel = llList2Vector(threat,2);     // velocity
     vector targetpos = llGetRootPosition();         // our position
     integer stationary = (llVecMag(targetpos - gLastSelfPos) < 0.01) 
-        && (llGetUnixTime() > gLastSelfMovetime + MAX_STATIONARY_TIME); // true if NPC did not move recently
+        && (llGetUnixTime() > gLastSelfMovetime + MAX_STATIONARY_TIME); // true if NPC (not threat) did not move recently
     list bb = pathGetBoundingBoxWorld(id);          // find bounding box in world coords
     vector p = findclosestpoint(id, targetpos, bb); // find closest point on bounding box of object to pos
     vector vectothreat = p - targetpos;                 // direction to threat
@@ -404,7 +406,7 @@ integer evalthreat(key id)
     {   ////debugMsg(DEBUG_MSG_WARN,"No threat. Approach rate " + (string)approachrate 
         ////    + " Dist " + (string)disttothreat + " stationary: " + (string)stationary); // ***TEMP***
         //  If close, speed up sensor polling.
-        if (disttothreat < AVOID_DIST)
+        if (disttothreat < SENSE_DIST)
         {   gLastThreatTime = llGetUnixTime();      // reset time for sensor slowdown
             if (CLOSE_SENSOR_PERIOD < gSensorPeriod)  { setsensortime(CLOSE_SENSOR_PERIOD); } 
         }          
