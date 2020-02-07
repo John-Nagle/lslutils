@@ -93,32 +93,25 @@ buffermsg(string name, key id, integer msglev, string message)
     {   gMsgLog = llDeleteSubList(gMsgLog,0,0); }           // if memory tight, drop more messages
 }
 
-#ifdef OBSOLETE
 //
-//  logdump  -- dump log to llOwnerSay
+//  logdumptoim  -- dump error to instant message
 //
-logdump(string why)
-{
-    llOwnerSay("=== STORED LOG DUMP === from " + why);
-    integer i;
-    for (i=0; i<llGetListLength(gMsgLog); i++)              // print all stored log messages
-    {   string s = llList2String(gMsgLog,i);
-        llOwnerSay(s);
-    }
-    llOwnerSay("=== END STORED LOG DUMP ===");
-}
-#endif // OBSOLETE
-
+//  IM must not exceed 1024 bytes, so we print as many recent log messages as will fit.
+//
 logdumptoim(string why)
 {   integer IMMAXLEN = 1000;                                // conservative max IM length
-    ////llOwnerSay("=== STORED LOG DUMP === : " + why);
     string msg;
-    integer i = llGetListLength(gMsgLog) -1;
+    integer maxlen = IMMAXLEN - llStringLength(why);        // length of "why" part
+    integer i = llGetListLength(gMsgLog) -1;                // number of messages queued
     //  Add stored messages to IM string in reverse up to max string length
-    while (i > 0 && llStringLength(msg) < IMMAXLEN - 100)
-    {   string s = llList2String(gMsgLog,i);
-        msg = s + "\n" + msg;
-        i--;
+    while (i > 0)
+    {   string s = llList2String(gMsgLog,i);                // next msg
+        if (llStringLength(s) + llStringLength(msg) < maxlen)  // if will fit
+        {   msg = s + "\n" + msg;                           // add to output message
+            i--;                                            // next msg
+        } else {                                            // won't fit
+            i = -1;                                         // force loop exit
+        }
     }
     msg = why + "\n" + msg;                                 // preface with why
     llInstantMessage(llGetOwner(), msg);                    // send IM to owner
@@ -136,21 +129,6 @@ logdumptoowner(string why)
     }
     llOwnerSay("=== STORED LOG DUMP END ===");
 }
-#ifdef OBSOLETE
-//
-//  logdumptodebug -- dump to debug channel
-//
-logdumptoowner(string why)
-{   llSay(DEBUG_CHANNEL,"=== STORED LOG DUMP === : " + why);
-    integer i;
-    for (i=0; i<llGetListLength(gMsgLog); i++)
-    {   string s = llList2String(gMsgLog,i);
-        llSay(DEBUG_CHANNEL,s);
-    }
-    llSay(DEBUG_CHANNEL,"=== STORED LOG DUMP END ===");
-}
-#endif // OBSOLETE
-
 
 //
 //  Debug channel message
@@ -175,8 +153,6 @@ seriouserrormsg(string name, key id, string message)
         gMsgLog = [];                                       // clears log
     }
 }
-
-
 //
 //  Log channel message
 //
@@ -235,8 +211,5 @@ default
             if ((integer)llJsonGetValue(jsn,["dumplog"]))                 // dialog user pushed the dump button
             {   logdumptoowner("Log dump requested"); }
         }
-    }
-
-    
-    
+    }    
 }
