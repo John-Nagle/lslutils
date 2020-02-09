@@ -293,4 +293,98 @@ bhvSchedMessage(integer num, string jsn)
         {   llResetScript(); }
     }
 }
+
+//
+//  Useful functions for behaviors. Need not be used.
+//
+//
+//  Config card reader. Used by behaviors with configured parameters.
+//
+//  Reads the first notecard in the prim, which must be in CSV format.
+//  The first field of each line must be the name of the script that wants
+//  that config line.
+//  The "bhv" at the beginning of the script name can be ommitted.
+//  Lines beginning with "#" are comments. Blank lines are ignored.
+//
+//  Each behavior reads the config file separately.
+//
+//  Global variables
+//
+integer gBhvConfigEnabled = FALSE;              // have not finished config bhvReadConfig yet
+integer gBhvConfigNotecardLine;                 // current line on notecard
+key gBhvConfigNotecardQuery;                    // database query callback key
+string gBhvConfigName;                          // name of notecard
+//
+//  bhvReadConfig -- read notecard.
+//
+//  Don't call this until behavior scripts are registered.
+//
+bhvReadConfig()
+{
+    //  Start loading lines from notecard
+    gBhvConfigNotecardLine = 0;
+    gBhvConfigEnabled = FALSE;                 // turns on when all points loaded
+    gBhvConfigName = llGetInventoryName(INVENTORY_NOTECARD, 0);  // get first notecard
+    ////if (llGetInventoryKey(CONFIG_NOTECARD) == NULL_KEY)     // waypoints file no good
+    if (gBhvConfigName == "")                                   // if no notecard
+    {
+        llSay(DEBUG_CHANNEL, "No notecard, containing configuration, in behaviors prim. Will not start.");
+        bhvConfigDone(FALSE);                  // fails
+        return;
+    }
+    //  Start reading notecard. This may need a retry; dataserver is not reliable.
+    bhvGetNextConfigLine();                    // start getting config lines
+ }
+
+//
+//  bhvParseConfigLine -- parse an incoming config line
+//
+//  Returns error if bad parse
+//
+bhvParseConfigLine(string data, integer lineno)
+{
+    data = llStringTrim(data, STRING_TRIM);                 // remove unwanted whitespace
+    if (llStringLength(data) == 0 || llGetSubString(data,0,0) == "#")
+    {   bhvGetNextConfigLine();  // comment or blank
+        return;
+    }
+    list params = llCSV2List(data);                         // parse string to list
+    if (llGetListLength(params) < 2)                        // must have at least two fields
+    {   bhvBadConfig(data, lineno, "Must have at least two comma-separated fields."); return; }
+    string scriptname = llList2String(params,0);            // target script name
+    if (llGetInventoryType(scriptname) != INVENTORY_SCRIPT) // if no such script
+    {   scriptname = "bhv" + scriptname;                    // preface with bhv and retry
+        if (llGetInventoryType(scriptname) != INVENTORY_SCRIPT) // if no such script
+        {   bhvBadConfig(data, lineno, "No script named \"" + scriptname + "\"."); return; }
+    }
+    // We have a valid script name and params
+    bhvDoConfigLine(params);                                   // handle this config line  
+}
+
+//
+//  bhvGetNextConfigLine -- ready to get next config line
+//
+bhvGetNextConfigLine()
+{   if (gBhvConfigNotecardLine < 0) { return; }                // done, ignore callback
+    gBhvConfigNotecardQuery = llGetNotecardLine(gBhvConfigName, gBhvConfigNotecardLine++); 
+}
+
+//
+//  bhvBadConfig -- report config problem
+//
+bhvBadConfig(string data, integer lineno, string msg)
+{   llSay(DEBUG_CHANNEL, "Configuration notecard problem: " + msg + "\n" + (string)lineno + ". " + data);
+}
+//
+//  Caller must supply the following functions:
+//
+//  bhvConfigDone(integer valid)        // called when config is complete, with TRUE if valid config
+//  bhvDoConfigLine(list params)        // configure line for this script, as a list from CSV fields
+//
+//  Caller must call the following functions:
+//
+//  bhvReadConfig()                     // start the config reading process
+//  bhvGetNextConfigLine();             // call to cause read of next line, after called by DoConfigLine
+// 
+//
 #endif // BHVCALLLSL
