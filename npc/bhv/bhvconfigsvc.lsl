@@ -114,17 +114,9 @@ default
     {      }
     
     dataserver(key query_id, string data)               
-    {   llOwnerSay("Dataserver callback: " + data);     // ***TEMP***
-        if (query_id == gBhvConfigNotecardQuery)           // reading config line from notecard
-        {
-            if (data == EOF)                            // done reading notecard
-            {   bhvConfigDone(TRUE);                       // success
-            }
-            else
-            {   bhvParseConfigLine(data, gBhvConfigNotecardLine); // parse this config line and ask for another
-            }
-        }
-        //  Region corner lookups
+    {   ////llOwnerSay("Dataserver callback: " + data);     // ***TEMP***
+        //  Handle all the various data server events
+        if (query_id == gBhvConfigNotecardQuery)       {   bhvParseConfigLine(data, gBhvConfigNotecardLine);}
         else if (query_id == gLookupRegionStatusQuery) { lookupregionstatusreply(data); }
         else if (query_id == gLookupRegionCornerQuery) { lookupregioncornerreply(data); }
     }

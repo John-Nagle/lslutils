@@ -343,6 +343,10 @@ bhvReadConfig()
 //
 bhvParseConfigLine(string data, integer lineno)
 {
+    if (data == EOF)                                        // done reading notecard
+    {   bhvConfigDone(TRUE);                                // success
+        return;
+    }
     data = llStringTrim(data, STRING_TRIM);                 // remove unwanted whitespace
     if (llStringLength(data) == 0 || llGetSubString(data,0,0) == "#")
     {   bhvGetNextConfigLine();  // comment or blank
