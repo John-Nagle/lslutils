@@ -146,7 +146,7 @@ bhvmsglevdialog(key toucherid)
 bhvbroadcastmsglev(integer msglev, integer verbose, integer dumplog)
 {   gDebugMsgLevel = msglev;                    // set message level
     llOwnerSay("Setting debug message level to " + (string)msglev); // set msg lev
-    llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","msglev","msglev",msglev]),""); // tell everybody
+    ////llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","msglev","msglev",msglev]),""); // tell everybody
     debugMsgLevelBroadcast(msglev, verbose, dumplog);             // send to path system
 }
 //

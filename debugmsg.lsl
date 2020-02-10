@@ -16,8 +16,8 @@
 
 
 #define DEBUG_MIN_IM_INTERVAL 3600                              // seconds between IMs. Do not overdo.
-#define DEBUG_LOG_CHANNEL 999                                         // Send debug log messages on this channel
-#define DEBUG_MSGLEV_BROADCAST  -99999                          // link message number for setting msg level
+#define DEBUG_LOG_CHANNEL 999                                   // Send debug log messages on this channel
+#define DEBUG_MSGLEV_BROADCAST  -55555                          // link message number for setting msg level
 //
 //  Global
 //

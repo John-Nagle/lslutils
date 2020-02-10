@@ -322,7 +322,7 @@ bhvDoConfigLine(list params)
         }
         else if (cmd == "speed")
         {
-            gSpeed = (float)llList2String(params,3);                // how fast
+            gSpeed = (float)llList2String(params,2);                // how fast
             if (gSpeed < 0.25) { gSpeed = 0.25; }                   // bound speed
             if (gSpeed > 8.0) { gSpeed = 8.0; }
         }
@@ -378,7 +378,7 @@ default
     }
     
     link_message(integer sender_num, integer num, string jsn, key id)
-    {   ////debugMsg(DEBUG_MSG_INFO, jsn);                      // ***TEMP*** dump incoming JSON
+    {   ////llOwnerSay("patrol: " + (string)num + ": " + jsn);                      // ***TEMP*** dump incoming JSON
         if (num == gBhvMnum || num == BHVMSGFROMSCH)        // if from scheduler to us
         {   
             bhvSchedMessage(num,jsn);                       // message from scheduler
