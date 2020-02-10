@@ -310,8 +310,8 @@ bhvSchedMessage(integer num, string jsn)
 //
 //  Global variables
 //
-integer gBhvConfigEnabled = FALSE;              // have not finished config bhvReadConfig yet
 integer gBhvConfigNotecardLine;                 // current line on notecard
+integer gBhvConfigNotecardNumber;               // which notecard
 key gBhvConfigNotecardQuery;                    // database query callback key
 string gBhvConfigName;                          // name of notecard
 //
@@ -321,17 +321,26 @@ string gBhvConfigName;                          // name of notecard
 //
 bhvReadConfig()
 {
-    //  Start loading lines from notecard
-    gBhvConfigNotecardLine = 0;
-    gBhvConfigEnabled = FALSE;                 // turns on when all points loaded
-    gBhvConfigName = llGetInventoryName(INVENTORY_NOTECARD, 0);  // get first notecard
-    ////if (llGetInventoryKey(CONFIG_NOTECARD) == NULL_KEY)     // waypoints file no good
-    if (gBhvConfigName == "")                                   // if no notecard
+    if (llGetInventoryNumber(INVENTORY_NOTECARD) <= 0) // if no notecards at all
     {
-        llSay(DEBUG_CHANNEL, "No notecard, containing configuration, in behaviors prim. Will not start.");
+        llSay(DEBUG_CHANNEL, "No notecards, for configuration, in behaviors prim. Will not start.");
         bhvConfigDone(FALSE);                  // fails
         return;
-    }
+    } 
+    gBhvConfigNotecardNumber = 0;               // reset notecard index
+    bhvReadNextConfig();                        // read next notecard
+}
+
+
+//
+//  bhvReadNextConfig -- read next notecard.
+//
+bhvReadNextConfig()
+{
+    //  Start loading lines from notecard
+    gBhvConfigNotecardLine = 0;
+    gBhvConfigName = llGetInventoryName(INVENTORY_NOTECARD, gBhvConfigNotecardNumber);  // get next notecard
+    llOwnerSay("Reading config notecard: " + gBhvConfigName);   // tell user what notecard is being read
     //  Start reading notecard. This may need a retry; dataserver is not reliable.
     bhvGetNextConfigLine();                    // start getting config lines
  }
@@ -344,7 +353,10 @@ bhvReadConfig()
 bhvParseConfigLine(string data, integer lineno)
 {
     if (data == EOF)                                        // done reading notecard
-    {   bhvConfigDone(TRUE);                                // success
+    {   if (++gBhvConfigNotecardNumber >= llGetInventoryNumber(INVENTORY_NOTECARD)) // if read all notecards
+        {   bhvConfigDone(TRUE); }                          // all done, success
+        else
+        {   bhvReadNextConfig(); }                          // on to next notecard
         return;
     }
     data = llStringTrim(data, STRING_TRIM);                 // remove unwanted whitespace
