@@ -35,9 +35,7 @@ float MAX_GREET_DIST = 10.0;                // (m) if can get this close, say "H
 float OBSTACLE_RETRY_PROB = 0.7;            // (fract) Retry if random < this.
 float TESTSPACING = 0.33;                   // (fract) Multiply height and width by this to get ray cast spacing
 
-#ifndef CHARACTER_SPEED                     // overrideable
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
-#endif // CHARACTER_SPEED
 #define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
 ////string IDLE_ANIM = "stand 2";            // idle or chatting         
 ////string STAND_ANIM = "stand 2";           // just when stopped
@@ -48,10 +46,6 @@ string STAND_ANIM = "SEmotion-bento18";     // just when stopped
 float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                  // will stick around for this long
 float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far before we recheck on approach
-
-//  Configuration
-string PATROL_NOTECARD = "Patrol points";   // read this notecard for patrol points
-
 integer PATH_STALL_TIME = 300;              // path stall time
 
 
@@ -70,6 +64,7 @@ list gPatrolPointDir = [];      // direction to face on arriving
 //  Globals
 integer gNextPatrolPoint;       // next patrol point we are going to
 vector gPatrolDestination;      // where are we going next?
+vector gPatrolRegionCorner;     // region corner for next patrol point
 float gDwell;                   // dwell time at next patrol point
 float gFaceDir;                 // direction to face next
 float gSpeed = CHARACTER_SPEED;               // how fast
@@ -197,7 +192,7 @@ start_anim(string anim)
     bhvAnimate([anim]);                             // new API
 }    
 //
-//  start_platrol -- start patrolling if allowed to do so.
+//  start_patrol -- start patrolling if allowed to do so.
 //
 start_patrol()
 {   //  Start patrolling if nothing else to do
@@ -212,6 +207,7 @@ start_patrol()
         do { newpnt = rand_int(bound);  }
         while (newpnt == gNextPatrolPoint);
         gNextPatrolPoint = newpnt;
+        gPatrolRegionCorner = llList2Vector(gPatrolPointCorners, gNextPatrolPoint);
         gPatrolDestination = llList2Vector(gPatrolPoints, gNextPatrolPoint);
         gDwell = llList2Float(gPatrolPointDwell, gNextPatrolPoint);
         gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
@@ -225,7 +221,7 @@ restart_patrol()
 {
     debugMsg(DEBUG_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
     start_anim(WAITING_ANIM);                       // applies only when stalled during movement
-    bhvNavigateTo(ZERO_VECTOR,gPatrolDestination,0,CHARACTER_SPEED);  // head for next pos
+    bhvNavigateTo(gPatrolRegionCorner,gPatrolDestination,0,gSpeed);  // head for next pos
     gAction = ACTION_PATROL;                        // patrolling
 }
 //
@@ -236,10 +232,14 @@ restart_patrol()
 //
 bhvConfigDone(integer valid)
 {
-    llOwnerSay("Configuration done, success = " + (string)valid);
     gBhvConfigNotecardLine = -1;                        // no more reading
     if (valid)
-    {   bhvInit();  }                                   // set up scheduler system
+    {   llOwnerSay("Configuration done.");
+        bhvInit();                                      // set up scheduler system
+    }
+    else
+    {   llSay(DEBUG_CHANNEL,"=== CONFIGURATION FAILED ==="); // stuck
+    }
 }
 
 //
@@ -294,7 +294,7 @@ lookupregioncornerreply(string data)
 //
 lookupregioncallback(vector corner, list params)
 {
-    llOwnerSay("Region info: " + llDumpList2String(params,",") + " at " + (string)corner);
+    llOwnerSay("Patrol point: " + llDumpList2String(params,",") + " region " + (string)corner);
     //  Add this patrol point
     vector point = (vector)llList2String(params,3);                 // get point to patrol
     if (point == ZERO_VECTOR)                                       // if invalid point
@@ -314,7 +314,7 @@ lookupregioncallback(vector corner, list params)
 bhvDoConfigLine(list params)
 {   if (llList2String(params,0) == "patrol")
     {
-        llOwnerSay("Config: " + llDumpList2String(params,","));
+        ////llOwnerSay("Config: " + llDumpList2String(params,","));
         string cmd = llList2String(params,1);                       // what command type
         if (cmd == "point")                                         // point to patrol to
         {   lookupregion(llList2String(params,2),params);           // look up name
@@ -341,23 +341,7 @@ startup()
     gAction = ACTION_IDLE;
     gDwell = 0.0;                           // dwell time after patrol point reached
     gPatrolEnabled = FALSE;                 // turns on when all points loaded
-bhvReadConfig();                        // start reading the config
-#ifdef OBSOLETE
-    //  Start loading patrol points.
-    gPatrolNotecardLine = 0;
-    gPatrolPoints = [];
-    gPatrolPointDwell = [];
-    gNextPatrolPoint = 0;
-    if (llGetInventoryKey(PATROL_NOTECARD) == NULL_KEY)     // waypoints file no good
-    {
-        llSay(DEBUG_CHANNEL, "Notecard '" + PATROL_NOTECARD + "' missing or empty. Will not patrol.");
-        return;
-    }
-    //  Start reading notecard. This may need a retry; dataserver is not reliable.
-    gPatrolNotecardQuery = llGetNotecardLine(PATROL_NOTECARD, gPatrolNotecardLine);   
-    //  Set up connection to scheduler
-    bhvInit();                              // set up scheduler system
-#endif // OBSOLETE
+    bhvReadConfig();                        // start reading the config
 }
 
 //
