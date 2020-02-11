@@ -253,8 +253,8 @@ pathchecktargetmoved()
 //  pathmovetimer  -- timer event, check progress and do ray casts
 //
 pathmovetimer()
-{   float interval = llGetAndResetTime();                       // time since last tick ***TEMP**
-    if (interval > 0.25) { pathMsg(PATH_MSG_WARN,"Timer ticks slow: " + (string)interval + "s."); }
+{   float interval = llGetAndResetTime();                       // time since last tick 
+    if (interval > 0.5) { pathMsg(PATH_MSG_WARN,"Timer ticks slow: " + (string)interval + "s."); } // ***TEMP*** log really slow operations
     if (gPathMoveActive && gKfmSegments != [])                  // if we are moving and have a path
     {   pathcheckdynobstacles(); }                              // ray cast for obstacles
     if (gPathMoveActive && gKfmSegments != [])                  // if we are moving and have a path

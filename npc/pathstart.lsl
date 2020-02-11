@@ -16,12 +16,11 @@
 
 //  Constants
 #define TESTSPACING (0.33)                                      // (m) vertical spacing between ray casts
-#define PATHMAXRETRIES  10                                      // (count) no more than this many retries before giving up
+#define PATHMAXRETRIES  3                                       // (count) no more than this many retries before giving up
 
 //
 //  Globals
 //  Character parameters
-////float gPathcallSpeed = 1.0;                                     // speed defaults are very slow
 float gPathcallTurnspeed = 0.1;
 //  Retry state
 integer gPathcallRetries = 0;                                   // no retries yet
