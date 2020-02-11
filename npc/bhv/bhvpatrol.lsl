@@ -32,7 +32,7 @@ float DETECTION_RADIUS = 60.0;
 float GOAL_TOL = 1.0;               
 float GOAL_DIST = 1.75;                     // (m) get this close to talk
 float MAX_GREET_DIST = 10.0;                // (m) if can get this close, say "Hello there"
-float OBSTACLE_RETRY_PROB = 0.7;            // (fract) Retry if random < this.
+float OBSTACLE_RETRY_PROB = 0.5;            // (fract) Retry if random < this.
 float TESTSPACING = 0.33;                   // (fract) Multiply height and width by this to get ray cast spacing
 
 #define CHARACTER_SPEED  2.5                // (m/sec) speed
