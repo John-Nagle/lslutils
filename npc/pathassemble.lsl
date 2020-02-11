@@ -118,8 +118,8 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
         gPathLastObstacle = NULL_KEY;                       // no last obstacle yet
         ////gPathExeMovegoal = ZERO_VECTOR;                     // no stored goal yet
         if (segmentid == 0 && llList2Vector(pts,0) == ZERO_VECTOR)  // if this is an error situation at start
-        {   pathMsg(PATH_MSG_WARN, "Path error at start: " + (string)status); 
-            pathexestop(status);                            // and we fail out.
+        {   pathMsg(PATH_MSG_WARN, "Path error at start: " + (string)status + " hitobj: " + (string)hitobj); 
+            pathexestopkey(status, hitobj);                 // and we fail out.
             return; 
         }
 
@@ -127,7 +127,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
         if (llVecMag(<verr.x,verr.y,0>) > PATHSTARTTOL && segmentid == 0)     // if too far from current pos 
         {   pathMsg(PATH_MSG_WARN,"Bad start pos, segment " + (string)segmentid +
              " Should be at: " + (string)llList2Vector(pts,0) + " Current pos: " + (string)llGetPos());
-            pathexestop(PATHERRBADSTARTPOS);                // we are not where we are supposed to be.
+            pathexestopkey(PATHERRBADSTARTPOS, hitobj);     // we are not where we are supposed to be.
             return; 
         }
     }
@@ -318,7 +318,7 @@ pathexemovementend()
 //
 pathexestopkey(integer status, key hitobj)
 {
-    if (gPathExeMoving || (status != 0)) { pathMsg(PATH_MSG_WARN,"Movement stop. Status: " + (string)status); }
+    if (gPathExeMoving || (status != 0)) { pathMsg(PATH_MSG_WARN,"Movement stop. Status: " + (string)status + ", hitobj: " + (string)hitobj); }
     ////llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on
     gClearSegments = [];                                    // reset state
     gMazeSegments = [];
@@ -358,12 +358,11 @@ pathexemazedeliver(string jsn)
         return;
     }
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
-    ///if (status != 0) { pathexestop(status); return; }                  // error status from other side
-    if (status != 0) { pathexedeliver([ZERO_VECTOR],pathid, segmentid, TRUE, status, NULL_KEY); return; } // EOF with error, needed if first segment is bad.
+    key hitobj = (key)llJsonGetValue(jsn,["hitobj"]);           // obstacle which started (not stopped) maze solve
+    if (status != 0) { pathexedeliver([ZERO_VECTOR],pathid, segmentid, TRUE, status, hitobj); return; } // EOF with error, needed if first segment is bad.
     float cellsize = (float)llJsonGetValue(jsn,["cellsize"]); // get maze coords to world coords info
     vector pos = (vector)llJsonGetValue(jsn,["pos"]);
     rotation rot = (rotation)llJsonGetValue(jsn,["rot"]);
-    key hitobj = (key)llJsonGetValue(jsn,["hitobj"]);           // obstacle which started (not stopped) maze solve
     list ptsmaze = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
     vector p0 = (vector)llJsonGetValue(jsn,["p0"]);            // for checking only
     vector p1 = (vector)llJsonGetValue(jsn,["p1"]);            // for checking only

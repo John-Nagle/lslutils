@@ -68,36 +68,12 @@ vector gPatrolRegionCorner;     // region corner for next patrol point
 float gDwell;                   // dwell time at next patrol point
 float gFaceDir;                 // direction to face next
 float gSpeed = CHARACTER_SPEED;               // how fast
-    
-#ifdef OBSOLETE
-//
-//  add_patrol_point -- add patrol point from notecard
-//
-add_patrol_point(string s)
-{   s = llStringTrim(s, STRING_TRIM);           // clean
-    if (s == "") { return; }                    // blank line        
-    if (llGetSubString(s,0,0) == "#") { return; }   // comment line
-    list parsed = llParseString2List(s,[" "],[]);          // parse
-    vector pos = (vector)llList2String(parsed, 0);
-    float dwell = (float)llList2String(parsed,1);       // dwell time
-    float facedir = (float)llList2String(parsed,2)*DEG_TO_RAD;       // heading to face
-    if (pos == ZERO_VECTOR)
-    {   llSay(DEBUG_CHANNEL, "Invalid patrol point: " + s);
-        return;
-    }
-    debugMsg(DEBUG_MSG_INFO,"Added patrol point: " + (string) pos + "  Dwell time: " + (string)dwell
-        + " Face dir: " + (string)facedir); 
-    gPatrolPoints += pos;
-    gPatrolPointDwell += dwell;
-    gPatrolPointDir += facedir;
-}
-#endif // OBSOLETE
 
 //
 //  bhvDoRequestDone -- pathfinding is done. Analyze the result and start the next action.
 //
 bhvDoRequestDone(integer status, key hitobj)
-{   debugMsg(DEBUG_MSG_INFO, "Path update: " + (string) status + " obstacle: " + llKey2Name(hitobj));
+{   debugMsg(DEBUG_MSG_WARN, "Path update: " + (string) status + " obstacle: " + llKey2Name(hitobj)); // ***TEMP*** temporarily WARN
     if (status == PATHERRMAZEOK)                    // success
     {   
         if (gAction == ACTION_PATROLFACE)           // final face at end of patrol move
@@ -136,6 +112,8 @@ bhvDoRequestDone(integer status, key hitobj)
                 gAction = ACTION_IDLE;                                  // which will try a different patrol point
                 debugMsg(DEBUG_MSG_WARN,"Obstacle " + llKey2Name(hitobj) + ", will give way.");
             }
+        } else {
+           debugMsg(DEBUG_MSG_WARN,"Stopped by fixed obstacle: " + llKey2Name(hitobj)); // report stopped by fixed obstacle
         }
     }
     //  Default - errors we don't special case.

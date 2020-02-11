@@ -191,7 +191,7 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
         integer requestid = (integer)llJsonGetValue(jsn, ["requestid"]);  // hitobj as key param in link message
         if (requestid != gPathcallRequestId)                         // result from a cancelled operation
         {   debugMsg(DEBUG_MSG_WARN, "Stale request completed msg discarded."); return; }
-        debugMsg(DEBUG_MSG_WARN,"Path complete, status " + (string)status + " Time: " + (string)llGetTime());
+        debugMsg(DEBUG_MSG_WARN,"Path complete, status " + (string)status + ", obstacle: " + (string)hitobj + ", time: " + (string)llGetTime());
         gPathcallStarttime = 0;                             // really done, stop clock
         pathUpdateCallback(status, hitobj);
     }
