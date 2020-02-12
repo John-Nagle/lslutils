@@ -26,6 +26,18 @@
 //
 #include "npc/assert.lsl"
 #include "npc/bhv/bhvcall.lsl"
+
+//
+//  Configuration
+//
+//  Timer
+#define POLL_TIME 0.25
+#define IDLE_TICKS 30                           // 7.5 secs to shutdown
+
+//  Thresholds at which different animations turn on
+#define SPEED_WALK      1.5                     // faster than this, fast walking
+#define SPEED_RUN       3.0                     // faster than this, running
+#define ROTRATE_TURN    0.3                     // medium speed turn
 //
 //  Globals
 //
@@ -44,6 +56,11 @@ list gAnimAlways = [];                              // permanent anims, always r
 
 list gCurrentAnims = [];                            // what's running now
 integer gCurrentAnimState = -1;                     // optimization to prevent too much list work
+
+integer gMoving;                                // true if moving
+integer gIdleTicks;                             // not moving, turn off
+rotation gPrevRot = ZERO_ROTATION;              // previous orientation
+vector gPrevPos = ZERO_VECTOR;                  // previous position
 
 //
 //  loadanims -- load requested anims from notecard info
@@ -121,21 +138,6 @@ bhvConfigDone(integer valid)
     }
 }
 
-
-
-
-
-float POLL_TIME = 0.25;
-float IDLE_TICKS = 30;                          // 7.5 secs to shutdown
-
-float SPEED_WALK = 0.7;                         // faster than this, walking
-float SPEED_RUN = 3.0;                          // faster than this, running
-float ROTRATE_TURN = 0.3;                       // medium speed turn
-
-integer gMoving;
-integer gIdleTicks;                                     // not moving, turn off
-rotation gPrevRot = ZERO_ROTATION;                      // previous orientation
-vector gPrevPos = ZERO_VECTOR;                          // previous position
 //
 //  stop_anims -- stop all anims not in the except list
 //
