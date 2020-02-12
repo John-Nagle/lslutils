@@ -255,7 +255,6 @@ integer getbhvtorun()
         else if (ixpri == pri)                  // if same as higest priority
         {   bhvindexes += ix; }                 // add to list
     }
-    ////llOwnerSay("getbhvtorun hits: " + llDumpList2String(bhvindexes,","));   // ***TEMP***   
     //  Pick one at random from list
     integer len = llGetListLength(bhvindexes);  // number of tasks we could run
     if(len <= 0) { return(-1); }                // nothing ready to run
@@ -305,21 +304,12 @@ stopbhv(integer bhvix)
 dopathbegin(integer bhvix, string jsn)
 {   debugMsg(DEBUG_MSG_WARN,"Path begin req: " + jsn);              // get things started
     key target = (key)llJsonGetValue(jsn,["target"]);
+    vector regioncorner = (vector)llJsonGetValue(jsn,["regioncorner"]); // send region corner along with goal
     vector goal = (vector)llJsonGetValue(jsn,["goal"]);
     float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
     float speed = (float)llJsonGetValue(jsn,["speed"]);
     integer dogged = (target != "") && (target != NULL_KEY);        // dogged mode if pursue target
-
-#ifdef UNITTEST
-    //  ***MORE***
-    //  ***TEMP DUMMY*** send back a fake normal completion for test purposes
-    integer status = 0;
-    key hitobj = NULL_KEY;
-    llSleep(1.0);   // prevent dummy test from going too fast
-    llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["reply","pathbegin","status",status,"hitobj",hitobj]),""); 
-#else
-    pathBegin(target, goal, stopshort, dogged, speed);                     // begin path planning
-#endif // UNITTEST
+    pathBegin(target, regioncorner, goal, stopshort, speed);                     // begin path planning
 }
 //
 //  doturn -- behavior wants to do a path request
@@ -327,16 +317,7 @@ dopathbegin(integer bhvix, string jsn)
 doturn(integer bhvix, string jsn)
 {   debugMsg(DEBUG_MSG_WARN,"Turn req: " + jsn);
     float heading = (float)llJsonGetValue(jsn,["heading"]);            // get heading
-#ifdef UNITTEST
-    //  ***MORE***
-    //   ***TEMP DUMMY*** send back a normal completion for test purposes.
-    integer status = 0;
-    key hitobj = NULL_KEY;
-    llSleep(1.0);   // prevent dummy test from going too fast
-    llMessageLinked(BHVLINKNUM(bhvix),BHVMNUM(bhvix),llList2Json(JSON_OBJECT,["reply","pathturn","status",status]),""); 
-#else
     pathTurn(heading);
-#endif // UNITTEST
 
 }
 //

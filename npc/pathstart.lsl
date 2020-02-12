@@ -49,11 +49,11 @@ pathLinkMsg(string jsn, key hitobj)
 //
 //  pathprepstart -- start the path planner task
 //
-pathprepstart(key target, vector goal, float stopshort, float speed, float testspacing, integer pathid)
+pathprepstart(key target, vector regioncorner, vector goal, float stopshort, float speed, float testspacing, integer pathid)
 {   pathMsg(PATH_MSG_INFO,"Path plan start req, pathid: " + (string)pathid);
     string params = llList2Json(JSON_OBJECT,
         ["request","pathprep", 
-        "target",target, "goal", goal, "stopshort", stopshort, "testspacing", testspacing,
+        "target",target, "regioncorner", regioncorner, "goal", goal, "stopshort", stopshort, "testspacing", testspacing,
         "speed", speed, "turnspeed", gPathcallTurnspeed,
         "pathid", pathid]);
     llMessageLinked(LINK_THIS, PATHPLANREQUEST, params,"");   // send to path prep 
@@ -65,13 +65,13 @@ pathprepstart(key target, vector goal, float stopshort, float speed, float tests
 //
 //  Stop short of the target by the distance stopshort. This can be zero. 
 //
-pathbegin(key target, vector endpos, float stopshort, integer dogged, float speed, integer requestid)
+pathbegin(key target, vector regioncorner, vector endpos, float stopshort, float speed, integer requestid)
 {
     gPathcallLastDistance = INFINITY;                               // must get shorter on each retry
     gPathcallRetries = 0;                                           // no retries yet
     gLocalRequestId = requestid;                                    // save request ID for callbacks
     llResetTime();                                                  // for elapsed time display
-    pathstart(target, endpos, stopshort, dogged, speed);            // do it
+    pathstart(target, regioncorner, endpos, stopshort, speed);            // do it
 }
 //
 //  pathstart -- go to indicated point or target. Internal fn. Used by begin or restart
@@ -80,10 +80,10 @@ pathbegin(key target, vector endpos, float stopshort, integer dogged, float spee
 //
 //  Stop short of the target by the distance stopshort. This can be zero. 
 //
-pathstart(key target, vector endpos, float stopshort, integer dogged, float speed)
+pathstart(key target, vector regioncorner, vector endpos, float stopshort, float speed)
 {   assert(gPathWidth > 0);                                         // we must be initialized
     gPathcallLastParams = [];                                       // no params for retry stored yet.
-    gLocalPathId = (gLocalPathId+1)%(PATHMAXUNSIGNED-1);// our serial number, nonnegative
+    gLocalPathId = (gLocalPathId+1)%(PATHMAXUNSIGNED-1);            // our serial number, nonnegative
     if (target != NULL_KEY)                                         // if chasing a target
     {   list details = llGetObjectDetails(target, [OBJECT_POS]);    // get object position
         if (details == [])                                          // target has disappeared
@@ -93,7 +93,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged, float spee
         endpos = llList2Vector(details,0);                          // use this endpos
         llOwnerSay("Position of target " + llKey2Name(target) + " is " + (string)endpos); // ***TEMP***
     }
-    gPathcallLastParams = [target, endpos, stopshort, dogged, speed];      // save params for restart
+    gPathcallLastParams = [target, regioncorner, endpos, stopshort, speed];      // save params for restart
     //  Are we allowed to go to this destination?
     if (!pathvaliddest(endpos))
     {   pathMsg(PATH_MSG_WARN,"Destination " + (string)endpos + " not allowed."); 
@@ -115,7 +115,7 @@ pathstart(key target, vector endpos, float stopshort, integer dogged, float spee
         endpos.z = newz;                                                // use ground level found by ray cast
     }
     //  Generate path
-    pathprepstart(target, endpos, stopshort, speed, TESTSPACING, gLocalPathId);
+    pathprepstart(target, regioncorner, endpos, stopshort, speed, TESTSPACING, gLocalPathId);
     //  Output from pathcheckobstacles is via callbacks
 }
 //
@@ -138,9 +138,9 @@ integer pathretry(integer status, key hitobj)
     if (llListFindList(PATHRETRYABLES, [status]) < 0) { return(FALSE); }// not retryable
     if (gPathcallLastParams == []) { return(FALSE); }                   // no retry params
     key target = llList2Key(gPathcallLastParams,0);                     // get retry params back
-    vector endpos = llList2Vector(gPathcallLastParams,1);               // this language needs structures
-    float shortstop = llList2Float(gPathcallLastParams, 2);
-    integer dogged = llList2Integer(gPathcallLastParams,3);
+    vector regioncorner = llList2Vector(gPathcallLastParams,1);         // region corner
+    vector endpos = llList2Vector(gPathcallLastParams,2);               // this language needs structures
+    float shortstop = llList2Float(gPathcallLastParams, 3);
     float speed = llList2Float(gPathcallLastParams,4);
     gPathcallLastParams = [];                                           // consume retry params to prevent loop
     if (gPathcallRetries > PATHMAXRETRIES)
@@ -149,14 +149,14 @@ integer pathretry(integer status, key hitobj)
     }
     float dist = pathdistance(llGetRootPosition(), endpos, gPathWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
     if (dist < 0 || dist >= gPathcallLastDistance)                      // check for closer. negative means path distance failed. Avoids loop.
-    {   if (!dogged || status != PATHERRTARGETMOVED)                    // dogged pursue mode, keep trying even if not getting closer  
+    {   if (status != PATHERRTARGETMOVED)                               // but keep pursuing if target is moving
         {   pathMsg(PATH_MSG_WARN, "No retry, did not get closer. Distance " + (string)dist + "m."); return(FALSE); }   // cannot retry  
     }
     if (gPathcallLastDistance > dist) { gPathcallLastDistance = dist; } // use new value if smaller, so the initial value of infinity gets reduced
     //  Must do a retry
     gPathcallRetries++;                                                 // retry count 
     pathMsg(PATH_MSG_WARN, "Retrying. Distance " + (string)dist + "m. Retry " + (string)gPathcallRetries);                              // retry
-    pathstart(target, endpos, shortstop, dogged, speed);                // trying again
+    pathstart(target, regioncorner, endpos, shortstop, speed);          // trying again
     return(TRUE);                                                       // doing retry, do not tell user we are done.
 }
 
@@ -186,14 +186,14 @@ default
             integer requestid = (integer)llJsonGetValue(jsn,["requestid"]); // caller controls the path serial number
             string request = llJsonGetValue(jsn,["request"]);           // get request type
             if (request == "pathbegin")                                 // common start function
-            {   vector goal = (vector)llJsonGetValue(jsn,["goal"]);     // get goal point
+            {   vector regioncorner = (vector)llJsonGetValue(jsn,["regioncorner"]); 
+                vector goal = (vector)llJsonGetValue(jsn,["goal"]);     // get goal point
                 key target = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
                 float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
-                integer dogged = (integer)llJsonGetValue(jsn,["dogged"]);
                 float speed = (float)llJsonGetValue(jsn,["speed"]);
-                pathbegin(target, goal, stopshort, dogged, speed, requestid);    // start movement
+                pathbegin(target, regioncorner, goal, stopshort, speed, requestid);    // start movement
             } else if (request == "pathstop")
-            {   pathbegin(NULL_KEY,llGetRootPosition(),100.0, FALSE, 1.0, requestid);    // a stop is a dummy move to self
+            {   pathbegin(NULL_KEY,ZERO_VECTOR,llGetRootPosition(),100.0, 1.0, requestid);    // a stop is a dummy move to self
             } else if (request == "pathspeed")
             {   ////gPathcallSpeed = (float)llJsonGetValue(jsn,["speed"]);
                 gPathcallTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]);

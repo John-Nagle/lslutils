@@ -173,7 +173,7 @@ bhvInit()
 bhvpathreq(vector regioncorner, vector goal, key target, float stopshort, float speed)
 {
     string jsn = llList2Json(JSON_OBJECT,["request","pathbegin","mnum",gBhvMnum,"token",gActiveToken,
-        "target",target, "goal",goal, "stopshort",stopshort, "speed",speed]);
+        "target",target, "regioncorner", regioncorner, "goal",goal, "stopshort",stopshort, "speed",speed]);
     llMessageLinked(gBhvSchedLinkNumber, BHVMSGTOSCH,jsn,"");
 }
 

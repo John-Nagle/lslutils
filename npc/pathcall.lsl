@@ -119,9 +119,9 @@ pathTick()
 //
 //  Stop short of the target by the distance stopshort. This can be zero. 
 //
-pathNavigateTo(vector endpos, float stopshort, float speed)
+pathNavigateTo(vector regioncorner, vector endpos, float stopshort, float speed)
 {
-    pathBegin(NULL_KEY, endpos, stopshort, FALSE, speed);             // common for pathNavigateTo and pathPursue
+    pathBegin(NULL_KEY, regioncorner, endpos, stopshort, speed);             // common for pathNavigateTo and pathPursue
 }
 
 
@@ -137,8 +137,8 @@ pathNavigateTo(vector endpos, float stopshort, float speed)
 //  If the target moves, the navigate operation is terminated with an error, causing a retry.
 //  The retry heads for the new target position.
 //
-pathPursue(key target, float stopshort, integer dogged, float speed)
-{   pathBegin(target, ZERO_VECTOR, stopshort, dogged, speed);          // start pursuit.
+pathPursue(key target, float stopshort, float speed)
+{   pathBegin(target, ZERO_VECTOR, ZERO_VECOTR, stopshort, speed);          // start pursuit.
 }
 
 //
@@ -158,11 +158,11 @@ pathTurn(float heading)
 //
 //  Stop short of the target by the distance stopshort. This can be zero. 
 //
-pathBegin(key target, vector endpos, float stopshort, integer dogged, float speed)
+pathBegin(key target, vector regioncorner, vector endpos, float stopshort, float speed)
 {   if (!gPathcallInitialized) { panic("Path request made before init call"); } // don't let things start out of sequence
     gPathcallRequestId = (gPathcallRequestId+1)%(PATHMAXUNSIGNED-1);      // request (not path) serial number, nonnegative
     gPathcallLastCommand = llList2Json(JSON_OBJECT,["request","pathbegin","requestid",gPathcallRequestId,
-        "target",target, "goal",endpos,"stopshort",stopshort,"dogged",dogged, "speed",speed]); // save for diagnostic
+        "target",target, "regioncorner", regioncorner, "goal",endpos,"stopshort",stopshort, "speed",speed]); // save for diagnostic
     llMessageLinked(LINK_THIS, PATHSTARTREQUEST,gPathcallLastCommand,"");
     gPathcallStarttime = llGetUnixTime();                               // start the stall timer
 }

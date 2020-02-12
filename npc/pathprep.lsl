@@ -138,6 +138,8 @@ default
             startpos = llGetPos();                                      // startpos is where we are now
             vector startscale = llGetScale();
             startpos.z = (startpos.z - startscale.z*0.45);              // approximate ground level for start point
+            //  ***REGIONCORNER NOT USED YET. PASSED THROUGH THIS FAR, BUT UNUSED***
+            vector regioncorner = (vector)llJsonGetValue(jsn,["regioncorner"]); // region of goal point
             vector goal = (vector)llJsonGetValue(jsn,["goal"]);     // get goal point
             gPathprepTarget = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
             float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
