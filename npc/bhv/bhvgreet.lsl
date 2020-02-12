@@ -10,10 +10,25 @@
 //  Animats
 //  November 2019
 //
+//  Notecard config formats:
+//
+//      greet, speed, SPEED
+//      greet, msgfacing, MESSAGE
+//      greet, msgnear, MESSAGE
+//      greet, msggroup, MESSAGE
+//      greet, idling, ANIM, ANIM...
+//      greet, waiting, ANIM, ANIM...
+//      greet, talking, ANIM, ANIM...
+//
+//  Talking should have a short talk anim and a looped stand anim.
+//
 //
 #include "npc/bhv/bhvcall.lsl"
 #include "npc/pathavatartrackcall.lsl"
 #include "npc/mathutils.lsl"
+//
+//  States
+//
 integer ACTION_IDLE = 0;         
 integer ACTION_PURSUE = 1;
 integer ACTION_FACE = 2;                    // turn to face target, has callback
@@ -30,11 +45,11 @@ float OBSTACLE_RETRY_PROB = 0.7;            // (fract) Retry if random < this.
 
 #define PRIORITYPURSUE  PRIORITY_TASK       // higher than patrol, lower than evade vehicle
 
-#ifndef CHARACTER_SPEED                     // overrideable
-#define CHARACTER_SPEED  2.5                // (m/sec) speed
-#endif // CHARACTER_SPEED
+#define CHARACTER_SPEED  2.5                // (m/sec) pursue speed
 #define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
 #define WALKSPEED 2.0                       // (m/sec) walking speed, non-run
+
+#ifdef OBSOLETE
 ////string IDLE_ANIM = "stand 2";            // idle or chatting         
 ////string STAND_ANIM = "stand 2";           // just when stopped
 ///string WAITING_ANIM = "stand arms folded";  // during planning delays
@@ -42,6 +57,7 @@ string WAITING_ANIM = "SEmotion-bento13";   // arms folded during planning delay
 string IDLE_ANIM = "SEmotion-bento18";      // arms folded during planning delays
 string STAND_ANIM = "SEmotion-bento18";     // just when stopped
 string TALK_ANIM = IDLE_ANIM;               // for now
+#endif // OBSOLETE
 float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                  // will stick around for this long
 float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far before we recheck on approach
@@ -50,6 +66,22 @@ float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far befor
 
 integer PATH_STALL_TIME = 300;              // path stall time
 
+//
+//  Animations
+//
+list gAnimIdle = ["stand"];                 // standing on purpose
+list gAnimWait = ["stand"];                 // standing during a move, i.e. waiting for planner
+list gAnimTalk = ["stand","talk"];          // talking
+//
+//  Messages
+//
+string gMsgFacing = "Hello";                // can get to facing position
+string gMsgNear = "Hello there";            // can't get to facing position
+string gMsgGroup = "Hello all";             // many avis present
+//
+//  Speed
+//
+float gSpeed = CHARACTER_SPEED;             // default speed
 
 //  Global variables
 integer gAction = ACTION_IDLE;
@@ -78,23 +110,23 @@ bhvDoRequestDone(integer status, key hitobj)
                 llResetTime();
             } else {
                 debugMsg(DEBUG_MSG_WARN,"Can't get in front of avatar due to obstacle.");
-                bhvAnimate([IDLE_ANIM]);
+                bhvAnimate(gAnimIdle);
                 face(gTarget, ACTION_DISTANT_GREET);
             }                             
             return;
         }
         if (gAction == ACTION_FACE)
         {   //  Turn to face avatar.
-            bhvAnimate([IDLE_ANIM]);
+            bhvAnimate(gAnimIdle);
             face(gTarget, ACTION_GREET);
             return;
         }
         if (gAction == ACTION_GREET)
-        {   greet("Hello");
+        {   greet(gMsgFacing);
             return;
         }
-        if (gAction == ACTION_DISTANT_GREET)                    // not face to face
-        {   greet("Hello there");
+        if (gAction == ACTION_DISTANT_GREET)        // not face to face
+        {   greet(gMsgNear);
             return;
         }
         if (gAction == ACTION_TALKING)              // if someone near is talking
@@ -103,12 +135,12 @@ bhvDoRequestDone(integer status, key hitobj)
         //  Got completion in unexpected state
         debugMsg(DEBUG_MSG_ERROR,"Unexpected path completion in state " + (string)gAction + " Status: " + (string)status);
         gAction = ACTION_IDLE;            
-        bhvAnimate([IDLE_ANIM]);
+        bhvAnimate(gAnimIdle);
         return;
     }
     //  If had trouble getting there, but got close enough, maybe we can just say hi.
     if ((gAction == ACTION_PURSUE || gAction == ACTION_FACE) && dist_to_target(gTarget) < MAX_GREET_DIST) // if close enough to greet
-    {   bhvAnimate([IDLE_ANIM]);
+    {   bhvAnimate(gAnimIdle);
         face(gTarget, ACTION_DISTANT_GREET);
         return;
     }
@@ -134,7 +166,7 @@ bhvDoRequestDone(integer status, key hitobj)
     {          
         if (gAction == ACTION_FACE)             // Can't get in front of avatar, greet anyway.
         {   debugMsg(DEBUG_MSG_WARN, "Can't navigate to point in front of avatar.");
-            bhvAnimate([IDLE_ANIM]);
+            bhvAnimate(gAnimIdle);
             face(gTarget, ACTION_GREET);
             return;
         }
@@ -148,7 +180,7 @@ bhvDoRequestDone(integer status, key hitobj)
         //  Failed, back to idle.
         gAction = ACTION_IDLE;            
         debugMsg(DEBUG_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
-        bhvAnimate([IDLE_ANIM]);
+        bhvAnimate(gAnimIdle);
         bhvSetPriority(PRIORITY_OFF);                                   // give up control of the NPC
         return;
     }
@@ -163,9 +195,9 @@ face_dir(vector lookdir)                        // face this way
     vector currentlookdir = <1,0,0>*llGetRot();
     if (currentlookdir * lookdir < 0.95)             // if need to turn to face
     {
-        bhvAnimate([STAND_ANIM]);
+        bhvAnimate(gAnimIdle);
         pathFaceInDirection(lookdir);       // face avatar
-        bhvAnimate([IDLE_ANIM]);
+        bhvAnimate(gAnimIdle);
     }
 } 
 
@@ -188,6 +220,7 @@ greet(string msg)                                   // turn to face avi
     gAction = ACTION_TALKING;                       // on completion, fake being in conversation
     llResetTime();                                  // start attention span timer.
     gDwell = ATTENTION_SPAN;                        // wait this long
+    bhvAnimate(gAnimTalk);                          // talking
     bhvSay(msg);
 }
 
@@ -215,9 +248,9 @@ integer inmovingvehicle(key id)
 start_pursue()
 {   debugMsg(DEBUG_MSG_WARN,"Pursuing " + llKey2Name(gTarget));
     gDwell = 0.0;
-    bhvAnimate([WAITING_ANIM]);                                     // applies only when stalled during movement
+    bhvAnimate(gAnimWait);                                          // applies only when stalled during movement
     llSleep(2.0);                                                   // allow stop time
-    bhvPursue(gTarget, GOAL_DIST*2, CHARACTER_SPEED);               // go after the avatar, stopping a bit short
+    bhvPursue(gTarget, GOAL_DIST*2, gSpeed);                        // go after the avatar, stopping a bit short
     gAction = ACTION_PURSUE;
     llSetTimerEvent(1.0);                                           // fast poll while moving
 }
@@ -226,7 +259,7 @@ start_pursue()
 //
 greet_done(string action)
 {   gAction = ACTION_IDLE;                                          // done here
-    bhvAnimate([IDLE_ANIM]);                                        // back to idle anim
+    bhvAnimate(gAnimIdle);                                          // back to idle anim
     if (action != "") { pathavatartrackreply(gTarget,action); }     // tell tracker to defer action on this avi
     bhvSetPriority(PRIORITY_OFF);                                   // give up control of the NPC
 }
@@ -256,7 +289,7 @@ requestpursue(key target)
 bhvDoStart()
 {
     gAction = ACTION_IDLE;                                          // whatever we were doing is cancelled
-    bhvAnimate([IDLE_ANIM]);                                        // back to idle anim
+    bhvAnimate(gAnimIdle);                                          // back to idle anim
     if (gTarget == NULL_KEY)                                        // if we have no one to pursue
     {
         bhvSetPriority(PRIORITY_OFF);                               // we don't need to run now, give up control
@@ -297,7 +330,76 @@ bhvDoCollisionStart(key hitobj)
 bhvRegistered()                                                     // tell controlling script to go
 {
 }
+//
+//  Config reading
+//
+//
+//  bhvDoConfigLine -- handle a config line, test version
+//
+bhvDoConfigLine(list params)
+{   if (llList2String(params,0) == "greet")
+    {   integer valid = loadparams(params);                         // load and diagnose param line
+        if (!valid) { return; }                                     // fails, we will not start
+    }
+    bhvGetNextConfigLine();                                         // on to next notecard line
+}
 
+//  
+//  bhvConfigDone -- entire config read, done
+//
+bhvConfigDone(integer valid)
+{
+    gBhvConfigNotecardLine = -1;                        // no more reading
+    if (valid)
+    {   llOwnerSay("Configuration done.");
+        bhvInit();                                      // set up scheduler system
+    }
+    else
+    {   llSay(DEBUG_CHANNEL,"=== CONFIGURATION FAILED ==="); // stuck
+    }
+}
+
+//
+//  loadparams -- load requested anims from notecard info
+//
+//  Param format is
+//
+//  animator, walk, NEWANIM ...
+//
+//  Returns TRUE if all params valid.
+//
+integer loadparams(list params)
+{
+    string cmd = llList2String(params,1);               // request type
+    params = llDeleteSubList(params,0,1);               // get rid of "greet, cmd"
+    string param2 = llList2String(params,2);            // message if a message type line
+    if (cmd == "msgfacing") { gMsgFacing = param2; return(TRUE); }    // this language needs dicts
+    else if (cmd == "msgnear") { gMsgNear = param2; return(TRUE);  }
+    else if (cmd == "msggroup") { gMsgGroup = param2; return(TRUE); }
+    else if (cmd == "speed")
+    {
+        gSpeed = (float)param2 ;                        // how fast
+        if (gSpeed < 0.25) { gSpeed = 0.25; }           // bound speed
+        if (gSpeed > 8.0) { gSpeed = 8.0; }
+    }
+    //  Must be an anim if we get here.
+    //  Validate anims list
+    integer i;
+    for (i=0; i<llGetListLength(params); i++)
+    {   string anim = llList2String(params,i);          // get this anim's name
+        if (llGetInventoryType(anim) != INVENTORY_ANIMATION) // if no such animation
+        {   llSay(DEBUG_CHANNEL,"Configured animation \"" + anim + "\" not found.");
+            return(FALSE);                              // fails
+        }
+    
+    }
+    //  Store animations per cmd.
+    if (cmd == "waiting") { gAnimWait = params; }
+    else if (cmd == "idling") { gAnimIdle = params; }
+    else if (cmd == "talking") { gAnimTalk = params; }
+    else { llSay(DEBUG_CHANNEL,"No greet command \"" + cmd + "\"."); return(FALSE); }
+    return(TRUE);                                       // successful config    
+}
 
 default
 {
@@ -308,13 +410,12 @@ default
  
     state_entry()
     {
-        gDebugMsgLevel = DEBUG_MSG_INFO;                // ***TEMP*** need way to set debug level dynamically
-        bhvInit();
-        llSetText("", <1,1,1>, 1.0);                // ***TEMP*** flush out old hover text
+        gDebugMsgLevel = DEBUG_MSG_INFO;            
+        bhvReadConfig();                            // start reading the config
     }
-
+    
     timer()                                         // timer tick
-    {   bhvTick();                                 // timers in path library get updated
+    {   bhvTick();                                  // timers in path library get updated
         if (gAction == ACTION_TALKING)              // if talking to an avi
         {   if (llGetTime() < ATTENTION_SPAN)       // if clock has not run out
             {   return; }                           // do nothing
@@ -358,6 +459,12 @@ default
             }
             return;
         }
+    }
+    
+    dataserver(key query_id, string data)               
+    {   ////llOwnerSay("Dataserver callback: " + data);     // ***TEMP***
+        //  Handle all the various data server events
+        if (query_id == gBhvConfigNotecardQuery)       {   bhvParseConfigLine(data, gBhvConfigNotecardLine);}
     }
 }
 
