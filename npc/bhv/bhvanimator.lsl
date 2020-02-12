@@ -103,7 +103,6 @@ bhvDoRequestDone(integer status, key hitobj) {}
 bhvDoCollisionStart(key hitobj)
 {}      
 
-
 //
 //  Config reading
 //
@@ -124,32 +123,15 @@ bhvConfigDone(integer valid)
 
 
 
-#ifdef OBSOLETE
-string IDLE_ANIM = "stand 2";    // idle or chatting         
-string STAND_ANIM = "stand 2"; // just when stopped
-string WALK_ANIM = "Female Walk 1";
-string RUN_ANIM = "avatar_run";            // default run animation 
-string SLOW_WALK_ANIM = "animesh_slow_short_stride_walk";   // for slow movement
-////string TURN_ANIM = "RD Walk In Place";      // when turning
-string RTURN_ANIM = "TurnR";
-string LTURN_ANIM = "TurnL";
-string BLINK_ANIM = "Benato Blink";         // eye blink cycling animation
-list PERM_ANIMS = [BLINK_ANIM];               // anims we always run
-#endif // OBSOLETE
+
 
 float POLL_TIME = 0.25;
 float IDLE_TICKS = 30;                          // 7.5 secs to shutdown
-integer DEBUG = FALSE; /// TRUE;                // messages on/off
 
 float SPEED_WALK = 0.7;                         // faster than this, walking
 float SPEED_RUN = 3.0;                          // faster than this, running
 float ROTRATE_TURN = 0.3;                       // medium speed turn
 
-//  ***MORE*** run, etc.
-
-//  Globals
-////string gStandAnim = STAND_ANIM;                        // base stand animation
-////string gCurrentAnim = "";                              // no current animation
 integer gMoving;
 integer gIdleTicks;                                     // not moving, turn off
 rotation gPrevRot = ZERO_ROTATION;                      // previous orientation
@@ -163,7 +145,7 @@ stop_anims(list except)
     for (i=0; i < llGetListLength(anims); i++)
     {   string s = llList2String(anims,i);
         if (llListFindList(except,[s]) < 0)             // if not in "except" list, stop
-        {   if (DEBUG) { llOwnerSay("Stopping " + s); }
+        {   if (DEBUG) { llOwnerSay("Stopping " + s); } // ***TEMP***
             llStopObjectAnimation(s);
         }
     }
@@ -183,6 +165,7 @@ start_anims(list anims)
     {   string anim = llList2String(anims,i);   // nth anim
         if (llListFindList(gCurrentAnims,[anim]) < 0) // if new anim
         {   llStartObjectAnimation(anim);       // start new anim
+            if (DEBUG) llOwnerSay("Starting " + anim);     // ***TEMP***
         }
     }
     llSleep(0.1);                               // allow more time overlap with both running
@@ -281,8 +264,8 @@ default
 {
  
     state_entry()
-    {
-        bhvReadConfig();                                            // start reading the config
+    {   gBhvThisService = "anim";                   // we are the "anim" service.
+        bhvReadConfig();                            // start reading the config
     }
 
     timer()                                         // timer tick

@@ -91,6 +91,11 @@ float gHeight = -1;             // height and width for NPC
 float gWidth = -1;
 integer gVerbose = FALSE;       // verbose mode on for debug
 integer gChartype = CHARACTER_TYPE_A;   // humanoid
+
+//
+//  Services.
+//
+integer gAnimService = -1;                                          // animation service
 //
 //  Debug system
 //
@@ -186,7 +191,7 @@ init()
 //
 //  registerbehavior -- register a new behavior script
 //
-registerbehavior(string scriptname, integer primnum)
+registerbehavior(string scriptname, string service, integer primnum)
 {
     integer bhvix = llListFindList(gBehaviors, [scriptname]);       // index if registered
     if (bhvix >= 0)                                                 // if already registered
@@ -198,6 +203,16 @@ registerbehavior(string scriptname, integer primnum)
         debugMsg(DEBUG_MSG_WARN,"New behavior #" + (string) gBehaviorMsgnum + ": " + scriptname);
         llOwnerSay("New behavior #" + (string) gBehaviorMsgnum + ": " + scriptname); // ***TEMP***
         gBehaviorMsgnum++;
+    }
+    //
+    //  Record services we know about. Currently used only for "anim" service,
+    //  which does the animations.
+    if (service != "")
+    {   if (service == "anim")
+        {   gAnimService = bhvix;                                   // save its index for sending
+        } else {
+            llOwnerSay("Warning: unknown service name: " + service);// unknown service
+        }
     }
     //  Send register reply to appropriate prim.
     //  Will be ignored by behaviors with other string names.
@@ -308,7 +323,6 @@ dopathbegin(integer bhvix, string jsn)
     vector goal = (vector)llJsonGetValue(jsn,["goal"]);
     float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
     float speed = (float)llJsonGetValue(jsn,["speed"]);
-    integer dogged = (target != "") && (target != NULL_KEY);        // dogged mode if pursue target
     pathBegin(target, regioncorner, goal, stopshort, speed);                     // begin path planning
 }
 //
@@ -339,8 +353,14 @@ pathUpdateCallback(integer status, key hitobj)
 //
 doanim(integer bhvix, list anims)
 {   debugMsg(DEBUG_MSG_WARN,"Anim req: " + llDumpList2String(anims,","));                // get things started
+#ifdef OBSOLETE
     string anim = llList2String(anims,0);                       // only first anim for now ***TEMP*** need to fix AO
     llMessageLinked(LINK_THIS, 1,anim,"");                      // tell our AO what we want
+#endif // OBSOLETE
+    if (gAnimService < 0)
+    {   debugMsg(DEBUG_MSG_ERROR,"No animation service registered."); return; } // We're missing a system component
+    //  Send to the anim service in the behaviors prim. This is so the anims go in the behaviors prim, whic will be modifiable.
+    llMessageLinked(BHVLINKNUM(gAnimService), BHVMNUM(gAnimService), llList2Json(JSON_OBJECT,["request","anim", "stand", llList2Json(JSON_ARRAY, anims)]),"");
 }
 //
 //
@@ -385,6 +405,7 @@ default
             string reqtype = llJsonGetValue(jsn,["request"]);   // get request type
             if (reqtype == "register")               // a behavior is checking in
             {   registerbehavior(llJsonGetValue(jsn,["scriptname"]),
+                    llJsonGetValue(jsn,["service"]),
                     (integer)llJsonGetValue(jsn,["linknum"]));   // register this behavior
                 return;
             }

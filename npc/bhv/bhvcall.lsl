@@ -46,6 +46,7 @@
 integer gBhvMnum = -99999;                      // our "mnum", the link message number that identifies us to the scheduler
 integer gBhvRegistered;                         // we are not registered yet
 string  gBhvThisScriptname;                     // name of this script
+string  gBhvThisService;                        // if we're a service, the service name. "anim" means it's the AO.
 integer gBhvLinkNumber = -99999;                // link number of this prim, starts bogus
 integer gBhvSchedLinkNumber = -99999;           // the scheduler's link number
 integer gActiveToken = -99999;                  // token of the current start
@@ -183,7 +184,8 @@ bhvreqreg()
 {   if (gBhvRegistered) { return; }             // already done
     //  Request register - this hooks us to the scheduler. Broadcast, but only at startup.
     debugMsg(DEBUG_MSG_WARN, gBhvThisScriptname + " requesting register");  
-    llMessageLinked(LINK_SET, BHVMSGTOSCH, llList2Json(JSON_OBJECT,["request","register", "scriptname", gBhvThisScriptname, "linknum",gBhvLinkNumber]),"");
+    llMessageLinked(LINK_SET, BHVMSGTOSCH, llList2Json(JSON_OBJECT,["request","register", "scriptname", gBhvThisScriptname, 
+        "service", gBhvThisService, "linknum",gBhvLinkNumber]),"");
 }
 
 //
