@@ -372,7 +372,7 @@ integer loadparams(list params)
 {
     string cmd = llList2String(params,1);               // request type
     params = llDeleteSubList(params,0,1);               // get rid of "greet, cmd"
-    string param2 = llList2String(params,2);            // message if a message type line
+    string param2 = llList2String(params,0);            // message if a message type line
     if (cmd == "msgfacing") { gMsgFacing = param2; return(TRUE); }    // this language needs dicts
     else if (cmd == "msgnear") { gMsgNear = param2; return(TRUE);  }
     else if (cmd == "msggroup") { gMsgGroup = param2; return(TRUE); }
@@ -381,6 +381,7 @@ integer loadparams(list params)
         gSpeed = (float)param2 ;                        // how fast
         if (gSpeed < 0.25) { gSpeed = 0.25; }           // bound speed
         if (gSpeed > 8.0) { gSpeed = 8.0; }
+        return(TRUE);
     }
     //  Must be an anim if we get here.
     //  Validate anims list
