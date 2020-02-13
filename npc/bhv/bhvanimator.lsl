@@ -189,9 +189,9 @@ update_anim()                                   // called periodically and when 
 {   if (!gBhvRegistered) { return; }            // not ready to run yet
     float elapsed = llGetAndResetTime();        // time since last tick
     rotation prevrot = gPrevRot;                // rot on last cycle
-    gPrevRot = llGetRot();                      // update rot
+    gPrevRot = llGetRootRotation();             // update rot
     vector prevpos = gPrevPos;
-    gPrevPos = llGetPos();
+    gPrevPos = llGetRootPosition();
     //  Need rotation around Z axis betwen those two rotations
     vector posdiff = gPrevPos - prevpos;        // distance moved
     rotation rotdiff = gPrevRot / prevrot;      // rotation on this cycle
@@ -200,11 +200,18 @@ update_anim()                                   // called periodically and when 
     if (elapsed > 0)                            // avoid divide by zero
     {   rotspeed = rotang.z / elapsed; }
     float speed = llVecMag(llGetVel());         // moving how fast?
-    float posspeed = 0;
+    float posspeed = 0;                         // speed computed from position change
     if (elapsed > 0)
     {   posspeed = llVecMag(posdiff) / elapsed; }
     if (speed > posspeed) { posspeed = speed; }
     ////llSetText((string)speed + " m/sec  " +  (string)posspeed + " m/sec", <0,1,1>, 1.0);  // ***TEMP***
+    //  When movement starts, there's a short delay before we see a nonzero velocity and a
+    //  change in position. This causes a brief "skid", where the body moves before the legs do.
+    //  This fixes that.
+    if (gMoving && (posspeed <= 0.01))
+    {   posspeed = 0.02;                        // if moving, we must be moving a little
+        ////llOwnerSay("Moving but zero vel."); // ***TEMP*** debug trap
+    }
     if (posspeed < SPEED_WALK)                 // just stand or walk for now
     {   if (rotspeed > ROTRATE_TURN)
         {   setanims(1,gAnimLturn+gAnimAlways); 
