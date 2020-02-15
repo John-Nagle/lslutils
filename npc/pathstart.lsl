@@ -144,7 +144,7 @@ integer pathretry(integer status, key hitobj)
     float speed = llList2Float(gPathcallLastParams,4);
     gPathcallLastParams = [];                                           // consume retry params to prevent loop
     if (gPathcallRetries > PATHMAXRETRIES)
-    {   pathMsg(PATH_MSG_ERROR, "Maximum retries exceeded.");           // not getting anywhere, give up and report trouble
+    {   pathMsg(PATH_MSG_WARN, "Maximum retries exceeded.");            // not getting anywhere, give up and report trouble
         return(FALSE);                                                  // 
     }
     float dist = pathdistance(llGetRootPosition(), endpos, gPathWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level

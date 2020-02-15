@@ -35,18 +35,16 @@ float MAX_GREET_DIST = 10.0;                // (m) if can get this close, say "H
 float OBSTACLE_RETRY_PROB = 0.5;            // (fract) Retry if random < this.
 float TESTSPACING = 0.33;                   // (fract) Multiply height and width by this to get ray cast spacing
 
-#define CHARACTER_SPEED  2.5                // (m/sec) speed
+#define CHARACTER_SPEED  2.5                // (m/sec) default speed
 #define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
-////string IDLE_ANIM = "stand 2";            // idle or chatting         
-////string STAND_ANIM = "stand 2";           // just when stopped
-///string WAITING_ANIM = "stand arms folded";  // during planning delays
+#define IDLE_POLL 10.0                      // (secs) timer, used only for bhv library
+#define MAX_PATROL_RETRIES 5                // ask owner for help after this many fails
+
+//  These need to be read from notecards.
 string WAITING_ANIM = "SEmotion-bento13";   // arms folded during planning delays
 string IDLE_ANIM = "SEmotion-bento18";      // arms folded during planning delays
 string STAND_ANIM = "SEmotion-bento18";     // just when stopped
-float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                  // will stick around for this long
-float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far before we recheck on approach
-integer PATH_STALL_TIME = 300;              // path stall time
 
 
 //  Global variables
@@ -54,8 +52,6 @@ integer gAction = ACTION_IDLE;
 
 //  Patrol points
 integer gPatrolEnabled;
-integer gPatrolNotecardLine;
-key gPatrolNotecardQuery;
 list gPatrolPointCorners = [];  // region corners for patrol points
 list gPatrolPoints = [];        // list of points to patrol 
 list gPatrolPointDwell = [];    // dwell time at patrol point
@@ -67,7 +63,8 @@ vector gPatrolDestination;      // where are we going next?
 vector gPatrolRegionCorner;     // region corner for next patrol point
 float gDwell;                   // dwell time at next patrol point
 float gFaceDir;                 // direction to face next
-float gSpeed = CHARACTER_SPEED;               // how fast
+float gSpeed = CHARACTER_SPEED; // how fast
+integer gPatrolRetries;         // number of fail retries
 
 //
 //  bhvDoRequestDone -- pathfinding is done. Analyze the result and start the next action.
@@ -86,6 +83,7 @@ bhvDoRequestDone(integer status, key hitobj)
             gAction = ACTION_PATROLFACE;            // turning to final position
             llResetTime();                          // reset timeout timer but keep dwell time
             debugMsg(DEBUG_MSG_INFO,"Patrol point reached:" + (string)llGetRootPosition());
+            gPatrolRetries = 0;                     // reset failure counter
             return;
         }
         if (gAction == ACTION_IDLE)                 // nothing to do, but timer runs
@@ -104,8 +102,8 @@ bhvDoRequestDone(integer status, key hitobj)
         {
             if (llFrand(1.0) < OBSTACLE_RETRY_PROB)                     // if random test says retry
             {   debugMsg(DEBUG_MSG_WARN,"Obstacle " + llKey2Name(hitobj) + ", will try again.");
-                gAction = ACTION_PATROLWAIT;                        // dwell briefly
-                gDwell = 3.0;                                       // wait 3 secs
+                gAction = ACTION_PATROLWAIT;                            // dwell briefly
+                gDwell = 3.0;                                           // wait 3 secs
                 return;
             } else {                                                    // no retry, give up now
                 gDwell = 0.0;                                           // no dwell time, do something else now
@@ -117,13 +115,13 @@ bhvDoRequestDone(integer status, key hitobj)
         }
     }
     //  Default - errors we don't special case.
-    {                      
-        //  Failed, back to idle.
-        gAction = ACTION_IDLE;            
-        debugMsg(DEBUG_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
-        start_anim(IDLE_ANIM);
-        return;
-    }
+    //  Failed, back to idle.
+    gAction = ACTION_IDLE;            
+    debugMsg(DEBUG_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
+    start_anim(IDLE_ANIM);
+    gPatrolRetries++;                                               // tally failure
+    if (gPatrolRetries % (MAX_PATROL_RETRIES) == 0)                 // we need help, keep resending
+    {   debugMsg(DEBUG_MSG_ERROR,"Need help! Patrol stuck at " + (string)llGetRootPosition()); }
 }
 
 //
