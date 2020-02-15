@@ -38,7 +38,7 @@ float TESTSPACING = 0.33;                   // (fract) Multiply height and width
 #define CHARACTER_SPEED  2.5                // (m/sec) default speed
 #define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
 #define IDLE_POLL 10.0                      // (secs) timer, used only for bhv library
-#define MAX_PATROL_RETRIES 5                // ask owner for help after this many fails
+#define MAX_PATROL_RETRIES 10               // ask owner for help after this many fails
 
 //  These need to be read from notecards.
 string WAITING_ANIM = "SEmotion-bento13";   // arms folded during planning delays
@@ -120,8 +120,8 @@ bhvDoRequestDone(integer status, key hitobj)
     debugMsg(DEBUG_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
     start_anim(IDLE_ANIM);
     gPatrolRetries++;                                               // tally failure
-    if (gPatrolRetries % (MAX_PATROL_RETRIES) == 0)                 // we need help, keep resending
-    {   debugMsg(DEBUG_MSG_ERROR,"Need help! Patrol stuck at " + (string)llGetRootPosition()); }
+    if ((gPatrolRetries % (MAX_PATROL_RETRIES)) == 0)               // we need help, keep resending
+    {   debugMsg(DEBUG_MSG_ERROR,"Need help! Patrol stuck at " + (string)llGetRootPosition() + ", retry " + (string)gPatrolRetries); }
 }
 
 //
