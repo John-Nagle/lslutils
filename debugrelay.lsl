@@ -201,6 +201,8 @@ default
     //  Message on debug channel. Relay.
     listen(integer channel, string name, key id, string message)
     {   ////llOwnerSay("Channel " + (string)channel + ": " + message);   // ***TEMP***
+        key rootid = llList2Key(llGetObjectDetails(id,[OBJECT_ROOT]),0);  // get root key
+        if (rootid != NULL_KEY && rootid != "") { name = llList2String(llGetObjectDetails(rootid, [OBJECT_NAME]),0); } // get root name, which is NPC name
         if (channel == DEBUG_LOG_CHANNEL) { logchanmsg(name, id, message); }
         else if (channel == DEBUG_CHANNEL) { debugchanmsg(name, id, message); }
     }
