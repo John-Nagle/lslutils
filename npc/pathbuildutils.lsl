@@ -394,7 +394,10 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
     //  Try to find position using pathfindwalkable
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
     startpos.z = pathfindwalkable(startpos, scale.z*0.5, scale.z);
-    endpos.z = pathfindwalkable(endpos, scale.z*0.5, scale.z);    // find walkable below dest - big tolerance
+    //  If endpos is off the edge of the region, don't try to check Z heigh there. It won't work.
+    //  This means region crossings in steep or irregular terrain may fail.
+    if (endpos.x >= 0.0 && endpos.x <= REGION_SIZE && endpos.y >= 0 && endpos.y <= REGION_SIZE)
+    {   endpos.z = pathfindwalkable(endpos, scale.z*0.5, scale.z);   } // find walkable below dest - big tolerance
     list path;
     integer status = 1;
     if (startpos.z >= 0 && endpos.z >= 0)               // if find walkable worked

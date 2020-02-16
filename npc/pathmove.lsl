@@ -53,6 +53,7 @@ vector gPathMoveLastpos = ZERO_VECTOR;                      // last place we tes
 vector gPathMoveLastdest = ZERO_VECTOR;                     // last destination of KFM string
 integer gPathMoveFreemem = 9999999;                         // smallest free memory seen
 vector gPathInitialRegionCorner;                            // corner of initial region, used as reference point
+vector gPathStartRegionCorner;                              // region corner where path started
 list gPathMoveLastgoodpos = [];                             // last good position, relative to initial region corner
 
 
@@ -259,6 +260,10 @@ pathchecktargetmoved()
 pathmovetimer()
 {   float interval = llGetAndResetTime();                       // time since last tick 
     if (interval > 0.5) { pathMsg(PATH_MSG_WARN,"Timer ticks slow: " + (string)interval + "s."); } // ***TEMP*** log really slow operations
+    if (gPathMoveActive)                                        // if moving
+    {   if (gPathStartRegionCorner != llGetRegionCorner())      // if we changed regions
+        {   pathmovedone(PATHERRREGIONCROSS, NULL_KEY); return; } // must abort this move, restart will continue later
+    }
     if (gPathMoveActive && gKfmSegments != [])                  // if we are moving and have a path
     {   pathcheckdynobstacles(); }                              // ray cast for obstacles
     if (gPathMoveActive && gKfmSegments != [])                  // if we are moving and have a path
@@ -301,6 +306,7 @@ pathmoverequestrcvd(string jsn)
         list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
         gKfmSegments = [];                                  // clear stored path used for ray cast direction
         gKfmSegmentCurrent = 0;
+        gPathStartRegionCorner = llGetRegionCorner();       // all points are relative to this.
         integer i;
         integer len = llGetListLength(ptsstr);
         assert(len >= 2);                                   // required to have a start point and a dest at least
