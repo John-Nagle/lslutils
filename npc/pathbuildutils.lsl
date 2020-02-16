@@ -275,7 +275,9 @@ key gPathAlllowedParcel;                                // last parcel checked, 
 
 integer pathvaliddest(vector pos) 
 {
-    if (pos.x <= 0 || pos.x >= REGION_SIZE || pos.y <= 0 || pos.y >= REGION_SIZE) { return(FALSE); }
+    ////if (pos.x <= 0 || pos.x >= REGION_SIZE || pos.y <= 0 || pos.y >= REGION_SIZE) { return(FALSE); }
+    //  ***TEMP*** allow all off-region moves until we figure out how to check them
+    if (pos.x <= 0 || pos.x >= REGION_SIZE || pos.y <= 0 || pos.y >= REGION_SIZE) { return(TRUE); }
     list theredata = llGetParcelDetails(pos, [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP, PARCEL_DETAILS_ID]);
     key thereid = llList2Key(theredata,2);              // ID of the parcel
     if (thereid == gPathAlllowedParcel) { return(TRUE); }   // checked this one already, good to go

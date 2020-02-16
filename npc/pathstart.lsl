@@ -80,7 +80,7 @@ pathbegin(key target, vector regioncorner, vector endpos, float stopshort, float
 //
 //  Stop short of the target by the distance stopshort. This can be zero. 
 //
-pathstart(key target, vector regioncorner, vector endpos, float stopshort, float speed)
+pathstart(key target, vector goalregioncorner, vector endpos, float stopshort, float speed)
 {   assert(gPathWidth > 0);                                         // we must be initialized
     gPathcallLastParams = [];                                       // no params for retry stored yet.
     gLocalPathId = (gLocalPathId+1)%(PATHMAXUNSIGNED-1);            // our serial number, nonnegative
@@ -93,21 +93,26 @@ pathstart(key target, vector regioncorner, vector endpos, float stopshort, float
         endpos = llList2Vector(details,0);                          // use this endpos
         llOwnerSay("Position of target " + llKey2Name(target) + " is " + (string)endpos); // ***TEMP***
     }
-    gPathcallLastParams = [target, regioncorner, endpos, stopshort, speed];      // save params for restart
+    gPathcallLastParams = [target, goalregioncorner, endpos, stopshort, speed];      // save params for restart
     //  Are we allowed to go to this destination?
-    if (!pathvaliddest(endpos))
-    {   pathMsg(PATH_MSG_WARN,"Destination " + (string)endpos + " not allowed."); 
+    vector relendpos = endpos;
+    if (goalregioncorner != ZERO_VECTOR && endpos != ZERO_VECTOR)
+    {   relendpos = endpos + llGetRegionCorner() - goalregioncorner;  }    // relative to current region 
+    if (!pathvaliddest(relendpos))
+    {   pathMsg(PATH_MSG_WARN,"Destination " + (string)relendpos + " not allowed."); 
         pathdonereply(PATHERRBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
         return; 
     }
     //  Find walkable under avatar. Look straight down. Endpos must be close to navmesh or llGetStaticPath will fail.
-    float newz = pathfindwalkable(endpos, 0.0, gPathHeight*3);             // find walkable below char
+    float newz = endpos.z;
+    if (llGetRegionCorner() == goalregioncorner)                      // only try this if not crossing regions
+    {   newz = pathfindwalkable(relendpos, 0.0, gPathHeight*3);  }    // find walkable below char
     if (newz < 0)
     {   pathMsg(PATH_MSG_WARN,"Cannot find walkable surface under goal near "+ (string)endpos); 
-        vector navmeshpos = pathnearestpointonnavmesh(endpos);      // look for nearest point on navmesh (expensive)
-        if (navmeshpos == ZERO_VECTOR)                              // no navmesh near endpos
+        vector navmeshpos = pathnearestpointonnavmesh(relendpos);      // look for nearest point on navmesh (expensive)
+        if (navmeshpos == ZERO_VECTOR)                                 // no navmesh near endpos
         {   pathMsg(PATH_MSG_WARN, "Cannot find navmesh under goal, fails.");
-            pathdonereply(PATHERRBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
+            pathdonereply(PATHERRBADDEST,NULL_KEY,gLocalPathId);       // send message to self to report error
             return; 
         }
         endpos = navmeshpos;
@@ -115,7 +120,7 @@ pathstart(key target, vector regioncorner, vector endpos, float stopshort, float
         endpos.z = newz;                                                // use ground level found by ray cast
     }
     //  Generate path
-    pathprepstart(target, regioncorner, endpos, stopshort, speed, TESTSPACING, gLocalPathId);
+    pathprepstart(target, goalregioncorner, endpos, stopshort, speed, TESTSPACING, gLocalPathId);
     //  Output from pathcheckobstacles is via callbacks
 }
 //

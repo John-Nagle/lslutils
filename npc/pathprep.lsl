@@ -100,9 +100,10 @@ dopathturn(float heading, integer pathid)
 //  isoutsideregion -- true if point is outside region
 //
 #define REGION_HYSTERESIS_DIST (2.0)                            // get this far out to be sure of region cross
-#define isoutsideregion(p) \
-    (p.x < -REGION_HYSTERESIS_DIST || p.x > REGION_HYSTERESIS_DIST+REGION_SIZE || \
-        p.y < -REGION_HYSTERESIS_DIST || p.y > REGION_HYSTERESIS_DIST+REGION_SIZE)
+integer isoutsideregion(vector p)
+{   return(p.x < -REGION_HYSTERESIS_DIST || p.x > REGION_HYSTERESIS_DIST+REGION_SIZE \
+        || p.y < -REGION_HYSTERESIS_DIST || p.y > REGION_HYSTERESIS_DIST+REGION_SIZE);
+}
     
 //
 //  pathtrimmedregionbound  -- trim path just past region boundary
@@ -116,7 +117,9 @@ list pathtrimmedregionbound(list pts)
     for (i=1; i<len; i++)
     {   vector p = llList2Vector(pts,i);
         if (isoutsideregion(p))                     // if point is beyond region edge by at least 2m
-        {   return(llList2List(pts,0,i)); }         // keep points up to this off-region one.
+        {   pathMsg(PATH_MSG_WARN, "Last point of region-trimmed path: " + (string)p); // ***TEMP***
+            return(llList2List(pts,0,i));           // keep points up to this off-region one.
+        }
     }
     return(pts);                                    // no region cross
 }
@@ -219,7 +222,6 @@ default
             }
             //  Use the system's GetStaticPath to get an initial path
             list pts = pathtrimmedstaticpath(startpos, goal, stopshort, gPathWidth + PATHSTATICTOL);
-            pts = pathtrimmedregionbound(pts);                          // trim just past region boundary
             integer len = llGetListLength(pts);                          
             ////pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(gPts,-1) + ", "+ (string)llGetListLength(gPts) + 
             ////    " pts: " + llDumpList2String(pts,","));             // dump list for debug
@@ -249,8 +251,9 @@ default
             //  Got path. Do the path prep work.
             pts = [startpos] + llList2List(pts,0,-2);                   // drop status from end of points list
             ////assert(llVecMag(llList2Vector(pts,0) - startpos) < 0.01); // first point of static path must always be where we are
-            pts = pathclean(pts);                                 // remove dups and ultra short segments
-            ////pathMsg(PATH_MSG_INFO,"Cleaned");                       // ***TEMP***
+            pts = pathclean(pts);                                       // remove dups and ultra short segments
+            pts = pathtrimmedregionbound(pts);                          // trim just past region boundary
+            pathMsg(PATH_MSG_WARN,"Cleaned: " +  llDumpList2String(pts,","));                       // ***TEMP***
             pts = pathptstowalkable(pts, gPathHeight);                    // project points onto walkable surface
             ////pathMsg(PATH_MSG_INFO,"Walkables");                     // ***TEMP***
             len = llGetListLength(pts);                            // update number of points after cleanup
