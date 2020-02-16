@@ -52,7 +52,9 @@ integer gPathMoveTimetick = 0;                              // last time we test
 vector gPathMoveLastpos = ZERO_VECTOR;                      // last place we tested for motion
 vector gPathMoveLastdest = ZERO_VECTOR;                     // last destination of KFM string
 integer gPathMoveFreemem = 9999999;                         // smallest free memory seen
-list gPathMoveLastgoodpos = [];                             // last good position
+vector gPathInitialRegionCorner;                            // corner of initial region, used as reference point
+list gPathMoveLastgoodpos = [];                             // last good position, relative to initial region corner
+
 
 //  Avatar params
 float gPathMoveMaxTurnspeed = 0.2;                          // (radians/sec) max turn rate - overridden
@@ -74,6 +76,7 @@ integer gKfmSegmentCurrent = 0;                             // which segment we 
 pathmoveinit()
 {   gPathSelfObject = pathGetRoot(llGetKey());              // us
     gPathMoveFreemem = llGetFreeMemory();
+    gPathInitialRegionCorner = llGetRegionCorner();             // ref point for recovery points
 }
 
 //
@@ -219,7 +222,8 @@ pathcheckdynobstacles()
         return;
     }
     if (llVecMag(llList2Vector(gPathMoveLastgoodpos,-1) - groundpos) > PATHERRMINGOODPOS)  // if moved to a new good pos
-    {   gPathMoveLastgoodpos += [groundpos];                    // save this ground level position for recovery
+    {   groundpos -= (llGetRegionCorner() - gPathInitialRegionCorner);   // saved points are relative to initial ground pos
+        gPathMoveLastgoodpos += [groundpos];                    // save this ground level position for recovery
         if (llGetListLength(gPathMoveLastgoodpos) > PATHMAXSAVEDGOODPOS)    // limit list length
         {   gPathMoveLastgoodpos = llDeleteSubList(gPathMoveLastgoodpos,0,0); } // by removing oldest entry
     }
@@ -345,7 +349,7 @@ pathmoverequestrcvd(string jsn)
         {   gPathMoveRecovering = TRUE;                     // now in recovery mode, until other task replies.             
             //  Pass buck to recover task, which has enough empty space for the full obstacle test.
             llMessageLinked(LINK_THIS, LINKMSGRECOVERREQUEST,
-                llList2Json(JSON_OBJECT,["request","recover", "pathid", pathid,
+                llList2Json(JSON_OBJECT,["request","recover", "pathid", pathid, "refpt", gPathInitialRegionCorner,
                         "recoverpoints", llList2Json(JSON_ARRAY,  gPathMoveLastgoodpos)]),"");
         }      
     } else {
@@ -481,7 +485,6 @@ pathmovecollision(integer num_detected)
 pathchangedregion()
 {   
     pathMsg(PATH_MSG_WARN,"Crossed region boundary.");
-    gPathMoveLastgoodpos = [];                      // which invalidates all our region-local recovery points
     if (!gPathMoveMoving) { return; }               // not moving, don't have to kill move
     pathmovedone(PATHERRREGIONCROSS, NULL_KEY);     // stop, let retry pick up in the new region
 }

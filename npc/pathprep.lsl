@@ -251,8 +251,16 @@ default
             //  Got path. Do the path prep work.
             pts = [startpos] + llList2List(pts,0,-2);                   // drop status from end of points list
             ////assert(llVecMag(llList2Vector(pts,0) - startpos) < 0.01); // first point of static path must always be where we are
+            //  llGetStaticPath produces a list of points which may contain duplicate points or ultra short segments.
+            //  These cause trouble later when we need a vector between points, so they are deleted here in initial path cleanup.
             pts = pathclean(pts);                                       // remove dups and ultra short segments
+            //  Region crossing works by generating a path that has one point in the next region. As soon as the
+            //  NPC crosses the region boundary, move will detect it and report an error. Retry, starting in the
+            //  new region, will continue from there.
             pts = pathtrimmedregionbound(pts);                          // trim just past region boundary
+            //  llGetStaticPath returns points on the navmesh, which is a rough approximation of the visible surface.
+            //  The navmesh may be a meter or two above or below the visible surface. So the Z heights are adjusted
+            //  based on vertical llCastRay calls.
             ////pathMsg(PATH_MSG_WARN,"Cleaned: " +  llDumpList2String(pts,","));                       // ***TEMP***
             pts = pathptstowalkable(pts, gPathHeight);                    // project points onto walkable surface
             ////pathMsg(PATH_MSG_INFO,"Walkables");                     // ***TEMP***

@@ -76,14 +76,18 @@ vector findnearbyopenpos()
 //  Returns ZERO_VECTOR if no find.
 //  Returned position is at ground level.
 //
-vector findrecoveropenpos(list pts)
+vector findrecoveropenpos(vector refpt, list pts)
 {   vector pos = llGetPos();                                // we are here, halfheight level position
     //  Trouble, there is no walkable here
     //  Attempt recovery. Try to find a previous good location that's currently open and move there.
+    vector regioncorner = llGetRegionCorner();              // current region corner
     integer i = llGetListLength(pts);                       // for stored good points, most recent first
     while (i-- > 1)                                         // for newest (len-1) to oldest (0)
     {   vector recoverpos = llList2Vector(pts,i);           // try to recover to here - ground level position
         vector prevrecoverpos = llList2Vector(pts,i-1);
+        //  Points in pts are relative to refpt. Must adjust to current region.
+        recoverpos += (regioncorner - refpt);               // make points region-local
+        prevrecoverpos += (regioncorner - refpt); 
         vector halfheight = <0,0,gPathHeight*0.5>;
         if (pathcheckcelloccupied(prevrecoverpos, recoverpos, TRUE, FALSE) >= 0.0) // if clear to go there
         {   return(recoverpos);
@@ -134,7 +138,7 @@ diagnoserecoverymove(vector recoverpos)
 //
 //  Returns 0 or error status
 //
-integer pathrecoverwalkable(list pts)
+integer pathrecoverwalkable(vector refpt, list pts)
 {   vector pos = llGetPos();                        // we are here, halfheight level position
     //  Trouble, there is no walkable here
     //  Attempt recovery. Try to find a previous good location that's currently open and move there.
@@ -149,7 +153,7 @@ integer pathrecoverwalkable(list pts)
         }
     }
     if (recoverpos == ZERO_VECTOR)                  // that didn't work
-    {   recoverpos = findrecoveropenpos(pts);       // try all stored recovery points
+    {   recoverpos = findrecoveropenpos(refpt, pts);    // try all stored recovery points
     }
     if (recoverpos == ZERO_VECTOR)                  // nothing worked, tell owner
     {   pathMsg(PATH_MSG_ERROR,"Unable to recover from lack of walkable below " + (string)pos + " by recovering to any of " + llDumpList2String(pts,",")); 
@@ -167,61 +171,6 @@ integer pathrecoverwalkable(list pts)
     llSetPrimitiveParams([PRIM_PHANTOM, FALSE]);    // back to normal solidity
     return(PATHERRWALKABLEFIXED);
 }
-#ifdef OBSOLETE
-//
-//  pathrecoverwalkable  -- get back onto walkable surface if possible
-//
-//  Returns 0 or error status
-//
-integer pathrecoverwalkable(list pts)
-{   vector pos = llGetPos();                                // we are here, halfheight level position
-    //  Trouble, there is no walkable here
-    //  Attempt recovery. Try to find a previous good location that's currently open and move there.
-    integer i = llGetListLength(pts);                       // for stored good points, most recent first
-    pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)pos + ". Recovery points available: " + (string)i);
-    while (i-- > 1)                                         // for newest (len-1) to oldest (0)
-    {   vector recoverpos = llList2Vector(pts,i);           // try to recover to here - ground level position
-        vector prevrecoverpos = llList2Vector(pts,i-1);
-        vector halfheight = <0,0,gPathHeight*0.5>;
-        if (pathcheckcelloccupied(prevrecoverpos, recoverpos, TRUE, FALSE) >= 0.0) // if clear to go there
-        {   pathMsg(PATH_MSG_WARN,"Recovering by move to " + (string) recoverpos);
-            //  Debug check - if recovery goes through something, what is it? 
-            vector dv = recoverpos+halfheight-pos;          // vector to recovery point
-            vector startcast = pos + llVecNorm(dv)*gPathWidth; // start cast 1 width away from self to avoid reporting collision as flythrough
-            list castresult = castray(startcast,recoverpos+halfheight,PATHCASTRAYOPTSOBS);  // Horizontal cast at full height, any hit is bad
-            float result = pathcastfoundproblem(castresult, FALSE, FALSE);     // if any hits at all, other than self, fail
-            if (result != INFINITY)                                     // if something there
-            {   integer status = llList2Integer(castresult,-1); // ray cast status
-                integer j;
-                for (j=0; j<3*status; j+=3)                             // strided list search
-                {   key hitobj = llList2Key(castresult, j+0);           // get name of object hit by raycast
-                    vector hitpos = llList2Vector(castresult,j+1);      // where hit
-                    string hitname;
-                    if (hitobj != gPathSelfObject)                      // if hit something other than self
-                    {   if (hitobj == NULL_KEY)                         // null key is ground
-                        {   hitname = "Ground"; }
-                        else                                            // other object
-                        {   hitname = llKey2Name(hitobj);               // name of object
-                            hitname += " " + (string)llList2Vector(llGetObjectDetails(hitobj,[OBJECT_POS]),0); // position of hit object
-                        }                      
-                    }
-                    pathMsg(PATH_MSG_WARN,"Recovery move hit " + hitname + " at " + (string)hitpos);
-                }
-                pathMsg(PATH_MSG_ERROR,"Recovery move goes through objects between " + (string)startcast + " and " + (string)(recoverpos+halfheight));
-            }
-            //  We do the move as a phantom, to avoid pushing things around.
-            llSleep(0.5);                                   // allow time for stop to take effect
-            llSetPrimitiveParams([PRIM_PHANTOM, TRUE]);     // set to phantom for forced move to avoid collisions
-            llSetPos(recoverpos + halfheight);              // forced move to previous good position
-            llSleep(0.5);                                   // give time to settle
-            llSetPrimitiveParams([PRIM_PHANTOM, FALSE]);    // back to normal solidity
-            return(PATHERRWALKABLEFIXED);
-        }
-    }
-    pathMsg(PATH_MSG_ERROR,"Unable to recover from lack of walkable below " + (string)pos + " by recovering to any of " + llDumpList2String(pts,",")); 
-    return(PATHERRWALKABLEFAIL);
-}
-#endif // OBSOLETE
 
 
 //
@@ -235,12 +184,13 @@ pathrecoverrequest(string jsn, key hitobj)
     if (requesttype == "recover")                    // recover to known good position, requested by pathprep
     {   //  Go back to some previous good point.
         integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
+        vector refpt = (vector)llJsonGetValue(jsn,["refpt"]);   // recover points are relative to this
         list ptsstr = llJson2List(llJsonGetValue(jsn, ["recoverpoints"])); // points, as list of strings
         list pts = [];                                  // points as list of vectors
         integer i;
         for (i=0; i<llGetListLength(ptsstr); i++) { pts += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors
         jsn = "";                                       // release memory
-        integer status = pathrecoverwalkable(pts);      // force to a walkable position
+        integer status = pathrecoverwalkable(refpt, pts);      // force to a walkable position
         pathrecoverreply(pathid, status, hitobj);
         ////pathdonereply(status, hitobj, pathid);          // report move completion
     } else {
