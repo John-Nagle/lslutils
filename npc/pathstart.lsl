@@ -108,7 +108,7 @@ pathstart(key target, vector goalregioncorner, vector endpos, float stopshort, f
     if (llGetRegionCorner() == goalregioncorner)                      // only try this if not crossing regions
     {   newz = pathfindwalkable(relendpos, 0.0, gPathHeight*3);  }    // find walkable below char
     if (newz < 0)
-    {   pathMsg(PATH_MSG_WARN,"Cannot find walkable surface under goal near "+ (string)endpos); 
+    {   pathMsg(PATH_MSG_WARN,"Cannot find walkable surface under goal near "+ (string)relendpos); 
         vector navmeshpos = pathnearestpointonnavmesh(relendpos);      // look for nearest point on navmesh (expensive)
         if (navmeshpos == ZERO_VECTOR)                                 // no navmesh near endpos
         {   pathMsg(PATH_MSG_WARN, "Cannot find navmesh under goal, fails.");
