@@ -65,13 +65,14 @@
 #define PATHERRREQOUTOFSYNC  -2018              // request at move level while doing something else
 #define PATHERROFFPATH       -2019              // off the path in move. Retry.
 #define PATHERRPROHIBITED    -2020              // Point is in a prohibited area (cannot enter parcel)
+#define PATHERRREGIONCROSS   -2021              // crossed a region boundary. Retry will pick up in the new region
 
 //
 //  List of retryable errors.  For these, try again, if there was progress on the previous try.
 //
 #define PATHRETRYABLES [PATHERROBSTRUCTED, PATHERRCOLLISION, PATHERRBADMOVEEND, PATHERRBADSTARTPOS, PATHERRTARGETMOVED,\
     PATHERRMAZENOMEM, PATHERRWALKABLEFIXED, PATHERRMAZEBACKWARDS,PATHERRREQOUTOFSYNC, PU_FAILURE_INVALID_START,\
-    PATHERRWALKABLETROUBLE,PATHERROFFPATH]
+    PATHERRWALKABLETROUBLE,PATHERROFFPATH, PATHERRREGIONCROSS]
     
 //
 //  For these errors, try the recovery sequence.

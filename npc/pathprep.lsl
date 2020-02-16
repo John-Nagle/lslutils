@@ -16,8 +16,8 @@
 //  Constants
 //
 float MINSEGMENTLENGTH = 0.025; /// 0.10;                   // minimum path segment length (m)
+#define MAXREGIONMOVE (1000.0)                              // cap move at 1km
 
-#define PATHPLANMINMEM  3000                                // less than this, quit early and retry
 list TRIALOFFSETS = [<-1,0,0>,<1,0,0>,<0,1,0>,<0,-1,0>]; // try coming from any of these directions for start point validation
 //
 //  Globals
@@ -97,6 +97,30 @@ dopathturn(float heading, integer pathid)
     pathdonereply(PATHERRMAZEOK, NULL_KEY, pathid);             // normal completion
 }
 //
+//  isoutsideregion -- true if point is outside region
+//
+#define REGION_HYSTERESIS_DIST (2.0)                            // get this far out to be sure of region cross
+#define isoutsideregion(p) \
+    (p.x < -REGION_HYSTERESIS_DIST || p.x > REGION_HYSTERESIS_DIST+REGION_SIZE || \
+        p.y < -REGION_HYSTERESIS_DIST || p.y > REGION_HYSTERESIS_DIST+REGION_SIZE)
+    
+//
+//  pathtrimmedregionbound  -- trim path just past region boundary
+//
+//  We cross the region boundary, stop, and then continue via recovery
+//
+list pathtrimmedregionbound(list pts)
+{
+    integer i;
+    integer len = llGetListLength(pts);
+    for (i=1; i<len; i++)
+    {   vector p = llList2Vector(pts,i);
+        if (isoutsideregion(p))                     // if point is beyond region edge by at least 2m
+        {   return(llList2List(pts,0,i)); }         // keep points up to this off-region one.
+    }
+    return(pts);                                    // no region cross
+}
+//
 //  Main program of the path pre-planning task
 //
 default
@@ -138,8 +162,7 @@ default
             startpos = llGetPos();                                      // startpos is where we are now
             vector startscale = llGetScale();
             startpos.z = (startpos.z - startscale.z*0.45);              // approximate ground level for start point
-            //  ***REGIONCORNER NOT USED YET. PASSED THROUGH THIS FAR, BUT UNUSED***
-            vector regioncorner = (vector)llJsonGetValue(jsn,["regioncorner"]); // region of goal point
+            vector goalregioncorner = (vector)llJsonGetValue(jsn,["regioncorner"]); // region of goal point
             vector goal = (vector)llJsonGetValue(jsn,["goal"]);     // get goal point
             gPathprepTarget = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
             float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
@@ -150,8 +173,22 @@ default
             jsn = "";                                               // Release string. We are that tight on space.
             //  Call the planner
             pathMsg(PATH_MSG_INFO,"Pathid " + (string)gPathprepPathid + " prepping."); 
-            //  Start a new planning cycle
-            vector pos = llGetPos();                                // we are here
+            //
+            //  Goal adjustment if region crossed.
+            vector pos = llGetPos();                                // we are here in current region
+            vector regioncorner = llGetRegionCorner();              // region corner of current region
+            if (goalregioncorner == ZERO_VECTOR) { goalregioncorner = regioncorner; } // use this region if blank
+            if (goal != ZERO_VECTOR)
+            {   if (goalregioncorner != regioncorner)               // if this move crosses a region boundary
+                {
+                    vector regiondiff = goalregioncorner - regioncorner; 
+                    if (llVecMag(regiondiff) > MAXREGIONMOVE)       // unlikely
+                    {   pathMsg(PATH_MSG_ERROR,"Huge cross-region move from " + (string)(regioncorner+pos) + " to " + (string)(goalregioncorner+goal));
+                    }
+                    goal += regiondiff;                             // goal is in coordinates of current region
+                    pathMsg(PATH_MSG_WARN, "Cross-region path to " + (string)goal); // legit
+                }
+            }
             //  Are we already there?
             if (pathvecmagxy(pos - goal) < 0.005 && llFabs(pos.z - goal.z) < gPathHeight) // if we are already there
             {
@@ -164,7 +201,7 @@ default
                 pathmoverecover(gPathprepPathid);                   // force return to a previous good point
             }
             //  Quick sanity check - are we in a legit place?            
-            vector fullheight = <0,0,gPathHeight>;              // add this for casts from middle of character
+            vector fullheight = <0,0,gPathHeight>;                  // add this for casts from middle of character
             vector halfheight = fullheight*0.5;   
             vector p = pos-halfheight;                              // position on ground
             integer good = FALSE;                                   // not yet a good start point
@@ -182,6 +219,7 @@ default
             }
             //  Use the system's GetStaticPath to get an initial path
             list pts = pathtrimmedstaticpath(startpos, goal, stopshort, gPathWidth + PATHSTATICTOL);
+            pts = pathtrimmedregionbound(pts);                          // trim just past region boundary
             integer len = llGetListLength(pts);                          
             ////pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(gPts,-1) + ", "+ (string)llGetListLength(gPts) + 
             ////    " pts: " + llDumpList2String(pts,","));             // dump list for debug

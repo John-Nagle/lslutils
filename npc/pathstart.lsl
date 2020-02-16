@@ -138,7 +138,7 @@ integer pathretry(integer status, key hitobj)
     if (llListFindList(PATHRETRYABLES, [status]) < 0) { return(FALSE); }// not retryable
     if (gPathcallLastParams == []) { return(FALSE); }                   // no retry params
     key target = llList2Key(gPathcallLastParams,0);                     // get retry params back
-    vector regioncorner = llList2Vector(gPathcallLastParams,1);         // region corner
+    vector goalregioncorner = llList2Vector(gPathcallLastParams,1);         // region corner
     vector endpos = llList2Vector(gPathcallLastParams,2);               // this language needs structures
     float shortstop = llList2Float(gPathcallLastParams, 3);
     float speed = llList2Float(gPathcallLastParams,4);
@@ -147,7 +147,10 @@ integer pathretry(integer status, key hitobj)
     {   pathMsg(PATH_MSG_WARN, "Maximum retries exceeded.");            // not getting anywhere, give up and report trouble
         return(FALSE);                                                  // 
     }
-    float dist = pathdistance(llGetRootPosition(), endpos, gPathWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
+    vector relendpos = endpos;
+    if (goalregioncorner != ZERO_VECTOR)
+    {   endpos += goalregioncorner - llGetRegionCorner(); }            // adjust endpos for region cross
+    float dist = pathdistance(llGetRootPosition(), relendpos, gPathWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
     if (dist < 0 || dist >= gPathcallLastDistance)                      // check for closer. negative means path distance failed. Avoids loop.
     {   if (status != PATHERRTARGETMOVED)                               // but keep pursuing if target is moving
         {   pathMsg(PATH_MSG_WARN, "No retry, did not get closer. Distance " + (string)dist + "m."); return(FALSE); }   // cannot retry  
@@ -156,7 +159,7 @@ integer pathretry(integer status, key hitobj)
     //  Must do a retry
     gPathcallRetries++;                                                 // retry count 
     pathMsg(PATH_MSG_WARN, "Retrying. Distance " + (string)dist + "m. Retry " + (string)gPathcallRetries);                              // retry
-    pathstart(target, regioncorner, endpos, shortstop, speed);          // trying again
+    pathstart(target, goalregioncorner, endpos, shortstop, speed);          // trying again
     return(TRUE);                                                       // doing retry, do not tell user we are done.
 }
 

@@ -28,7 +28,6 @@ integer ACTION_PATROLFACE = 4;              // completed patrol, turning to fina
 
 #define PRIORITYPATROL  PRIORITY_BACKGROUND // lower than greet, lower than evade vehicle
 
-float DETECTION_RADIUS = 60.0;      
 float GOAL_TOL = 1.0;               
 float GOAL_DIST = 1.75;                     // (m) get this close to talk
 float MAX_GREET_DIST = 10.0;                // (m) if can get this close, say "Hello there"
@@ -180,13 +179,15 @@ start_patrol()
         integer bound = llGetListLength(gPatrolPoints); // want 0..bound-1
         if (bound < 1)
         {   llSay(DEBUG_CHANNEL,"No patrol points, cannot patrol."); return; }
-        do { newpnt = rand_int(bound);  }
-        while (newpnt == gNextPatrolPoint);
-        gNextPatrolPoint = newpnt;
-        gPatrolRegionCorner = llList2Vector(gPatrolPointCorners, gNextPatrolPoint);
-        gPatrolDestination = llList2Vector(gPatrolPoints, gNextPatrolPoint);
-        gDwell = llList2Float(gPatrolPointDwell, gNextPatrolPoint);
-        gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
+        if (bound > 1)                          // if more than one patrol point
+        {   do { newpnt = rand_int(bound);  }   // pick next one at random, 
+            while (newpnt == gNextPatrolPoint); // but not same as last time
+            gNextPatrolPoint = newpnt;
+            gPatrolRegionCorner = llList2Vector(gPatrolPointCorners, gNextPatrolPoint);
+            gPatrolDestination = llList2Vector(gPatrolPoints, gNextPatrolPoint);
+            gDwell = llList2Float(gPatrolPointDwell, gNextPatrolPoint);
+            gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
+        }
         restart_patrol();
     }  
 }

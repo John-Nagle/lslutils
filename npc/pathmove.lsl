@@ -475,6 +475,16 @@ pathmovecollision(integer num_detected)
         }
     }
 }
+//
+//  pathchangedregion -- region crossing
+//
+pathchangedregion()
+{   
+    if (!gPathMoveMoving) { return; }    // not moving, not our fault
+    pathMsg(PATH_MSG_WARN,"Crossed region boundary.");
+    gPathMoveLastgoodpos = [];                      // which invalidates all our region-local recovery points
+    pathmovedone(PATHERRREGIONCROSS, NULL_KEY);         // stop, let retry pick up in the new region
+}
 
 //
 //  The main program of the move task.
@@ -510,4 +520,11 @@ default
     
     collision_start(integer num_detected)
     {   pathmovecollision(num_detected); }
+    
+    changed(integer change)
+    {   if (change & CHANGED_REGION)                            // if we just crossed a region boundary
+        {
+            pathchangedregion();                                // changed region, handle
+        }       
+    }
 }
