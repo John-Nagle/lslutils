@@ -253,7 +253,7 @@ default
             ////assert(llVecMag(llList2Vector(pts,0) - startpos) < 0.01); // first point of static path must always be where we are
             pts = pathclean(pts);                                       // remove dups and ultra short segments
             pts = pathtrimmedregionbound(pts);                          // trim just past region boundary
-            pathMsg(PATH_MSG_WARN,"Cleaned: " +  llDumpList2String(pts,","));                       // ***TEMP***
+            ////pathMsg(PATH_MSG_WARN,"Cleaned: " +  llDumpList2String(pts,","));                       // ***TEMP***
             pts = pathptstowalkable(pts, gPathHeight);                    // project points onto walkable surface
             ////pathMsg(PATH_MSG_INFO,"Walkables");                     // ***TEMP***
             len = llGetListLength(pts);                            // update number of points after cleanup
