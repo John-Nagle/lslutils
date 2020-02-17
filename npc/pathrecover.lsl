@@ -51,8 +51,9 @@ integer pathcheckforwalkable()
 //
 //  Returns ZERO_VECTOR if no find.
 //  Returned position is at ground level.
+//  Returned position is relative to refpt.
 //
-vector findnearbyopenpos()
+vector findnearbyopenpos(vector refpt)
 {   vector pos = llGetPos();                                // we are here, halfheight level position
     vector groundpos = pos - <0,0,gPathHeight*0.5>;         // ground level position
     integer i;
@@ -64,6 +65,7 @@ vector findnearbyopenpos()
         float z = pathcheckcelloccupied(groundpos,trypos, TRUE, FALSE); // is this space clear?
         if (z > 0)                                          // yes, clear here
         {   trypos.z = z;                                   // use Z from cell occupy check, which is ground level
+            trypos += (llGetRegionCorner() - refpt);        // make relative to refpt
             pathMsg(PATH_MSG_WARN,"Recovering to nearby point " + (string)trypos);
             return(trypos);                                 // success
         }
@@ -75,6 +77,7 @@ vector findnearbyopenpos()
 //
 //  Returns ZERO_VECTOR if no find.
 //  Returned position is at ground level.
+//  Returned position is relative to refpt.
 //
 vector findrecoveropenpos(vector refpt, list pts)
 {   vector pos = llGetPos();                                // we are here, halfheight level position
@@ -143,11 +146,11 @@ integer pathrecoverwalkable(vector refpt, list pts)
     //  Trouble, there is no walkable here
     //  Attempt recovery. Try to find a previous good location that's currently open and move there.
     pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)pos + ". Recovery points available: " + (string)llGetListLength(pts));
-    vector recoverpos = ZERO_VECTOR;                // no recoveryh position found yet
+    vector recoverpos = ZERO_VECTOR;                // no recovery position found yet
     if (llListFindList(pts,[gLastRecoverListPoint]) >= 0) // this is a test to see if we are in a nearby recovery loop
     {   pathMsg(PATH_MSG_WARN,"Previous near point recovery too recent for another one."); // don't try a nearby position
     } else {                                        // look for a nearby position
-        recoverpos = findnearbyopenpos();           // try a nearby point. Recoverpos is at ground height
+        recoverpos = findnearbyopenpos(refpt);      // try a nearby point. Recoverpos is at ground height
         if (recoverpos != ZERO_VECTOR)              // using nearby point
         {   gLastRecoverListPoint = llList2Vector(pts,-1);  // can't do this again until entire recovery point list used up - loop avoidance
         }
@@ -161,7 +164,7 @@ integer pathrecoverwalkable(vector refpt, list pts)
     }
     //  We have a valid recovery point.      
     pathMsg(PATH_MSG_WARN,"Recovering by move to " + (string) recoverpos);
-    diagnoserecoverymove(recoverpos);               // error loggin only
+    diagnoserecoverymove(recoverpos);               // error logging only
     //  We do the move as a phantom, to avoid pushing things around.
     vector halfheight = <0,0,gPathHeight*0.5>;      // up by half the height from the ground
     llSleep(0.5);                                   // allow time for stop to take effect
