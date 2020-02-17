@@ -388,16 +388,16 @@ vector pathnearestpointonnavmesh(vector p)
 //
 float pathdistance(vector startpos, vector endpos, float width, integer chartype)
 {
-    vector scale = llGetScale();
+    ////vector scale = llGetScale();
     vector startposorig = startpos;                         // 
     vector endposorig = endpos;
     //  Try to find position using pathfindwalkable
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
-    startpos.z = pathfindwalkable(startpos, scale.z*0.5, scale.z);
+    startpos.z = pathfindwalkable(startpos, gPathHeight*0.5,MAZEBELOWGNDTOL);
     //  If endpos is off the edge of the region, don't try to check Z heigh there. It won't work.
     //  This means region crossings in steep or irregular terrain may fail.
     if (endpos.x >= 0.0 && endpos.x <= REGION_SIZE && endpos.y >= 0 && endpos.y <= REGION_SIZE)
-    {   endpos.z = pathfindwalkable(endpos, scale.z*0.5, scale.z);   } // find walkable below dest - big tolerance
+    {   endpos.z = pathfindwalkable(endpos, gPathHeight*0.5,MAZEBELOWGNDTOL);   } // find walkable below dest - big tolerance
     list path;
     integer status = 1;
     if (startpos.z >= 0 && endpos.z >= 0)               // if find walkable worked
@@ -407,11 +407,11 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
     if (status != 0)                                    // trouble finding navmesh, use backup plan
     {   pathMsg(PATH_MSG_WARN, "Trouble finding navmesh, trying backup approach.");
         startpos = pathnearestpointonnavmesh(startposorig); // find nearest point on navmesh
-        if (startpos == ZERO_VECTOR) { return(-1.0); }
         endpos = pathnearestpointonnavmesh(endposorig);     // for both ends
-        if (endpos == ZERO_VECTOR) { return(-1.0); }
-        path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);
-        status = llList2Integer(path,-1);                   // status is last value
+        if (startpos != ZERO_VECTOR && endpos != ZERO_VECTOR)   // if good result, try backup plan
+        {   path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);
+            status = llList2Integer(path,-1);                   // status is last value
+        }
         if (status != 0) 
         {   pathMsg(PATH_MSG_WARN, "Static path error: " + (string)status +  (string)startpos + " to " + (string)endpos + 
                 " orig startpos: " + (string)startposorig);

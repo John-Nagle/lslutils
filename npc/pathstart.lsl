@@ -143,7 +143,7 @@ integer pathretry(integer status, key hitobj)
     if (llListFindList(PATHRETRYABLES, [status]) < 0) { return(FALSE); }// not retryable
     if (gPathcallLastParams == []) { return(FALSE); }                   // no retry params
     key target = llList2Key(gPathcallLastParams,0);                     // get retry params back
-    vector goalregioncorner = llList2Vector(gPathcallLastParams,1);         // region corner
+    vector goalregioncorner = llList2Vector(gPathcallLastParams,1);     // region corner
     vector endpos = llList2Vector(gPathcallLastParams,2);               // this language needs structures
     float shortstop = llList2Float(gPathcallLastParams, 3);
     float speed = llList2Float(gPathcallLastParams,4);
@@ -155,7 +155,7 @@ integer pathretry(integer status, key hitobj)
     vector relendpos = endpos;
     if (goalregioncorner != ZERO_VECTOR)
     {   endpos += goalregioncorner - llGetRegionCorner(); }            // adjust endpos for region cross
-    float dist = pathdistance(llGetRootPosition(), relendpos, gPathWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
+    float dist = pathdistance(llGetRootPosition()-<0,0,gPathHeight*0.45>, relendpos, gPathWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
     if (dist < 0 || dist >= gPathcallLastDistance)                      // check for closer. negative means path distance failed. Avoids loop.
     {   if (status != PATHERRTARGETMOVED)                               // but keep pursuing if target is moving
         {   pathMsg(PATH_MSG_WARN, "No retry, did not get closer. Distance " + (string)dist + "m."); return(FALSE); }   // cannot retry  

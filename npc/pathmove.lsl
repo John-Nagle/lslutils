@@ -92,15 +92,19 @@ pathmovedone(integer status, key hitobj)
         pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);
         integer newstatus = pathcheckforwalkable();             // recover position if necessary
         if (newstatus != 0) { status = newstatus; }             // use walkable recovery status if walkable problem   
-    } else {                                                    // normal move completion
-        //  We should be at the KFM destination now.
-        vector pos = llGetPos() - <0,0,gPathHeight * 0.5>;  // pos is at midpoint, points are at ground level
-        if (gPathMoveLastdest != ZERO_VECTOR && llVecMag(pos-gPathMoveLastdest) > 0.10)         // if not at desired point, allow 10cm error
-        {   pathMsg(PATH_MSG_WARN, "KFM did not reach destination. At " + (string)pos + ", should be at " + (string)gPathMoveLastdest);
-            //  May need to take corrective action here. For now, just log.
+    } else {                                                    // KFM finished normally
+        if (gPathStartRegionCorner != llGetRegionCorner())      // if changed region
+        {   status = PATHERRREGIONCROSS;                        // region cross status, force error and retry
+        } else {                                                // normal move completion
+            //  We should be at the KFM destination now.
+            vector pos = llGetPos() - <0,0,gPathHeight * 0.5>;  // pos is at midpoint, points are at ground level
+            if (gPathMoveLastdest != ZERO_VECTOR && llVecMag(pos-gPathMoveLastdest) > 0.10)         // if not at desired point, allow 10cm error
+            {   pathMsg(PATH_MSG_WARN, "KFM did not reach destination. At " + (string)pos + ", should be at " + (string)gPathMoveLastdest);
+                //  May need to take corrective action here. For now, just log.
+            }
+            //  Final check - are we some place we should't be. Fix it now, rather than getting stuck.
+            status = pathcheckforwalkable();                        // if at non-walkable destination and can't recover
         }
-        //  Final check - are we some place we should't be. Fix it now, rather than getting stuck.
-        status = pathcheckforwalkable();                        // if at non-walkable destination and can't recover
     }
     //  Return "movedone" to exec module
     list params = ["reply", "movedone", "status", status, "pathid", gPathMoveId, "hitobj", hitobj];
@@ -116,9 +120,15 @@ pathmovemovementend()
 {   if (!gPathMoveMoving) { return; }                           // not moving, not our fault
     gPathMoveMoving = FALSE;                                    // not moving
     gKfmSegments = [];                                          // no current segments
-    gPathMoveLastpos = ZERO_VECTOR;                             // no last moving pos   
-    pathMsg(PATH_MSG_INFO,"Movement end");
-    pathmovedone(0, "");                                        // normal event
+    gPathMoveLastpos = ZERO_VECTOR;                             // no last moving pos 
+#ifdef OBSOLETE  
+    integer status = 0;                                         // normal completion so far
+    if (gPathStartRegionCorner != llGetRegionCorner())          // if changed region
+    {   status = PATHERRREGIONCROSS; }                          // region cross status
+    pathMsg(PATH_MSG_INFO,"Movement end, status: " + (string)status);
+    pathmovedone(status, "");                                   // normal event unless changed region
+#endif // OBSOLETE
+    pathmovedone(0, "");                                        // normal end
 }
 //
 //  pathcheckforwalkable  -- is there a walkable below here?
