@@ -51,9 +51,9 @@ integer pathcheckforwalkable()
 //
 //  Returns ZERO_VECTOR if no find.
 //  Returned position is at ground level.
-//  Returned position is relative to refpt.
+//  Returned position is relative to current region corner
 //
-vector findnearbyopenpos(vector refpt)
+vector findnearbyopenpos()
 {   vector pos = llGetPos();                                // we are here, halfheight level position
     vector groundpos = pos - <0,0,gPathHeight*0.5>;         // ground level position
     integer i;
@@ -65,7 +65,7 @@ vector findnearbyopenpos(vector refpt)
         float z = pathcheckcelloccupied(groundpos,trypos, TRUE, FALSE); // is this space clear?
         if (z > 0)                                          // yes, clear here
         {   trypos.z = z;                                   // use Z from cell occupy check, which is ground level
-            trypos += (llGetRegionCorner() - refpt);        // make relative to refpt
+            ////trypos += (llGetRegionCorner() - refpt);        // make relative to refpt
             pathMsg(PATH_MSG_WARN,"Recovering to nearby point " + (string)trypos);
             return(trypos);                                 // success
         }
@@ -77,7 +77,7 @@ vector findnearbyopenpos(vector refpt)
 //
 //  Returns ZERO_VECTOR if no find.
 //  Returned position is at ground level.
-//  Returned position is relative to refpt.
+//  Returned position is relative to current region corner
 //
 vector findrecoveropenpos(vector refpt, list pts)
 {   vector pos = llGetPos();                                // we are here, halfheight level position
@@ -89,8 +89,8 @@ vector findrecoveropenpos(vector refpt, list pts)
     {   vector recoverpos = llList2Vector(pts,i);           // try to recover to here - ground level position
         vector prevrecoverpos = llList2Vector(pts,i-1);
         //  Points in pts are relative to refpt. Must adjust to current region.
-        recoverpos += (regioncorner - refpt);               // make points region-local
-        prevrecoverpos += (regioncorner - refpt); 
+        recoverpos -= (regioncorner - refpt);               // make points region-local
+        prevrecoverpos -= (regioncorner - refpt); 
         vector halfheight = <0,0,gPathHeight*0.5>;
         if (pathcheckcelloccupied(prevrecoverpos, recoverpos, TRUE, FALSE) >= 0.0) // if clear to go there
         {   return(recoverpos);
@@ -150,7 +150,7 @@ integer pathrecoverwalkable(vector refpt, list pts)
     if (llListFindList(pts,[gLastRecoverListPoint]) >= 0) // this is a test to see if we are in a nearby recovery loop
     {   pathMsg(PATH_MSG_WARN,"Previous near point recovery too recent for another one."); // don't try a nearby position
     } else {                                        // look for a nearby position
-        recoverpos = findnearbyopenpos(refpt);      // try a nearby point. Recoverpos is at ground height
+        recoverpos = findnearbyopenpos();           // try a nearby point. Recoverpos is at ground height, relative to current region corner
         if (recoverpos != ZERO_VECTOR)              // using nearby point
         {   gLastRecoverListPoint = llList2Vector(pts,-1);  // can't do this again until entire recovery point list used up - loop avoidance
         }
@@ -165,6 +165,10 @@ integer pathrecoverwalkable(vector refpt, list pts)
     //  We have a valid recovery point.      
     pathMsg(PATH_MSG_WARN,"Recovering by move to " + (string) recoverpos);
     diagnoserecoverymove(recoverpos);               // error logging only
+    if (llVecMag(recoverpos - llGetPos()) > 200.0)    // this has to be bogus
+    {   pathMsg(PATH_MSG_ERROR,"Recovery move from " + (string)llGetPos() + " to " + (string)recoverpos + " far too big.");
+        return(PATHERRWALKABLEFAIL);                // don't try; might go off world
+    }
     //  We do the move as a phantom, to avoid pushing things around.
     vector halfheight = <0,0,gPathHeight*0.5>;      // up by half the height from the ground
     llSleep(0.5);                                   // allow time for stop to take effect

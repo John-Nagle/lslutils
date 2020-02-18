@@ -233,7 +233,7 @@ pathcheckdynobstacles()
         return;
     }
     if (llVecMag(llList2Vector(gPathMoveLastgoodpos,-1) - groundpos) > PATHERRMINGOODPOS)  // if moved to a new good pos
-    {   groundpos -= (llGetRegionCorner() - gPathInitialRegionCorner);   // saved points are relative to initial ground pos
+    {   groundpos += (llGetRegionCorner() - gPathInitialRegionCorner);   // saved points are relative to initial ground pos
         gPathMoveLastgoodpos += [groundpos];                    // save this ground level position for recovery
         if (llGetListLength(gPathMoveLastgoodpos) > PATHMAXSAVEDGOODPOS)    // limit list length
         {   gPathMoveLastgoodpos = llDeleteSubList(gPathMoveLastgoodpos,0,0); } // by removing oldest entry
