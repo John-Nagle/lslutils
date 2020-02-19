@@ -143,6 +143,10 @@ diagnoserecoverymove(vector recoverpos)
 //
 integer pathrecoverwalkable(vector refpt, list pts)
 {   vector pos = llGetPos();                        // we are here, halfheight level position
+    if (refpt != llGetRegionCorner())               // if crossed a region boundary during recovery
+    {   pathMsg(PATH_MSG_ERROR,"Crossed region boundary during recovery, no move."); // ***TEMP** as error, checking for unusual event
+        return(PATHERRREGIONCROSS);                 // crossed a region during planning, start over
+    }
     //  Trouble, there is no walkable here
     //  Attempt recovery. Try to find a previous good location that's currently open and move there.
     pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)pos + ". Recovery points available: " + (string)llGetListLength(pts));

@@ -316,12 +316,13 @@ pathmoverequestrcvd(string jsn)
         list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
         gKfmSegments = [];                                  // clear stored path used for ray cast direction
         gKfmSegmentCurrent = 0;
+#ifdef OBSOLETE // moved closer to actual move
         if (gPathStartRegionCorner != llGetRegionCorner())  // if crossed a region boundary during planning
         {   pathMsg(PATH_MSG_ERROR,"Crossed region boundary during planning, no move."); // ***TEMP** as error, checking for unusual event
             pathmovedone(PATHERRREGIONCROSS, NULL_KEY);     // crossed a region during planning, start over
             return;
         }
-        ////gPathStartRegionCorner = llGetRegionCorner();       // all points are relative to this.
+#endif // OBSOLETE
         integer i;
         integer len = llGetListLength(ptsstr);
         assert(len >= 2);                                   // required to have a start point and a dest at least
@@ -466,6 +467,12 @@ pathexedokfm()
     {   pathMsg(PATH_MSG_WARN, "KFM out of position at start. At " + (string)pos + ". Should be at " + (string)kfmstart); 
         pathmovedone(PATHERRBADMOVEEND, NULL_KEY);       // error, must start a new operation to recover
         return; 
+    }
+    //  Last-chance check for being in wrong region when starting keyframe motion.
+    if (gPathStartRegionCorner != llGetRegionCorner())  // if crossed a region boundary during planning
+    {   pathMsg(PATH_MSG_ERROR,"Crossed region boundary while setting up motion, no move."); // ***TEMP** as error, checking for unusual event
+        pathmovedone(PATHERRREGIONCROSS, NULL_KEY);     // crossed a region during planning, start over
+        return;
     }
     pathMsg(PATH_MSG_WARN,"Input to KFM: " + llDumpList2String(gKfmSegments,","));     // what to take in
     list kfmmoves = pathexebuildkfm(pos, llGetRot(), gKfmSegments);   // build list of commands to do
