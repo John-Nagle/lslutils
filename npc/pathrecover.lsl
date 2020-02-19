@@ -167,6 +167,7 @@ integer pathrecoverwalkable(vector refpt, list pts)
     diagnoserecoverymove(recoverpos);               // error logging only
     if (llVecMag(recoverpos - llGetPos()) > 200.0)    // this has to be bogus
     {   pathMsg(PATH_MSG_ERROR,"Recovery move from " + (string)llGetPos() + " to " + (string)recoverpos + " far too big.");
+        llSleep(10.0);                              // ***TEMP*** allow enough time for message to go out
         return(PATHERRWALKABLEFAIL);                // don't try; might go off world
     }
     //  We do the move as a phantom, to avoid pushing things around.

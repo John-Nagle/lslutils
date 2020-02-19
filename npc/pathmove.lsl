@@ -312,11 +312,16 @@ pathmoverequestrcvd(string jsn)
         gPathMoveTarget = (key)llJsonGetValue(jsn, ["target"]); // who we are chasing, if anybody
         gPathMoveMaxSpeed = (float)llJsonGetValue(jsn,["speed"]); 
         gPathMoveMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
-
+        gPathStartRegionCorner = (vector)llJsonGetValue(jsn,["refpt"]);  // region corner to which points are referenced
         list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
         gKfmSegments = [];                                  // clear stored path used for ray cast direction
         gKfmSegmentCurrent = 0;
-        gPathStartRegionCorner = llGetRegionCorner();       // all points are relative to this.
+        if (gPathStartRegionCorner != llGetRegionCorner())  // if crossed a region boundary during planning
+        {   pathMsg(PATH_MSG_ERROR,"Crossed region boundary during planning, no move."); // ***TEMP** as error, checking for unusual event
+            pathmovedone(PATHERRREGIONCROSS, NULL_KEY);     // crossed a region during planning, start over
+            return;
+        }
+        ////gPathStartRegionCorner = llGetRegionCorner();       // all points are relative to this.
         integer i;
         integer len = llGetListLength(ptsstr);
         assert(len >= 2);                                   // required to have a start point and a dest at least

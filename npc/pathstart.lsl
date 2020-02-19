@@ -154,7 +154,7 @@ integer pathretry(integer status, key hitobj)
     }
     vector relendpos = endpos;
     if (goalregioncorner != ZERO_VECTOR)
-    {   endpos += goalregioncorner - llGetRegionCorner(); }            // adjust endpos for region cross
+    {   relendpos += goalregioncorner - llGetRegionCorner(); }             // adjust endpos for region cross
     float dist = pathdistance(llGetRootPosition()-<0,0,gPathHeight*0.45>, relendpos, gPathWidth, CHARACTER_TYPE_A);  // measure distance to goal at gnd level
     if (dist < 0 || dist >= gPathcallLastDistance)                      // check for closer. negative means path distance failed. Avoids loop.
     {   if (status != PATHERRTARGETMOVED)                               // but keep pursuing if target is moving

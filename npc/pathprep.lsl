@@ -26,6 +26,7 @@ float gPathprepSpeed;
 float gPathprepTurnspeed;
 key gPathprepTarget;
 integer gPathprepPathid;
+vector gRefPt;                                              // reference point, a region corner, for coordinates
 //
 //  Stuck detection
 //
@@ -179,14 +180,14 @@ default
             //
             //  Goal adjustment if region crossed.
             vector pos = llGetPos();                                // we are here in current region
-            vector regioncorner = llGetRegionCorner();              // region corner of current region
-            if (goalregioncorner == ZERO_VECTOR) { goalregioncorner = regioncorner; } // use this region if blank
+            gRefPt = llGetRegionCorner();                           // region corner of current region
+            if (goalregioncorner == ZERO_VECTOR) { goalregioncorner = gRefPt; } // use this region if blank
             if (goal != ZERO_VECTOR)
-            {   if (goalregioncorner != regioncorner)               // if this move crosses a region boundary
+            {   if (goalregioncorner != gRefPt)                     // if this move crosses a region boundary
                 {
-                    vector regiondiff = goalregioncorner - regioncorner; 
+                    vector regiondiff = goalregioncorner - gRefPt; 
                     if (llVecMag(regiondiff) > MAXREGIONMOVE)       // unlikely
-                    {   pathMsg(PATH_MSG_ERROR,"Huge cross-region move from " + (string)(regioncorner+pos) + " to " + (string)(goalregioncorner+goal));
+                    {   pathMsg(PATH_MSG_ERROR,"Huge cross-region move from " + (string)(gRefPt+pos) + " to " + (string)(goalregioncorner+goal));
                     }
                     goal += regiondiff;                             // goal is in coordinates of current region
                     pathMsg(PATH_MSG_WARN, "Cross-region path to " + (string)goal); // legit
@@ -287,7 +288,8 @@ default
             llMessageLinked(LINK_THIS, PATHPLANPREPPED, llList2Json(JSON_OBJECT,
                 ["target",gPathprepTarget, "goal", goal, "stopshort", stopshort, "testspacing", testspacing,
                 "speed", gPathprepSpeed, "turnspeed", gPathprepTurnspeed,
-                "pathid", gPathprepPathid, "points", llList2Json(JSON_ARRAY,pts)]),"");
+                "pathid", gPathprepPathid, 
+                "refpt", gRefPt, "points", llList2Json(JSON_ARRAY,pts)]),"");
         } else if (num == PATHPARAMSINIT)
         {   pathinitparams(jsn);                                       // initialize params
         } else if (num == DEBUG_MSGLEV_BROADCAST)               // set debug message level for this task

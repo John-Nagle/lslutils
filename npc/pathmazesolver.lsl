@@ -138,6 +138,7 @@ float   gMazeEndZ;                  // end Z position
 integer gMazeStatus;                // status code - PATHERRMAZE...
 vector  gP0;                        // beginning of maze, for checking only
 vector  gP1;                        // end of maze, for checking only
+vector  gRefPt;                     // region corner to which points are relative
        
 
 //
@@ -719,7 +720,7 @@ default
         {   //  Solve maze
             //
             //  Format:
-            //  { "request" : "mazesolve",  "msglevG" : INTEGER, "serial": INTEGER,
+            //  { "request" : "mazesolve",  "pathid" : INTEGER, "segmentid": INTEGER,
             //      "regioncorner" : VECTOR, "pos": VECTOR, "rot" : QUATERNION, "cellsize": FLOAT, "probespacing" : FLOAT, 
             //      "sizex", INTEGER, "sizey", INTEGER, 
             //      "startx" : INTEGER, "starty" : INTEGER, "endx" : INTEGER, "endy" : INTEGER }
@@ -737,7 +738,7 @@ default
             if (requesttype != "mazesolve") { return; }              // ignore, not our msg
             integer pathid = (integer) llJsonGetValue(jsn, ["pathid"]); 
             integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
-            vector regioncorner = (vector)llJsonGetValue(jsn,["regioncorner"]);
+            gRefPt = (vector)llJsonGetValue(jsn,["refpt"]);         // corner of region to which points are relative
             gMazePos = (vector)llJsonGetValue(jsn,["pos"]);
             gMazeRot = (rotation)llJsonGetValue(jsn,["rot"]);
             gMazeCellSize = (float)llJsonGetValue(jsn,["cellsize"]);
@@ -777,6 +778,7 @@ default
                 "hitobj",gMazeHitobj,
                 "pos", gMazePos, "rot", gMazeRot, "cellsize", gMazeCellSize,
                 "p0",gp0, "p1",gp1,                                 // for checking only
+                "refpt", gRefPt,
                 "points", llList2Json(JSON_ARRAY, path)]),"");        
         } else if (num == PATHPARAMSINIT)
         {   pathinitparams(jsn);                        // initialize globals (width, height, etc.)

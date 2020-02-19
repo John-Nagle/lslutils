@@ -11,11 +11,12 @@
 //  This is a macro to avoid an extra recopy of "pts", which can be large.
 //  The "execute" task is tight on space.
 //
-#define pathmovestart(pts, target, speed, turnspeed, pathid) {  \
+#define pathmovestart(refpt, pts, target, speed, turnspeed, pathid) {  \
     llMessageLinked(LINK_THIS, LINKMSGMOVEREQUEST, \
     llList2Json(JSON_OBJECT,["request","startmove", "target", (target),\
     "speed", (speed), "turnspeed", turnspeed,\
     "pathid",(pathid),\
+    "refpt", (refpt), \
     "points", llList2Json(JSON_ARRAY,(pts))]),""); }  
 //
 //  Path move stop -- sends link message to move task

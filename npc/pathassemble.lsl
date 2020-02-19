@@ -44,9 +44,8 @@ integer gPathExeMoving = FALSE;                             // true if KFM movem
 integer gPathExeActive = FALSE;                             // path system is doing something
 integer gPathExeEOF;                                        // EOF seen
 integer gPathExePendingStatus;                              // pending error, to be reported at end of motion
-////vector  gPathExeLastPos;                                    // last position, for stall check
+vector  gPathRefPt;                                         // region corner of path being worked on
 integer gPathExeFreemem;                                    // amount of free memory left
-////integer gPathLastTimetick = 0;                              // last time we tested for motion
 
 //  Avatar params
 float gPathExeMaxTurnspeed = 0.2;                           // (radians/sec) max turn rate - overridden
@@ -95,7 +94,7 @@ pathexeinit(float probespacing)
 //
 //  A new pathid forces a flush of everything.
 //
-pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, integer status, key hitobj)
+pathexedeliver(vector refpt, list pts, integer pathid, integer segmentid, integer ismaze, integer status, key hitobj)
 {   DEBUGPRINT1("patheexedeliver, segment #" + (string)segmentid + " points: " + llDumpList2String(pts,","));
     integer length = llGetListLength(pts);
     if (length == 0 || (length == 1 && llList2Vector(pts,0) != ZERO_VECTOR))    // not enough points and not an EOF marker - why is this happening?
@@ -116,7 +115,8 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
         gPathExeActive = TRUE;                              // we are running
         gPathExePendingStatus = 0;                          // no stored status yet
         gPathLastObstacle = NULL_KEY;                       // no last obstacle yet
-        ////gPathExeMovegoal = ZERO_VECTOR;                     // no stored goal yet
+        gPathRefPt = refpt;                                 // new reference point
+        ////gPathExeMovegoal = ZERO_VECTOR;                 // no stored goal yet
         if (segmentid == 0 && llList2Vector(pts,0) == ZERO_VECTOR)  // if this is an error situation at start
         {   pathMsg(PATH_MSG_WARN, "Path error at start: " + (string)status + " hitobj: " + (string)hitobj); 
             pathexestopkey(status, hitobj);                 // and we fail out.
@@ -131,6 +131,7 @@ pathexedeliver(list pts, integer pathid, integer segmentid, integer ismaze, inte
             return; 
         }
     }
+    if (gPathRefPt != llGetRegionCorner()) { status = PATHERRREGIONCROSS; } // crossed region during planning, discard
     if (gPathExePendingStatus == 0) { gPathExePendingStatus = status; }   // save any error status sent for later
     if (hitobj != NULL_KEY) { gPathLastObstacle = hitobj; } // save any obstacle id sent for later diagnosis
     if (ismaze)                                             // add to maze or path list
@@ -286,7 +287,7 @@ pathexedomove()
             vector pos = llGetPos();                            // we are here
             segstodo = llListReplaceList(segstodo,[pos-<0,0,gPathHeight*0.5>],0,0);   // always start from current position
             assert(llGetListLength(segstodo) >= 2);     // must always have at least two points
-            pathmovestart(segstodo, gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId); 
+            pathmovestart(gPathRefPt, segstodo, gPathExeTarget, gPathExeMaxSpeed, gPathExeMaxTurnspeed, gPathExeId); 
         }     
         ////gPathExeMovegoal = llList2Vector(gAllSegments,-1);  // where we are supposed to be going
         ////assert(gPathExeMovegoal != ZERO_VECTOR);        // must not be EOF marker         
@@ -359,11 +360,12 @@ pathexemazedeliver(string jsn)
     }
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     key hitobj = (key)llJsonGetValue(jsn,["hitobj"]);           // obstacle which started (not stopped) maze solve
-    if (status != 0) { pathexedeliver([ZERO_VECTOR],pathid, segmentid, TRUE, status, hitobj); return; } // EOF with error, needed if first segment is bad.
+    vector refpt = (vector)llJsonGetValue(jsn,["refpt"]);       // region corner to which points are relative
+    if (status != 0) { pathexedeliver(refpt, [ZERO_VECTOR],pathid, segmentid, TRUE, status, hitobj); return; } // EOF with error, needed if first segment is bad.
     float cellsize = (float)llJsonGetValue(jsn,["cellsize"]); // get maze coords to world coords info
     vector pos = (vector)llJsonGetValue(jsn,["pos"]);
     rotation rot = (rotation)llJsonGetValue(jsn,["rot"]);
-    list ptsmaze = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
+     list ptsmaze = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
     vector p0 = (vector)llJsonGetValue(jsn,["p0"]);            // for checking only
     vector p1 = (vector)llJsonGetValue(jsn,["p1"]);            // for checking only
     list ptsworld = [];
@@ -388,7 +390,7 @@ pathexemazedeliver(string jsn)
     ////assert(llVecMag(llList2Vector(ptsworld,-1) - p1) < 0.01);            // maze endpoints must match
     //  Straighten path. Maze solver paths are all right angles. Here we try short cuts.
     ptsworld = pathstraighten(ptsworld, gPathExeProbespacing);          // postprocess path
-    pathexedeliver(ptsworld, pathid, segmentid, TRUE, 0, hitobj);      // deliver maze solution
+    pathexedeliver(refpt, ptsworld, pathid, segmentid, TRUE, 0, hitobj);      // deliver maze solution
 }
 //
 //  pathexepathdeliver  -- JSON from path planner
@@ -399,6 +401,7 @@ pathexepathdeliver(string jsn)
     if (requesttype != "path") { pathexestop(PATHERRMAZEFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
+    vector refpt = (vector)llJsonGetValue(jsn,["refpt"]);                              // region corner to which points are relative
     //  Results from the path planner also contain some misc, parameter updates.
     gPathExeTarget = (key)llJsonGetValue(jsn,["target"]);                               // used by move task to check if pursue target moves
     gPathExeMaxSpeed = (float)llJsonGetValue(jsn,["speed"]); 
@@ -417,7 +420,7 @@ pathexepathdeliver(string jsn)
     integer i;
     integer len = llGetListLength(ptsstr);
     for (i=0; i<len; i++) { pts += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors  
-    pathexedeliver(pts, pathid, segmentid, FALSE, status, hitobj);      // deliver path segment
+    pathexedeliver(refpt, pts, pathid, segmentid, FALSE, status, hitobj);      // deliver path segment
 }
 
 //

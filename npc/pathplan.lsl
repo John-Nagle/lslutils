@@ -32,6 +32,7 @@ integer gCurrentix;                                         // current index
 //  Input params
 float gTestspacing;
 integer gReqPathid;                                         // path ID of planning section
+vector gRefPt;                                              // region corner to which points are relative
 
 
 //
@@ -49,6 +50,9 @@ integer gReqPathid;                                         // path ID of planni
 //
 //  This is best-effort; moves will be reported even if the destination cannot be
 //  fully reached.
+//
+//  Can't handle paths that cross region boundaries because it can't
+//  find out anything about the next region.
 //
 pathplan(float stopshort, integer pathid)
 {
@@ -320,20 +324,21 @@ pathdeliversegment(list path, integer ismaze, integer isdone, integer pathid, in
     //  Fixed part of the reply. Just add "points" at the end.
     list fixedreplypart = ["reply","path", "pathid", gPathId, "status", status, "hitobj", gPathLastObstacle,
                 "target", gPathplanTarget, "speed", gPathplanSpeed, "turnspeed", gPathplanTurnspeed,       // pass speed setting to execution module
+                "refpt", gRefPt,                            // reference point for points (region corner)
                 "points"];                                  // just add points at the end
     if (ismaze)                                             // maze, add to the to-do list
     {   assert(length == 2);                                // maze must have two endpoints
         vector bp0 = llList2Vector(path,0);
         vector bp1 = llList2Vector(path,1);
         //  Start the maze solver
-        integer status = mazesolverstart(bp0, bp1, gPathWidth, gPathHeight, gPathChartype, gPathWidth, gPathLastObstacle, gPathId, gSegmentId); 
+        integer status = mazesolverstart(gRefPt, bp0, bp1, gPathWidth, gPathHeight, gPathChartype, gPathWidth, gPathLastObstacle, gPathId, gSegmentId); 
         if (status) 
         {   pathMsg(PATH_MSG_WARN,"Unable to start maze solver. Status: " + (string)status); 
             //  Create a dummy maze solve result and send it to path execution just to transmit the status.
             llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT,
             ["reply", "mazesolve", "pathid", pathid, "segmentid", gSegmentId, "status", status, 
                 "pos", ZERO_VECTOR, "rot", ZERO_ROTATION, "cellsize", 0.0,
-                "points",llList2Json(JSON_ARRAY,[])]),"");
+                "refpt",gRefPt, "points",llList2Json(JSON_ARRAY,[])]),"");
             return;
         }
         gSegmentId++;                                       // created a segment
@@ -386,6 +391,7 @@ default
             integer pathid = (integer)llJsonGetValue(jsn,["pathid"]);
             gPathplanSpeed = (float)llJsonGetValue(jsn,["speed"]);
             gPathplanTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]);
+            gRefPt = (vector)llJsonGetValue(jsn,["refpt"]);             // reference point for points (the region corner)
             list points = llJson2List(llJsonGetValue(jsn,["points"]));     // the preprocessed static path points
             ////pathMsg(PATH_MSG_INFO,"Path request: " + jsn); 
             jsn = "";                                               // Release string. We are that tight on space.

@@ -383,6 +383,7 @@ vector pathnearestpointonnavmesh(vector p)
 //  pathdistance -- distance measured along a static path
 //
 //  Used to check if progress is being made.
+//  This has to work across region boundaries.
 //
 //  Returns < 0 if fail
 //
@@ -393,13 +394,14 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
     vector endposorig = endpos;
     //  Try to find position using pathfindwalkable
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
-    startpos.z = pathfindwalkable(startpos, gPathHeight*0.5,MAZEBELOWGNDTOL);
+    if (startpos.x >= 0.0 && startpos.x <= REGION_SIZE && startpos.y >= 0 && startpos.y <= REGION_SIZE)
+    {   startpos.z = pathfindwalkable(startpos, gPathHeight*0.5,MAZEBELOWGNDTOL); }
     //  If endpos is off the edge of the region, don't try to check Z heigh there. It won't work.
     //  This means region crossings in steep or irregular terrain may fail.
     if (endpos.x >= 0.0 && endpos.x <= REGION_SIZE && endpos.y >= 0 && endpos.y <= REGION_SIZE)
     {   endpos.z = pathfindwalkable(endpos, gPathHeight*0.5,MAZEBELOWGNDTOL);   } // find walkable below dest - big tolerance
     list path;
-    integer status = 1;
+    integer status = 9990;                              // only for debug msg
     if (startpos.z >= 0 && endpos.z >= 0)               // if find walkable worked
     {   path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);
         status = llList2Integer(path,-1);               // status is last value
@@ -412,9 +414,9 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
         {   path = llGetStaticPath(startpos, endpos, width*0.5, [CHARACTER_TYPE,chartype]);
             status = llList2Integer(path,-1);                   // status is last value
         }
-        if (status != 0) 
+        if (status != 0)                                    // any static path error
         {   pathMsg(PATH_MSG_WARN, "Static path error: " + (string)status +  (string)startpos + " to " + (string)endpos + 
-                " orig startpos: " + (string)startposorig);
+                " orig startpos: " + (string)startposorig + " orig endpos: " + (string)endposorig);
             return(-1.0);                                       // fails
         }
     }
