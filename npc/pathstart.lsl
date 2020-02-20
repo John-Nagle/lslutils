@@ -91,13 +91,16 @@ pathstart(key target, vector goalregioncorner, vector endpos, float stopshort, f
             return;
         }
         endpos = llList2Vector(details,0);                          // use this endpos
+        goalregioncorner = llGetRegionCorner();                     // relative to our own region
         llOwnerSay("Position of target " + llKey2Name(target) + " is " + (string)endpos); // ***TEMP***
+    } else {                                                        // if navigating to a point
+        if (goalregioncorner == ZERO_VECTOR) { goalregioncorner = llGetRegionCorner(); } // set region corner if null
     }
     gPathcallLastParams = [target, goalregioncorner, endpos, stopshort, speed];      // save params for restart
     //  Are we allowed to go to this destination?
-    vector relendpos = endpos;
-    if (goalregioncorner != ZERO_VECTOR && endpos != ZERO_VECTOR)
-    {   relendpos = endpos + llGetRegionCorner() - goalregioncorner;  }    // relative to current region 
+    assert(endpos != ZERO_VECTOR);                                  // both must be nonzero here
+    assert(goalregioncorner != ZERO_VECTOR);
+    vector relendpos = endpos + llGetRegionCorner() - goalregioncorner;     // relative to current region 
     if (pathisinregion(relendpos) && !pathvaliddest(relendpos))     // allow blind move to off-region destination
     {   pathMsg(PATH_MSG_WARN,"Destination " + (string)relendpos + " not allowed."); 
         pathdonereply(PATHERRBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
