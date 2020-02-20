@@ -116,8 +116,19 @@ placesegmentmarker(string markername, vector p0, vector p1, float width, rotatio
 //  Globals
 //
 key   gPathLastObstacle = NULL_KEY;                         // last obstacle that stopped us
-
+//
+//  Useful macros
+//
+//
+//  pathGetRoot  -- get UUID of root of object.
+//
 #define pathGetRoot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
+//
+//  pathisinregion -- true if object is within region bounds
+//
+//  Do not pass an expression to this; the syntax of LSL won't allow "." on an expression.
+//
+#define pathisinregion(position) (position.x >= 0.0 && position.x <= REGION_SIZE && position.y >= 0 && position.y <= REGION_SIZE)
 
 //
 //  pathinitutils -- initialize constants if necessary. Call in default state entry.
@@ -277,7 +288,8 @@ integer pathvaliddest(vector pos)
 {
     ////if (pos.x <= 0 || pos.x >= REGION_SIZE || pos.y <= 0 || pos.y >= REGION_SIZE) { return(FALSE); }
     //  ***TEMP*** allow all off-region moves until we figure out how to check them
-    if (pos.x <= 0 || pos.x >= REGION_SIZE || pos.y <= 0 || pos.y >= REGION_SIZE) { return(TRUE); }
+    ////if (pos.x <= 0 || pos.x >= REGION_SIZE || pos.y <= 0 || pos.y >= REGION_SIZE) { return(TRUE); }
+    if (!pathisinregion(pos)) { return(FALSE); }        // must be in region
     list theredata = llGetParcelDetails(pos, [PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP, PARCEL_DETAILS_ID]);
     key thereid = llList2Key(theredata,2);              // ID of the parcel
     if (thereid == gPathAlllowedParcel) { return(TRUE); }   // checked this one already, good to go
@@ -394,11 +406,11 @@ float pathdistance(vector startpos, vector endpos, float width, integer chartype
     vector endposorig = endpos;
     //  Try to find position using pathfindwalkable
     //  Find walkable under avatar. Look straight down. Startpos must be on ground.
-    if (startpos.x >= 0.0 && startpos.x <= REGION_SIZE && startpos.y >= 0 && startpos.y <= REGION_SIZE)
+    if (pathisinregion(startpos))
     {   startpos.z = pathfindwalkable(startpos, gPathHeight*0.5,MAZEBELOWGNDTOL); }
     //  If endpos is off the edge of the region, don't try to check Z heigh there. It won't work.
     //  This means region crossings in steep or irregular terrain may fail.
-    if (endpos.x >= 0.0 && endpos.x <= REGION_SIZE && endpos.y >= 0 && endpos.y <= REGION_SIZE)
+    if (pathisinregion(endpos))
     {   endpos.z = pathfindwalkable(endpos, gPathHeight*0.5,MAZEBELOWGNDTOL);   } // find walkable below dest - big tolerance
     list path;
     integer status = 9990;                              // only for debug msg
@@ -642,7 +654,7 @@ integer obstaclecheckpath(vector p0, vector p1, float probespacing)
 //  At entry, p0 must have a correct Z value, but p1's Z value is obtained by a ray cast downward.
 //
 float pathcheckcelloccupied(vector p0, vector p1, integer dobackcorners, integer dostaticcheck)
-{
+{   if (!pathisinregion(p1)) { return(-1); }                // off-region cells are untestable because cast ray won't see ground
     vector dv = p1-p0;                                      // direction, unnormalized
     dv.z = 0;                                               // Z not meaningful yet.
     vector dir = llVecNorm(dv);                             // forward direction, XY plane

@@ -76,7 +76,7 @@ pathbegin(key target, vector regioncorner, vector endpos, float stopshort, float
 //
 //  pathstart -- go to indicated point or target. Internal fn. Used by begin or restart
 //
-//  Go to the indicated location, in the current region, avoiding obstacles.
+//  Go to the indicated location, in any nearby region, avoiding obstacles.
 //
 //  Stop short of the target by the distance stopshort. This can be zero. 
 //
@@ -98,7 +98,7 @@ pathstart(key target, vector goalregioncorner, vector endpos, float stopshort, f
     vector relendpos = endpos;
     if (goalregioncorner != ZERO_VECTOR && endpos != ZERO_VECTOR)
     {   relendpos = endpos + llGetRegionCorner() - goalregioncorner;  }    // relative to current region 
-    if (!pathvaliddest(relendpos))
+    if (pathisinregion(relendpos) && !pathvaliddest(relendpos))     // allow blind move to off-region destination
     {   pathMsg(PATH_MSG_WARN,"Destination " + (string)relendpos + " not allowed."); 
         pathdonereply(PATHERRBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
         return; 

@@ -209,11 +209,15 @@ default
             vector halfheight = fullheight*0.5;   
             vector p = pos-halfheight;                              // position on ground
             integer good = FALSE;                                   // not yet a good start point
-            for (i=0; i<llGetListLength(TRIALOFFSETS); i++)         // try coming from all around the start point
-            {   if (!good)
-                {   vector refpos = p + llList2Vector(TRIALOFFSETS,i)*gPathWidth; // test at this offset
-                    good = pathcheckcelloccupied(refpos, p, TRUE, FALSE) >= 0.0;
+            if (pathisinregion(p))                                  // if point is in region
+            {   for (i=0; i<llGetListLength(TRIALOFFSETS); i++)     // try coming from all around the start point
+                {   if (!good)
+                    {   vector refpos = p + llList2Vector(TRIALOFFSETS,i)*gPathWidth; // test at this offset
+                        good = pathcheckcelloccupied(refpos, p, TRUE, FALSE) >= 0.0;
+                    }
                 }
+            } else {                                                // if off-region
+                good = TRUE;                                        // assume valid dest if off-region, because we can't see off-region
             }
             if (!good)
             {   pathMsg(PATH_MSG_WARN, "Start location is not clear: " + (string)startpos);           // not good, but we can recover
@@ -274,13 +278,18 @@ default
             vector startposerr = llList2Vector(pts,0) - startpos;                  // should not change first point, except in Z
             ////assert(llVecMag(<startposerr.x,startposerr.y,0.0>) < 0.01);        // first point must always be where we are
             //  Check that path does not go through a keep-out area.
-            for (i=0; i<len; i++)
-            {   vector pt = llList2Vector(pts,i);                   // point being tested
-                if (!pathvaliddest(pt))                             // if cannot go there
-                {
-                    pathMsg(PATH_MSG_WARN, "Prohibited point: " + (string)pt);  // can't go there, don't even try
-                    pathdeliversegment([],FALSE,TRUE,gPathprepPathid, PATHERRPROHIBITED); // empty set of points, no maze, done.   
-                    return;                                         // not allowed
+            //  Going off-region blindly is allowed if the endpoint is off-region.
+            //  This is somewhat risky, but the user has to specify an off-region destination to allow an off-region move.
+            integer singleregion = pathisinregion(goal);                    // is endpoint off region?
+            for (i=0; i<len; i++)                                           // for all points on path
+            {   vector pt = llList2Vector(pts,i);                           // point being tested
+                if (pathisinregion(pt))                                     // if path is in region
+                {   if (singleregion && !pathvaliddest(pt))                 // if cannot go there
+                    {
+                        pathMsg(PATH_MSG_WARN, "Prohibited point: " + (string)pt);  // can't go there, don't even try
+                        pathdeliversegment([],FALSE,TRUE,gPathprepPathid, PATHERRPROHIBITED); // empty set of points, no maze, done.   
+                        return;                                         // not allowed
+                    }
                 }
             }         
             //  We have a valid static path. Send it to the main planner.
@@ -295,8 +304,6 @@ default
         } else if (num == DEBUG_MSGLEV_BROADCAST)               // set debug message level for this task
         {   debugMsgLevelSet(jsn);
         }
-
-  
     }
 }
 
