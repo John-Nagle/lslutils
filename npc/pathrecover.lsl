@@ -178,9 +178,13 @@ integer pathrecoverwalkable(vector refpt, list pts)
     vector halfheight = <0,0,gPathHeight*0.5>;      // up by half the height from the ground
     llSleep(0.5);                                   // allow time for stop to take effect
     llSetPrimitiveParams([PRIM_PHANTOM, TRUE]);     // set to phantom for forced move to avoid collisions
-    llSetPos(recoverpos + halfheight);              // forced move to previous good position
+    integer success = llSetRegionPos(recoverpos + halfheight);              // forced move to previous good position
     llSleep(0.5);                                   // give time to settle
     llSetPrimitiveParams([PRIM_PHANTOM, FALSE]);    // back to normal solidity
+    if (!success)
+    {   pathMsg(PATH_MSG_ERROR,"Recover move from " + (string)pos + " to " + (string)recoverpos + "in " + (string)refpt + " failed.");
+        return(PATHERRWALKABLEFAIL);                // failed
+    }
     return(PATHERRWALKABLEFIXED);
 }
 
