@@ -171,19 +171,25 @@ integer pathrecoverwalkable(vector refpt, list pts)
     diagnoserecoverymove(recoverpos);               // error logging only
     if (llVecMag(recoverpos - llGetPos()) > 200.0)    // this has to be bogus
     {   pathMsg(PATH_MSG_ERROR,"Recovery move from " + (string)llGetPos() + " to " + (string)recoverpos + " far too big.");
-        llSleep(10.0);                              // ***TEMP*** allow enough time for message to go out
         return(PATHERRWALKABLEFAIL);                // don't try; might go off world
     }
     //  We do the move as a phantom, to avoid pushing things around.
     vector halfheight = <0,0,gPathHeight*0.5>;      // up by half the height from the ground
-    llSleep(0.5);                                   // allow time for stop to take effect
     llSetPrimitiveParams([PRIM_PHANTOM, TRUE]);     // set to phantom for forced move to avoid collisions
-    integer success = llSetRegionPos(recoverpos + halfheight);              // forced move to previous good position
+    llSleep(0.5);                                   // allow time for stop to take effect
+    //  Potential race condition - a region cross might occur during the sleep above. Must recheck region.
+    integer status = 0;                             // no fail yet
+    if (refpt != llGetRegionCorner())               // if crossed region during sleep
+    {   status = PATHERRREGIONCROSS;                // must not try to do a move from wrong region - ends up in wrong place
+    } else {                                        // did not cross region
+        integer success = llSetRegionPos(recoverpos + halfheight);              // forced move to previous good position
+        if (!success) { status = PATHERRWALKABLEFAIL; } // move failed, note that
+    }
     llSleep(0.5);                                   // give time to settle
     llSetPrimitiveParams([PRIM_PHANTOM, FALSE]);    // back to normal solidity
-    if (!success)
+    if (status != 0)                                // if trouble
     {   pathMsg(PATH_MSG_ERROR,"Recover move from " + (string)pos + " to " + (string)recoverpos + "in " + (string)refpt + " failed.");
-        return(PATHERRWALKABLEFAIL);                // failed
+        return(status);                             // failed
     }
     return(PATHERRWALKABLEFIXED);
 }
