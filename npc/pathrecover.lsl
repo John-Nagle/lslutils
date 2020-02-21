@@ -47,6 +47,26 @@ integer pathcheckforwalkable()
 }
 
 //
+//  waitforstop -- wait for movement to stop
+//
+//  Used when we do a keyframe move for recovery.
+//  Only for recovery do we do this synchronously.
+//
+waitforstop()
+{   integer i = 100;                                            // keep testing for 100 sleeps
+    vector startpos = llGetPos();
+    float poserr = INFINITY;                                    // position error, if still moving
+    do                                                          // until character stops
+    {   llSleep(0.3);                                           // allow time for message to execute task to stop KFM
+        vector pos = llGetPos();
+        poserr = llVecMag(startpos - pos);                      // how far did we move
+        startpos = pos;
+    } while (i-- > 0 && poserr > 0.001);                        // until position stabilizes 
+    if (i <= 0) { pathMsg(PATH_MSG_WARN, "Character not stopping on command in recover, at " + (string)startpos); }
+}
+
+
+//
 //  findnearbyopenpos -- find a nearby open position for recovery purposes.
 //
 //  Returns ZERO_VECTOR if no find.
@@ -169,10 +189,6 @@ integer pathrecoverwalkable(vector refpt, list pts)
     //  We have a valid recovery point.      
     pathMsg(PATH_MSG_WARN,"Recovering by move to " + (string) recoverpos);
     diagnoserecoverymove(recoverpos);               // error logging only
-    if (llVecMag(recoverpos - llGetPos()) > 200.0)    // this has to be bogus
-    {   pathMsg(PATH_MSG_ERROR,"Recovery move from " + (string)llGetPos() + " to " + (string)recoverpos + " far too big.");
-        return(PATHERRWALKABLEFAIL);                // don't try; might go off world
-    }
     //  We do the move as a phantom, to avoid pushing things around.
     vector halfheight = <0,0,gPathHeight*0.5>;      // up by half the height from the ground
     llSetPrimitiveParams([PRIM_PHANTOM, TRUE]);     // set to phantom for forced move to avoid collisions
@@ -182,8 +198,20 @@ integer pathrecoverwalkable(vector refpt, list pts)
     if (refpt != llGetRegionCorner())               // if crossed region during sleep
     {   status = PATHERRREGIONCROSS;                // must not try to do a move from wrong region - ends up in wrong place
     } else {                                        // did not cross region
+#ifdef OBSOLETE
         integer success = llSetRegionPos(recoverpos + halfheight);              // forced move to previous good position
         if (!success) { status = PATHERRWALKABLEFAIL; } // move failed, note that
+#endif // OBSOLETE
+        //  Move using keyframe move.
+        vector movevec = recoverpos - llGetPos();   // recovery move as delta
+        if (llVecMag(movevec) > 100.0)              // this has to be bogus
+        {   pathMsg(PATH_MSG_ERROR,"Recovery move from " + (string)llGetPos() + " to " + (string)recoverpos + " far too big.");
+            status = PATHERRWALKABLEFAIL;                // don't try; might go off world
+        } else {
+            llSetKeyframedMotion([movevec, ZERO_ROTATION, 2.0],[KFM_MODE,KFM_FORWARD]);  // do the move
+            waitforstop();                              // synchronously wait for stop
+            llSetKeyframedMotion([],[KFM_COMMAND,KFM_CMD_STOP]); // make sure we are stopped
+        }
     }
     llSleep(0.5);                                   // give time to settle
     llSetPrimitiveParams([PRIM_PHANTOM, FALSE]);    // back to normal solidity
