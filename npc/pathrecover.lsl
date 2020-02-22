@@ -203,7 +203,7 @@ integer pathrecoverwalkable(vector refpt, list pts)
         if (!success) { status = PATHERRWALKABLEFAIL; } // move failed, note that
 #endif // OBSOLETE
         //  Move using keyframe move.
-        vector movevec = recoverpos - llGetPos();   // recovery move as delta
+        vector movevec = (recoverpos+halfheight) - llGetPos();   // recovery move as delta
         if (llVecMag(movevec) > 100.0)              // this has to be bogus
         {   pathMsg(PATH_MSG_ERROR,"Recovery move from " + (string)llGetPos() + " to " + (string)recoverpos + " far too big.");
             status = PATHERRWALKABLEFAIL;                // don't try; might go off world
