@@ -91,6 +91,8 @@ float gHeight = -1;             // height and width for NPC
 float gWidth = -1;
 integer gVerbose = FALSE;       // verbose mode on for debug
 integer gChartype = CHARACTER_TYPE_A;   // humanoid
+integer gCharacterRunning = TRUE;  // system is running
+string  gCharacterName = "NPC"; // reset from first word of name
 
 //
 //  Services.
@@ -107,7 +109,8 @@ integer gAnimService = -1;                                          // animation
 integer gBhvDialogListenHandle;
 integer gBhvDialogTime = 0;                             
 list BHVMSGLEVBUTTONS = DEBUG_MSG_NAME_LIST;
-string BHVDIALOGINFO = "\nNPC debug options.";
+string BHVDIALOGDEBUG = "Debug options";
+string BHVDIALOGMAIN = "Owner options";
 #define BHVDIALOGTIMEOUT 30.0                                       // remove listen
 
 //
@@ -121,7 +124,9 @@ integer bhvmsglevindex(string message)
     return(-1);                         // no find
 }
 //
-//  bhvmsglevdialog
+//  bhvmsglevdialog -- debug dialog
+//
+//  Message level (Error, Warning, Info) and Verbose on/off.
 //
 bhvmsglevdialog(key toucherid)
 {   llListenRemove(gBhvDialogListenHandle);                                        // delete any old listens for this                  
@@ -139,10 +144,30 @@ bhvmsglevdialog(key toucherid)
     {   buttons += "Verbose ☒"; }
     else 
     {   buttons += "Verbose ☐";}
-    buttons += "Reset";                         // fill line and add reset button
     gBhvDialogTime = llGetUnixTime();           // timestamp for dialog removal
     ////llOwnerSay("Popping up dialog box");    // ***TEMP***
-    llDialog(toucherid, BHVDIALOGINFO, buttons, BHVDIALOGCHANNEL);
+    llDialog(toucherid, BHVDIALOGDEBUG, buttons, BHVDIALOGCHANNEL);
+}
+//
+//  bhvownerdialog -- main owner dialog
+//
+//  Stop, Run, Reset, and Debug
+//
+bhvownerdialog(key toucherid)
+{   llListenRemove(gBhvDialogListenHandle);                                        // delete any old listens for this                  
+    gBhvDialogListenHandle = llListen(BHVDIALOGCHANNEL, "", toucherid, "");       // listening for reply
+    list buttons = [];                          // no buttons yet
+    string s = "Stop";                          // stop and run get a dot if active
+    if (!gCharacterRunning) { s = "⬤ " + s; } 
+    buttons += s;
+    s = "Run";
+    if (gCharacterRunning) { s = "⬤ " + s; } 
+    buttons += s;
+    buttons += "Reset";
+    buttons += "Debug";
+    gBhvDialogTime = llGetUnixTime();           // timestamp for dialog removal
+    ////llOwnerSay("Popping up dialog box");    // ***TEMP***
+    llDialog(toucherid, BHVDIALOGMAIN, buttons, BHVDIALOGCHANNEL);
 }
 #endif // BHVDEBUG
 //
@@ -178,13 +203,13 @@ init()
     ////llOwnerSay("Resetting all behaviors.");  // ***TEMP***
     llMessageLinked(LINK_SET,BHVMSGFROMSCH,llList2Json(JSON_OBJECT,["request","reset"]),"");    // reset all behaviors
     //  Display name of character
-    string name = llList2String(llGetObjectDetails(getroot(llGetKey()),[OBJECT_NAME]),0);   // name of root prim
-    integer spaceIndex = llSubStringIndex(name, " ");
+    gCharacterName = llList2String(llGetObjectDetails(getroot(llGetKey()),[OBJECT_NAME]),0);   // name of root prim
+    integer spaceIndex = llSubStringIndex(gCharacterName, " ");
     if (spaceIndex >0)
-    {   name  = llGetSubString(name, 0, spaceIndex - 1); }          // first name of character
+    {   gCharacterName  = llGetSubString(gCharacterName, 0, spaceIndex - 1); }          // first name of character
     //  Set up character
     vector color = <1.0,1.0,1.0>;                                   // white
-    llSetText(name, color, 1.0);                                    // set hover text
+    llSetText(gCharacterName, color, 1.0);                          // set hover text
     llSetTimerEvent(5.0);                                           // for stall timer check only
     bhvbroadcastmsglev(gDebugMsgLevel, gVerbose, FALSE);            // set initial message level
 }
@@ -288,6 +313,7 @@ schedbhv()
         gActivePriority = 0;                
         gActiveToken = (gActiveToken+1)%(PATHMAXUNSIGNED-1);// advance run serial number, nonnegative
     }
+    if (!gCharacterRunning) { return; }            // if shutdown, return
     integer bhvix = getbhvtorun();              // get next behavior to run
     if (bhvix < 0) { return; }                  // nothing to run
     //  Starting new task
@@ -353,10 +379,6 @@ pathUpdateCallback(integer status, key hitobj)
 //
 doanim(integer bhvix, list anims)
 {   debugMsg(DEBUG_MSG_WARN,"Anim req: " + llDumpList2String(anims,","));                // get things started
-#ifdef OBSOLETE
-    string anim = llList2String(anims,0);                       // only first anim for now ***TEMP*** need to fix AO
-    llMessageLinked(LINK_THIS, 1,anim,"");                      // tell our AO what we want
-#endif // OBSOLETE
     if (gAnimService < 0)
     {   debugMsg(DEBUG_MSG_ERROR,"No animation service registered."); return; } // We're missing a system component
     //  Send to the anim service in the behaviors prim. This is so the anims go in the behaviors prim, whic will be modifiable.
@@ -474,20 +496,19 @@ default
         if (toucherid != llGetOwner())              // owner only              
         {   return;
         }
-        bhvmsglevdialog(toucherid);
+        bhvownerdialog(toucherid);                  // bring up owner dialog
     }
-    
-    
-    
+      
     listen(integer channel, string name, key id, string message)
     {   
         llListenRemove(gBhvDialogListenHandle);     // remove dialog
-        gBhvDialogListenHandle = 0;                 // no longer listening  
-        integer dumplog = FALSE;                    // not dumping log yet                 
+        gBhvDialogListenHandle = 0;                 // no longer listening 
+        integer dumplog = FALSE;                    // not dumping log yet 
         integer buttonIndex = bhvmsglevindex(message); // is it a valid button?
         if (buttonIndex >= 0)
         {   
             gDebugMsgLevel = buttonIndex;           // new button index
+            
         } else if (message == "Reset")              // reset this script which restarts everybody
         {   llResetScript(); 
         } else if (message == " ")                  // unused button
@@ -496,14 +517,28 @@ default
         {   gVerbose = !gVerbose;                   // toggle verbose mode 
         } else if (message == "Dump log")           // time to dump log
         {   dumplog = TRUE;                         // do it
+        } else if (message == "Debug")
+        {   bhvmsglevdialog(id);                    // bring up debug options menu
+        } else if (llSubStringIndex(message,"Run") >= 0)  // with or without dot
+        {    if (!gCharacterRunning)                    // if stopped
+            {   gCharacterRunning = TRUE;              // now running
+                llOwnerSay("Starting " + gCharacterName);
+                schedbhv();                         // start scheduler
+            }
+        } else if (llSubStringIndex(message,"Stop") >= 0) // with or without dot
+        {    if (gCharacterRunning)                     // if running
+            {   gCharacterRunning = FALSE;             // now stopped
+                pathStop();                         // shut down any movement
+                schedbhv();                         // run scheduler to cause stop
+                llOwnerSay("Stopping " + gCharacterName);
+            }
         } else {
             llSay(DEBUG_CHANNEL, "Dialog option bug: "+ message); // bad
             return;
         }
-        bhvbroadcastmsglev(gDebugMsgLevel, gVerbose, dumplog);   // tell everybody
+        bhvbroadcastmsglev(gDebugMsgLevel, gVerbose, dumplog);   // tell everybody msg level changed
     }
 #endif // BHVDEBUG
-  
 }
 
 

@@ -89,7 +89,7 @@ pathTurnspeed(float turnspeed)
 //  the current movement, although not instantly.
 //
 pathStop()
-{   pathNavigateTo(llGetPos(), 100.0, 1.0);              // stop by navigating to where we are
+{   pathNavigateTo(ZERO_VECTOR, llGetPos(), 100.0, 1.0);              // stop by navigating to where we are
 }
 
 //
