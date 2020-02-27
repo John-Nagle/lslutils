@@ -26,15 +26,16 @@
 #define MAX_VERT_DIST_TO_AVATAR (256.0)         // (b) Further than this and we assume an unreachable skybox
 #define MIN_TIME_FOR_RETRY (15.0)               // (s) Min time for exponential backofff
 #define EXPONENTIAL_BACKOFF (2.0)               // (no units) scale for exponential backoff
-
+#define FORGET_INTERVAL (300)                   // (s) Forget about avatar that left sim
+#define PURGE_INTERVAL (60)                     // (s) Purge done list this often
 //
 //  Targets in the sim.
 //
-list gDoneTargets = [];                         // we have said hello
+list gDoneTargets = [];                         // we have said hello [key, time, key, time ...]
+integer gLastPurge;                             // time of last done list purge
 
 //  These all have the same subscript
 list gDeferredTargets = [];                     // trouble with these, wait and retry
-////list gDeferredPositions = [];                   // don't retry until target moves
 list gDeferredTimes = [];                       // time of next attempt
 list gDeferredIntervals = [];                   // interval for time backoff
 
@@ -43,7 +44,6 @@ list gDeferredIntervals = [];                   // interval for time backoff
 //
 startup()
 {   pathinitutils();                                            // library init
-    ////llSetTimerEvent(IDLE_POLL);                                 // check for work
 }
 
 
@@ -65,9 +65,7 @@ avatarcheck()
     assert(gPathWidth > 0);                             // checks that initialization happened first
     float closestdist = 99999;              
     key target = NULL_KEY;                     
-    list newDoneTargets;
     list newDeferredTargets;
-    ////list newDeferredPositions;
     list newDeferredTimes;
     list newDeferredIntervals;
     //  Get all agents on same owner parcels in region.
@@ -79,13 +77,13 @@ avatarcheck()
     {   agents = llGetAgentList(AGENT_LIST_PARCEL_OWNER,[]);    // get all agents in sim  
     } else {
         debugMsg(DEBUG_MSG_WARN,"Out of memory, clearing avatar list.");  // unlikely, but good backup
+        gDoneTargets = [];                          // purge done list too
     }
+    purgedonelist(FORGET_INTERVAL, PURGE_INTERVAL); // purge done list of old avatars not seen in a while
     integer num_detected = llGetListLength(agents);
     if (num_detected == 0)                          // nobody around
     {
-        gDoneTargets = [];                          // clear everything
         gDeferredTargets = [];
-        ////gDeferredPositions = [];
         gDeferredTimes = [];
         gDeferredIntervals = [];                     
         return;
@@ -101,8 +99,9 @@ avatarcheck()
         {   if (pathvaliddest(tpos))                        // if in same owner/group parcel, etc. and not in moving vehicle
             {                                               // avatar of interest. Do we need to greet it?
                 integer doneix = llListFindList(gDoneTargets,[id]);     // on "done" list?
-                if (doneix >= 0)
-                {   newDoneTargets += id; }                     // keep on "done" list 
+                if (doneix >= 0)                            // yes, already done
+                {   gDoneTargets = llListReplaceList(gDoneTargets,[id,llGetUnixTime()],doneix,doneix+1); // update last seen timestamp
+                }  
                 else                                            // not done, see if time to do it.
                 {   float dist = -1.0;                          // distance to target, < 0 means don't do it     
                     integer deferix = llListFindList(gDeferredTargets,[id]);// check for avatar on deferred target list
@@ -138,7 +137,6 @@ avatarcheck()
         }
     }
     //  Update all lists to new values. 
-    gDoneTargets = newDoneTargets;              // only keep greeted targets still in range
     gDeferredTargets = newDeferredTargets;
     gDeferredTimes = newDeferredTimes;
     gDeferredIntervals = newDeferredIntervals;  
@@ -150,6 +148,25 @@ avatarcheck()
 }
 
 //
+//  purgedonelist -- purge the "done" list of items older than a specified time
+//
+purgedonelist(integer forgetinterval, integer purgeinterval) 
+{   integer now = llGetUnixTime();                      // seconds since epoch
+    if (gLastPurge > now - purgeinterval) { return; }   // too soon to purge again
+    gLastPurge = now;                                   // will purge, note purge time
+    list newDoneTargets = [];                           // items we will keep
+    integer i;
+    for (i=0; i<llGetListLength(gDoneTargets); i+= 2)   // list is [key, time, key, time ... ]
+    {
+        if (llList2Float(gDoneTargets,i+1) > now - forgetinterval)   // if not expired yet
+        {   newDoneTargets += llList2List(gDoneTargets,i,i+1); // add to new list
+        } else {
+            pathMsg(PATH_MSG_WARN,"Forgetting departed avatar " + llKey2Name(llList2Key(gDoneTargets,i)));
+        }
+    }
+    gDoneTargets = newDoneTargets;
+}
+//
 //  avatardone -- done with this target
 //
 //  Add to the "done" list, and start the next request, if any.
@@ -157,7 +174,7 @@ avatarcheck()
 avatardone(key id)
 {   integer ix = llListFindList(gDoneTargets,[id]);     // look up in "done" list
     if (ix >= 0) { return; }                            // done
-    gDoneTargets += [id];                               // add to "done" list.
+    gDoneTargets += [id, llGetUnixTime()];              // add to "done" list.
     integer targetix = llListFindList(gDeferredTargets,[id]);         // if was on deferred list
     if (targetix < 0) { return; }                       // not on deferred lists
     //  Remove from deferred list if still there.
