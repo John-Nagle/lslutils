@@ -25,6 +25,7 @@ float MAZEBELOWGNDTOL = 2.0;                                // (m) huge toleranc
 #define REGION_SIZE (256.0)                                 // (m) Ought to be an LSL call 
 #define PATHMAXRAYHITS 4                                    // Number of hits for each castray call. Must be more than clothing layers        
 
+//  Ray cast options, without (2 items per result) and with (3 items per result) normal.
 list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,PATHMAXRAYHITS, RC_DATA_FLAGS,RC_GET_ROOT_KEY]; // Because we can hit ourself and must ignore that.
 list PATHCASTRAYOPTSOBS;                                    // filled in later because we need to do an OR
 

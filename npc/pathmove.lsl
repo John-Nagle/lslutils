@@ -158,7 +158,7 @@ integer pathcheckforwalkable()
 pathobstacleraycast(vector p, vector p1)
 {   
     //  One simple ahead ray cast for now.
-    list castresult = castray(p, p1, PATHCASTRAYOPTSOBS);
+    list castresult = castray(p, p1, PATHCASTRAYOPTS);          // don't need normal
     //  We have to do the whole analysis drill. Ground or walkable, OK. Self, OK.
     //  Anything else is an obstacle
     list castanalysis = pathanalyzecastresult(castresult, FALSE);
