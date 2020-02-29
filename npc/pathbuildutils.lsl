@@ -22,11 +22,10 @@ float PATHPOINTONSEGDIST = 0.10;                            // (m) allow point u
 float PATHSTATICTOL = 0.30;                                 // (m) allow extra space on either side of path 
 float PATHSINMAXWALKABLEANGLE = 0.4226;                     // sine of (90-65) degrees. 
 float MAZEBELOWGNDTOL = 2.0;                                // (m) huge tolerance to allow for huge differences between pathfinding mesh and ground
-#define REGION_SIZE (256.0)                                 // (m) Ought to be an LSL call         
+#define REGION_SIZE (256.0)                                 // (m) Ought to be an LSL call 
+#define PATHMAXRAYHITS 4                                    // Number of hits for each castray call. Must be more than clothing layers        
 
-list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_ROOT_KEY]; // 2 hits, because we can hit ourself and must ignore that.
-////list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2];                  // 2 hits, because we can hit ourselves and must ignore that
-////list PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
+list PATHCASTRAYOPTS = [RC_REJECT_TYPES,RC_REJECT_LAND, RC_MAX_HITS,PATHMAXRAYHITS, RC_DATA_FLAGS,RC_GET_ROOT_KEY]; // Because we can hit ourself and must ignore that.
 list PATHCASTRAYOPTSOBS;                                    // filled in later because we need to do an OR
 
 
@@ -135,7 +134,7 @@ key   gPathLastObstacle = NULL_KEY;                         // last obstacle tha
 //
 pathinitutils()
 {   if (!gPathConstantsInitialized)              // if constants not initialized
-    {   PATHCASTRAYOPTSOBS = [RC_MAX_HITS,2, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
+    {   PATHCASTRAYOPTSOBS = [RC_MAX_HITS,PATHMAXRAYHITS, RC_DATA_FLAGS,RC_GET_NORMAL|RC_GET_ROOT_KEY];   // 2 hits, plus we need the normal
         gPathOwner = llGetOwner();                  // owner of animesh
         list groupdetails = llGetObjectDetails(llGetKey(), [OBJECT_GROUP]); // my group
         gPathGroup = llList2Key(groupdetails,0);    // group of animesh
@@ -182,28 +181,6 @@ integer pathpointinsegment(vector p, vector p0, vector p1)
     if (enddot < 0 || enddot > alldot) { return(FALSE); }                // outside endpoints
     return(distpointtoline(p,p0,p1) < PATHPOINTONSEGDIST);              // point must be near infinite line
 }
-#ifdef OBSOLETE  // using closestpointtoline now
-//
-//  distpointtoline -- point to line distance, infinite line
-//
-//  Formula from geomalgorithms.com
-//
-float distpointtoline(vector p, vector p0, vector p1)
-{
-     vector v = p1 - p0;                // the line
-     vector w = p - p0;                 
-     float c1 = w*v;
-     float c2 = v*v;                    // length squared
-     vector pb;
-     if (c2 > 0.00001)                  // nonzero line length
-     {  float b = c1 / c2;              // would divide by 0 for null line
-        pb = p0 + b * v;                // closest point on line to p
-     } else {
-        pb = p0;                        // zero length line case
-     }
-     return (llVecMag(p - pb));             // return distance
-}
-#endif // OBSOLETE
 
 //
 //  closestpointonline -- closest point on a line, infinite line
