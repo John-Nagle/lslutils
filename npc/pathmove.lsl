@@ -269,7 +269,7 @@ pathchecktargetmoved()
 //
 pathmovetimer()
 {   float interval = llGetAndResetTime();                       // time since last tick 
-    if (interval > 0.5) { pathMsg(PATH_MSG_WARN,"Timer ticks slow: " + (string)interval + "s."); } // ***TEMP*** log really slow operations
+    if (interval > 0.5) { pathMsg(PATH_MSG_NOTE,"Timer ticks slow: " + (string)interval + "s."); } // ***TEMP*** log really slow operations
     if (gPathMoveActive)                                        // if moving
     {   if (gPathStartRegionCorner != llGetRegionCorner())      // if we changed regions
         {   pathmovedone(PATHERRREGIONCROSS, NULL_KEY); return; } // must abort this move, restart will continue later
@@ -305,7 +305,7 @@ pathmovetimer()
 pathmoverequestrcvd(string jsn) 
 {   ////pathMsg(PATH_MSG_INFO,"Path move request: " + jsn);
     string requesttype = llJsonGetValue(jsn,["request"]);   // request type 
-    pathMsg(PATH_MSG_WARN,"Path move request: " + jsn + " Request type: \"" + requesttype + "\""); // ***TEMP***
+    pathMsg(PATH_MSG_NOTE,"Path move request: " + jsn + " Request type: \"" + requesttype + "\""); 
     if (requesttype == "startmove")                         // start moving
     {   //  Set up for ray casting.
         gPathMoveId = (integer)llJsonGetValue(jsn, ["pathid"]);
@@ -361,7 +361,7 @@ pathmoverequestrcvd(string jsn)
     } else if (requesttype == "recover")                    // recover to known good position, requested by pathprep
     {   //  This is done in move because it's an in-world move, and we do all in-world moves here.
         //  The actual work gets done in the recover task, but we make sure here that we are stopped.
-        pathMsg(PATH_MSG_WARN,"Recover request: " + jsn);   // ***TEMP***
+        pathMsg(PATH_MSG_WARN,"Recover request: " + jsn);   
         integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
         if (gPathMoveActive || gPathMoveMoving || gPathMoveRecovering)   // motion in progress, can't do a forced recovery
         {   pathMsg(PATH_MSG_ERROR,"Recover move requested while in motion"); // Doesn't really need to be a full error, just a werning.
@@ -474,15 +474,15 @@ pathexedokfm()
         pathmovedone(PATHERRREGIONCROSS, NULL_KEY);     // crossed a region during planning, start over
         return;
     }
-    pathMsg(PATH_MSG_WARN,"Input to KFM: " + llDumpList2String(gKfmSegments,","));     // what to take in
+    pathMsg(PATH_MSG_NOTE,"Input to KFM: " + llDumpList2String(gKfmSegments,","));     // what to take in
     list kfmmoves = pathexebuildkfm(pos, llGetRot(), gKfmSegments);   // build list of commands to do
     if (kfmmoves != [])                             // if something to do (if only one point stored, nothing happens)
     {   llSetKeyframedMotion(kfmmoves, [KFM_MODE, KFM_FORWARD]);            // begin motion
-        ////pathMsg(PATH_MSG_WARN,"Starting motion, KFM commands: " + llDumpList2String(kfmmoves,","));   // ***TEMP***
+        ////pathMsg(PATH_MSG_NOTE,"Starting motion, KFM commands: " + llDumpList2String(kfmmoves,","));   // ***TEMP***
         integer freemem = llGetFreeMemory();            // how much memory left here, at the worst place       
         if (freemem < gPathMoveFreemem) 
         {   gPathMoveFreemem = freemem; 
-            pathMsg(PATH_MSG_WARN, "Move task free memory: " + (string)freemem);
+            pathMsg(PATH_MSG_NOTE, "Move task free memory: " + (string)freemem);
         }   // record free memory
     }
 }

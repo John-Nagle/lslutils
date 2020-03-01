@@ -45,8 +45,8 @@ list PATHCASTRAYOPTSOBS;                                    // filled in later b
 //  Error levels
 #define PATH_MSG_ERROR DEBUG_MSG_ERROR                              // fatal - debug popups, restarts.
 #define PATH_MSG_WARN DEBUG_MSG_WARN
+#define PATH_MSG_NOTE DEBUG_MSG_NOTE
 #define PATH_MSG_INFO DEBUG_MSG_INFO
-#define PATH_MSG_DEBUG DEBUG_MSG_DEBUG
 
 #define gPathMsgLevel gDebugMsgLevel                            // ***TEMP*** until renaming
 //  

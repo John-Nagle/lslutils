@@ -191,7 +191,7 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
         integer requestid = (integer)llJsonGetValue(jsn, ["requestid"]);  // hitobj as key param in link message
         if (requestid != gPathcallRequestId)                         // result from a cancelled operation
         {   debugMsg(DEBUG_MSG_WARN, "Stale request completed msg discarded."); return; }
-        debugMsg(DEBUG_MSG_WARN,"Path complete, status " + (string)status + ", obstacle: " + (string)hitobj + ", time: " + (string)llGetTime());
+        debugMsg(DEBUG_MSG_NOTE,"Path complete, status " + (string)status + ", obstacle: " + (string)hitobj + ", time: " + (string)llGetTime());
         gPathcallStarttime = 0;                             // really done, stop clock
         pathUpdateCallback(status, hitobj);
     }
@@ -218,90 +218,4 @@ pathmasterreset()
     llSleep(5.0);                                                       // wait 5 secs for reset.
     llOwnerSay("Master reset complete.");                               // OK, reset
 }
-
-#ifdef OBSOLETE // Moved to mathutils
-//
-//  Misc. support functions. For user use, not needed by the path planning system itself.
-//
-
-integer rand_int(integer bound)                 // bound must not exceed 2^24.
-{   return((integer)llFrand(bound)); }          // get random integer                   
-
-vector vec_to_target(key id)         
-{   return(target_pos(id) - llGetPos());   }         
-
-vector target_pos(key id)
-{   list v = llGetObjectDetails(id, [OBJECT_POS]);  
-    if (v == []) { return(ZERO_VECTOR); }         // not really a good choice for fails  
-    return(llList2Vector(v,0));                             
-}
-
-float dist_to_target(key id)
-{   
-    list v = llGetObjectDetails(id, [OBJECT_POS]);  
-    if (v == []) { return(INFINITY); }         // if gone, infinitely far away
-    return(llVecMag(llList2Vector(v,0) - llGetPos()));  // distance to target                            
-}
-
-vector dir_from_target(key id)                      
-{
-    list r = llGetObjectDetails(id, [OBJECT_ROT]);  
-    if (r == []) { return(ZERO_VECTOR); }           
-    rotation arot = llList2Rot(r,0);                
-    vector facingdir = <1,0,0>*arot;
-    facingdir.z = 0.0;                              
-    return(llVecNorm(facingdir));                   
-}
-
-//
-//  is_active_obstacle -- true if obstacle might move.
-//
-integer is_active_obstacle(key id)
-{   if (id == "" || id == NULL_KEY) { return(FALSE); }          // no object
-    ////return(TRUE);                                               // anything that obstructed us is alive, for now.
-    //  Guess if this is a live object.
-    list details = llGetObjectDetails(id, [OBJECT_VELOCITY, OBJECT_PHYSICS, OBJECT_PATHFINDING_TYPE, OBJECT_ANIMATED_COUNT]);
-    integer pathfindingtype = llList2Integer(details,2);            // get pathfinding type
-    if (pathfindingtype == OPT_AVATAR || pathfindingtype == OPT_CHARACTER) { return(TRUE); } // definitely alive, yes
-    if (pathfindingtype != OPT_LEGACY_LINKSET) { return(FALSE); }                           // if definitely static, no.
-    if (llVecMag(llList2Vector(details,0)) > 0.0 || llList2Integer(details,1) != 0 || llList2Integer(details,3) > 0) { return(TRUE); } // moving or physical or animesh
-    //  Need a really good test for KFM objects.
-    return(FALSE);                                                      // fails, for now.
-}
-
-
-//
-//   pathLinearInterpolate  -- simple linear interpolation
-//
-float pathLinearInterpolate(float n1 , float n2 , float fract )
-{   return n1 + ( (n2-n1) * fract );    } 
-
-//
-//  easeineaseout  --  interpolate from 0 to 1 with ease in and ease out using cubic Bezier.
-//
-//  ease = 0: no smoothing
-//  ease = 0.5: reasonable smoothing
-//
-float easeineaseout(float ease, float fract)
-{   float ym = pathLinearInterpolate(0, ease, fract);
-    float yn = pathLinearInterpolate(ease, 1, fract);
-    float y =  pathLinearInterpolate(ym, yn,  fract);
-    return(y);
-}
-
-
-
-//  Check if point is directly visible in a straight line.
-//  Used when trying to get in front of an avatar.
-integer clear_sightline(key id, vector lookatpos)
-{   list obstacles = llCastRay(target_pos(id), lookatpos,[]);
-    integer status = llList2Integer(obstacles,-1);
-    if (status == 0) { return(TRUE); }      // no errors, zero hits, clear sightline.
-    debugMsg(DEBUG_MSG_WARN, "Clear sightline status " + (string)status + " hits: " + (string)obstacles);
-    return(FALSE);                          // fails
-}
-#endif // OBSOLETE
-
-
-
 

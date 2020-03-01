@@ -343,7 +343,7 @@ stopbhv(integer bhvix)
 //  dopathbegin -- behavior wants to do a path request
 //
 dopathbegin(integer bhvix, string jsn)
-{   debugMsg(DEBUG_MSG_WARN,"Path begin req: " + jsn);              // get things started
+{   debugMsg(DEBUG_MSG_NOTE,"Path begin req: " + jsn);              // get things started
     key target = (key)llJsonGetValue(jsn,["target"]);
     vector regioncorner = (vector)llJsonGetValue(jsn,["regioncorner"]); // send region corner along with goal
     vector goal = (vector)llJsonGetValue(jsn,["goal"]);
@@ -355,7 +355,7 @@ dopathbegin(integer bhvix, string jsn)
 //  doturn -- behavior wants to do a path request
 //
 doturn(integer bhvix, string jsn)
-{   debugMsg(DEBUG_MSG_WARN,"Turn req: " + jsn);
+{   debugMsg(DEBUG_MSG_NOTE,"Turn req: " + jsn);
     float heading = (float)llJsonGetValue(jsn,["heading"]);            // get heading
     pathTurn(heading);
 
@@ -378,7 +378,7 @@ pathUpdateCallback(integer status, key hitobj)
 //  Anim requests don't get a callback.
 //
 doanim(integer bhvix, list anims)
-{   debugMsg(DEBUG_MSG_WARN,"Anim req: " + llDumpList2String(anims,","));                // get things started
+{   debugMsg(DEBUG_MSG_NOTE,"Anim req: " + llDumpList2String(anims,","));                // get things started
     if (gAnimService < 0)
     {   debugMsg(DEBUG_MSG_ERROR,"No animation service registered."); return; } // We're missing a system component
     //  Send to the anim service in the behaviors prim. This is so the anims go in the behaviors prim, whic will be modifiable.
@@ -421,7 +421,7 @@ default
 #endif // BHVDEBUG
     }
     link_message(integer sender_num, integer num, string jsn, key id)
-    {   ////debugMsg(DEBUG_MSG_WARN, jsn);                        // ***TEMP*** dump incoming JSON
+    {   ////debugMsg(DEBUG_MSG_NOTE, jsn);                        // ***TEMP*** dump incoming JSON
         if (num == BHVMSGTOSCH)                    // one of our behaviors wants to talk to us
         {
             string reqtype = llJsonGetValue(jsn,["request"]);   // get request type

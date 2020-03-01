@@ -10,9 +10,9 @@
 //
 #define DEBUG_MSG_ERROR     0                                    // decreasing order of importance
 #define DEBUG_MSG_WARN      1
-#define DEBUG_MSG_INFO      2
-#define DEBUG_MSG_DEBUG     3
-#define DEBUG_MSG_NAME_LIST ["error","warn","info","debug"]     // for UI use
+#define DEBUG_MSG_NOTE      2
+#define DEBUG_MSG_INFO      3
+#define DEBUG_MSG_NAME_LIST ["error","warn","note","info"]      // for UI use
 
 
 #define DEBUG_MIN_IM_INTERVAL 3600                              // seconds between IMs. Do not overdo.

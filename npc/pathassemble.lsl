@@ -262,7 +262,7 @@ pathexedomove()
     if (gRemainingSegments == [])                       // if none remain undone 
     {   if (llGetListLength(gAllSegments) == 1 && llList2Vector(gAllSegments,0) == ZERO_VECTOR) // if the EOF signal
         {   
-            pathMsg(PATH_MSG_WARN,"Execute done. Lowest free mem: " + (string)gPathExeFreemem);
+            pathMsg(PATH_MSG_NOTE,"Execute done. Lowest free mem: " + (string)gPathExeFreemem);
             gAllSegments = [];                              // all done 
             pathexestop(0);                                 // all done, normal stop
             return;
@@ -279,7 +279,7 @@ pathexedomove()
             if (llGetListLength(gRemainingSegments) > PATHMAXKFMPOINTS)                     // if too many to do all at once
             {   segstodo = llList2List(gRemainingSegments, 0, PATHMAXKFMPOINTS-1);          // do these now
                 gRemainingSegments = llList2List(gRemainingSegments, PATHMAXKFMPOINTS-1,-1);// do these later. Overlap so obstacle scan works.
-                pathMsg(PATH_MSG_WARN, "Too many points to move all at once, splitting list.");
+                pathMsg(PATH_MSG_NOTE, "Too many points to move all at once, splitting list.");
             } else {                                                                // not too many
                 segstodo = gRemainingSegments;                                            // do them all now
                 gRemainingSegments = [];                        // fully consumed
@@ -296,7 +296,7 @@ pathexedomove()
         if (freemem < gPathExeFreemem) { gPathExeFreemem = freemem; }   // record free memory
         ////gAllSegments = [];                              // segments have been consumed
     } else {
-        pathMsg(PATH_MSG_WARN,"Waiting for maze solver/planner to deliver pathid: " + (string)gPathExeId + " segid: " + (string)gPathExeNextsegid);    // solver running behind action
+        pathMsg(PATH_MSG_NOTE,"Waiting for maze solver/planner to deliver pathid: " + (string)gPathExeId + " segid: " + (string)gPathExeNextsegid);    // solver running behind action
     }
 }
 
@@ -319,7 +319,7 @@ pathexemovementend()
 //
 pathexestopkey(integer status, key hitobj)
 {
-    if (gPathExeMoving || (status != 0)) { pathMsg(PATH_MSG_WARN,"Movement stop. Status: " + (string)status + ", hitobj: " + (string)hitobj); }
+    if (gPathExeMoving || (status != 0)) { pathMsg(PATH_MSG_NOTE,"Movement stop. Status: " + (string)status + ", hitobj: " + (string)hitobj); }
     ////llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on
     gClearSegments = [];                                    // reset state
     gMazeSegments = [];
@@ -408,7 +408,7 @@ pathexepathdeliver(string jsn)
     gPathExeMaxTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]); 
     integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     if (status != 0) 
-    {   pathMsg(PATH_MSG_WARN,"Path deliver with status " + (string)status); 
+    {   pathMsg(PATH_MSG_NOTE,"Path deliver with status " + (string)status); 
         if (gPathExePendingStatus == 0)                     // save error status for later
         {   gPathExePendingStatus = status;
         }   // save any error status sent for later

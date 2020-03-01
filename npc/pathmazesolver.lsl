@@ -63,7 +63,7 @@ list MAZEEDGEFOLLOWDYTAB = [0,1,0,-1];
 #define MAZEEDGEFOLLOWDX(n) llList2Integer(MAZEEDGEFOLLOWDXTAB,(n))
 #define MAZEEDGEFOLLOWDY(n) llList2Integer(MAZEEDGEFOLLOWDYTAB,(n))
 
-#define MAZEPRINTVERBOSE(s) { pathMsg(PATH_MSG_DEBUG,(s)); }
+////#define pathMsg(PATH_MSG_INFO,s) { pathMsg(PATH_MSG_INFO,(s)); }
 
 
 //
@@ -81,29 +81,6 @@ integer mazeclipto1(integer n)
     if (n < 0) { return(-1); }
     return(0);
 }
-#ifdef OBSOLETE
-//
-//   mazeinline  -- true if points are in a line
-//
-integer mazeinline(integer x0, integer y0,integer x1,integer y1, integer x2, integer y2) 
-{    return ((x0 == x1 && x1 == x2) ||
-       (y0 == y1 && y1 == y2));
-}
-       
-//
-//   mazepointssame  -- true if points are identical
-//
-integer mazepointssame(integer x0, integer y0, integer x1, integer y1) 
-{   return(x0 == x1 && y0 == y1); }
-//
-//   llListReplaceList -- a builtin in LSL
-//
-list llListReplaceList(list src, list dst, integer start, integer end) 
-{   assert(start >= 0);                          // no funny end-relative stuff
-    assert(end >= 0);
-    return(llListReplaceList(src, dst, start, end));
-}
-#endif // OBSOLETE
 //
 //   mazeinline  -- true if points are in a line
 //
@@ -207,11 +184,11 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
     }
 #endif // MARKERS 
     //   Outer loop - shortcuts || wall following
-    MAZEPRINTVERBOSE("Start maze solve.");
+    pathMsg(PATH_MSG_INFO,"Start maze solve.");
     while (gMazeX != gMazeEndX || gMazeY != gMazeEndY)  // while not at dest
     {   pathMsg(PATH_MSG_INFO,"Maze solve at (" + (string)gMazeX + "," + (string)gMazeY + "," + (string)gMazeZ + ")");
         if (gMazeStatus)                                    // if something went wrong
-        {   MAZEPRINTVERBOSE("Maze solver failed: status " + (string)gMazeStatus + " at (" + (string)gMazeX + "," + (string)gMazeY + ")");
+        {   pathMsg(PATH_MSG_NOTE,"Maze solver failed: status " + (string)gMazeStatus + " at (" + (string)gMazeX + "," + (string)gMazeY + ")");
             gMazeCells = [];                                // release memory
             gMazePath = [];
             return([]);
@@ -224,7 +201,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
         }
         integer shortcutavail = mazeexistsproductivepath(gMazeX, gMazeY, gMazeZ);     // if a shortcut is available
         if (gMazeStatus)                                    // if something went wrong checking cells
-        {   MAZEPRINTVERBOSE("Maze solver failed: status " + (string)gMazeStatus + " at (" + (string)gMazeX + "," + (string)gMazeY + ")");
+        {   pathMsg(PATH_MSG_NOTE,"Maze solver failed: status " + (string)gMazeStatus + " at (" + (string)gMazeX + "," + (string)gMazeY + ")");
             gMazeCells = [];                                // release memory
             gMazePath = [];
             return([]);
@@ -241,7 +218,7 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
             integer followstarty = gMazeY;
             float followstartz = gMazeZ;
             integer followstartdir = direction;
-            MAZEPRINTVERBOSE("Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdbest);
+            pathMsg(PATH_MSG_INFO,"Starting wall follow at " + (string)followstartx + "," + (string)followstarty + ",  direction " + (string)direction + ", mdist = " + (string)gMazeMdbest);
             integer livea = TRUE;                                               // more to do on path a
             integer liveb = TRUE;                                               // more to do on path b
             integer founduseful = FALSE;                                        // found a useful path
@@ -330,14 +307,14 @@ list mazesolve(integer xsize, integer ysize, integer startx, integer starty, flo
             if (!founduseful)                                                       // stopped following, but no result
             {   gMazePath = [];                                                     // failed, release memory and return
                 gMazeCells = [];
-                pathMsg(PATH_MSG_WARN,"No maze solution. Status: " + (string)gMazeStatus);
+                pathMsg(PATH_MSG_NOTE,"No maze solution. Status: " + (string)gMazeStatus);
                 return([]);                                                         // no path possible
             }
 
             DEBUGPRINT1("Finished wall following at (" + (string)gMazeX + "," + (string)gMazeY + ")");
         }
     }
-    MAZEPRINTVERBOSE("Solved maze");
+    pathMsg(PATH_MSG_INFO,"Solved maze");
     list path = gMazePath;
     gMazeCells = [];                        // release memory, we need it
     gMazePath = [];
@@ -769,9 +746,9 @@ default
                     ////path = mazeoptimizeroute(path);             // do simple optimizations
                 } 
             }
-            {   pathMsg(PATH_MSG_WARN,"Maze solver finished, pathid " + (string)pathid + ", seg " + (string)segmentid + 
+            {   pathMsg(PATH_MSG_NOTE,"Maze solver finished, pathid " + (string)pathid + ", seg " + (string)segmentid + 
                 ". Free mem: " + (string)llGetFreeMemory()); 
-                pathMsg(PATH_MSG_INFO,"Maze route: " + mazerouteasstring(path));    // detailed debug
+                pathMsg(PATH_MSG_NOTE,"Maze route: " + mazerouteasstring(path));    // detailed debug
             } 
             //  Send reply                  
             llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "pathid", pathid, "segmentid", segmentid, "status", status,

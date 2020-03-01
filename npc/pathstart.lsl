@@ -41,7 +41,7 @@ pathLinkMsg(string jsn, key hitobj)
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);  // hitobj as key param in link message
     if (pathid != gLocalPathId)                         // result from a cancelled operation
     {   pathMsg(PATH_MSG_WARN, "Stale path completed msg discarded."); return; }
-    pathMsg(PATH_MSG_WARN,"Path complete, status " + (string)status + ", hitobj: " + (string)hitobj + " Time: " + (string)llGetTime());
+    pathMsg(PATH_MSG_NOTE,"Path complete, status " + (string)status + ", hitobj: " + (string)hitobj + " Time: " + (string)llGetTime());
     if (pathretry(status, hitobj)) { return; }          // attempt a retry
     pathUpdateCallback(status, hitobj);
 }
@@ -193,7 +193,7 @@ default
     //    
     link_message(integer status, integer num, string jsn, key id)
     {   if (num == PATHSTARTREQUEST)                                     // if request for a planning job
-        {   pathMsg(PATH_MSG_WARN,"Path request (" + (string)num +"): " + jsn);
+        {   pathMsg(PATH_MSG_NOTE,"Path request (" + (string)num +"): " + jsn);
             integer requestid = (integer)llJsonGetValue(jsn,["requestid"]); // caller controls the path serial number
             string request = llJsonGetValue(jsn,["request"]);           // get request type
             if (request == "pathbegin")                                 // common start function
