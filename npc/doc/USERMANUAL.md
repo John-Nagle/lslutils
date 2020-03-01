@@ -1,0 +1,154 @@
+# Animats Non Player Characters
+User Manual
+
+February. 2020
+
+Release One.
+
+# Introduction
+You have purchased an Animats Non-Player Character.
+***MORE***
+
+## Quick Start
+
+## Configuration
+
+Animats NPCs are controlled by a configuration file, a notecard.
+The notecard has lines with fields separated by commas.
+Lines beginning with a "#" are comments.
+Here's a sample configuration file.
+
+### A sample configuration file
+
+    #   Patrol point configuration
+    #   patrol, point, REGION, POS,  DWELLTIME, HEADINGATEND
+    patrol, point, Vallone, <207,15,36>, 20.0,  180.0
+    patrol, point, Vallone, <202,46,36>, 20.0,  45.0
+    patrol, point, Vallone, <217,28,36>, 20.0,  180.0
+    patrol, point, Vallone, <184,13,36>, 100.0, 90.0
+    patrol, point, Vallone, <236,14,36>, 100.0, 0.0
+    patrol, point, Vallone, <193,32,42>, 20.0,  0.0
+    patrol, point, Vallone,<240,43,36>,  20.0,  90.0
+    patrol, point, Vallone,<161,46,38>,  20.0,  180.0
+    #   Patrol movement speed
+    patrol, speed, 2.5
+    
+    #   Chase slowly and greet politely.
+    greet, speed, 2.5
+    greet, msgfacing, Hello
+    greet, msgnear, Hello there!
+    greet, msggroup, Hello all
+    greet, idling, SEmotion-bento18
+    greet, waiting, SEmotion-bento13
+    greet, talking, SEmotion-bento18
+
+    #   Animation configuration
+    animator, always, Benato Blink
+    animator, slowwalk, animesh_slow_short_stride_walk
+    animator, walk, Female Walk 1
+    animator, stand, stand 2
+    animator, run, run 1
+    animator, turnleft, TurnL
+    animator, turnright, TurnR
+
+    
+### Setting up patrol points.
+The patrol points tell the NPC where to go.
+The NPC will go randomly from patrol point to patrol point.
+Patrol points are goal points; the NPC figures out how to get there on its own.
+Patrol points are given one per line, in the format
+
+    patrol, point, REGION, POSITION, DWELLTIME, HEADINGATEND
+    
+**patrol** and **point** identify this as a patrol point line.
+
+**REGION** is the name of the region of the patrol point.
+
+**POSITION** is the position of the patrol point. The third, Z, value, must be close to floor or ground level.
+
+**DWELLTIME** is the time, in seconds, to remain at the patrol point.
+
+**HEADINGATEND** is the direction to face when the patrol point has been reached. 0 is north, 90 is east, 180 is south, 270 is west.
+
+Patrol points must be on a parcel owned by the same owner or group as the NPC.
+
+(TEMPORARY) *All patrol points should be in the same region, due to a Second Life bug.*
+
+The speed the NPC moves when patrolling is set with 
+
+    patrol, speed, SPEED
+    
+**patrol** and **speed** identify this as the patrol speed setting.
+
+**SPEED** is the speed in meters per second. 2.5 is a walk, 6 is a fast run. 6 is a little faster than an avatar can run.
+
+The speed setting should reflect the NPC's personality and role. Most NPCs patrol at walk speed. 
+We have a cute little kid who always runs fast and never spends very long in any one place.
+
+### Greeting.
+
+If desired, the NPC will find and greet anyone who shows up on the parcels. 
+
+    greet, speed, SPEED
+    
+**greet** and **speed** identify this as the greet speed setting.
+
+**SPEED** is the speed in meters per second.
+
+This speed has a strong effect on how the NPC's personality is perceived.
+2.5 will make the avatar approach at a walk, which looks polite and peaceful.
+6.0 will make the avatar approach visitors at a dead run. This looks aggressive.   
+    
+    greet, msgfacing, MESSAGE
+    greet, msgnear, MESSAGE
+    greet, msggroup, MESSAGE
+
+**msgfacing** is the message that will be delivered when the NPC reaches the avatar and stands in front of them at conversational distance.
+
+**msgnear** is used when the avatar can't reach conversational position due to an obstacle.
+
+**msggroup** is intended to be used when greeting a group, but is not yet being used. 
+
+Messages can contain most characters except commas. 
+
+    greet, idling, ANIMATION, ANIMATION,...
+    greet, waiting, ANIMATION, ANIMATION, ...
+    greet, talking, ANIMATION, ANiMATION,...
+    
+These lines tell the NPC which animation to run while doing the
+indicated action. If multiple animation names are given, all
+the animations will be run *simultaneously*. This is to allow
+both body and facial or hand gestures.
+If not present, the built-in Second Life animations will be used. 
+Since many of our NPCs have bento skeletons, the default animations won't operate the fingers or facial expressions, so this is not recommended.
+
+Animations used should not move the root of the character very far, if at all.
+The NPC system will avoid obstacles, keeping the NPC clear of walls and obstacles.
+Moving around too much via animation can make the NPC look like they're inside a wall or otherwise look wrong.
+
+### Animations for moving
+
+When the NPC is moving, an internal "animation overrider" takes over and turns on walk, run, and turn animations based on the NPC's motion.
+
+    animator, always, Benato Blink
+    animator, slowwalk, animesh_slow_short_stride_walk
+    animator, walk, Female Walk 1
+    animator, stand, stand 2
+    animator, run, run 1
+    animator, turnleft, TurnL
+    animator, turnright, TurnR
+    
+These are optional, but the NPCs look much better with a good set of movement animations.
+If you want to use your own movement animations, you can set them using the command lines above.
+Our NPCs come with the above set of animations.
+
+If you have your own set of animations, they should be be consistent with the NPC's motion.
+The NPCs root should not be moved much. The animations should have smooth ease-in and ease-out, to
+avoid jerks as the NPC shifts from one animation to another, which happens frequently while in
+motion. 
+
+**animator**, **always** has the list of animations which are always running. Here, an eyeblink animation is set.
+
+
+
+
