@@ -8,8 +8,11 @@ Release One.
 PRELIMINARY
 
 # Introduction
+
+![Your new employee](npcmanualstore.jpg)
 You have purchased an Animats Non-Player Character.
-***MORE***
+
+*MORE*
 
 ## Quick Start
 
@@ -27,8 +30,18 @@ You have purchased an Animats Non-Player Character.
 
 ## Behaviors
 
+![Patrolling a large mall](npcmanualpatrol.jpg)
+
 Animats NPCs run "behaviors", scripts which handle various tasks. The default behaviors are "patrol", "greet", and "avoid".
 Patrol visits a list of patrol points in random order. Greet approaches visitors and says hello. Avoid avoids vehicles.
+Behaviors can interrupt other behaviors.
+If an NPC is patrolling and a visitor shows up, the visitor will be approached and greeted.
+
+
+![Working in a truck terminal](npcmanualtruck.jpg)
+If a vehicle is headed for the NPC, the NPC will take action to avoid the threat.
+
+Advanced users can program additional behavors. Each behavior is a separate script, so behaviors are plug-ins.
 
 ## Configuration
 
