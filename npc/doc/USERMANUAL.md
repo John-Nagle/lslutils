@@ -5,11 +5,30 @@ February. 2020
 
 Release One.
 
+PRELIMINARY
+
 # Introduction
 You have purchased an Animats Non-Player Character.
 ***MORE***
 
 ## Quick Start
+
+1. Prepare some part of your parcel for pathfinding, by making something a walkable surface. Bare ground is always walkable.
+
+2. Rez the NPC on your own parcel. The NPC will probably not move and will report errors, because it hasn't been set up yet.
+
+3. Make a copy of the default configuration notecard.
+
+4. Edit the copy to add at least two patrol points in the walkable area to the notecard, as shown below.
+
+5. Drag the notecard to the NPC and drop it on the NPC. This will restart the NPC with the new notecard.
+
+6. The NPC should now go back and forth between the two points.
+
+## Behaviors
+
+Animats NPCs run "behaviors", scripts which handle various tasks. The default behaviors are "patrol", "greet", and "avoid".
+Patrol visits a list of patrol points in random order. Greet approaches visitors and says hello. Avoid avoids vehicles.
 
 ## Configuration
 
@@ -32,13 +51,19 @@ Here's a sample configuration file.
     patrol, point, Vallone,<161,46,38>,  20.0,  180.0
     #   Patrol movement speed
     patrol, speed, 2.5
+    #   Patrol animations when stationary
+    patrol, idling,  SEmotion-bento18
+    patrol, waiting, SEmotion-bento13
+    patrol, talking, SEmotion-bento18
+
     
     #   Chase slowly and greet politely.
     greet, speed, 2.5
     greet, msgfacing, Hello
     greet, msgnear, Hello there!
     greet, msggroup, Hello all
-    greet, idling, SEmotion-bento18
+    #   Greet animations when stationary
+    greet, idling,  SEmotion-bento18
     greet, waiting, SEmotion-bento13
     greet, talking, SEmotion-bento18
 
@@ -84,6 +109,21 @@ The speed the NPC moves when patrolling is set with
 
 The speed setting should reflect the NPC's personality and role. Most NPCs patrol at walk speed. 
 We have a cute little kid who always runs fast and never spends very long in any one place.
+
+    patrol, idling,  ANIMATION, ANIMATION,...
+    patrol, waiting, ANIMATION, ANIMATION,...
+    patrol, talking, ANIMATION, ANIMATION,... (NOT USED IN THIS VERSION)
+    
+These lines tell the NPC which animations to run when stationary and patrolling.
+The ***idling*** animation will be run when the NPC is at a patrol point and waiting.
+The ***waiting*** animation is run whent the NPC is preparing to move and planning the next move.
+This shows up more often in overloaded sims. We usually use an arms-folded animation to show impatience.
+
+The ***talking*** animation is not used for patrolling at this time.
+
+Animations used should not move the root of the character very far, if at all.
+The NPC system will avoid obstacles, keeping the NPC clear of walls and obstacles.
+Moving around too much via animation can make the NPC look like they're inside a wall or otherwise look wrong.
 
 ### Greeting.
 
