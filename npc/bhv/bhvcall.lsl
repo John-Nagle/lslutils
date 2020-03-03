@@ -65,9 +65,10 @@ float   gBhvChartype = -1;                      // character type of NPC
 //  Stop short of "goal" by distance "stopshort"
 //  Travel at "speed", up to 5m/sec, which is a fast run. 
 //
+//  regioncorner and goal must not be ZERO_VECTOR
+//
 bhvNavigateTo(vector regioncorner, vector goal, float stopshort, float speed)
-{
-    bhvpathreq(regioncorner, goal, NULL_KEY, stopshort, speed);
+{   bhvpathreq(regioncorner, goal, NULL_KEY, stopshort, speed);
 }
 
 //
@@ -121,7 +122,7 @@ bhvSay(string msg)
 //
 bhvStop()
 {
-    bhvpathreq(ZERO_VECTOR, llGetRootPosition(), NULL_KEY, 0, 1.0);  // move to where we are now is a stop
+    bhvpathreq(llGetRegionCorner(), llGetRootPosition(), NULL_KEY, 0, 1.0);  // move to where we are now is a stop
 }
 
 //

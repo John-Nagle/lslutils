@@ -264,7 +264,7 @@ integer avoidthreat(key id)
                 debugMsg(DEBUG_MSG_WARN,"avoiddir: " + (string)avoiddir + " fract: " + (string)fract); // heading for here
                 gAction = ACTION_AVOIDING;              // now avoiding
                 gNextAvoid = (gNextAvoid+1) % DIRTRIES;    // advance starting point cyclically
-                bhvNavigateTo(ZERO_VECTOR,escapepnt,0.0,CHARACTER_RUN_SPEED);
+                bhvNavigateTo(llGetRegionCorner(),escapepnt,0.0,CHARACTER_RUN_SPEED);
                 return(1);                              // evading threat
             }
         }

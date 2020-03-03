@@ -93,10 +93,7 @@ pathstart(key target, vector goalregioncorner, vector endpos, float stopshort, f
         endpos = llList2Vector(details,0);                          // use this endpos
         goalregioncorner = llGetRegionCorner();                     // relative to our own region
         llOwnerSay("Position of target " + llKey2Name(target) + " is " + (string)endpos); // ***TEMP***
-    } else {                                                        // if navigating to a point
-        if (goalregioncorner == ZERO_VECTOR) { goalregioncorner = llGetRegionCorner(); } // set region corner if null
     }
-    gPathcallLastParams = [target, goalregioncorner, endpos, stopshort, speed];      // save params for restart
     //  Are we allowed to go to this destination?
     assert(endpos != ZERO_VECTOR);                                  // both must be nonzero here
     assert(goalregioncorner != ZERO_VECTOR);
@@ -106,6 +103,7 @@ pathstart(key target, vector goalregioncorner, vector endpos, float stopshort, f
         pathdonereply(PATHERRBADDEST,NULL_KEY,gLocalPathId);         // send message to self to report error
         return; 
     }
+    gPathcallLastParams = [target, goalregioncorner, endpos, stopshort, speed];      // save params for restart
     //  Find walkable under avatar. Look straight down. Endpos must be close to navmesh or llGetStaticPath will fail.
     float newz = endpos.z;
     if (llGetRegionCorner() == goalregioncorner)                      // only try this if not crossing regions

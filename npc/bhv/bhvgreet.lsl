@@ -92,6 +92,15 @@ float gDwell;                   // dwell time to wait
 float gFaceDir;                 // direction to face next
 
 //
+//  bhvfinished -- finished with this greet cycle
+//
+bhvfinished()
+{   gAction = ACTION_IDLE;
+    bhvAnimate(gAnimIdle);
+    bhvSetPriority(PRIORITY_OFF);                                   // give up control of the NPC
+}
+
+//
 //  bhvDoRequestDone -- pathfinding is done. Analyze the result and start the next action.
 //
 bhvDoRequestDone(integer status, key hitobj)
@@ -101,14 +110,20 @@ bhvDoRequestDone(integer status, key hitobj)
         if (gAction == ACTION_PURSUE)               
         {
             gAction = ACTION_FACE;  
+            vector targetpos = target_pos(gTarget);
+            if (targetpos == ZERO_VECTOR)                               // target is gone
+            {   debugMsg(DEBUG_MSG_INFO,"Avatar has left the area.");             
+                bhvfinished();                                          // done
+                return;               
+            }
             vector offset = dir_from_target(gTarget) * GOAL_DIST; 
-            vector finaltarget = target_pos(gTarget) + offset;
-            if (is_clear_sightline(gTarget, finaltarget))
+            vector finaltarget = targetpos + offset;
+            if (is_clear_sightline(gTarget, finaltarget))               // if can get to face target
             {            
                 debugMsg(DEBUG_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
-                bhvNavigateTo(ZERO_VECTOR, finaltarget, 0, WALKSPEED);
+                bhvNavigateTo(llGetRegionCorner(), finaltarget, 0, WALKSPEED);  // get to social talking position
                 llResetTime();
-            } else {
+            } else {                                                    // can't get to social talk position
                 debugMsg(DEBUG_MSG_WARN,"Can't get in front of avatar due to obstacle.");
                 bhvAnimate(gAnimIdle);
                 face(gTarget, ACTION_DISTANT_GREET);
@@ -134,8 +149,7 @@ bhvDoRequestDone(integer status, key hitobj)
         }
         //  Got completion in unexpected state
         debugMsg(DEBUG_MSG_ERROR,"Unexpected path completion in state " + (string)gAction + " Status: " + (string)status);
-        gAction = ACTION_IDLE;            
-        bhvAnimate(gAnimIdle);
+        bhvfinished();                                          // done
         return;
     }
     //  If had trouble getting there, but got close enough, maybe we can just say hi.
@@ -178,10 +192,8 @@ bhvDoRequestDone(integer status, key hitobj)
         }
             
         //  Failed, back to idle.
-        gAction = ACTION_IDLE;            
         debugMsg(DEBUG_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
-        bhvAnimate(gAnimIdle);
-        bhvSetPriority(PRIORITY_OFF);                                   // give up control of the NPC
+        bhvfinished();                                          // done
         return;
     }
 }
@@ -258,10 +270,8 @@ start_pursue()
 //  greet_done -- done here, return to other tasks
 //
 greet_done(string action)
-{   gAction = ACTION_IDLE;                                          // done here
-    bhvAnimate(gAnimIdle);                                          // back to idle anim
-    if (action != "") { pathavatartrackreply(gTarget,action); }     // tell tracker to defer action on this avi
-    bhvSetPriority(PRIORITY_OFF);                                   // give up control of the NPC
+{   if (action != "") { pathavatartrackreply(gTarget,action); }     // tell tracker to defer action on this avi
+    bhvfinished();                                          // done
 }
 
 //
