@@ -208,10 +208,21 @@ init()
     if (spaceIndex >0)
     {   gCharacterName  = llGetSubString(gCharacterName, 0, spaceIndex - 1); }          // first name of character
     //  Set up character
-    vector color = <1.0,1.0,1.0>;                                   // white
-    llSetText(gCharacterName, color, 1.0);                          // set hover text
+    displayname();
     llSetTimerEvent(5.0);                                           // for stall timer check only
     bhvbroadcastmsglev(gDebugMsgLevel, gVerbose, FALSE);            // set initial message level
+}
+//
+//  displayname  -- display the NPC's name and some other info
+//
+displayname()
+{   string msg = gCharacterName;
+    vector color = <1.0,1.0,1.0>;                                   // white
+    if (!gCharacterRunning)                                         // if stopped
+    {   color = <1.0,0.0,0.0>;                                      // red
+        msg = "STOPPED\n" + msg;                                    // note stopped
+    }
+    llSetText(msg,color,1.0);                                       // set the message
 }
 //
 //  registerbehavior -- register a new behavior script
@@ -520,17 +531,18 @@ default
         } else if (message == "Debug")
         {   bhvmsglevdialog(id);                    // bring up debug options menu
         } else if (llSubStringIndex(message,"Run") >= 0)  // with or without dot
-        {    if (!gCharacterRunning)                    // if stopped
+        {   if (!gCharacterRunning)                    // if stopped
             {   gCharacterRunning = TRUE;              // now running
-                llOwnerSay("Starting " + gCharacterName);
-                schedbhv();                         // start scheduler
+                schedbhv();                            // start scheduler
+                displayname();                         // show as running
             }
         } else if (llSubStringIndex(message,"Stop") >= 0) // with or without dot
-        {    if (gCharacterRunning)                     // if running
+        {   if (gCharacterRunning)                     // if running
             {   gCharacterRunning = FALSE;             // now stopped
-                pathStop();                         // shut down any movement
-                schedbhv();                         // run scheduler to cause stop
+                pathStop();                            // shut down any movement
+                schedbhv();                            // run scheduler to cause stop
                 llOwnerSay("Stopping " + gCharacterName);
+                displayname();                          // show as stopped
             }
         } else {
             llSay(DEBUG_CHANNEL, "Dialog option bug: "+ message); // bad
