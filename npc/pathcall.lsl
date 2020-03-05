@@ -89,7 +89,7 @@ pathTurnspeed(float turnspeed)
 //  the current movement, although not instantly.
 //
 pathStop()
-{   pathNavigateTo(ZERO_VECTOR, llGetPos(), 100.0, 1.0);              // stop by navigating to where we are
+{   pathNavigateTo(llGetRegionCorner(), llGetPos(), 100.0, 1.0);              // stop by navigating to where we are
 }
 
 //
@@ -215,6 +215,7 @@ pathmasterreset()
         count--;
     }
     gPathcallRequestId = 0;                                             // restart path IDs which keep scripts in sync
+    gPathcallStarttime = 0;                                             // time last command started for stall timer
     llSleep(5.0);                                                       // wait 5 secs for reset.
     llOwnerSay("Master reset complete.");                               // OK, reset
 }
