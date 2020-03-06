@@ -37,17 +37,14 @@ float TESTSPACING = 0.33;                   // (fract) Multiply height and width
 #define CHARACTER_SPEED  2.5                // (m/sec) default speed
 #define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
 #define IDLE_POLL 10.0                      // (secs) timer, used only for bhv library
-#define MAX_PATROL_RETRIES 10               // ask owner for help after this many fails
-
-//  These need to be read from notecards.
-string WAITING_ANIM = "SEmotion-bento13";   // arms folded during planning delays
-string IDLE_ANIM = "SEmotion-bento18";      // arms folded during planning delays
-string STAND_ANIM = "SEmotion-bento18";     // just when stopped
-float ATTENTION_SPAN = 20;                  // will stick around for this long
-
+#define MAX_PATROL_RETRIES 20               // ask owner for help after this many fails
 
 //  Global variables
-integer gAction = ACTION_IDLE;
+integer gAction = ACTION_IDLE;              // state of patrol
+
+//  Animations
+list gAnimWait = ["stand"];                 // When waiting - crossed arms or impatient
+list gAnimIdle = ["stand"];                 // doing nothing
 
 //  Patrol points
 integer gPatrolEnabled;
@@ -78,7 +75,7 @@ bhvDoRequestDone(integer status, key hitobj)
         }
         if (gAction == ACTION_PATROL)               // at goal
         {   bhvTurn(gFaceDir);                      // face in programmed direction
-            start_anim(IDLE_ANIM);
+            bhvAnimate(gAnimIdle);
             gAction = ACTION_PATROLFACE;            // turning to final position
             llResetTime();                          // reset timeout timer but keep dwell time
             debugMsg(DEBUG_MSG_INFO,"Patrol point reached:" + (string)llGetRootPosition());
@@ -92,7 +89,7 @@ bhvDoRequestDone(integer status, key hitobj)
         //  Got completion in unexpected state
         debugMsg(DEBUG_MSG_ERROR,"Unexpected path completion in state " + (string)gAction + " Status: " + (string)status);
         gAction = ACTION_IDLE;            
-        start_anim(IDLE_ANIM);
+        bhvAnimate(gAnimIdle);
         return;
     }
     //  If blocked by something, deal with it.
@@ -117,7 +114,7 @@ bhvDoRequestDone(integer status, key hitobj)
     //  Failed, back to idle.
     gAction = ACTION_IDLE;            
     debugMsg(DEBUG_MSG_WARN,"Failed to reach goal, idle. Path update status: " + (string)status);
-    start_anim(IDLE_ANIM);
+    bhvAnimate(gAnimIdle);
     gPatrolRetries++;                                               // tally failure
     if ((gPatrolRetries % (MAX_PATROL_RETRIES)) == 0)               // we need help, keep resending
     {   debugMsg(DEBUG_MSG_ERROR,"Need help! Patrol stuck at " + (string)llGetRootPosition() + ", retry " + (string)gPatrolRetries); }
@@ -129,7 +126,7 @@ bhvDoRequestDone(integer status, key hitobj)
 bhvDoStart()
 {
     gAction = ACTION_IDLE;                                          // whatever we were doing is cancelled
-    start_anim(IDLE_ANIM);                                          // use idle animation
+    bhvAnimate(gAnimIdle);                                          // use idle animation
     start_patrol();                                                 // go patrol to someplace
     llSetTimerEvent(IDLE_POLL);                                     // check for dwell time
 }
@@ -157,15 +154,6 @@ bhvDoCollisionStart(key hitobj)
     {   bhvSay("Excuse me."); }         
 }      
 
-//
-//  start_anim -- start indicated idle animation.
-//
-//  Single anim only; we don't need multiple here.
-//
-start_anim(string anim)
-{
-    bhvAnimate([anim]);                             // new API
-}    
 //
 //  start_patrol -- start patrolling if allowed to do so.
 //
@@ -197,7 +185,7 @@ start_patrol()
 restart_patrol()
 {
     debugMsg(DEBUG_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
-    start_anim(WAITING_ANIM);                       // applies only when stalled during movement
+    bhvAnimate(gAnimWait);                          // applies only when stalled during movement
     bhvNavigateTo(gPatrolRegionCorner,gPatrolDestination,0,gSpeed);  // head for next pos
     gAction = ACTION_PATROL;                        // patrolling
 }
@@ -303,12 +291,40 @@ bhvDoConfigLine(list params)
             if (gSpeed < 0.25) { gSpeed = 0.25; }                   // bound speed
             if (gSpeed > 8.0) { gSpeed = 8.0; }
         }
-        else 
-        {   llSay(DEBUG_CHANNEL,"Unexpected config line: " +  llDumpList2String(params,","));
-            bhvConfigDone(FALSE);                                   // fails
+        else
+        {   integer valid = doanimconfig(params);
+            if (!valid)
+            {   llSay(DEBUG_CHANNEL,"Unexpected config line: " +  llDumpList2String(params,","));
+                bhvConfigDone(FALSE);                               // fails
+            }
         }
     }
     bhvGetNextConfigLine();                                         // on to next notecard line
+}
+//
+//  doanimconfig -- configure animations for animations
+//
+integer doanimconfig(list params)
+{
+    //  Store animations per cmd.
+    string cmd = llList2String(params,1);           // Format: patrol, CMD, PARAM, PARAM ...
+    params = llDeleteSubList(params,0,1);               // get rid of "greet, cmd"
+    if (cmd == "waiting") { gAnimWait = params; }
+    else if (cmd == "idling") { gAnimIdle = params; }
+    else { llSay(DEBUG_CHANNEL,"No patrol command \"" + cmd + "\"."); return(FALSE); }    
+    //  Must be an anim if we get here.
+    //  Validate anims list
+    integer i;
+    for (i=0; i<llGetListLength(params); i++)
+    {   string anim = llList2String(params,i);          // get this anim's name
+        if (llGetInventoryType(anim) != INVENTORY_ANIMATION) // if no such animation
+        {   llSay(DEBUG_CHANNEL,"Configured animation \"" + anim + "\" not found.");
+            return(FALSE);                              // fails
+        }    
+    }
+    
+    
+    return(TRUE);                                       // successful config    
 }
 //
 //  startup - initialization

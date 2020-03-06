@@ -343,7 +343,7 @@ bhvReadNextConfig()
     //  Start loading lines from notecard
     gBhvConfigNotecardLine = 0;
     gBhvConfigName = llGetInventoryName(INVENTORY_NOTECARD, gBhvConfigNotecardNumber);  // get next notecard
-    llOwnerSay("Reading config notecard: " + gBhvConfigName);   // tell user what notecard is being read
+    llOwnerSay(llGetScriptName() + ": reading config notecard: " + gBhvConfigName);   // tell user what notecard is being read
     //  Start reading notecard. This may need a retry; dataserver is not reliable.
     bhvGetNextConfigLine();                    // start getting config lines
  }
