@@ -428,7 +428,7 @@ float pathfindwalkable(vector startpos, float abovetol, float belowtol)
 {   //  Look downward twice the height, because of seat mispositioning issues
     assert(gPathConstantsInitialized);                              // make sure pathinitutils has been done
     list castresult = castray(startpos+<0.0,0.0,abovetol>,startpos-<0.0,0.0,belowtol>,PATHCASTRAYOPTSOBS);                // cast downwards, must hit walkable
-    return(pathcastfoundproblem(castresult, TRUE, FALSE));           // if any non-walkable hits, -1, otherwise ground Z
+    return(pathcastfoundproblem(castresult, TRUE));           // if any non-walkable hits, -1, otherwise ground Z
 }
 
 //
@@ -611,6 +611,11 @@ integer obstaclecheckpath(vector p0, vector p1, float probespacing)
     
 
 //
+//  obstacleraycastvertup -- test for upward ray casts. Returns TRUE if obstacle.
+//
+#define obstacleraycastvertup(p0, p1) (pathcastfoundproblem(castray((p0),(p1),PATHCASTRAYOPTSOBS),FALSE) < INFINITY)
+
+//
 //  pathcheckcelloccupied  -- is there an obstacle in this cell?
 //
 //  Common version for maze solver and planner.
@@ -649,6 +654,10 @@ float pathcheckcelloccupied(vector p0, vector p1, integer dobackcorners, integer
     float zp1 = obstacleraycastvert(p1 + fullheight, p1-mazedepthmargin-<0,0,1>*(gPathWidth*(1.0+PATHSINMAXWALKABLEANGLE)));   // probe center of cell, looking down
     if (zp1 < 0) { return(-1.0); }                          // fails
     p1.z = zp1;                                             // we can now set p1's proper Z height
+    //  Upward check - needed to catch problem with being inside while looking down.
+    vector justaboveground = p1 + <0,0,GROUNDCLEARANCE>;    // just clear of walkable surface
+    //  
+    /////if (obstacleraycastvertup(justaboveground,p1+fullheight)) { return(-1.0); }    // upward check not needed, was bug in GEMC truck model
     //  Do static check if requested.
     if (dostaticcheck)
     {   //  Do a static path check for this short path between two maze cells
@@ -714,12 +723,12 @@ float pathcheckcellz(vector p0, vector p1)
 integer obstacleraycasthoriz(vector p0, vector p1)
 {   
     list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
-    float result = pathcastfoundproblem(castresult, FALSE, FALSE);     // if any hits at all, other than self, fail
+    float result = pathcastfoundproblem(castresult, FALSE);     // if any hits at all, other than self, fail
     if (result < 0) { pathMsg(PATH_MSG_INFO, "Horiz raycast fail: "+ (string)p0 + " " +  (string)p1); } // ***TEMP***
     if (result < INFINITY) { return(TRUE); };                   // obstacle
     //  And in other direction, in case start is inside an object
     castresult = castray(p1,p0,PATHCASTRAYOPTSOBS);        // Horizontal cast at full height, any hit is bad
-    result = pathcastfoundproblem(castresult, FALSE, FALSE);     // if any hits at all, other than self, fail
+    result = pathcastfoundproblem(castresult, FALSE);     // if any hits at all, other than self, fail
     if (result < 0) { pathMsg(PATH_MSG_INFO, "Horiz raycast fail: "+ (string)p0 + " " +  (string)p1); } // ***TEMP***
     return(result < INFINITY);                                  // TRUE if obstacle
 }
@@ -731,7 +740,7 @@ integer obstacleraycasthoriz(vector p0, vector p1)
 float obstacleraycastvert(vector p0, vector p1)
 {
     list castresult = castray(p0,p1,PATHCASTRAYOPTSOBS);        // cast downwards, must hit walkable
-    float result = pathcastfoundproblem(castresult, TRUE, FALSE);      // if any non-walkable hits, fail
+    float result = pathcastfoundproblem(castresult, TRUE);      // if any non-walkable hits, fail
     if (result < 0) { pathMsg(PATH_MSG_INFO, "Vert raycast fail: "+ (string)p0 + " " +  (string)p1 + " cast result: " + llDumpList2String(castresult,",")); } // ***TEMP***
     return(result);
 }
@@ -742,7 +751,7 @@ float obstacleraycastvert(vector p0, vector p1)
 //
 //  A walkable must be roughly horizontal, below PATHSINMAXWALKABLEANGLE. This includes the ground.
 //
-float pathcastfoundproblem(list castresult, integer needwalkable, integer ignoresolids)
+float pathcastfoundproblem(list castresult, integer needwalkable)
 {
     integer status = llList2Integer(castresult, -1);        // status is last element in list
     if (status == 0) 
@@ -765,8 +774,7 @@ float pathcastfoundproblem(list castresult, integer needwalkable, integer ignore
                 integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
                 if (pathfindingtype != OPT_WALKABLE)                    // if it's not a walkable
                 {   ////pathMsg(PATH_MSG_DEBUG,"Hit non-walkable " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) + " at " + (string)(hitpt));
-                    if (!ignoresolids)                      // unless ignoring non-walkable solids
-                    {   return(-1.0);  }                    // hit non-walkable, obstructed
+                    return(-1.0);                           // hit non-walkable, obstructed
                 }
             }
             //  Hit a walkable. Check normal angle

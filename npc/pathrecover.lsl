@@ -135,7 +135,7 @@ diagnoserecoverymove(vector recoverpos)
     if (llVecMag(dv) < gPathWidth + 0.01) { return; }           // if very small move, do not make flythrough check.
     vector startcast = pos + llVecNorm(dv)*gPathWidth;          // start cast 1 width away from self to avoid reporting collision as flythrough
     list castresult = castray(startcast,recoverpos+halfheight,PATHCASTRAYOPTSOBS);  // Horizontal cast at full height, any hit is bad
-    float result = pathcastfoundproblem(castresult, FALSE, FALSE);     // if any hits at all, other than self, fail
+    float result = pathcastfoundproblem(castresult, FALSE);     // if any hits at all, other than self, fail
     if (result != INFINITY)                                     // if something there
      {  integer status = llList2Integer(castresult,-1); // ray cast status
         integer j;
