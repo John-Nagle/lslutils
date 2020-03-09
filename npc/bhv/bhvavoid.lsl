@@ -12,8 +12,9 @@
 #include "npc/bhv/bhvcall.lsl"
 #include "npc/pathbuildutils.lsl"
 
-integer ACTION_IDLE = 0;
+integer ACTION_IDLE = 0;                    // not doing anything
 integer ACTION_AVOIDING = 1;                // trying to avoid something
+integer ACTION_DWELL = 2;                   // dwell time after an avoid
 
 
 //  Configuration
@@ -22,7 +23,7 @@ integer ACTION_AVOIDING = 1;                // trying to avoid something
 
 #define DETECTION_RADIUS 50.0               // look for moving vehicles this range
 #define AVOID_DIST 4.0                      // (m) move this far each try to get out of the way
-#define REACT_DIST 2.0                      // (m) this close and get away from it
+#define REACT_DIST 3.0                      // (m) this close and get away from it
 #define SENSE_DIST 10.0                     // (m) this close and poll fast
 #define IDLE_SENSOR_PERIOD 2.0              // (s) sensor poll rate when no nearby targets
 #define MIN_SENSOR_PERIOD 0.2               // (s) sensor poll rate max
@@ -34,14 +35,13 @@ integer ACTION_AVOIDING = 1;                // trying to avoid something
 #define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
 #define CHARACTER_RUN_SPEED 5.5             // (m/sec) top speed run
 ////string IDLE_ANIM = "stand 2";            // idle or chatting         
-////string STAND_ANIM = "stand 2";           // just when stopped
 ///string WAITING_ANIM = "stand arms folded";  // during planning delays
 string WAITING_ANIM = "SEmotion-bento13";   // arms folded during planning delays
 string IDLE_ANIM = "SEmotion-bento18";      // arms folded during planning delays
-string STAND_ANIM = "SEmotion-bento18";     // just when stopped
 string SCREAM_SOUND = "???";                // sound of a scream
 #define IDLE_POLL 10.0                      // for stall timer tick if used
-#define SAFE_IDLE_TIME 15.0                 // idle this long, stop polling fast
+#define SAFE_IDLE_TIME 20.0                 // idle this long, stop polling fast
+#define DWELL_TIME 20.0                     // keep control in avoid until this time runs out
 
 //
 //  Avoid directions - try escaping in these directions.               
@@ -55,7 +55,7 @@ string SCREAM_SOUND = "???";                // sound of a scream
 #define MAX_AVOID_TIME 6.0                  // (s) trigger avoid when ETA less than this
 #define MAX_AVOID_TRIES 10                  // (cnt) after this many tries to avoid, give up
 #define PROTECTIVE_HEIGHT 0.8               // (m) obstacle height that will stop an theat
-#define MAX_STATIONARY_TIME 15.0            // (s) we are stationary if did not move for this long
+////#define MAX_STATIONARY_TIME 15.0            // (s) we are stationary if did not move for this long
 
 #define getroot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))  
 
@@ -71,6 +71,7 @@ integer gNextAvoid = 0;                     // next entry in AVOIDDIRS to use
 integer gAvoidTries = 0;                    // no avoid tries yet
 vector gLastSelfPos;                        // last position of NPC, for move check
 integer gLastSelfMovetime;                  // last time NPC moved
+integer gLastAvoidtime;                     // last time avoid action taken
 
 //
 //  setsensortime -- set current sensor poll rate
@@ -199,8 +200,8 @@ integer avoidthreat(key id)
     rotation threatrot = llList2Rot(threat,1);      // rotation
     vector threatvel = llList2Vector(threat,2);     // velocity
     vector targetpos = llGetRootPosition();         // our position
-    integer stationary = (llVecMag(targetpos - gLastSelfPos) < 0.01) 
-        && (llGetUnixTime() > gLastSelfMovetime + MAX_STATIONARY_TIME); // true if NPC did not move recently
+    ////integer stationary = (llVecMag(targetpos - gLastSelfPos) < 0.01) 
+    ////    && (llGetUnixTime() > gLastSelfMovetime + MAX_STATIONARY_TIME); // true if NPC did not move recently
     list bb = pathGetBoundingBoxWorld(id);          // find bounding box in world coords
     vector p = findclosestpoint(id, targetpos, bb); // find closest point on bounding box of object to pos
     vector vectothreat = p - targetpos;             // direction to threat
@@ -211,9 +212,9 @@ integer avoidthreat(key id)
     float eta = 1.0;                                // assume threat is here
     if (disttothreat > 0.001)                       // if positive distance to threat
     {   approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
-        if (approachrate <= 0.01 && (disttothreat > REACT_DIST || !stationary)) 
-        {   debugMsg(DEBUG_MSG_WARN,"Not a threat. Approach rate " + (string)approachrate 
-                + " Dist " + (string)disttothreat + " stationary: " + (string)stationary); // ***TEMP***
+        if (approachrate <= 0.01 && disttothreat > REACT_DIST) 
+        {   debugMsg(DEBUG_MSG_NOTE,"Not a threat. Approach rate " + (string)approachrate 
+                + " Dist " + (string)disttothreat); // 
             return(0);                              // not a threat
         }
         if (disttothreat > REACT_DIST && approachrate > 0.01)  // if not too close, use approach rate for calc
@@ -235,7 +236,7 @@ integer avoidthreat(key id)
     }
     vectothreat.z = 0;                              // in XY plane
     debugMsg(DEBUG_MSG_WARN,"Inbound threat " + llList2String(threat,3) + " at " + (string)p + " vec to threat " + (string)vectothreat 
-        + " ETA " + (string)eta + "s stationary: " + (string)stationary + " approach rate: " + (string)approachrate);
+        + " ETA " + (string)eta + "s  approach rate: " + (string)approachrate);
     if (eta > MAX_AVOID_TIME) { return(0); }        // not approaching fast enough to need avoidance
     if (testprotectiveobstacle(targetpos, threatpos, id)) { return(0); } // protective obstacle between threat and target - no need to run
     float disttopath =  distpointtoline(targetpos, p, p + threatvel); // distance from line threat is traveling
@@ -265,6 +266,7 @@ integer avoidthreat(key id)
                 gAction = ACTION_AVOIDING;              // now avoiding
                 gNextAvoid = (gNextAvoid+1) % DIRTRIES;    // advance starting point cyclically
                 bhvNavigateTo(llGetRegionCorner(),escapepnt,0.0,CHARACTER_RUN_SPEED);
+                gLastAvoidtime = llGetUnixTime();       // time of last avoid activity
                 return(1);                              // evading threat
             }
         }
@@ -391,20 +393,20 @@ integer evalthreat(key id)
     rotation threatrot = llList2Rot(threat,1);      // rotation
     vector threatvel = llList2Vector(threat,2);     // velocity
     vector targetpos = llGetRootPosition();         // our position
-    integer stationary = (llVecMag(targetpos - gLastSelfPos) < 0.01) 
-        && (llGetUnixTime() > gLastSelfMovetime + MAX_STATIONARY_TIME); // true if NPC (not threat) did not move recently
+    ////integer stationary = (llVecMag(targetpos - gLastSelfPos) < 0.01) 
+    ////    && (llGetUnixTime() > gLastSelfMovetime + MAX_STATIONARY_TIME); // true if NPC (not threat) did not move recently
     list bb = pathGetBoundingBoxWorld(id);          // find bounding box in world coords
     vector p = findclosestpoint(id, targetpos, bb); // find closest point on bounding box of object to pos
     vector vectothreat = p - targetpos;                 // direction to threat
     float disttothreat = llVecMag(vectothreat);     // distance to threat
     float approachrate = - threatvel * llVecNorm(vectothreat); // approach rate of threat
     //  Do we need to even consider this threat?
-    //  If not approaching and (threat not close or NPC stationary), ignore.
+    //  If not approaching and threat not close, ignore.
+    //  Previous version allowed approaching stationary vehicles, but now we avoid them when the engine is running.
     //  The idea is that the NPC can closely approach a non-moving vehicle but can't sit there and block it.
-    //  If the NPC can't approach non-moving vehicles, it can't get around them.
-    if (approachrate <= 0.01 && (disttothreat > REACT_DIST || !stationary)) 
-    {   ////debugMsg(DEBUG_MSG_WARN,"No threat. Approach rate " + (string)approachrate 
-        ////    + " Dist " + (string)disttothreat + " stationary: " + (string)stationary); // ***TEMP***
+    if (approachrate <= 0.01 && disttothreat > REACT_DIST) 
+    {   debugMsg(DEBUG_MSG_NOTE,"No threat. Approach rate " + (string)approachrate 
+            + " Dist " + (string)disttothreat); // 
         //  If close, speed up sensor polling.
         if (disttothreat < SENSE_DIST)
         {   gLastThreatTime = llGetUnixTime();      // reset time for sensor slowdown
@@ -428,15 +430,26 @@ integer evalthreat(key id)
     return(TRUE);
 }
 
-
+//
+//  checkdwelltime -- check if in dwell time, holding the avoid behavior in control to avoid going back toward threat
+//
+checkdwelltime()
+{   if (gAction == ACTION_DWELL)                    // if in dwell timeout
+    {   if (gLastAvoidtime + DWELL_TIME < llGetUnixTime())       // if dwell time has expired
+        {   gAction == ACTION_IDLE;                 // back to idle mode
+            debugMsg(DEBUG_MSG_WARN,"Post-avoid dwell done, back to normal.");
+            bhvSetPriority(PRIORITY_OFF);           // turn self off
+        }
+    }
+} 
 //
 //  doneavoid -- done with all requests, give control back to scheduler
 //
 doneavoid()
 {   debugMsg(DEBUG_MSG_WARN,"Avoiding done.");      // All done with avoids for now
-    assert(gAction == ACTION_IDLE);                 // must not have something running
-    gThreatList = [];                               // clear to-do list.           
-    bhvSetPriority(PRIORITY_OFF);                   // turn us off
+    assert(gAction == ACTION_IDLE || gAction == ACTION_DWELL);  // must not have something running
+    gThreatList = [];                               // clear to-do list.
+    checkdwelltime();                               // release control of NPC if dwell timer has expired.
 }
 
 //
@@ -444,15 +457,16 @@ doneavoid()
 //
 bhvDoRequestDone(integer status, key hitobj)
 {   debugMsg(DEBUG_MSG_WARN, "Avoid update: " + (string) status + " obstacle: " + llKey2Name(hitobj));
-    if (gAction == ACTION_IDLE)                 // why did we even get a completion?
+    if (gAction == ACTION_IDLE || gAction == ACTION_DWELL) // why did we even get a completion?
     {   restartavoid();                         // see if anything needs doing
         return;
     }
     assert(gAction == ACTION_AVOIDING);         // we must be avoiding
+    gLastAvoidtime = llGetUnixTime();       // time of last avoid activity
     gAction = ACTION_IDLE;                      // and now idle, no path operation in progress   
     if (status == PATHERRMAZEOK)                // success
     {   
-        debugMsg(DEBUG_MSG_INFO,"Avoid move reached safe place, rechecking threat.");
+        debugMsg(DEBUG_MSG_NOTE,"Avoid move reached safe place, rechecking threat.");
         startavoid();                           // avoid some other threat if any
         return;
     }
@@ -481,7 +495,7 @@ startavoid()
 //  restartavoid -- start avoidance of threat
 //
 restartavoid()
-{   assert(gAction == ACTION_IDLE);                                 // must be idle when called
+{   assert(gAction == ACTION_IDLE || gAction == ACTION_DWELL);      // must be idle when called
     debugMsg(DEBUG_MSG_WARN,(string)llGetListLength(gThreatList) + " threats queued"); // ***TEMP***
     while (llGetListLength(gThreatList) > 0)                        // while threats to handle
     {   key id = llList2Key(gThreatList,0);                         // get oldest threat
@@ -493,13 +507,13 @@ restartavoid()
             return;                                                 // doing something about the threat already
         } else {                                                    // big trouble, no escape
             debugMsg(DEBUG_MSG_ERROR,"Unable to avoid threat by any path from " + (string)llGetRootPosition()); // Either broken or being griefed
-            gAction = ACTION_IDLE; 
+            gAction = ACTION_DWELL; 
             doneavoid();                                            // give up 
             return;  
         }             
     }
-    //  No threat, give up control
-    gAction = ACTION_IDLE;                                          // now idle
+    //  No threat, give up control, but may need dwell time
+    gAction = ACTION_DWELL;                                          // now idle
     doneavoid();                                                    // done, give up control   
 }
 //
@@ -594,8 +608,9 @@ default
         startup();
     }
 
-    timer()                                         // timer tick
-    {   bhvTick();                                  // timers in path library get updated
+    timer()                                                 // timer tick
+    {   bhvTick();                                          // timers in path library get updated
+        checkdwelltime();                                   // if in dwell time, check for done
     }
     
     sensor(integer num_detected)                            // nearby agents
