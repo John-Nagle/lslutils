@@ -86,7 +86,7 @@ setsensortime(float secs)
 }
 
 //
-//  invehicle -- true if avatar in moving vehicle
+//  invehicle -- true if avatar in active vehicle
 //
 integer invehicle(key id)
 {   key rootid = getroot(id);                                   // avi if not setting, else sit root
