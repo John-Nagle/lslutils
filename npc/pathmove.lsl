@@ -155,7 +155,7 @@ integer pathcheckforwalkable()
 //
 //  Cast ray from p to p1.
 //
-pathobstacleraycast(vector p, vector p1)
+integer pathobstacleraycast(vector p, vector p1)
 {   
     //  One simple ahead ray cast for now.
     list castresult = castray(p, p1, PATHCASTRAYOPTS);          // don't need normal
@@ -165,13 +165,15 @@ pathobstacleraycast(vector p, vector p1)
     if (castanalysis != [])                                     // if problem
     {
         if (llGetListLength(castanalysis) == 1)                 // error status
-        {   pathmovedone(llList2Integer(castanalysis,0), NULL_KEY); return; }  // report error
+        {   pathmovedone(llList2Integer(castanalysis,0), NULL_KEY); return(TRUE); }  // report error
         key hitobj = llList2Key(castanalysis,0);                // result is [obj, hitpt]
         vector hitpt = llList2Vector(castanalysis,1);
         pathMsg(PATH_MSG_WARN,"Move stopped by obstacle: " + llList2String(llGetObjectDetails(hitobj,[OBJECT_NAME]),0) 
                     + " at " + (string)(hitpt) + " by ray cast from " + (string)p + " to " + (string)p1);
         pathmovedone(PATHERROBSTRUCTED, hitobj);  // report trouble
+        return(TRUE);                              // trouble
     }
+    return(FALSE);                                   // no trouble
 }
 //
 //  pathcheckdynobstacles  -- check for dynamic obstacles encountered while moving.
@@ -184,9 +186,10 @@ pathcheckdynobstacles()
     float lookaheaddist = PATHERRLOOKAHEADDIST;     // distance to look ahead
     float PATHERRSEGDISTTOL = 0.20;                 // how close to segment to be in it. Keyframe error causes trouble here.
     float HUGE = 99999999999.0;                     // huge number, but INFINITY is bigger
-    vector halfheight = <0,0,gPathHeight*0.5>;    // pos is at object midpoint, points are at ground
-    vector pos = llGetPos() - halfheight;            // where we are now
-    vector groundpos = pos;                             // pos on ground
+    vector halfheight = <0,0,gPathHeight*0.5>;      // pos is at object midpoint, points are at ground
+    vector fullheight = <0,0,gPathHeight>;          // pos is at object midpoint, points are at ground
+    vector pos = llGetPos() - halfheight;           // where we are now
+    vector groundpos = pos;                         // pos on ground
     integer i;
     integer foundseg = FALSE;
     vector startpos = llList2Vector(gKfmSegments,0);   // start of path
@@ -214,8 +217,14 @@ pathcheckdynobstacles()
                 float castdist = seglength - distalongseg;  // cast to end of segment
                 if (lookaheaddist < castdist) { castdist = lookaheaddist; } // if running out of cast distance
                 if  (castdist <= 0) { return; };        // at end
-                vector pos2 = pos + llVecNorm(p1-p0)*castdist; // how far to cast            
-                pathobstacleraycast(pos+halfheight, pos2+halfheight);          // look ahead horizontally       
+                vector aheadvec = llVecNorm(p1-p0);     // vector ahead
+                vector pos2 = pos + aheadvec*castdist;  // how far to cast
+                vector sidevec = (aheadvec % <0,0,1>)*(gPathWidth*0.5);    // sideways width to check        
+                if (pathobstacleraycast(pos+halfheight, pos2+halfheight)) { return; }         // look ahead horizontally at waist level
+                if (pathobstacleraycast(pos+fullheight, pos2+fullheight)) { return; }  // look ahead horizontally at head level
+                ////pathobstacleraycast(pos+groundheight, pos2+groundheight);          // look ahead horizontally at ground level
+                if (pathobstacleraycast(pos+halfheight+sidevec, pos2+halfheight+sidevec)) { return; }  // look ahead horizontally  
+                if (pathobstacleraycast(pos+halfheight-sidevec, pos2+halfheight-sidevec)) { return; }  // look ahead horizontally         
                 lookaheaddist -= castdist;              // reduce distance ahead
                 pos = p1;                               // start of next segment is start of next cast
             }
@@ -500,7 +509,7 @@ pathmovecollision(integer num_detected)
         {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                    // hit a non-walkable
-            {   pathMsg(PATH_MSG_WARN,"Collided with " + llDetectedName(i));
+            {   pathMsg(PATH_MSG_WARN,"Collided with " + llDetectedName(i) + "at " + (string)llGetPos());
                 pathmovedone(PATHERRCOLLISION, llDetectedKey(i)); // stop
                 return;
             }
