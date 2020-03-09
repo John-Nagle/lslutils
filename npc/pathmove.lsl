@@ -219,12 +219,16 @@ pathcheckdynobstacles()
                 if  (castdist <= 0) { return; };        // at end
                 vector aheadvec = llVecNorm(p1-p0);     // vector ahead
                 vector pos2 = pos + aheadvec*castdist;  // how far to cast
-                vector sidevec = (aheadvec % <0,0,1>)*(gPathWidth*0.5);    // sideways width to check        
+                vector sidevec = (aheadvec % <0,0,1>)*(gPathWidth*0.5);    // sideways offset to check        
                 if (pathobstacleraycast(pos+halfheight, pos2+halfheight)) { return; }         // look ahead horizontally at waist level
                 if (pathobstacleraycast(pos+fullheight, pos2+fullheight)) { return; }  // look ahead horizontally at head level
+#ifdef NOTYET // Do we really need this overhead? Vehicle avoid should prevent bumping into physical objects.
                 ////pathobstacleraycast(pos+groundheight, pos2+groundheight);          // look ahead horizontally at ground level
-                if (pathobstacleraycast(pos+halfheight+sidevec, pos2+halfheight+sidevec)) { return; }  // look ahead horizontally  
-                if (pathobstacleraycast(pos+halfheight-sidevec, pos2+halfheight-sidevec)) { return; }  // look ahead horizontally         
+                if (pathobstacleraycast(pos+halfheight+sidevec, pos2+halfheight+sidevec)) { return; }  // look ahead horizontally on left and right
+                if (pathobstacleraycast(pos+halfheight-sidevec, pos2+halfheight-sidevec)) { return; }  // look ahead horizontally     
+                if (pathobstacleraycast(pos+fullheight+sidevec, pos2+fullheight+sidevec)) { return; }  // look ahead horizontally on left and right
+                if (pathobstacleraycast(pos+fullheight-sidevec, pos2+fullheight-sidevec)) { return; }  // look ahead horizontally 
+#endif // NOTYET            
                 lookaheaddist -= castdist;              // reduce distance ahead
                 pos = p1;                               // start of next segment is start of next cast
             }
@@ -509,7 +513,7 @@ pathmovecollision(integer num_detected)
         {   list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
             integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
             if (pathfindingtype != OPT_WALKABLE)                    // hit a non-walkable
-            {   pathMsg(PATH_MSG_WARN,"Collided with " + llDetectedName(i) + "at " + (string)llGetPos());
+            {   pathMsg(PATH_MSG_WARN,"Collided with " + llDetectedName(i) + " at " + (string)llGetPos());
                 pathmovedone(PATHERRCOLLISION, llDetectedKey(i)); // stop
                 return;
             }
