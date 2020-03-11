@@ -373,11 +373,10 @@ bhvConfigDone(integer valid)
 {
     gBhvConfigNotecardLine = -1;                        // no more reading
     if (valid)
-    {   llOwnerSay("Configuration done.");
-        bhvInit();                                      // set up scheduler system
+    {   bhvInit();                                      // set up scheduler system
     }
     else
-    {   llSay(DEBUG_CHANNEL,"=== CONFIGURATION FAILED ==="); // stuck
+    {   llSay(DEBUG_CHANNEL,"=== GREET BEHAVIOR CONFIGURATION FAILED ==="); // stuck
     }
 }
 

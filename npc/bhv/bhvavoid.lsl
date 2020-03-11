@@ -3,6 +3,8 @@
 //
 //  For now, moving vehicles only
 //
+//  Very close to stack overflow here.
+//
 //
 //  License: GPLv3.
 //
@@ -34,11 +36,7 @@ integer ACTION_DWELL = 2;                   // dwell time after an avoid
 #endif // CHARACTER_SPEED
 #define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
 #define CHARACTER_RUN_SPEED 5.5             // (m/sec) top speed run
-////string IDLE_ANIM = "stand 2";            // idle or chatting         
-///string WAITING_ANIM = "stand arms folded";  // during planning delays
-string WAITING_ANIM = "SEmotion-bento13";   // arms folded during planning delays
-string IDLE_ANIM = "SEmotion-bento18";      // arms folded during planning delays
-string SCREAM_SOUND = "???";                // sound of a scream
+string IDLE_ANIM = "stand";                 // holding after evasion
 #define IDLE_POLL 10.0                      // for stall timer tick if used
 #define SAFE_IDLE_TIME 20.0                 // idle this long, stop polling fast
 #define DWELL_TIME 20.0                     // keep control in avoid until this time runs out
