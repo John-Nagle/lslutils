@@ -216,7 +216,7 @@ pathmasterreset()
     }
     gPathcallRequestId = 0;                                             // restart path IDs which keep scripts in sync
     gPathcallStarttime = 0;                                             // time last command started for stall timer
-    llSleep(5.0);                                                       // wait 5 secs for reset.
+    llSleep(10.0);                                                      // wait 10 secs for all scripts to reset
     llOwnerSay("Master reset complete.");                               // OK, reset
 }
 

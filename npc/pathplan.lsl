@@ -55,7 +55,7 @@ vector gRefPt;                                              // region corner to 
 //  find out anything about the next region.
 //
 pathplan(float stopshort, integer pathid)
-{
+{   assert(gPathWidth > 0);                                 // indicates script initialization is complete
     //  Start a new planning cycle
     gPathPoints = [];
     gReqPathid = pathid; 
