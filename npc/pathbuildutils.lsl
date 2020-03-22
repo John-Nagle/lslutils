@@ -908,7 +908,7 @@ float pathcalccellmovedist(vector pnt, vector dir3d, vector endpt, float cellsiz
     if (numersq < 0.0) { return(NAN); }              // Error
     float numer = llSqrt(numersq);                   // must be nonnegative
     float movedistflat = (-b - numer) / (2*a);       // the smaller quadatic solution.
-    assert(llFabs(a*movedistflat*movedistflat + b*movedistflat + c) < 0.001);   // quadratic equation check
+    assert(llFabs(a*movedistflat*movedistflat + b*movedistflat + c) < 0.01);   // quadratic equation check
     movedistflat = -movedistflat;                   // ***NOT SURE ABOUT THIS***
     if (movedistflat < 0) { return(NAN); }
     assert(llFabs(llVecMag(endptflat - (pntflat + dirflat*movedistflat)) - unitcells*cellsize) < 0.01); // math check
