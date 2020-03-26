@@ -35,9 +35,9 @@
 #define IDLE_TICKS 30                           // 7.5 secs to shutdown
 
 //  Thresholds at which different animations turn on
-#define SPEED_WALK      1.5                     // faster than this, fast walking
-#define SPEED_RUN       3.0                     // faster than this, running
-#define ROTRATE_TURN    0.3                     // medium speed turn
+#define SPEED_WALK      1.5                     // (m/sec) faster than this, fast walking
+#define SPEED_RUN       3.0                     // (m/sec) faster than this, running
+#define ROTRATE_TURN    1.0                     // (rad/sec) turning fast enough to lean
 //
 //  Globals
 //
@@ -214,11 +214,11 @@ update_anim()                                   // called periodically and when 
     }
     if (posspeed < SPEED_WALK)                 // just stand or walk for now
     {   if (rotspeed > ROTRATE_TURN)
-        {   setanims(1,gAnimLturn+gAnimAlways); 
+        {   setanims(1,gAnimLturn+gAnimSlowWalk+gAnimAlways); 
             gIdleTicks = 0;                     // not idle
         }
         else if (rotspeed < -ROTRATE_TURN)
-        {   setanims(2,gAnimRturn+gAnimAlways);
+        {   setanims(2,gAnimRturn+gAnimSlowWalk+gAnimAlways);
             gIdleTicks = 0;
         }
         else if (posspeed > 0.01)
