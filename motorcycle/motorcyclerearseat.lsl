@@ -6,7 +6,7 @@
 //  Getting error: llStartAnimation: Script trying to trigger animations but agent not found
 //  {RootName Smooth Rider - V2.9 (DEMO), RootPosition { 1.54013, 2.58784, 35.7088 }}
 
-string gAnim = "";                                       // rider sit animation
+string gAnim = "Bike_Passenger01";                                       // rider sit animation
 key gSitter = NULL_KEY;
 
 default
