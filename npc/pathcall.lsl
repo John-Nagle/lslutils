@@ -20,9 +20,11 @@
 //
 integer gPathcallReset = FALSE;                                 // have we reset the system since startup?
 integer gPathcallStarttime = 0;                                 // time last command started
+integer gPathcallTimeouts = 0;                                  // number of timeouts
 integer gPathcallInitialized = FALSE;                           // not initialized yet
 string  gPathcallLastCommand = "None";                          // last JSON sent to start
 integer gPathcallRequestId = 0;                                 // path serial number
+
 //
 //  State used after a restart and reinit
 float   gPathcallWidth;                                         // dimensions and type of character
@@ -100,6 +102,10 @@ pathStop()
 pathTick()
 {   if ((gPathcallStarttime != 0) && (llGetUnixTime() - gPathcallStarttime) > PATHCALLSTALLTIME)
     {   //  TROUBLE - the system is stalled.
+        if (gPathcallTimeouts++ < 3)                // but it might be a region restart and the changed event is in queue
+        {   debugMsg(DEBUG_MSG_WARN, "Stalled, possible region restart.");
+            return;                                 // delay a few cycles to let region restart take place.
+        }
         debugMsg(DEBUG_MSG_ERROR, "Stalled and reset. Last command: " + gPathcallLastCommand); // tell owner
         pathmasterreset();                          // reset other scripts
         llSleep(10.0);                              // wait for reset
@@ -165,6 +171,7 @@ pathBegin(key target, vector regioncorner, vector endpos, float stopshort, float
         "target",target, "regioncorner", regioncorner, "goal",endpos,"stopshort",stopshort, "speed",speed]); // save for diagnostic
     llMessageLinked(LINK_THIS, PATHSTARTREQUEST,gPathcallLastCommand,"");
     gPathcallStarttime = llGetUnixTime();                               // start the stall timer
+    gPathcallTimeouts = 0;                              // no previous timeouts
 }
 
 //
@@ -193,6 +200,7 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
         {   debugMsg(DEBUG_MSG_WARN, "Stale request completed msg discarded."); return; }
         debugMsg(DEBUG_MSG_NOTE,"Path complete, status " + (string)status + ", obstacle: " + (string)hitobj + ", time: " + (string)llGetTime());
         gPathcallStarttime = 0;                             // really done, stop clock
+        gPathcallTimeouts = 0;                              // no previous timeouts
         pathUpdateCallback(status, hitobj);
     }
 }
@@ -216,6 +224,7 @@ pathmasterreset()
     }
     gPathcallRequestId = 0;                                             // restart path IDs which keep scripts in sync
     gPathcallStarttime = 0;                                             // time last command started for stall timer
+    gPathcallTimeouts = 0;                                              // no previous timeouts
     llSleep(10.0);                                                      // wait 10 secs for all scripts to reset
     llOwnerSay("Master reset complete.");                               // OK, reset
 }
