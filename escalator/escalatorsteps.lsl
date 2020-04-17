@@ -38,7 +38,9 @@ start_belt(integer direction)
         llSetKeyframedMotion([motionDir, CYCLETIME],[KFM_DATA,KFM_TRANSLATION, KFM_MODE,KFM_LOOP]); 
     }
     else                                        
-    {                                                   
+    {   //  For downward travel, steps must be displaced one step height downward before starting.
+        llSetPos(gStartPos + motionDir);                // displace one step downward
+        llSleep(2.0);                                   // allow time to settle                                             
         ////llSetLinkPrimitiveParams(PUSHERPRIMLINK, [PRIM_POS_LOCAL, gPusherRelPos + PUSHERRETRACT]); 
         ////llSetKeyframedMotion([motionDir, CYCLETIME],[KFM_DATA,KFM_TRANSLATION, KFM_MODE, KFM_FORWARD]);
         ////llSleep(CYCLETIME*2.0);                 
