@@ -12,13 +12,17 @@
 //
 //  Additional object we must rez.
 //
-//  SINGLE SIZE VERSION for escalator - no resizing yet
+//  For multiple sizes of escalator.
 //
+//  Steps ref point is at center of upper edge of top step.
+//  Frame ref point is at center of edge of platform.
+//  We align those and offset from there.
 //  Positions captured from the edit window of a successful assembly.
 //
-//// CHILDPOS = <233.19861, 50.00000, 37.93129>;
-//// PARENTPOS = <233.00000, 50.00000, 38.15352>;
-//// CHILDOFFSET = <0.19861, 0.0, -0.222> // need to swap axes
+//  Step length is 0.33
+//  Step height is 0.23
+//  Step width is 1.00
+//
 integer STEPSANIMLINK = 2;
 integer STEPSANIMFACE = ALL_SIDES;
 integer RAILANIMLINK = 1;
@@ -26,13 +30,16 @@ integer RAILANIMFACE = 3;
 integer TRAFFICLIGHTLINK = 1;
 integer TRAFFICLIGHTFACE = 4;
 
-float STEPSANIMRATE = -1.5;                         // steps animation speed
-float RAILANIMRATE = 0.9;                           // railing animation speed, matched to escalator
+float STEPSANIMRATE = -2.0;                         // steps animation speed
+////float RAILANIMRATE = 0.9;                       // railing animation speed, matched to escalator
+float RAILANIMRATE = 0.04;                          // railing rate per meter of escalator length
 float TRAFFICLIGHTGLOW = 0.2;                       // glow brightness for red and green lights
 
-vector CHILDOFFSET = <0.0, 0.19861, -0.222>;    // root of child rel to self
+////vector STEPSOFFSET = <0.0, 0.0, -0.23>;         // fine tuning of step position so passengers are carried properly
+vector STEPSOFFSET = <0.0, -0.33, -0.23>;             // fine tuning of step position so passengers are carried properly
+vector TOPREFOFFSET = <0.0, 2.15, -1.0>;            // rel position of center of top step edge to bounding box
 
-string OBJECTNAME = "Steps";
+////string OBJECTNAME = "Steps";
 vector INITIALROTANG = <0,0,0>;                 // initial rotation angle, radians
 
 integer MAXINT = 16777216;                      // 2^24
@@ -50,6 +57,7 @@ vector gPrevPos = ZERO_VECTOR;
 rotation gPrevRot = ZERO_ROTATION;
 integer gDirection = 0;                 // direction of motion (-1, 0, or +1)
 integer gLastDirection = 1;             // last moving direction. Remote uses this.
+float gLength = 1.0;                    // length of escalator, calculated at startup
 integer gLocked = FALSE;                // owner only
 integer gDialogChannel;                 // for talking to user
 integer gDialogHandle = 0;              // listening for dialog response
@@ -149,6 +157,25 @@ set_traffic_light(integer dir)
         PRIM_GLOW, TRAFFICLIGHTFACE, glow]);
 }
 
+set_escalator_anims()
+{
+    //  Animation of flat steps which are part of the escalator base and do not move.
+    if (gDirection != 0)
+    {   llSetLinkTextureAnim(RAILANIMLINK, ANIM_ON|LOOP|SMOOTH, 
+                RAILANIMFACE, 1, 1, 1.0, -1.0, RAILANIMRATE*gLength*gDirection);
+        llSetLinkTextureAnim(STEPSANIMLINK, ANIM_ON|LOOP|SMOOTH, 
+                STEPSANIMFACE, 1, 1, 1.0, -1.0, STEPSANIMRATE*gDirection); // start animation
+        llLoopSound(SOUNDNAME, VOLUME);                 // escalator sound 
+    }
+    else
+    {   //  One last anim and stop. Maintains same orientation as active anim
+        llSetLinkTextureAnim(RAILANIMLINK, ANIM_ON|SMOOTH, RAILANIMFACE, 1, 1, 1.0, -1.0, 0.2); // stop previous animation
+        llSetLinkTextureAnim(STEPSANIMLINK, ANIM_ON|SMOOTH, STEPSANIMFACE, 1, 1, 1.0, -1.0, 0.2); // stop previous animation
+        llStopSound();                                  // silence
+    }
+
+}
+
 set_escalator_state(integer direction)
 {
     if (direction == gDirection) { return; }    // no change in dir
@@ -157,19 +184,7 @@ set_escalator_state(integer direction)
     llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
         ["command","DIR", "direction", (string)gDirection]));
     //  Animation of flat steps which are part of the escalator base and do not move.
-    if (gDirection != 0)
-    {   llSetLinkTextureAnim(RAILANIMLINK, ANIM_ON|LOOP|SMOOTH, 
-                RAILANIMFACE, 1, 1, 1.0, -1.0, RAILANIMRATE*gDirection);
-        llSetLinkTextureAnim(STEPSANIMLINK, ANIM_ON|LOOP|SMOOTH, 
-                STEPSANIMFACE, 1, 1, 1.0, -1.0, STEPSANIMRATE*gDirection); // start animation
-        llLoopSound(SOUNDNAME, VOLUME);                 // escalator sound 
-    }
-    else
-    {   
-        llSetLinkTextureAnim(RAILANIMLINK, 0, RAILANIMFACE, 1, 1, 1.0, -1.0, 0); // stop previous animation
-        llSetLinkTextureAnim(STEPSANIMLINK, 0, STEPSANIMFACE, 1, 1, 1.0, -1.0, 0); // stop previous animation
-        llStopSound();                                  // silence
-    }
+    set_escalator_anims();
     set_traffic_light(gDirection);                      // set green and red lights
     string stat = "stopped";
     if (gDirection != 0)
@@ -182,18 +197,29 @@ set_escalator_state(integer direction)
 //
 //  place_object -- rez and place object
 //
-place_object(string name, vector offset)
+//  Steps are rezzed at the same place as the escalator frame, then adjusted by the steps themselves to align.
+//
+place_object(string name)
 {
     //  Delete old object
     if (gRezzedObjectID) 
     {   
         llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,["command","DIE"]));
     }
+    //  Get reference point for escalator frame.
+    list bounds = llGetBoundingBox(llGetKey());         // get bounds of frame
+    vector lobound = llList2Vector(bounds,0);           // low bound, own coords
+    vector hibound = llList2Vector(bounds,1);           // high bound, own coords
+    vector topref = <(hibound.x+lobound.x)*0.5,lobound.y,hibound.z>;   // center of top bound line
+    llOwnerSay("Top ref, local, unadjusted: " + (string)topref);    // ***TEMP***
+    rotation rot = llGetRot();                          // rotation to world
+    topref = (topref + TOPREFOFFSET + STEPSOFFSET)*rot + llGetPos(); 
+    llOwnerSay("Top ref, global, adjusted: " + (string)topref);    // ***TEMP*** 
+    //  Calc length of escalator for railing speed
+    gLength = llVecMag(hibound-lobound);                // length of escalator  
     //  Rez new object
-    rotation rot = llGetRot();
     rot = rot * llEuler2Rot(INITIALROTANG*DEG_TO_RAD); // rotate before rezzing
-    offset = offset * rot;              // to world coords
-    vector pos = llGetPos() + offset;
+    vector pos = llGetPos();            // rez at escalator root, adjust later in steps
     //  unique integer channel number in range frand can handle
     integer randomid = - (integer)(llFrand(MAXINT-MINCHAN) + MINCHAN); 
     llRezObject(name, pos, <0,0,0>, rot, randomid); // create the object
@@ -202,6 +228,9 @@ place_object(string name, vector offset)
     gPrevRot = llGetRot();
     ////llOwnerSay("Placed " + name + " id: " + (string) randomid); // ***TEMP***
     llSleep(3.0);                           // allow object time to rez
+    //  ****MAY NEED TO WAIT LONGER OR GET ACK DUE TO SERVER CHANGE***
+    llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
+        ["command","REFPOS", "refpt", topref]));     // send position of reference point, global coords
     llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
         ["command","DIR", "direction", (string)gDirection]));
 }
@@ -211,8 +240,8 @@ move_check()
     if ((llVecMag(llGetPos()-gPrevPos) > 0.001)     // if we moved, delete and replace object
     || (llFabs(llAngleBetween(llGetRot(),gPrevRot)) > 0.0005))
     {
-        vector objectoffset = CHILDOFFSET;     // offset for new object
-        place_object(OBJECTNAME, objectoffset);
+        string objectname = llGetInventoryName(INVENTORY_OBJECT, 0); // first obj
+        place_object(objectname);
     }
 }
 
@@ -222,12 +251,10 @@ default
     {   gScale = llGetScale();                          // save object size
         setup_command_listen();
         gDialogChannel = - (integer)(llFrand(MAXINT-MINCHAN) + MINCHAN);  // for dialog msgs
-        vector objectoffset = CHILDOFFSET;              // offset for new object
-        place_object(OBJECTNAME, objectoffset);
+        string objectname = llGetInventoryName(INVENTORY_OBJECT, 0); // first obj
+        place_object(objectname);
         gDirection = 0;                                 // not running
-        llSetLinkTextureAnim(STEPSANIMLINK, 0, STEPSANIMFACE, 1, 1, 1.0, -1.0, 0); // stop previous animation
-        llSetLinkTextureAnim(RAILANIMLINK, 0, RAILANIMFACE, 1, 1, 1.0, -1.0, 0); // stop previous animation
-        llStopSound();                                  // silence
+        set_escalator_anims();                          // set anims
         set_traffic_light(0);                           // set green and red lights                           
     }
 
@@ -247,10 +274,10 @@ default
         if (gLocked && (toucherID != llGetOwner())) { return; } // ignore touch if locked and not owner
         llListenRemove(gDialogHandle);          // remove any old listener
         list choices = [];                      // dialog box option
-        if (gDirection == 1) { choices += "⬤ Up"; } else {choices += "Up"; }
-        if (gDirection == -1) { choices += "⬤ Down"; } else {choices += "Down"; }
-        if (gDirection == 0) { choices += "⬤ Stop"; } else {choices += "Stop"; }
-        if (gLocked) { choices += "☑ Locked"; } else {choices += "☐ Locked"; }
+        if (gDirection == 1) { choices += "? Up"; } else {choices += "Up"; }
+        if (gDirection == -1) { choices += "? Down"; } else {choices += "Down"; }
+        if (gDirection == 0) { choices += "? Stop"; } else {choices += "Stop"; }
+        if (gLocked) { choices += "? Locked"; } else {choices += "? Locked"; }
         llDialog(toucherID, "Escalator control", choices, gDialogChannel);
         gDialogHandle = llListen(gDialogChannel, "", toucherID, ""); // wait for dialog
         llSetTimerEvent(60.0);                  // just for cleanup
@@ -281,4 +308,3 @@ default
         if (change & CHANGED_OWNER) { setup_command_listen(); }    // reset who we listen to on ownership change
     }
 }
-
