@@ -170,9 +170,11 @@ set_escalator_anims()
         llLoopSound(SOUNDNAME, VOLUME);                 // escalator sound 
     }
     else
-    {   //  One last anim and stop. Maintains same orientation as active anim
-        llSetLinkTextureAnim(RAILANIMLINK, ANIM_ON|SMOOTH, RAILANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
-        llSetLinkTextureAnim(STEPSANIMLINK, ANIM_ON|SMOOTH, STEPSANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
+    {   //  Stop. Maintains same orientation as active anim
+        ////llSetLinkTextureAnim(RAILANIMLINK, ANIM_ON|SMOOTH, RAILANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
+        ////llSetLinkTextureAnim(STEPSANIMLINK, ANIM_ON|SMOOTH, STEPSANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
+        llSetLinkTextureAnim(STEPSANIMLINK, SMOOTH, STEPSANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
+        llSetLinkTextureAnim(RAILANIMLINK, SMOOTH, RAILANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
         llStopSound();                                  // silence
     }
 
