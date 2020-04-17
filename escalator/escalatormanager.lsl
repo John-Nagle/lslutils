@@ -1,5 +1,10 @@
 //
-//  Escalator manager
+//  Escalator manager for Second Life
+//
+//  Animats
+//  nagle@animats.com
+//  April, 2020
+//  License: GPL
 //
 //  Rezzes and aligns an object from this object's content.
 //  Handles resizing.
@@ -31,15 +36,12 @@ integer TRAFFICLIGHTLINK = 1;
 integer TRAFFICLIGHTFACE = 4;
 
 float STEPSANIMRATE = -2.0;                         // steps animation speed
-////float RAILANIMRATE = 0.9;                       // railing animation speed, matched to escalator
 float RAILANIMRATE = 0.04;                          // railing rate per meter of escalator length
 float TRAFFICLIGHTGLOW = 0.2;                       // glow brightness for red and green lights
 
-////vector STEPSOFFSET = <0.0, 0.0, -0.23>;         // fine tuning of step position so passengers are carried properly
 vector STEPSOFFSET = <0.0, -0.33, -0.23>;             // fine tuning of step position so passengers are carried properly
 vector TOPREFOFFSET = <0.0, 2.15, -1.0>;            // rel position of center of top step edge to bounding box
 
-////string OBJECTNAME = "Steps";
 vector INITIALROTANG = <0,0,0>;                 // initial rotation angle, radians
 
 integer MAXINT = 16777216;                      // 2^24
@@ -169,8 +171,8 @@ set_escalator_anims()
     }
     else
     {   //  One last anim and stop. Maintains same orientation as active anim
-        llSetLinkTextureAnim(RAILANIMLINK, ANIM_ON|SMOOTH, RAILANIMFACE, 1, 1, 1.0, -1.0, 0.2); // stop previous animation
-        llSetLinkTextureAnim(STEPSANIMLINK, ANIM_ON|SMOOTH, STEPSANIMFACE, 1, 1, 1.0, -1.0, 0.2); // stop previous animation
+        llSetLinkTextureAnim(RAILANIMLINK, ANIM_ON|SMOOTH, RAILANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
+        llSetLinkTextureAnim(STEPSANIMLINK, ANIM_ON|SMOOTH, STEPSANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
         llStopSound();                                  // silence
     }
 
@@ -274,10 +276,10 @@ default
         if (gLocked && (toucherID != llGetOwner())) { return; } // ignore touch if locked and not owner
         llListenRemove(gDialogHandle);          // remove any old listener
         list choices = [];                      // dialog box option
-        if (gDirection == 1) { choices += "? Up"; } else {choices += "Up"; }
-        if (gDirection == -1) { choices += "? Down"; } else {choices += "Down"; }
-        if (gDirection == 0) { choices += "? Stop"; } else {choices += "Stop"; }
-        if (gLocked) { choices += "? Locked"; } else {choices += "? Locked"; }
+        if (gDirection == 1) { choices += "⬤ Up"; } else {choices += "Up"; }
+        if (gDirection == -1) { choices += "⬤ Down"; } else {choices += "Down"; }
+        if (gDirection == 0) { choices += "⬤ Stop"; } else {choices += "Stop"; }
+        if (gLocked) { choices += "☑ Locked"; } else {choices += "☐ Locked"; }
         llDialog(toucherID, "Escalator control", choices, gDialogChannel);
         gDialogHandle = llListen(gDialogChannel, "", toucherID, ""); // wait for dialog
         llSetTimerEvent(60.0);                  // just for cleanup
