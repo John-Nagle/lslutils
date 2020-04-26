@@ -36,7 +36,7 @@ integer TRAFFICLIGHTLINK = 1;
 integer TRAFFICLIGHTFACE = 4;
 
 float STEPSANIMRATE = -2.0;                         // steps animation speed
-float RAILANIMRATE = 0.04;                          // railing rate per meter of escalator length
+float RAILANIMRATE = 8.0; // 0.04;                          // railing rate per meter of escalator length
 float TRAFFICLIGHTGLOW = 0.2;                       // glow brightness for red and green lights
 
 vector STEPSOFFSET = <0.0, -0.33, -0.23>;             // fine tuning of step position so passengers are carried properly
@@ -164,7 +164,7 @@ set_escalator_anims()
     //  Animation of flat steps which are part of the escalator base and do not move.
     if (gDirection != 0)
     {   llSetLinkTextureAnim(RAILANIMLINK, ANIM_ON|LOOP|SMOOTH, 
-                RAILANIMFACE, 1, 1, 1.0, -1.0, RAILANIMRATE*gLength*gDirection);
+                RAILANIMFACE, 1, 1, 1.0, -1.0, RAILANIMRATE*gDirection/gLength);
         llSetLinkTextureAnim(STEPSANIMLINK, ANIM_ON|LOOP|SMOOTH, 
                 STEPSANIMFACE, 1, 1, 1.0, -1.0, STEPSANIMRATE*gDirection); // start animation
         llLoopSound(SOUNDNAME, VOLUME);                 // escalator sound 

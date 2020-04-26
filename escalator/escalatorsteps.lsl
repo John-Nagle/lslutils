@@ -44,11 +44,13 @@ start_belt(integer direction)
     vector motionDir = STEPMOVE;    
     motionDir = motionDir * gStartRot;          
     
-    if (direction > 0)                          
+    if (direction > 0)                                  // up                      
     {   
+        llSetPos(gStartPos);                            // align to top position
+        llSleep(2.0);                                   // allow time to settle                                             
         llSetKeyframedMotion([motionDir, CYCLETIME],[KFM_DATA,KFM_TRANSLATION, KFM_MODE,KFM_LOOP]); 
     }
-    else                                        
+    else                                                // down                                       
     {   //  For downward travel, steps must be displaced one step height downward before starting.
         llSetPos(gStartPos + motionDir);                // displace one step downward
         llSleep(2.0);                                   // allow time to settle                                             
@@ -60,12 +62,12 @@ start_belt(integer direction)
 
 init()
 {   
-    MOTIONDIST = CYCLETIME*2.0;
+    ////MOTIONDIST = CYCLETIME*2.0;
     MOTIONDIST = CYCLETIME*1.0; 
     TEXSCALEX = MOTIONDIST*0.5;
     TEXSCALEX = 0.5/MOTIONDIST;
     TEXCYCLETIME = 1.0/CYCLETIME;
-    llSetKeyframedMotion([],[]);                
+    llSetKeyframedMotion([],[]);                            // not running              
     gOn = FALSE;                                
     llSleep(CYCLETIME*2.0);                     
     gStartPos = llGetPos();                     
@@ -78,29 +80,31 @@ default
 {
     state_entry()
     {   
-
-        MOTIONDIST = CYCLETIME*2.0;
+        llSetLinkPrimitiveParams(LINK_THIS, [PRIM_SCRIPTED_SIT_ONLY, TRUE]); // cannot sit on belt
+        init(); 
+#ifdef OBSOLETE            
+        ////MOTIONDIST = CYCLETIME*2.0;
         MOTIONDIST = CYCLETIME*1.0; 
         TEXSCALEX = MOTIONDIST*0.5;
         TEXSCALEX = 0.5/MOTIONDIST;
         TEXCYCLETIME = 1.0/CYCLETIME;
         llSetKeyframedMotion([],[]);
-        llSetLinkPrimitiveParams(LINK_THIS, [PRIM_SCRIPTED_SIT_ONLY, TRUE]); // cannot sit on belt                
         gOn = FALSE;                                
         llSleep(CYCLETIME*2.0);                     
         gStartPos = llGetPos();                     
         gStartRot = llGetRot();
         llSensorRepeat("","",AGENT,SENSORDIST, PI, STOPTIME);                               // always be scanning
+#endif // OBSOLETE
     }
     
     sensor(integer num_detected)
     {
-        start_belt(gDirection);
+        start_belt(gDirection);                                     // somebody can see, start belt.
     }   
     
     no_sensor()
     {
-        stop_belt();          
+        stop_belt();                                                // nobody can see, shut down      
     }   
     
     on_rez(integer id)
