@@ -1,3 +1,14 @@
+//
+//  escalatorsteps.lsl
+//
+//  Part of the Animats escalator system.
+//  This script goes in the steps.
+//
+//  Animats
+//  2018
+//
+//  License: GPL
+//
 integer gOn;                                    
 vector gStartPos;                               
 rotation gStartRot;                             
@@ -11,7 +22,7 @@ float TEXCYCLETIME;
 float TEXSCALEX = 0.5;                          
 float STOPTIME = 10.0;   
 float SENSORDIST = 50.0;                // turn on if this close  
-vector BOUNDINGBOXERROR = <0.05,0.05,0.05>; // resykt from llGetBoundingBox is oversized by this much                     
+vector BOUNDINGBOXERROR = <0.05,0.05,0.05>; // result from llGetBoundingBox is oversized by this much                     
 
 vector STEPMOVE = <-0.0,-0.35,0.23>;
 
@@ -34,16 +45,13 @@ start_belt(integer direction)
     motionDir = motionDir * gStartRot;          
     
     if (direction > 0)                          
-    {   ////llSetLinkPrimitiveParams(PUSHERPRIMLINK, [PRIM_POS_LOCAL, gPusherRelPos]); 
+    {   
         llSetKeyframedMotion([motionDir, CYCLETIME],[KFM_DATA,KFM_TRANSLATION, KFM_MODE,KFM_LOOP]); 
     }
     else                                        
     {   //  For downward travel, steps must be displaced one step height downward before starting.
         llSetPos(gStartPos + motionDir);                // displace one step downward
         llSleep(2.0);                                   // allow time to settle                                             
-        ////llSetLinkPrimitiveParams(PUSHERPRIMLINK, [PRIM_POS_LOCAL, gPusherRelPos + PUSHERRETRACT]); 
-        ////llSetKeyframedMotion([motionDir, CYCLETIME],[KFM_DATA,KFM_TRANSLATION, KFM_MODE, KFM_FORWARD]);
-        ////llSleep(CYCLETIME*2.0);                 
         llSetKeyframedMotion([-motionDir, CYCLETIME],[KFM_DATA,KFM_TRANSLATION, KFM_MODE,KFM_LOOP]);
     }
     gOn = TRUE;                                 
@@ -62,7 +70,6 @@ init()
     llSleep(CYCLETIME*2.0);                     
     gStartPos = llGetPos();                     
     gStartRot = llGetRot();
-    ////gPusherRelPos = llList2Vector(llGetLinkPrimitiveParams(PUSHERPRIMLINK, [PRIM_POS_LOCAL]),0);
     llSensorRepeat("","",AGENT,SENSORDIST, PI, STOPTIME);    // always be scanning
 }
 
@@ -83,7 +90,6 @@ default
         llSleep(CYCLETIME*2.0);                     
         gStartPos = llGetPos();                     
         gStartRot = llGetRot();
-        ////gPusherRelPos = llList2Vector(llGetLinkPrimitiveParams(PUSHERPRIMLINK, [PRIM_POS_LOCAL]),0);
         llSensorRepeat("","",AGENT,SENSORDIST, PI, STOPTIME);                               // always be scanning
     }
     
