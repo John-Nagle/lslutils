@@ -28,6 +28,11 @@
 //  Step height is 0.23
 //  Step width is 1.00
 //
+#ifdef DEBUG                                        // define DEBUG for messages
+#define DEBUGPRINT(msg) { llOwnerSay(msg); }
+#else
+#define DEBUGPRINT(msg) 
+#endif 
 integer STEPSANIMLINK = 2;
 integer STEPSANIMFACE = ALL_SIDES;
 integer RAILANIMLINK = 1;
@@ -83,9 +88,8 @@ setup_command_listen()
 command_listen(integer channel, string msgname, key id, string message)
 {
     key ownerkey = llGetOwnerKey(id);                       // owner of sender of message
-    ////llOwnerSay(message + " from " + (string)id + " owned by " + (string)ownerkey);
     if (ownerkey != llGetOwner()) { return; }               // ignore if msg not from owner
-    ////llOwnerSay(message);
+    DEBUGPRINT("Incoming msg: " + message);
     string request = llJsonGetValue(message, ["request"]);
     if (request == JSON_NULL || request == JSON_INVALID)  { return; }                  // return silently if not "request"
     string name = llJsonGetValue(message, ["name"]);
@@ -95,14 +99,13 @@ command_listen(integer channel, string msgname, key id, string message)
     //  a substring of our object name. Case insensitive match.
     if ((name == JSON_INVALID || name == JSON_NULL)   // JSON parse failed
             || (llSubStringIndex(llToLower(llGetObjectName()), llToLower(name)) < 0 && id != (string)llGetKey()))
-    {   llOwnerSay("Message not for us: " + message); return; }
+    {   llOwnerSay("Message invalid or not for us: " + message); return; }
     do_command(request, dir);                                    // do the command        
 }
 
 dialog_listen(integer channel, string name, key id, string message)
 {
     llListenRemove(gDialogHandle);              // turn off the listener
-    ////llOwnerSay("Dialog string: " + name + " message: " + message);
     //  Process response
     integer direction = gDirection;
     if (llSubStringIndex(message, "Up") >= 0) { direction = 1; }
@@ -183,7 +186,6 @@ set_escalator_state(integer direction)
 {
     if (direction == gDirection) { return; }    // no change in dir
     gDirection = direction;                     // change direction
-    ////llOwnerSay("Step direction: " + (string)gDirection);   
     llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
         ["command","DIR", "direction", (string)gDirection]));
     //  Animation of flat steps which are part of the escalator base and do not move.
@@ -214,10 +216,10 @@ place_object(string name)
     vector lobound = llList2Vector(bounds,0);           // low bound, own coords
     vector hibound = llList2Vector(bounds,1);           // high bound, own coords
     vector topref = <(hibound.x+lobound.x)*0.5,lobound.y,hibound.z>;   // center of top bound line
-    llOwnerSay("Top ref, local, unadjusted: " + (string)topref);    // ***TEMP***
+    DEBUGPRINT("Top ref, local, unadjusted: " + (string)topref);    // ***TEMP***
     rotation rot = llGetRot();                          // rotation to world
     topref = (topref + TOPREFOFFSET + STEPSOFFSET)*rot + llGetPos(); 
-    llOwnerSay("Top ref, global, adjusted: " + (string)topref);    // ***TEMP*** 
+    DEBUGPRINT("Top ref, global, adjusted: " + (string)topref);    // ***TEMP*** 
     //  Rez new object
     rot = rot * llEuler2Rot(INITIALROTANG*DEG_TO_RAD); // rotate before rezzing
     vector pos = llGetPos();            // rez at escalator root, adjust later in steps
@@ -227,7 +229,7 @@ place_object(string name)
     gRezzedObjectID = randomid;
     gPrevPos = llGetPos();                  // previous location
     gPrevRot = llGetRot();
-    ////llOwnerSay("Placed " + name + " id: " + (string) randomid); // ***TEMP***
+    DEBUGPRINT("Placed " + name + " id: " + (string) randomid); // ***TEMP***
     llSleep(3.0);                           // allow object time to rez
     //  ****MAY NEED TO WAIT LONGER OR GET ACK DUE TO SERVER CHANGE***
     llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
