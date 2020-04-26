@@ -36,7 +36,7 @@ integer TRAFFICLIGHTLINK = 1;
 integer TRAFFICLIGHTFACE = 4;
 
 float STEPSANIMRATE = -2.0;                         // steps animation speed
-float RAILANIMRATE = 8.0; // 0.04;                          // railing rate per meter of escalator length
+float RAILANIMRATE = 0.80;                          // railing rate per meter of escalator length
 float TRAFFICLIGHTGLOW = 0.2;                       // glow brightness for red and green lights
 
 vector STEPSOFFSET = <0.0, -0.33, -0.23>;             // fine tuning of step position so passengers are carried properly
@@ -59,7 +59,6 @@ vector gPrevPos = ZERO_VECTOR;
 rotation gPrevRot = ZERO_ROTATION;
 integer gDirection = 0;                 // direction of motion (-1, 0, or +1)
 integer gLastDirection = 1;             // last moving direction. Remote uses this.
-float gLength = 1.0;                    // length of escalator, calculated at startup
 integer gLocked = FALSE;                // owner only
 integer gDialogChannel;                 // for talking to user
 integer gDialogHandle = 0;              // listening for dialog response
@@ -164,7 +163,7 @@ set_escalator_anims()
     //  Animation of flat steps which are part of the escalator base and do not move.
     if (gDirection != 0)
     {   llSetLinkTextureAnim(RAILANIMLINK, ANIM_ON|LOOP|SMOOTH, 
-                RAILANIMFACE, 1, 1, 1.0, -1.0, RAILANIMRATE*gDirection/gLength);
+                RAILANIMFACE, 1, 1, 1.0, -1.0, RAILANIMRATE*gDirection);
         llSetLinkTextureAnim(STEPSANIMLINK, ANIM_ON|LOOP|SMOOTH, 
                 STEPSANIMFACE, 1, 1, 1.0, -1.0, STEPSANIMRATE*gDirection); // start animation
         llLoopSound(SOUNDNAME, VOLUME);                 // escalator sound 
@@ -219,8 +218,6 @@ place_object(string name)
     rotation rot = llGetRot();                          // rotation to world
     topref = (topref + TOPREFOFFSET + STEPSOFFSET)*rot + llGetPos(); 
     llOwnerSay("Top ref, global, adjusted: " + (string)topref);    // ***TEMP*** 
-    //  Calc length of escalator for railing speed
-    gLength = llVecMag(hibound-lobound);                // length of escalator  
     //  Rez new object
     rot = rot * llEuler2Rot(INITIALROTANG*DEG_TO_RAD); // rotate before rezzing
     vector pos = llGetPos();            // rez at escalator root, adjust later in steps
