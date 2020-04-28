@@ -284,7 +284,7 @@ move_check()
 estop_pushed()
 {
     DEBUGPRINT("E-Stop pushed."); 
-    if (gDirection == 0 || gDialogHandle != 0)          // must be in normal run
+    if (gDirection == 0)                                // must be in normal run
     {   return; }                                       // ignore if not running                      
     set_escalator_state(0);                             // stop escalator
     llPlaySound(SOUNDBRAKE,1.0);                        // play brake sound  
