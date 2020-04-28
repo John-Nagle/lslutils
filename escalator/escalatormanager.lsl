@@ -44,6 +44,7 @@ integer RAILANIMFACE = 3;
 integer TRAFFICLIGHTLINK = 1;
 integer TRAFFICLIGHTFACE = 4;
 integer ESTOPFACE = 6;                              // emergency stop button
+float   ESTOPTIME = 30.0;                           // restart after this long after estop
 
 float STEPSANIMRATE = -2.0;                         // steps animation speed
 float RAILANIMRATE = 0.80;                          // railing rate per meter of escalator length
@@ -60,6 +61,7 @@ integer COMMANDCHANNEL = -8372944;              // randomly chosen channel. Not 
 
 
 string SOUNDNAME="escalator1";          // escalator sound effect
+string SOUNDBRAKE="escalatorbrake";     // escalator emergency stop
 float VOLUME=0.20;                      // audio level
 
 
@@ -74,6 +76,7 @@ integer gDialogChannel;                 // for talking to user
 integer gDialogHandle = 0;              // listening for dialog response
 vector gScale = ZERO_VECTOR;            // scale of object
 integer gCommandHandle = 0;             // for command listener
+integer gEstopPushed = FALSE;           // true if e-stop pushed
 
 //
 //  vector_mult - multiply vector by vector elementwise
@@ -111,6 +114,7 @@ command_listen(integer channel, string msgname, key id, string message)
 dialog_listen(integer channel, string name, key id, string message)
 {
     llListenRemove(gDialogHandle);              // turn off the listener
+    gDialogHandle = 0;                          // once only
     //  Process response
     integer direction = gDirection;
     if (llSubStringIndex(message, "Up") >= 0) { direction = 1; }
@@ -188,6 +192,7 @@ set_escalator_anims()
 set_escalator_state(integer direction)
 {
     if (direction == gDirection) { return; }    // no change in dir
+    gEstopPushed = FALSE;                       // clear any e-stop
     gDirection = direction;                     // change direction
     llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
         ["command","DIR", "direction", (string)gDirection]));
@@ -270,8 +275,7 @@ move_check()
     if ((llVecMag(llGetPos()-gPrevPos) > 0.001)     // if we moved, delete and replace object
     || (llFabs(llAngleBetween(llGetRot(),gPrevRot)) > 0.0005))
     {
-        string objectname = llGetInventoryName(INVENTORY_OBJECT, 0); // first obj
-        place_steps(objectname);
+        place_steps(STEPSNAME);
     }
 }
 //
@@ -279,7 +283,13 @@ move_check()
 //
 estop_pushed()
 {
-    llOwnerSay("E-Stop pushed.");                       // ***TEMP***
+    DEBUGPRINT("E-Stop pushed."); 
+    if (gDirection == 0 || gDialogHandle != 0)          // must be in normal run
+    {   return; }                                       // ignore if not running                      
+    set_escalator_state(0);                             // stop escalator
+    llPlaySound(SOUNDBRAKE,1.0);                        // play brake sound  
+    gEstopPushed = TRUE;
+    llSetTimerEvent(ESTOPTIME);                         // restart after time interval
 }
 
 default
@@ -308,11 +318,13 @@ default
     {   
         key toucherID = llDetectedKey(0);       // who touched?
         integer touchedface =  llDetectedTouchFace(0);  // what did they touch?
+        DEBUGPRINT("Touch on face " + (string)touchedface);
         move_check();                           // check if moved before dialog
         if (touchedface == ESTOPFACE)           // if emergency stop pushed
         {   estop_pushed(); return; }            // emergency stop pushed
         if (gLocked && (toucherID != llGetOwner())) { return; } // ignore touch if locked and not owner
         llListenRemove(gDialogHandle);          // remove any old listener
+        gDialogHandle = 0;                      // no listener now
         list choices = [];                      // dialog box option
         if (gDirection == 1) { choices += "⬤ Up"; } else {choices += "Up"; }
         if (gDirection == -1) { choices += "⬤ Down"; } else {choices += "Down"; }
@@ -320,7 +332,8 @@ default
         if (gLocked) { choices += "☑ Locked"; } else {choices += "☐ Locked"; }
         llDialog(toucherID, "Escalator control", choices, gDialogChannel);
         gDialogHandle = llListen(gDialogChannel, "", toucherID, ""); // wait for dialog
-        llSetTimerEvent(60.0);                  // just for cleanup
+        gEstopPushed = FALSE;                   // we are now using the timer
+        llSetTimerEvent(60.0);                  // just for dialog cleanup
     }
         
     listen(integer channel, string name, key id, string message)
@@ -336,8 +349,15 @@ default
 
     timer()
     {   // dialog listener cleanup
-        llSetTimerEvent(0); 
-        llListenRemove(gDialogHandle);
+        llSetTimerEvent(0);
+        if (gDialogHandle)                              // if had dialog up and ignored
+        {   llListenRemove(gDialogHandle);
+            gDialogHandle = 0;
+        }
+        if (gEstopPushed)                               // restart after E-stop
+        {   gEstopPushed = FALSE;                       // clear E-stop
+            set_escalator_state(gLastDirection);        // restart in same direction
+        }
     }
     
     changed(integer change)
