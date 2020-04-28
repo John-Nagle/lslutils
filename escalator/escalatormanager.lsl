@@ -33,6 +33,7 @@
 #else
 #define DEBUGPRINT(msg) 
 #endif
+string  STEPSNAME = "steps";                        // Steps object must contain " 27 steps" or appropriate number
 float   STEPHEIGHT = 0.23;                          // used to calculate number of steps needed
 float   NONSTEPHEIGHT = 2.25;                       // part of escalator height not devoted to steps
 integer EXTRASTEPS = 1;                             // steps to add so motion works
@@ -202,11 +203,25 @@ set_escalator_state(integer direction)
     llShout(COMMANDCHANNEL, llList2Json(JSON_OBJECT, ["reply", "status", "status", stat, "dir", (string) gDirection, "name", llGetObjectName()]));                          
 }
 //
-//  place_object -- rez and place object
+//  find_object_by_namepart -- look up object in prim inventory by a substrint of the name
+//
+string find_object_by_namepart(string namepart) 
+{
+    integer cnt =  llGetInventoryNumber(INVENTORY_OBJECT); // number of objects in prim inventory
+    integer i;
+    for (i=0; i<cnt; i++)                               // search for a step object with the right number of steps
+    {   string objname = llGetInventoryName(INVENTORY_OBJECT,i); // nth inventory object
+        if (llSubStringIndex(objname, namepart) >= 0)   // if substring match
+        {   return(objname);    }                       // find
+    }
+    return("");                                         // no find
+}
+//
+//  place_steps -- rez and place object
 //
 //  Steps are rezzed at the same place as the escalator frame, then adjusted by the steps themselves to align.
 //
-place_object(string name)
+place_steps(string name)
 {
     //  Delete old object
     if (gRezzedObjectID) 
@@ -220,6 +235,13 @@ place_object(string name)
     float stepareaheight = hibound.z - lobound.z - NONSTEPHEIGHT;               // height 
     integer stepcount = llCeil(stepareaheight / STEPHEIGHT) + EXTRASTEPS; // number of steps needed
     DEBUGPRINT("Height " + (string)stepareaheight + " needs " + (string)stepcount + " steps."); // ***TEMP*** 
+    //  The object's inventory may contain step sets of various sizes. This rezzes the appropriate one.
+    string namepart = " " + (string) stepcount + " " + name;  // steps object must contain space + number of steps + name
+    name = find_object_by_namepart(namepart);           // look up object
+    if (name == "")                                     // if no find
+    {   llSay(DEBUG_CHANNEL, "No steps of the right size in the prim. Need \"" + namepart + "\".");
+        return;                                         // can't start
+    }
     vector topref = <(hibound.x+lobound.x)*0.5,lobound.y,hibound.z>;   // center of top bound line
     DEBUGPRINT("Top ref, local, unadjusted: " + (string)topref);    // ***TEMP***
     rotation rot = llGetRot();                          // rotation to world
@@ -249,7 +271,7 @@ move_check()
     || (llFabs(llAngleBetween(llGetRot(),gPrevRot)) > 0.0005))
     {
         string objectname = llGetInventoryName(INVENTORY_OBJECT, 0); // first obj
-        place_object(objectname);
+        place_steps(objectname);
     }
 }
 //
@@ -266,8 +288,8 @@ default
     {   gScale = llGetScale();                          // save object size
         setup_command_listen();
         gDialogChannel = - (integer)(llFrand(MAXINT-MINCHAN) + MINCHAN);  // for dialog msgs
-        string objectname = llGetInventoryName(INVENTORY_OBJECT, 0); // first obj
-        place_object(objectname);
+        string objectname = STEPSNAME;                  // identifies steps object in prim
+        place_steps(objectname);
         gDirection = 0;                                 // not running
         set_escalator_anims();                          // set anims
         set_traffic_light(0);                           // set green and red lights                           
