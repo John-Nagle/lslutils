@@ -32,13 +32,17 @@
 #define DEBUGPRINT(msg) { llOwnerSay(msg); }
 #else
 #define DEBUGPRINT(msg) 
-#endif 
+#endif
+float   STEPHEIGHT = 0.23;                          // used to calculate number of steps needed
+float   NONSTEPHEIGHT = 2.25;                       // part of escalator height not devoted to steps
+integer EXTRASTEPS = 1;                             // steps to add so motion works
 integer STEPSANIMLINK = 2;
 integer STEPSANIMFACE = ALL_SIDES;
 integer RAILANIMLINK = 1;
 integer RAILANIMFACE = 3;
 integer TRAFFICLIGHTLINK = 1;
 integer TRAFFICLIGHTFACE = 4;
+integer ESTOPFACE = 6;                              // emergency stop button
 
 float STEPSANIMRATE = -2.0;                         // steps animation speed
 float RAILANIMRATE = 0.80;                          // railing rate per meter of escalator length
@@ -173,8 +177,6 @@ set_escalator_anims()
     }
     else
     {   //  Stop. Maintains same orientation as active anim
-        ////llSetLinkTextureAnim(RAILANIMLINK, ANIM_ON|SMOOTH, RAILANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
-        ////llSetLinkTextureAnim(STEPSANIMLINK, ANIM_ON|SMOOTH, STEPSANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
         llSetLinkTextureAnim(STEPSANIMLINK, SMOOTH, STEPSANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
         llSetLinkTextureAnim(RAILANIMLINK, SMOOTH, RAILANIMFACE, 1, 1, 1.0, -1.0, 1.0); // stop previous animation
         llStopSound();                                  // silence
@@ -215,6 +217,9 @@ place_object(string name)
     list bounds = llGetBoundingBox(llGetKey());         // get bounds of frame
     vector lobound = llList2Vector(bounds,0);           // low bound, own coords
     vector hibound = llList2Vector(bounds,1);           // high bound, own coords
+    float stepareaheight = hibound.z - lobound.z - NONSTEPHEIGHT;               // height 
+    integer stepcount = llCeil(stepareaheight / STEPHEIGHT) + EXTRASTEPS; // number of steps needed
+    DEBUGPRINT("Height " + (string)stepareaheight + " needs " + (string)stepcount + " steps."); // ***TEMP*** 
     vector topref = <(hibound.x+lobound.x)*0.5,lobound.y,hibound.z>;   // center of top bound line
     DEBUGPRINT("Top ref, local, unadjusted: " + (string)topref);    // ***TEMP***
     rotation rot = llGetRot();                          // rotation to world
@@ -247,6 +252,13 @@ move_check()
         place_object(objectname);
     }
 }
+//
+//  estop_pushed  -- someone pushed emergency stop
+//
+estop_pushed()
+{
+    llOwnerSay("E-Stop pushed.");                       // ***TEMP***
+}
 
 default
 {
@@ -273,7 +285,10 @@ default
     touch_start(integer num_detected)           // user interface
     {   
         key toucherID = llDetectedKey(0);       // who touched?
+        integer touchedface =  llDetectedTouchFace(0);  // what did they touch?
         move_check();                           // check if moved before dialog
+        if (touchedface == ESTOPFACE)           // if emergency stop pushed
+        {   estop_pushed(); return; }            // emergency stop pushed
         if (gLocked && (toucherID != llGetOwner())) { return; } // ignore touch if locked and not owner
         llListenRemove(gDialogHandle);          // remove any old listener
         list choices = [];                      // dialog box option
