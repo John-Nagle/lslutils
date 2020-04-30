@@ -196,11 +196,13 @@ set_escalator_state(integer direction)
     if (direction == gDirection) { return; }    // no change in dir
     gEstopPushed = FALSE;                       // clear any e-stop
     gDirection = direction;                     // change direction
-    llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
+    llShout(gRezzedObjectID, llList2Json(JSON_OBJECT, // tell steps to change direction
         ["command","DIR", "direction", (string)gDirection]));
+    set_traffic_light(gDirection);                      // set green and red lights
+    if (gDirection != 0)
+    {   llSleep(5.0);   }                       // allow time for step state change before changing anims
     //  Animation of flat steps which are part of the escalator base and do not move.
     set_escalator_anims();
-    set_traffic_light(gDirection);                      // set green and red lights
     string stat = "stopped";
     if (gDirection != 0)
     {   stat = "running";                               // true if running
@@ -265,14 +267,6 @@ place_steps(string name)
     gPrevPos = llGetPos();                  // previous location
     gPrevRot = llGetRot();
     DEBUGPRINT("Placed " + name + " id: " + (string) randomid); // ***TEMP***
-#ifdef OBSOLETE
-    llSleep(3.0);                           // allow object time to rez
-    //  ****MAY NEED TO WAIT LONGER OR GET ACK DUE TO SERVER CHANGE***
-    llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
-        ["command","REFPOS", "refpt", gTopref]));     // send position of reference point, global coords
-    llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
-        ["command","DIR", "direction", (string)gDirection]));
-#endif // OBSOLETE
 }
 
 move_check() 
