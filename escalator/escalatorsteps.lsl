@@ -13,9 +13,6 @@ integer gOn;
 vector gStartPos;                               
 rotation gStartRot;                             
 integer gDirection = 0;                         
-////vector gPusherRelPos;                           
-////integer PUSHERPRIMLINK = 2;                     
-////vector PUSHERRETRACT = <0,0,-0.30>;             
 float CYCLETIME = 0.5;
 float MOTIONDIST; 
 float TEXCYCLETIME;                             
@@ -25,6 +22,12 @@ float SENSORDIST = 50.0;                // turn on if this close
 vector BOUNDINGBOXERROR = <0.05,0.05,0.05>; // result from llGetBoundingBox is oversized by this much                     
 
 vector STEPMOVE = <-0.0,-0.35,0.23>;
+
+#ifdef DEBUG                                        // define DEBUG for messages
+#define DEBUGPRINT(msg) { llOwnerSay(msg); }
+#else
+#define DEBUGPRINT(msg) 
+#endif
 
 
 stop_belt()
@@ -62,7 +65,6 @@ start_belt(integer direction)
 
 init()
 {   
-    ////MOTIONDIST = CYCLETIME*2.0;
     MOTIONDIST = CYCLETIME*1.0; 
     TEXSCALEX = MOTIONDIST*0.5;
     TEXSCALEX = 0.5/MOTIONDIST;
@@ -82,19 +84,6 @@ default
     {   
         llSetLinkPrimitiveParams(LINK_THIS, [PRIM_SCRIPTED_SIT_ONLY, TRUE]); // cannot sit on belt
         init(); 
-#ifdef OBSOLETE            
-        ////MOTIONDIST = CYCLETIME*2.0;
-        MOTIONDIST = CYCLETIME*1.0; 
-        TEXSCALEX = MOTIONDIST*0.5;
-        TEXSCALEX = 0.5/MOTIONDIST;
-        TEXCYCLETIME = 1.0/CYCLETIME;
-        llSetKeyframedMotion([],[]);
-        gOn = FALSE;                                
-        llSleep(CYCLETIME*2.0);                     
-        gStartPos = llGetPos();                     
-        gStartRot = llGetRot();
-        llSensorRepeat("","",AGENT,SENSORDIST, PI, STOPTIME);                               // always be scanning
-#endif // OBSOLETE
     }
     
     sensor(integer num_detected)
@@ -112,13 +101,18 @@ default
         ////llOwnerSay("Listening on channel " + (string)id);   // ***TEMP***
         if (id == 0)
         {   llOwnerSay("Rezzed manually for test. No automatic install."); return; }
-        integer listenHandle_a = llListen(id, "", "", "");  // must be "DIE" on this channel  
-        init();                                 // set up   
-    }    
+        integer listenHandle_a = llListen(id, "", "", "");  // must be "DIE" on this channel
+        llSay(id, llList2Json(JSON_OBJECT,["reply","rezzed"])); // I'm alive, ready to receive commands.  
+        init();                                             // set up   
+    }  
+    
+    //
+    //  listen for commands from escalator manager to place belt
+    // 
     listen(integer channel, string name, key listenid, string message)
     {   
         list msglist = llJson2List(message);
-        ////llOwnerSay("Belt command: " + message); // ***TEMP***
+        DEBUGPRINT("Belt command: " + message); // ***TEMP***
         string cmd = llJsonGetValue(message, ["command"]);    // what are we supposed to do?
         if (cmd == "DIE")
         {   llDie(); return; }                      // controller wants us to go away
@@ -137,12 +131,11 @@ default
             vector hibound = llList2Vector(bounds,1) - BOUNDINGBOXERROR;
             vector toppt = <(hibound.x + lobound.x)*0.5, lobound.y, hibound.z>; // top pt in object coords
             //  Center check
-            llOwnerSay("Bounds: " + llDumpList2String(bounds,","));  // ***TEMP***
+            DEBUGPRINT("Bounds: " + llDumpList2String(bounds,","));  // ***TEMP***
             gStartRot = llGetRot();                         // rotation for steps
             gStartPos = refpt - toppt*gStartRot;            // align to make steps match upper platform
-            llOwnerSay("Aligning steps to " + (string)gStartPos); // ***TEMP***
+            DEBUGPRINT("Aligning steps to " + (string)gStartPos); // ***TEMP***
             stop_belt();                                    // stop before moving, position to home pos
-            ////llSetPos(gStartPos);                            // move there
             return;
         }
         llOwnerSay("Unrecognized command: " + message); // not expected

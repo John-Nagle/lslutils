@@ -76,7 +76,9 @@ integer gDialogChannel;                 // for talking to user
 integer gDialogHandle = 0;              // listening for dialog response
 vector gScale = ZERO_VECTOR;            // scale of object
 integer gCommandHandle = 0;             // for command listener
+integer gReplyHandle = 0;               // for steps reply listener
 integer gEstopPushed = FALSE;           // true if e-stop pushed
+vector gTopref = ZERO_VECTOR;           // reference position of top of steps
 
 //
 //  vector_mult - multiply vector by vector elementwise
@@ -247,27 +249,30 @@ place_steps(string name)
     {   llSay(DEBUG_CHANNEL, "No steps of the right size in the prim. Need \"" + namepart + "\".");
         return;                                         // can't start
     }
-    vector topref = <(hibound.x+lobound.x)*0.5,lobound.y,hibound.z>;   // center of top bound line
-    DEBUGPRINT("Top ref, local, unadjusted: " + (string)topref);    // ***TEMP***
+    gTopref = <(hibound.x+lobound.x)*0.5,lobound.y,hibound.z>;   // center of top bound line
+    DEBUGPRINT("Top ref, local, unadjusted: " + (string)gTopref);    // ***TEMP***
     rotation rot = llGetRot();                          // rotation to world
-    topref = (topref + TOPREFOFFSET + STEPSOFFSET)*rot + llGetPos(); 
-    DEBUGPRINT("Top ref, global, adjusted: " + (string)topref);    // ***TEMP*** 
+    gTopref = (gTopref + TOPREFOFFSET + STEPSOFFSET)*rot + llGetPos(); 
+    DEBUGPRINT("Top ref, global, adjusted: " + (string)gTopref);    // ***TEMP***
     //  Rez new object
     rot = rot * llEuler2Rot(INITIALROTANG*DEG_TO_RAD); // rotate before rezzing
     vector pos = llGetPos();            // rez at escalator root, adjust later in steps
     //  unique integer channel number in range frand can handle
-    integer randomid = - (integer)(llFrand(MAXINT-MINCHAN) + MINCHAN); 
+    integer randomid = - (integer)(llFrand(MAXINT-MINCHAN) + MINCHAN);
+    gRezzedObjectID = randomid;                         // random channel for comms with steps
+    gReplyHandle = llListen(gRezzedObjectID,"", "","");    // listen on reply channel  
     llRezObject(name, pos, <0,0,0>, rot, randomid); // create the object
-    gRezzedObjectID = randomid;
     gPrevPos = llGetPos();                  // previous location
     gPrevRot = llGetRot();
     DEBUGPRINT("Placed " + name + " id: " + (string) randomid); // ***TEMP***
+#ifdef OBSOLETE
     llSleep(3.0);                           // allow object time to rez
     //  ****MAY NEED TO WAIT LONGER OR GET ACK DUE TO SERVER CHANGE***
     llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
-        ["command","REFPOS", "refpt", topref]));     // send position of reference point, global coords
+        ["command","REFPOS", "refpt", gTopref]));     // send position of reference point, global coords
     llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
         ["command","DIR", "direction", (string)gDirection]));
+#endif // OBSOLETE
 }
 
 move_check() 
@@ -342,6 +347,19 @@ default
         {   command_listen(channel, name, id, message); }
         else if (channel == gDialogChannel)                             // dialog listen
         {   dialog_listen(channel, name, id, message); }
+        else if (channel == gRezzedObjectID)
+        {   DEBUGPRINT("Belt reply: " + message);                   // handshake with newly rezzed belt
+            string reply = llJsonGetValue(message, ["reply"]);      // what message?
+            if (reply == "rezzed")                                  // just rezzed?
+            {
+                llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
+                    ["command","REFPOS", "refpt", gTopref]));     // send position of reference point, global coords
+                llShout(gRezzedObjectID, llList2Json(JSON_OBJECT,
+                    ["command","DIR", "direction", (string)gDirection]));
+                llListenRemove(gReplyHandle);                       // rezzing is a one time thing
+                gReplyHandle = 0;    
+            }
+        }
         else 
         {   llSay(DEBUG_CHANNEL, "Unexpected message on channel " + (string)channel + ": " + message); }
     }
