@@ -128,13 +128,11 @@ bhvStop()
 //
 //  bhvTick -- call every at least once a minute when running the path system.
 //
-//  This is used only for a stall timer.
-//  Failure to call this will cause a script restart.
+//  This was intended only for a stall timer.
 //
 //
 bhvTick()
 {
-    bhvreqreg();                                        // request registration if needed
 }
 
 //
