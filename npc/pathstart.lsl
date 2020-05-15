@@ -40,7 +40,11 @@ pathLinkMsg(string jsn, key hitobj)
     integer status = (integer)llJsonGetValue(jsn, ["status"]);  // status and pathid via JSON.
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);  // hitobj as key param in link message
     if (pathid != gLocalPathId)                         // result from a cancelled operation
-    {   pathMsg(PATH_MSG_WARN, "Stale path completed msg discarded."); return; }
+    {   pathMsg(PATH_MSG_WARN, "Stale path completed msg #" + 
+            (string)pathid + "(expected #" + (string)gLocalPathId + "), status " + (string)status + " discarded.");
+        if (pathid > gLocalPathId) { pathMsg(PATH_MSG_ERROR,"Path completed pathid too large."); }  // ***TEMP***    out of sync          
+        return;
+    }
     pathMsg(PATH_MSG_NOTE,"Path complete, status " + (string)status + ", hitobj: " + (string)hitobj + " Time: " + (string)llGetTime());
     if (pathretry(status, hitobj)) { return; }          // attempt a retry
     pathUpdateCallback(status, hitobj);
