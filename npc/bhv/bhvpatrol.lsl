@@ -186,7 +186,7 @@ restart_patrol()
 {
     debugMsg(DEBUG_MSG_WARN,"Patrol to " + (string)gPatrolDestination);
     bhvAnimate(gAnimWait);                          // applies only when stalled during movement
-    bhvNavigateTo(gPatrolRegionCorner,gPatrolDestination,0,gSpeed);  // head for next pos
+    bhvNavigateTo(gPatrolRegionCorner,gPatrolDestination + <0,0,gBhvHeight*0.5>,0,gSpeed);  // head for next pos
     gAction = ACTION_PATROL;                        // patrolling
 }
 //

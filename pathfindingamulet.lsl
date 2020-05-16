@@ -93,7 +93,7 @@ mouselooktouch()
         if (stopix >= 0)                                // if stops search
         {   if (covered) { walkable = FALSE; }       // if covered, not walkable
             if (walkable) 
-            {   llSay(0,"CAN walk here."); }
+            {   llSay(0,"CAN walk here, at " + (string)hitpos); }
             else
             {   llSay(0,"CANNOT walk here."); }
             return;
