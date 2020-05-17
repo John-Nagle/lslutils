@@ -228,10 +228,7 @@ default
             }
             //  Use the system's GetStaticPath to get an initial path
             list pts = pathtrimmedstaticpath(startpos, goal, stopshort, gPathWidth + PATHSTATICTOL);
-            integer len = llGetListLength(pts);                          
-            ////pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(gPts,-1) + ", "+ (string)llGetListLength(gPts) + 
-            ////    " pts: " + llDumpList2String(pts,","));             // dump list for debug
-            pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(pts,-1) + ", "+ (string)len + " points.");  // dump list for debug
+            pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(pts,-1) + ", "+ (string)llGetListLength(pts) + " points.");  // dump list for debug
             integer status = llList2Integer(pts,-1);                // last item is status
             //  Adjust endpos vertically if having trouble finding the static path.
             //  llStaticPath endpoints need to be within about 0.5m of the navmesh.
@@ -249,7 +246,7 @@ default
                 }
             }
             //  Dealt with invalid goal error, if possible
-            if (status != 0 || len < 3)            // if static path fail or we're already at destination
+            if (status != 0 || llGetListLength(pts) < 3)            // if static path fail or we're already at destination
             {   //  Bug check - sometimes llGetStaticPath returns PU_FAILURE_UNREACHABLE when the problem is that the current position is inescapable.
                 //  This tends to happen very close to vertical objects like railings.
                 //  This gets treated as a PU_FAILURE_INVALID_START, which causes a recover cycle to the last good point.
@@ -286,7 +283,7 @@ default
             ////pathMsg(PATH_MSG_WARN,"Cleaned: " +  llDumpList2String(pts,","));                       // ***TEMP***
             pts = pathptstowalkable(pts, gPathHeight);                    // project points onto walkable surface
             ////pathMsg(PATH_MSG_INFO,"Walkables");                     // ***TEMP***
-            len = llGetListLength(pts);                            // update number of points after cleanup
+            integer len = llGetListLength(pts);                            // update number of points after cleanup
             if (len < 2)
             {   
                 pathdeliversegment([], FALSE, TRUE, gPathprepPathid, PATHERRMAZENOPTS);        // empty set of points, no maze, done.
