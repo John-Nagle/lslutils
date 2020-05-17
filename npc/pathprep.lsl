@@ -17,6 +17,7 @@
 //
 float MINSEGMENTLENGTH = 0.025; /// 0.10;                   // minimum path segment length (m)
 #define MAXREGIONMOVE (1000.0)                              // cap move at 1km
+#define NAVMESHFINDTOL (0.10)                               // increment when searching for navmesh
 
 list TRIALOFFSETS = [<-1,0,0>,<1,0,0>,<0,1,0>,<0,-1,0>]; // try coming from any of these directions for start point validation
 //
@@ -232,6 +233,22 @@ default
             ////    " pts: " + llDumpList2String(pts,","));             // dump list for debug
             pathMsg(PATH_MSG_INFO,"Static path, status " + (string)llList2Integer(pts,-1) + ", "+ (string)len + " points.");  // dump list for debug
             integer status = llList2Integer(pts,-1);                // last item is status
+            //  Adjust endpos vertically if having trouble finding the static path.
+            //  llStaticPath endpoints need to be within about 0.5m of the navmesh.
+            //  Not in a separate function to avoid copying the long list of points again
+            if (status == PU_FAILURE_INVALID_GOAL)                  // if trouble at the goal
+            {   float offset;                                       // endpoint offset when trying to find navmesh
+                for (offset = gPathHeight; offset > -gPathHeight; offset -= NAVMESHFINDTOL) // search downward, += one NPC height
+                {   pts = pathtrimmedstaticpath(startpos, goal + <0,0,offset>, stopshort, gPathWidth + PATHSTATICTOL);
+                    integer wstatus = llList2Integer(pts,-1);       // get working status
+                    if (wstatus == 0)                               // success
+                    {   pathMsg(PATH_MSG_WARN,"Endpoint search found navmesh at offset " + (string)offset);
+                        status = wstatus;                           // use these points and status
+                        offset = -999999;                           // force loop exit (no break keyword in LSL)
+                    }
+                }
+            }
+            //  Dealt with invalid goal error, if possible
             if (status != 0 || len < 3)            // if static path fail or we're already at destination
             {   //  Bug check - sometimes llGetStaticPath returns PU_FAILURE_UNREACHABLE when the problem is that the current position is inescapable.
                 //  This tends to happen very close to vertical objects like railings.

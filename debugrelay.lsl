@@ -7,7 +7,7 @@
 //   2019
 //
 //  This picks up anything on DEBUG_CHANNEL and 
-//  forwards it to llOwnerSay and IM. It's to catch
+//  forwards it to llOwnerSay, IM, and email. It's to catch
 //  errors such as "Stack/heap collision" that don't show up
 //  in owner chat unless you're close to the source of the problem.
 //
@@ -23,7 +23,7 @@
 //
 #define DEBUG_LOG_MAX 30                                    // max number of messages to keep
 #define DEBUG_MIN_MEM 8000                                  // truncate messages if less free mem than this
-#define DEBUG_SHORT_MSG 150                                 // truncate messages to this length before storage
+#define DEBUG_SHORT_MSG 200                                 // truncate messages to this length before storage
 
 #define pathGetRoot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))   // get root key of object.
 
@@ -94,6 +94,15 @@ buffermsg(string name, key id, integer msglev, string message)
 }
 
 //
+//  logdumptoemail -- dump error to email
+//
+//  No length limit here, but a 30 second delay
+//
+logdumptoemail(string why)
+{
+    llTargetedEmail(TARGETED_EMAIL_OBJECT_OWNER, "SL Error - " + why, llDumpList2String(gMsgLog,"\n"));
+}
+//
 //  logdumptoim  -- dump error to instant message
 //
 //  IM must not exceed 1024 bytes, so we print as many recent log messages as will fit.
@@ -149,6 +158,7 @@ seriouserrormsg(string name, key id, string message)
     integer now = llGetUnixTime();
     if (now - gDebugLastIMTime > DEBUG_MIN_IM_INTERVAL)     // do this very infrequently
     {   logdumptoim(message);                               // dump to IM
+        logdumptoemail(message);                            // dump to email
         gDebugLastIMTime = now;
         gMsgLog = [];                                       // clears log
     }
