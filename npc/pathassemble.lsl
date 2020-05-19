@@ -109,6 +109,7 @@ pathexedeliver(vector refpt, list pts, integer pathid, integer segmentid, intege
     {   //  Check for stale path ID.  Path ID wraps around but is always positive.
         if (pathid < gPathExeId || pathid-1000 > gPathExeId) { pathMsg(PATH_MSG_WARN,"Stale path segment " + (string)pathid + " ignored."); return; }// segment out of sequence
         //  Legit segment. Must either do it or return a completion to the caller.
+        pathMsg(PATH_MSG_NOTE,"Starting assembly of pathid " + (string)pathid); // starting to put it together
         pathexestop(0);                                     // normal start, reset to clear state.
         gPathExeId = pathid;                                // now working on this pathid
         gPathExeEOF = FALSE;                                // not at EOF

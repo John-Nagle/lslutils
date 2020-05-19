@@ -54,13 +54,13 @@ pathLinkMsg(string jsn, key hitobj)
 //  pathprepstart -- start the path planner task
 //
 pathprepstart(key target, vector regioncorner, vector goal, float stopshort, float speed, float testspacing, integer pathid)
-{   pathMsg(PATH_MSG_INFO,"Path plan start req, pathid: " + (string)pathid);
-    string params = llList2Json(JSON_OBJECT,
-        ["request","pathprep", 
+{   
+    string jsn = llList2Json(JSON_OBJECT,
+        ["request","pathprep", "pathid", pathid,
         "target",target, "regioncorner", regioncorner, "goal", goal, "stopshort", stopshort, "testspacing", testspacing,
-        "speed", speed, "turnspeed", gPathcallTurnspeed,
-        "pathid", pathid]);
-    llMessageLinked(LINK_THIS, PATHPLANREQUEST, params,"");   // send to path prep 
+        "speed", speed, "turnspeed", gPathcallTurnspeed]);
+    pathMsg(PATH_MSG_NOTE,"Path prep start: " + jsn);
+    llMessageLinked(LINK_THIS, PATHPLANREQUEST, jsn,"");   // send to path prep 
 }
 //
 //  pathbegin -- go to indicated point or target. Internal fn.
@@ -195,7 +195,7 @@ default
     //    
     link_message(integer status, integer num, string jsn, key id)
     {   if (num == PATHSTARTREQUEST)                                     // if request for a planning job
-        {   pathMsg(PATH_MSG_NOTE,"Path request (" + (string)num +"): " + jsn);
+        {   pathMsg(PATH_MSG_NOTE,"Path request:" + jsn);
             integer requestid = (integer)llJsonGetValue(jsn,["requestid"]); // caller controls the path serial number
             string request = llJsonGetValue(jsn,["request"]);           // get request type
             if (request == "pathbegin")                                 // common start function

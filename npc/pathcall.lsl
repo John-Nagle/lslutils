@@ -103,7 +103,7 @@ pathTick()
 {   if ((gPathcallStarttime != 0) && (llGetUnixTime() - gPathcallStarttime) > PATHCALLSTALLTIME)
     {   //  TROUBLE - the system is stalled.
         if (gPathcallTimeouts++ < 3)                // but it might be a region restart and the changed event is in queue
-        {   debugMsg(DEBUG_MSG_NOTE, "Stalled, possible region restart.");
+        {   debugMsg(DEBUG_MSG_INFO, "Stalled, possible region restart.");
             return;                                 // delay a few cycles to let region restart take place.
         }
         debugMsg(DEBUG_MSG_ERROR, "Stalled and reset. Last command: " + gPathcallLastCommand); // tell owner
