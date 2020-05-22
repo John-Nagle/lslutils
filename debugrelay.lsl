@@ -34,6 +34,8 @@ integer gDebugChannel = 0;                                  // listen channels
 integer gLogChannel = 0;
 integer gVerbose = FALSE;                                   // quiet unless turned on
 list gMsgLog;                                               // circular buffer of messages
+string gDebugChanMsg;                                       // recent debug channel message
+integer gDebugChanMsgTime = 0;                              // time of debug channel message
 key gRootkey;                                               // our root prim
 
 //
@@ -144,7 +146,12 @@ logdumptoowner(string why)
 //
 debugchanmsg(string name, key id, string message)
 {   if (pathGetRoot(id) != gRootkey) { return; }            // has to be from us
-    seriouserrormsg(name,id,message);
+    message = name + " in trouble at " + llGetRegionName() + " " + (string)llGetPos() + ": " + message;
+    buffermsg(name, id, DEBUG_MSG_ERROR, message);          // add to stored messages
+    if (gDebugChanMsg == "")                                // if no stored message
+    {   gDebugChanMsg = message;                            // save for now, will dump in a second or two
+        llSetTimerEvent(2.0);                               // wait for remainder of message
+    } 
 }
 
 //
@@ -154,6 +161,14 @@ seriouserrormsg(string name, key id, string message)
 {   if (pathGetRoot(id) != gRootkey) { return; }            // has to be from us
     message = name + " in trouble at " + llGetRegionName() + " " + (string)llGetPos() + ": " + message;
     buffermsg(name, id, DEBUG_MSG_ERROR, message);
+    outputmsgs(message);
+}
+
+//
+//  outputmsgs -- output the stored messages
+//
+outputmsgs(string message)
+{
     logdumptoowner(message);                                // to local owner
     integer now = llGetUnixTime();
     if (now - gDebugLastIMTime > DEBUG_MIN_IM_INTERVAL)     // do this very infrequently
@@ -206,6 +221,16 @@ default
     on_rez(integer start_param)
     {
         llResetScript();
+    }
+    
+    timer()
+    {
+   
+        if (gDebugChanMsg != "")                            // if stored message waiting for multiline output
+        {   outputmsgs(gDebugChanMsg);                      // output all stored messages
+            gDebugChanMsg = "";
+        }
+        llSetTimerEvent(0.0);                               // wait for remainder of messag
     }
     
     //  Message on debug channel. Relay.
