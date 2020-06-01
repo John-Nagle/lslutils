@@ -708,7 +708,7 @@ default
             //  "probespacing" is the spacing between llCastRay probes.
             //  "height" and "radius" define the avatar's capsule. 
             //  
-            pathMsg(PATH_MSG_INFO,"Request to maze solver: " + jsn);            // verbose mode
+            pathMsg(PATH_MSG_NOTE,"Request to maze solver: " + jsn);            // verbose mode
             assert(gPathWidth > 0);                                 // must be initialized properly
             integer status = 0;                                     // so far, so good
             string requesttype = llJsonGetValue(jsn,["request"]);   // request type

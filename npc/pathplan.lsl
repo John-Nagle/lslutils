@@ -77,7 +77,7 @@ pathplan(float stopshort, integer pathid)
 //  So we have to start it again, if there's more work.
 //
 pathmazesolverdone(integer pathid, integer segmentid, integer status)
-{   pathMsg(PATH_MSG_INFO, "Maze solver done with pathid: " + (string)pathid + " segment: " + (string)segmentid + " status: " + (string)status);
+{   pathMsg(PATH_MSG_NOTE, "Maze solver done with pathid: " + (string)pathid + " segment: " + (string)segmentid + " status: " + (string)status);
     if (gPts == []) { return; }                             // no more planning needed
     if (pathid != gReqPathid) { return; }                   // from some other pathid, do not use
     if (status != 0)                                        // if an error on what we're working on, stop.
