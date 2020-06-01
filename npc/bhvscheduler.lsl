@@ -408,7 +408,7 @@ default
     
     changed(integer change)
     {
-        if (change & CHANGED_REGION_START)                      // region restart
+        if ((change & CHANGED_REGION_START) && gCharacterRunning)        // region restart while active
         {   llResetScript(); }                                  // reset the NPC completely
     }
  
