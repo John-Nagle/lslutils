@@ -353,13 +353,13 @@ pathexemazedeliver(string jsn)
     if (requesttype != "mazesolve") { pathexestop(PATHERRMAZEFORMAT); return; }              // ignore, not our msg
     integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]);
     integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
+    integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     //  If a move is stopped, the maze solver may still be running and sending maze solves.
     //  Discard such stale maze solves.
     if (pathid != gPathExeId && segmentid != 0)                     // if stale result
-    {   ////pathMsg(PATH_MSG_WARN,"Discarding stale maze solve result.");
+    {   pathMsg(PATH_MSG_WARN,"Discarding stale maze solve, status " + (string)status + ", pathid " + (string)pathid + ", expected " + (string)gPathExeId);
         return;
     }
-    integer status = (integer)llJsonGetValue(jsn, ["status"]);      // get status from msg
     key hitobj = (key)llJsonGetValue(jsn,["hitobj"]);           // obstacle which started (not stopped) maze solve
     vector refpt = (vector)llJsonGetValue(jsn,["refpt"]);       // region corner to which points are relative
     if (status != 0) { pathexedeliver(refpt, [ZERO_VECTOR],pathid, segmentid, TRUE, status, hitobj); return; } // EOF with error, needed if first segment is bad.
