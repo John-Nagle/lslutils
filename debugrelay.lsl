@@ -21,7 +21,7 @@
 //
 #include "debugmsg.lsl"
 //
-#define DEBUG_LOG_MAX 30                                    // max number of messages to keep
+#define DEBUG_LOG_MAX 40                                    // max number of messages to keep
 #define DEBUG_MIN_MEM 8000                                  // truncate messages if less free mem than this
 #define DEBUG_SHORT_MSG 200                                 // truncate messages to this length before storage
 
