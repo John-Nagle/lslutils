@@ -66,7 +66,7 @@ objects as "walkable", "static obstacle", or "movable obstacle".
 The general rule is that anything much bigger than a car needs to be marked
 as a static obstacle. This is done with the pathfinding properties dialog.
 
-![The pathfinding properties dialog, found under Build->Pathfinding->Region Objects](npcmanualobjectdialog.jpg)
+![The pathfinding properties dialog, found under Build->Pathfinding->Region Objects](npcmanualobjectdialog.png)
 
 Objects have to be selected by name, so if you have too many objects called "Object", you'll need to give them names.
 
