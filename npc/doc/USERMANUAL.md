@@ -25,6 +25,8 @@ You have purchased an Animats Non-Player Character.
 4. Edit the copy to add at least two patrol points in the walkable area to the notecard, as shown below.
 
 5. Drag the notecard to the NPC and drop it on the NPC. This will restart the NPC with the new notecard.
+(DRAG AND DROP NOT IMPLEMENTED YET. Configuration is in the notecard in the prim with the "bhvpatrol", etc. scripts
+and has to be put there with Edit.)
 
 6. The NPC should now go back and forth between the two points.
 
@@ -43,12 +45,53 @@ If a vehicle is headed for the NPC, the NPC will take action to avoid the threat
 
 Advanced users can program additional behavors. Each behavior is a separate script, so behaviors are plug-ins.
 
-## Configuration
+## Basic configuration
+The NPC has a notecard with its configuration. The important lines look like 
+
+    #   Patrol point configuration
+    #   patrol, point, REGION, POS,  DWELLTIME, HEADINGATEND
+    patrol, point, Vallone, <207,15,36>, 20.0,  180.0
+    patrol, point, Vallone, <202,46,36>, 20.0,  45.0
+    
+This tells the NPC to go to <207,15,36> in Vallone region,
+turn to face heading 180 degrees (south) and wait 20 seconds. Then
+go to <202,46,36>, face 45 degrees (northeast) and wait 20 seconds.
+If there are more than two points, one will be chosen at random
+for each move. If there are 10 points, there are 90 possible paths.
+
+## Setting up pathfinding information for the parcel
+The parcel has to be set up for pathfinding. This just means designating
+objects as "walkable", "static obstacle", or "movable obstacle".
+
+The general rule is that anything much bigger than a car needs to be marked
+as a static obstacle. This is done with the pathfinding properties dialog.
+
+![The pathfinding properties dialog, found under Build->Pathfinding->Region Objects](npcmanualobjectdialog.jpg)
+
+Objects have to be selected by name, so if you have too many objects called "Object", you'll need to give them names.
+
+The first step is to mark the objects you want the NPC to walk on as "walkable". Usually pavement and floors.
+A linkset must be at least 10.01m x 10.01m to be walkable, so sometimes it's necessary to link objects together
+to make a walkable area. 
+
+Caution: when something is marked "walkable" or "static obstacle", it's frozen in place. *This includes doors.*
+So, linksets including doors cannot be marked walkable.
+Getting the NPCs through doors is somewhat complicated and will be covered separately.
+We have an automatic door which is NPC-friendly. Contact our support group for info.
+
+"Walkable" objects are only walkable on the non-vertical parts. Steeper than 65 degrees, and it's not walkable.
+This is very useful. Many buildings can be marked walkable as a unit, and the pathfinding system figures
+out what's walkable. Stairs can be walkable. It's best if their physics model is that of a ramp. 
+
+Ground is always walkable, and water is never walkable.
+
+
+## Advanced configuration
 
 Animats NPCs are controlled by a configuration file, a notecard.
 The notecard has lines with fields separated by commas.
 Lines beginning with a "#" are comments.
-Here's a sample configuration file.
+Here's a sample configuration file:
 
 ### A sample configuration file
 
@@ -91,7 +134,9 @@ Here's a sample configuration file.
 
     
 ### Setting up patrol points.
-The patrol points tell the NPC where to go.
+The patrol points tell the NPC where to go. The "patrol, point" lines are
+usually the only ones you have to edit.
+
 The NPC will go randomly from patrol point to patrol point.
 Patrol points are goal points; the NPC figures out how to get there on its own.
 Patrol points are given one per line, in the format
@@ -201,6 +246,8 @@ avoid jerks as the NPC shifts from one animation to another, which happens frequ
 motion. 
 
 **animator**, **always** has the list of animations which are always running. Here, an eyeblink animation is set.
+
+
 
 
 
