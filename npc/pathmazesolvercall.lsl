@@ -87,6 +87,7 @@ integer mazesolverstart(vector refpt, vector p0, vector p1, float width, float h
         "cellsize", gMazeCellSize,                  // size of a maze cell. Typically 0.333 meter
         "pathid", pathid,                           // path we are working on
         "segmentid", segmentid,                     // segment ID we are on
+        "prim",  llGetLinkNumber(),                 // what prim the maze solver is being called from
         "refpt",refpt,                              // region corner of region involved
         "pos", gMazePos,                            // corner of maze in region space
         "rot", gMazeRot,                            // rotation of maze in region space

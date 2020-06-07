@@ -43,12 +43,13 @@ queuemazesolve(integer pathid, string jsn)
     while (gMazeQueue != [] && !done)                   // get rid of stale requests
     {
         if (llList2Integer(gMazeQueue,0) != pathid)     // if stale request
-        {   gMazeQueue = llList2List(gMazeQueue,2,-1);  // remove from head of list  
+        {   gMazeQueue = llDeleteSubList(gMazeQueue,0,1); // remove from head of list  
         } else {
             done = TRUE;                                // no more stale requests to remove
         }  
     }
     gMazeQueue += [pathid,jsn];                         // add new maze solve to end of queue
+    ////llOwnerSay("Queue: " + llDumpList2String(gMazeQueue,","));  // ***TEMP***
     startnextmazesolve();                               // start the first solve on the queue if idle
 }
 
@@ -57,10 +58,10 @@ queuemazesolve(integer pathid, string jsn)
 //
 startnextmazesolve() 
 {   
-    if (gMazeQueue = []) { return; }                    // nothing queued 
+    if (gMazeQueue == []) { return; }                   // nothing queued 
     if (gMazeLastPathid >= 0) { return; }               // maze solver is busy
     string jsn = llList2String(gMazeQueue,1);           // get first JSON string
-    gMazeQueue = llList2List(gMazeQueue,2,-1);          // remove from head of list
+    gMazeQueue = llDeleteSubList(gMazeQueue,0,1);       // remove from head of list
     gMazeLastPathid = (integer) llJsonGetValue(jsn, ["pathid"]);    // what maze solver is doing now
     gMazeLastSegid = (integer)llJsonGetValue(jsn,["segmentid"]);
     gMazeLastStarttime = llGetUnixTime();               // timestamp
@@ -95,7 +96,7 @@ mazesolverdone(integer pathid, integer segid, integer status)
         while (gMazeQueue != [] && !done)                           // get rid of other requests on this pathid
         {
             if (llList2Integer(gMazeQueue,0) == pathid)             // if stale request
-            {   gMazeQueue = llList2List(gMazeQueue,2,-1);          // remove from head of list
+            {   gMazeQueue = llDeleteSubList(gMazeQueue,0,1);       // remove from head of list
                 pathMsg(PATH_MSG_WARN, "Maze solve failed, dropping later request for same pathid " + (string)pathid);  
             } else {
                 done = TRUE;                                        // no more stale requests to remove
@@ -143,7 +144,7 @@ default
         {   integer pathid = (integer) llJsonGetValue(jsn, ["pathid"]); 
             integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
             integer status = (integer) llJsonGetValue(jsn, ["status"]);
-            string prim = (integer)llJsonGetValue(jsn,["prim"]);
+            string prim = llJsonGetValue(jsn,["prim"]); // prim from which message was sent
             if (prim != JSON_INVALID)                   // if present, really from maze solver
             {   gMazePrim = (integer)prim;              // Get maze solver's prim number for later messaging
                 mazesolverdone(pathid, segmentid, status);  // maze solver is done, can send another request  

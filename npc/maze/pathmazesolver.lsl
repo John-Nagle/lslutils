@@ -715,6 +715,7 @@ default
             if (requesttype != "mazesolve") { return; }              // ignore, not our msg
             integer pathid = (integer) llJsonGetValue(jsn, ["pathid"]); 
             integer segmentid = (integer)llJsonGetValue(jsn,["segmentid"]);
+            integer callerprim = (integer) llJsonGetValue(jsn,["prim"]);  // prim from which message was sent
             gRefPt = (vector)llJsonGetValue(jsn,["refpt"]);         // corner of region to which points are relative
             gMazePos = (vector)llJsonGetValue(jsn,["pos"]);
             gMazeRot = (rotation)llJsonGetValue(jsn,["rot"]);
@@ -751,7 +752,7 @@ default
                 pathMsg(PATH_MSG_NOTE,"Maze route: " + mazerouteasstring(path));    // detailed debug
             } 
             //  Send reply                  
-            llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "pathid", pathid, "segmentid", segmentid, "status", status,
+            llMessageLinked(callerprim, MAZESOLVERREPLY, llList2Json(JSON_OBJECT, ["reply", "mazesolve", "pathid", pathid, "segmentid", segmentid, "status", status,
                 "hitobj",gMazeHitobj,
                 "pos", gMazePos, "rot", gMazeRot, "cellsize", gMazeCellSize,
                 "p0",gp0, "p1",gp1,                                 // for checking only
