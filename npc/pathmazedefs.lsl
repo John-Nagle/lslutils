@@ -37,6 +37,7 @@
 #define MAZEPATHREPLY 203                       // from path planner to execution
 #define MAZEPATHSTOP 204                        // from path planner to execution
 #define MAZEQUEUEREQUEST 205                    // from path planner to maze queue
+#define MAZERESETREQUEST 206                    // from path planner to maze resetter
 
 #define PATHSTARTREQUEST 501                    // user to path planner start
 #define PATHSTARTREPLY 502                      // path planner start reply to user

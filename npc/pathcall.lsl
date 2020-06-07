@@ -223,6 +223,7 @@ pathmasterreset()
         }
         count--;
     }
+    llMessageLinked(LINK_SET, MAZERESETREQUEST, "","");                 // tell any other prims with path scripts to reset
     gPathcallRequestId = 0;                                             // restart path IDs which keep scripts in sync
     gPathcallStarttime = 0;                                             // time last command started for stall timer
     gPathcallTimeouts = 0;                                              // no previous timeouts
