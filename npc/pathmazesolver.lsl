@@ -756,6 +756,7 @@ default
                 "pos", gMazePos, "rot", gMazeRot, "cellsize", gMazeCellSize,
                 "p0",gp0, "p1",gp1,                                 // for checking only
                 "refpt", gRefPt,
+                "prim",  llGetLinkNumber(),             // what prim the maze solver is in
                 "points", llList2Json(JSON_ARRAY, path)]),"");        
         } else if (num == PATHPARAMSINIT)
         {   pathinitparams(jsn);                        // initialize globals (width, height, etc.)

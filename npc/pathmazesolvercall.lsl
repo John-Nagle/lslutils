@@ -81,7 +81,7 @@ integer mazesolverstart(vector refpt, vector p0, vector p1, float width, float h
     assert(llVecMag(p1chk-p1) < 0.001);
 #endif // GEOMCHECK
     pathMsg(PATH_MSG_NOTE, "Sending job to maze solver, pathid: " + (string)pathid + " segmentid: " + (string)segmentid);
-    llMessageLinked(LINK_THIS, MAZESOLVEREQUEST, llList2Json(JSON_OBJECT, [
+    llMessageLinked(LINK_THIS, MAZEQUEUEREQUEST, llList2Json(JSON_OBJECT, [
         "request", "mazesolve",                     // type of request
         "probespacing", probespacing,               // distance between ray casts in height dir
         "cellsize", gMazeCellSize,                  // size of a maze cell. Typically 0.333 meter

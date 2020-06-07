@@ -32,10 +32,11 @@
 
 #define PATHPLANPREPPED 103                     // path plan prepper forwards to planner
 
-#define MAZESOLVEREQUEST 201                    // from path planner to maze solver
+#define MAZESOLVEREQUEST 201                    // from maze queue to maze solver
 #define MAZESOLVERREPLY 202                     // from maze solver to execution
 #define MAZEPATHREPLY 203                       // from path planner to execution
 #define MAZEPATHSTOP 204                        // from path planner to execution
+#define MAZEQUEUEREQUEST 205                    // from path planner to maze queue
 
 #define PATHSTARTREQUEST 501                    // user to path planner start
 #define PATHSTARTREPLY 502                      // path planner start reply to user
