@@ -377,7 +377,7 @@ pathmoverequestrcvd(string jsn)
         pathMsg(PATH_MSG_WARN,"Recover request: " + jsn);   
         integer pathid = (integer)llJsonGetValue(jsn, ["pathid"]); // must have pathid so caller can match
         if (gPathMoveActive || gPathMoveMoving || gPathMoveRecovering)   // motion in progress, can't do a forced recovery
-        {   pathMsg(PATH_MSG_ERROR,"Recover move requested while in motion"); // Doesn't really need to be a full error, just a werning.
+        {   pathMsg(PATH_MSG_WARN,"Recover move requested while in motion"); // Recovery during recovery, usually. Fail and restart
             pathdonereply(PATHERRREQOUTOFSYNC, NULL_KEY, pathid);            // end entire operation  
         }     
         else 
