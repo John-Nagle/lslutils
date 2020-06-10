@@ -110,7 +110,7 @@ pathTick()
         pathmasterreset();                          // reset other scripts
         llSleep(10.0);                              // wait for reset
         //  Rebroadcast params to everybody. These were lost during the restart.
-        llMessageLinked(LINK_THIS,PATHPARAMSINIT,llList2Json(JSON_OBJECT,["request","pathparams",
+        llMessageLinked(LINK_SET,PATHPARAMSINIT,llList2Json(JSON_OBJECT,["request","pathparams",
             "width",gPathcallWidth, "height",gPathcallHeight,"gPathcallChartype",gPathcallChartype]),"");
         pathTurnspeed(gPathcallTurnspeed);          // rebroadcast turnspeed
         debugMsgLevelBroadcast(gDebugMsgLevel, gPathcallVerbose, FALSE);// send debug params to path system
