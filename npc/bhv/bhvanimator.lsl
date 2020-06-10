@@ -273,7 +273,10 @@ default
 {
  
     state_entry()
-    {   gBhvThisService = "anim";                   // we are the "anim" service.
+    {   
+        gPrevRot = llGetRootRotation();             // start rot and pos from where we are
+        gPrevPos = llGetRootPosition();
+        gBhvThisService = "anim";                   // we are the "anim" service.
         bhvReadConfig();                            // start reading the config
     }
 
