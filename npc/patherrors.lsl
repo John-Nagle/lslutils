@@ -34,7 +34,7 @@
 #define PATHERRMAZEBACKWARDS -213                // backwards move trying to get clear of obstacle, do a retry
 
                                                  // internal errors
-#define PATHERRMAZETIMEOUT   -501                // took too long
+#define PATHERRMAZETIMEOUT   -501                // maze solve took too long
 #define PATHERRMAZENOMEM     -502                // out of memory
 #define PATHERRMAZELOOPING   -503                // runaway, didn't terminate
 #define PATHERRMAZECASTFAIL  -506                // cast ray hard failure
@@ -66,6 +66,7 @@
 #define PATHERROFFPATH       -2019              // off the path in move. Retry.
 #define PATHERRPROHIBITED    -2020              // Point is in a prohibited area (cannot enter parcel)
 #define PATHERRREGIONCROSS   -2021              // crossed a region boundary. Retry will pick up in the new region
+#define PATHERRTIMEOUT       -2022              // Stall timer tripped
 
 //
 //  List of retryable errors.  For these, try again, if there was progress on the previous try.

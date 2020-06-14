@@ -114,7 +114,7 @@ pathTick()
             "width",gPathcallWidth, "height",gPathcallHeight,"gPathcallChartype",gPathcallChartype]),"");
         pathTurnspeed(gPathcallTurnspeed);          // rebroadcast turnspeed
         debugMsgLevelBroadcast(gDebugMsgLevel, gPathcallVerbose, FALSE);// send debug params to path system
-        pathUpdateCallback(PATHERRMAZETIMEOUT, NULL_KEY);       // report problem to caller
+        pathUpdateCallback(PATHERRTIMEOUT, NULL_KEY);       // report problem to caller
     }
 }
 

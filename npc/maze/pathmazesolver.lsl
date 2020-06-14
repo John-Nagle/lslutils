@@ -116,6 +116,7 @@ integer gMazeStatus;                // status code - PATHERRMAZE...
 vector  gP0;                        // beginning of maze, for checking only
 vector  gP1;                        // end of maze, for checking only
 vector  gRefPt;                     // region corner to which points are relative
+integer gStartTime;                 // start time of maze solve
        
 
 //
@@ -154,7 +155,7 @@ mazecellset(integer x, integer y, integer newval)
 //  mazesolve  -- find a path through a maze
 //         
 list mazesolve(integer xsize, integer ysize, integer startx, integer starty, float startz, integer endx, integer endy, float endz)
-{   
+{   gStartTime = llGetUnixTime();           // time maze solve started
     gMazeStatus = 0;                        // OK so far
     gMazeXsize = xsize;                     // set size of map
     gMazeYsize = ysize;
@@ -346,6 +347,8 @@ list mazeaddpttolist(list path, integer x, integer y, float z)
     //  Memory check
     if (pathneedmem(MAZEMINMEM))
     {   gMazeStatus = PATHERRMAZENOMEM; }            // out of memory, will abort
+    else if (gStartTime + MAZETIMELIMIT < llGetUnixTime())
+    {   gMazeStatus = PATHERRMAZETIMEOUT; }          // out of time, will abort
     //  Short list check
     integer val = mazepathconstruct(x, y, z, gMazePos.z);    // current point as one integer
     integer length = llGetListLength(path);
@@ -591,8 +594,8 @@ list mazewallfollow(list params, integer sidelr)
     integer y = llList2Integer(params,-3);
     float z = llList2Float(params,-2);
     integer direction = llList2Integer(params,-1);
-    list path = llListReplaceList(params,[],-4,-1); // remove non-path items.
-    pathMsg(PATH_MSG_INFO,"Following wall at (" + (string)x + "," + (string)y + "," + (string)z + ")" 
+    list path = llListReplaceList(params,[],-4,-1); // remove non-path items
+    DEBUGPRINT1("Following wall at (" + (string)x + "," + (string)y + "," + (string)z + ")" 
         + " side " + (string)sidelr + " direction " + (string) direction 
         + "  md: " + (string)mazemd(x, y, gMazeEndX, gMazeEndY) + " mdbest: " + (string)gMazeMdbest);
     integer dx = MAZEEDGEFOLLOWDX(direction);

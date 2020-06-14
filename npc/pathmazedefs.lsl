@@ -21,7 +21,7 @@
 #define mazepathcomparexy(p1,p2) (((p1)>>16) == ((p2)>> 16))        // comparison in X and Y only.
 
 #ifndef INFINITY                                // should be an LSL builtin
-#define INFINITY ((float)"inf")                             // is there a better way?
+#define INFINITY ((float)"inf")                 // is there a better way?
 #endif // INFINITY
 #define PATHMAXUNSIGNED 2147483647              // 2^31-1, largest positive integer
 //
@@ -43,6 +43,10 @@
 #define PATHSTARTREPLY 502                      // path planner start reply to user
 
 #define PATHPARAMSINIT  401                     // broadcast params to all scripts  
+//
+//  Configuration
+//
+#define MAZETIMELIMIT   (180)                   // (s) give up if solver takes more time than this
 
 
 
