@@ -347,7 +347,7 @@ list mazeaddpttolist(list path, integer x, integer y, float z)
     //  Memory check
     if (pathneedmem(MAZEMINMEM))
     {   gMazeStatus = PATHERRMAZENOMEM; }            // out of memory, will abort
-    else if (gStartTime + MAZETIMELIMIT < llGetUnixTime())
+    else if ((gStartTime + MAZETIMELIMIT) < llGetUnixTime())
     {   gMazeStatus = PATHERRMAZETIMEOUT; }          // out of time, will abort
     //  Short list check
     integer val = mazepathconstruct(x, y, z, gMazePos.z);    // current point as one integer
