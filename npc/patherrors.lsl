@@ -67,6 +67,7 @@
 #define PATHERRPROHIBITED    -2020              // Point is in a prohibited area (cannot enter parcel)
 #define PATHERRREGIONCROSS   -2021              // crossed a region boundary. Retry will pick up in the new region
 #define PATHERRTIMEOUT       -2022              // Stall timer tripped
+#define PATHERRNOMAZETIME    -2023              // Not enough time left for another maze solve
 
 //
 //  List of retryable errors.  For these, try again, if there was progress on the previous try.

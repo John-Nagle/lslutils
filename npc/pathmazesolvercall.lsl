@@ -71,7 +71,7 @@ integer mazesolverstart(vector refpt, vector p0, vector p1, float width, float h
 
     //  Calculate base pos of maze.
     gMazePos = p0 - p0inmaze;                       // position of cell (0,0)
-#define GEOMCHECK
+////#define GEOMCHECK
 #ifdef GEOMCHECK
     vector p0chk = mazecellto3d(startx, starty, gMazeCellSize, gMazePos, gMazeRot);                        // convert back to 3D coords 
     vector p1chk = mazecellto3d(endx, endy, gMazeCellSize, gMazePos, gMazeRot);                        // convert back to 3D coords 
@@ -104,7 +104,8 @@ integer mazesolverstart(vector refpt, vector p0, vector p1, float width, float h
         "endy", endy,
         "endz", p1.z,
         "p0", p0,                                   // for checking purposes only
-        "p1", p1                                    // for checking purposes only
+        "p1", p1,                                   // for checking purposes only
+        "starttime", gPathStarttime                 // time path operation started
         ]),"");
     return(0);
 }

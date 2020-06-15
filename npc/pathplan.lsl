@@ -34,7 +34,7 @@ float gTestspacing;
 integer gReqPathid;                                         // path ID of planning section
 vector gRefPt;                                              // region corner to which points are relative
 
-
+integer gPathStarttime;                                     // time path planning started
 //
 //  pathplan -- plan an obstacle-free path.
 //
@@ -385,6 +385,7 @@ default
     link_message(integer status, integer num, string jsn, key id)
     {   if (num == PATHPLANPREPPED)                                     // if request for a planning job
         {   gPts = [];                                                  // release space from any previous cycle
+            gPathStarttime = llGetUnixTime();                           // time path planning started
             gPathplanTarget = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
             float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
             gTestspacing = (float)llJsonGetValue(jsn,["testspacing"]);

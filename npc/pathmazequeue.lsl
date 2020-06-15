@@ -54,6 +54,18 @@ queuemazesolve(integer pathid, string jsn)
 }
 
 //
+//  mazesolvecancel -- do not start maze solve, just report an error
+//
+mazesolvecancel(vector refpt, integer pathid, integer segid, integer status)
+{
+    //  Create a dummy maze solve result and send it to path execution just to transmit the status.
+    //  We also get this message here and it advances the queue.
+    llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT,
+    ["reply", "mazesolve", "pathid", pathid, "segmentid", segid, "status", status, 
+     "pos", ZERO_VECTOR, "rot", ZERO_ROTATION, "cellsize", 0.0,
+     "refpt",refpt, "points",llList2Json(JSON_ARRAY,[])]),"");
+}
+//
 //  startnextmazesolve -- start the next maze solve
 //
 startnextmazesolve() 
@@ -64,12 +76,22 @@ startnextmazesolve()
     gMazeQueue = llDeleteSubList(gMazeQueue,0,1);       // remove from head of list
     gMazeLastPathid = (integer) llJsonGetValue(jsn, ["pathid"]);    // what maze solver is doing now
     gMazeLastSegid = (integer)llJsonGetValue(jsn,["segmentid"]);
+    integer starttime = (integer)llJsonGetValue(jsn,["starttime"]); // time entire path solve started
     gMazeLastStarttime = llGetUnixTime();               // timestamp
+    integer timeleft = PATHCALLSTALLTIME - (gMazeLastStarttime - starttime);  // time left for this maze solve
+    if (timeleft < MAZETIMELIMIT)                       // if not enough time left for maze solve
+    {   vector refpt = (vector)llJsonGetValue(jsn,["refpt"]);       // region corner to which points are relative
+        pathMsg(PATH_MSG_WARN, "Not enough time left for another maze solve: " + (string)timeleft + "s.");
+        mazesolvecancel(refpt, gMazeLastPathid,gMazeLastSegid, PATHERRNOMAZETIME);   // fails
+        return;
+    }
     pathMsg(PATH_MSG_WARN, "Sending to maze solver: " + jsn);  
     llMessageLinked(gMazePrim, MAZESOLVEREQUEST, jsn, "");  // send to maze solver
 }
 //
-//  mazesolverdone -- maze solver has finished a maze
+//  mazesolverdone -- maze solver has finished a maze.
+//
+//  pathassemble also receives and uses this message.
 //
 //  We expect this completion to match the request we last sent.
 //  Maze queue to maze solver is strictly synchronous.
@@ -124,7 +146,7 @@ default
             //  { "request" : "mazesolve",  "pathid" : INTEGER, "segmentid": INTEGER,
             //      "regioncorner" : VECTOR, "pos": VECTOR, "rot" : QUATERNION, "cellsize": FLOAT, "probespacing" : FLOAT, 
             //      "sizex", INTEGER, "sizey", INTEGER, 
-            //      "startx" : INTEGER, "starty" : INTEGER, "endx" : INTEGER, "endy" : INTEGER }
+            //      "startx" : INTEGER, "starty" : INTEGER, "endx" : INTEGER, "endy" : INTEGER, "starttime": "INTEGER" }
             //      
             //  "regioncorner", "pos" and "rot" identify the coordinates of the CENTER of the (0,0) cell of the maze grid.
             //  Ray casts are calculated accordingly.

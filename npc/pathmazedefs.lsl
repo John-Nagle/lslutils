@@ -46,14 +46,9 @@
 //
 //  Configuration
 //
-#define MAZETIMELIMIT   (180)                   // (s) give up if solver takes more time than this
-
-
-
-
+#define MAZETIMELIMIT   (180)                   // (s) give up maze solve if solver takes more time than this
+#define PATHCALLSTALLTIME (300)                 // (s) if stalled this long, hung, reset everything
 
 #define MAZEMAXSIZE (41)                        // maximum size of maze
-
-
 
 #endif // MAZEDEFSLSL

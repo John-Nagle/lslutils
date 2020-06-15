@@ -13,8 +13,6 @@
 
 //
 
-//  Constants
-#define PATHCALLSTALLTIME 300 ////120                                   // if stalled for 120 seconds, reset everything 
 //
 //  Globals
 //
@@ -205,9 +203,6 @@ pathLinkMsg(integer sender_num, integer num, string jsn, key hitobj)
         pathUpdateCallback(status, hitobj);
     }
 }
-
-
-
 
 //  
 //  pathmasterreset -- reset all scripts whose name begins with "path".
