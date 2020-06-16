@@ -62,7 +62,8 @@ mazesolvecancel(vector refpt, integer pathid, integer segid, integer status)
     //  We also get this message here and it advances the queue.
     llMessageLinked(LINK_THIS, MAZESOLVERREPLY, llList2Json(JSON_OBJECT,
     ["reply", "mazesolve", "pathid", pathid, "segmentid", segid, "status", status, 
-     "pos", ZERO_VECTOR, "rot", ZERO_ROTATION, "cellsize", 0.0,
+     "pos", ZERO_VECTOR, "rot", ZERO_ROTATION, "cellsize", 0.0, 
+     ////"prim", gMazePrim,
      "refpt",refpt, "points",llList2Json(JSON_ARRAY,[])]),"");
 }
 //
@@ -100,7 +101,7 @@ mazesolverdone(integer pathid, integer segid, integer status)
 {
     //  
     if (pathid != gMazeLastPathid || segid != gMazeLastSegid)       // if tasks are out of sync, debug
-    {
+    {   //  May get this legitimately if a maze solve is cancelled.
         pathMsg(PATH_MSG_WARN, "Maze solver finished wrong maze: expected pathid " +
             (string)gMazeLastPathid + " segid " + (string)gMazeLastSegid + " but rcvd pathid " + (string)pathid + " segid " + (string)segid);
         return;
@@ -169,8 +170,8 @@ default
             string prim = llJsonGetValue(jsn,["prim"]); // prim from which message was sent
             if (prim != JSON_INVALID)                   // if present, really from maze solver
             {   gMazePrim = (integer)prim;              // Get maze solver's prim number for later messaging
-                mazesolverdone(pathid, segmentid, status);  // maze solver is done, can send another request  
             }
+            mazesolverdone(pathid, segmentid, status);  // maze solver is done, can send another request  
         } else if (num == PATHPARAMSINIT)
         {   pathinitparams(jsn);                        // initialize globals (width, height, etc.)
         } else if (num == DEBUG_MSGLEV_BROADCAST)       // set debug message level for this task
