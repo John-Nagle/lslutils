@@ -24,6 +24,7 @@
 float gPathcallTurnspeed = 0.1;
 //  Retry state
 integer gPathcallRetries = 0;                                   // no retries yet
+integer gPathcallStarttime = 0;                                 // time request started
 float gPathcallLastDistance = 0.0;                              // distance to goal on last try
 list  gPathcallLastParams = [];                                 // params at last try
 
@@ -58,7 +59,7 @@ pathprepstart(key target, vector regioncorner, vector goal, float stopshort, flo
     string jsn = llList2Json(JSON_OBJECT,
         ["request","pathprep", "pathid", pathid,
         "target",target, "regioncorner", regioncorner, "goal", goal, "stopshort", stopshort, "testspacing", testspacing,
-        "speed", speed, "turnspeed", gPathcallTurnspeed]);
+        "speed", speed, "turnspeed", gPathcallTurnspeed, "starttime", gPathcallStarttime]);
     pathMsg(PATH_MSG_NOTE,"Path prep start: " + jsn);
     llMessageLinked(LINK_THIS, PATHPLANREQUEST, jsn,"");   // send to path prep 
 }
@@ -73,6 +74,7 @@ pathbegin(key target, vector regioncorner, vector endpos, float stopshort, float
 {
     gPathcallLastDistance = INFINITY;                               // must get shorter on each retry
     gPathcallRetries = 0;                                           // no retries yet
+    gPathcallStarttime = llGetUnixTime();                           // time entire sequence started, before retries
     gLocalRequestId = requestid;                                    // save request ID for callbacks
     llResetTime();                                                  // for elapsed time display
     pathstart(target, regioncorner, endpos, stopshort, speed);            // do it

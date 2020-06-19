@@ -34,7 +34,7 @@ float gTestspacing;
 integer gReqPathid;                                         // path ID of planning section
 vector gRefPt;                                              // region corner to which points are relative
 
-integer gPathStarttime;                                     // time path planning started
+integer gPathStarttime;                                     // time path planning started, before retries
 //
 //  pathplan -- plan an obstacle-free path.
 //
@@ -385,13 +385,13 @@ default
     link_message(integer status, integer num, string jsn, key id)
     {   if (num == PATHPLANPREPPED)                                     // if request for a planning job
         {   gPts = [];                                                  // release space from any previous cycle
-            gPathStarttime = llGetUnixTime();                           // time path planning started
             gPathplanTarget = (key)llJsonGetValue(jsn,["target"]);  // get target if pursue
             float stopshort = (float)llJsonGetValue(jsn,["stopshort"]);
             gTestspacing = (float)llJsonGetValue(jsn,["testspacing"]);
             integer pathid = (integer)llJsonGetValue(jsn,["pathid"]);
             gPathplanSpeed = (float)llJsonGetValue(jsn,["speed"]);
             gPathplanTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]);
+            gPathStarttime = (integer)llJsonGetValue(jsn,["starttime"]);// time entire pathplan started, before retries 
             gRefPt = (vector)llJsonGetValue(jsn,["refpt"]);             // reference point for points (the region corner)
             list points = llJson2List(llJsonGetValue(jsn,["points"]));     // the preprocessed static path points
             ////pathMsg(PATH_MSG_INFO,"Path request: " + jsn); 

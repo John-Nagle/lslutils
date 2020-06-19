@@ -174,6 +174,7 @@ default
             float testspacing = (float)llJsonGetValue(jsn,["testspacing"]);
             gPathprepSpeed = (float)llJsonGetValue(jsn,["speed"]);
             gPathprepTurnspeed = (float)llJsonGetValue(jsn,["turnspeed"]);
+            integer starttime = (integer)llJsonGetValue(jsn,["starttime"]); // time path planning started, before retries
             pathMsg(PATH_MSG_INFO,"Path request: " + jsn); 
             jsn = "";                                               // Release string. We are that tight on space.
             //  Call the planner
@@ -312,6 +313,7 @@ default
                 ["target",gPathprepTarget, "goal", goal, "stopshort", stopshort, "testspacing", testspacing,
                 "speed", gPathprepSpeed, "turnspeed", gPathprepTurnspeed,
                 "pathid", gPathprepPathid, 
+                "starttime", starttime, 
                 "refpt", gRefPt, "points", llList2Json(JSON_ARRAY,pts)]),"");
         } else if (num == PATHPARAMSINIT)
         {   pathinitparams(jsn);                                       // initialize params
