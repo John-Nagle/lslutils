@@ -49,15 +49,7 @@ float OBSTACLE_RETRY_PROB = 0.7;            // (fract) Retry if random < this.
 #define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
 #define WALKSPEED 2.0                       // (m/sec) walking speed, non-run
 
-#ifdef OBSOLETE
-////string IDLE_ANIM = "stand 2";            // idle or chatting         
-////string STAND_ANIM = "stand 2";           // just when stopped
-///string WAITING_ANIM = "stand arms folded";  // during planning delays
-string WAITING_ANIM = "SEmotion-bento13";   // arms folded during planning delays
-string IDLE_ANIM = "SEmotion-bento18";      // arms folded during planning delays
-string STAND_ANIM = "SEmotion-bento18";     // just when stopped
-string TALK_ANIM = IDLE_ANIM;               // for now
-#endif // OBSOLETE
+
 float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                  // will stick around for this long
 float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far before we recheck on approach
@@ -75,8 +67,8 @@ list gAnimTalk = ["stand","talk"];          // talking
 //
 //  Messages
 //
-string gMsgFacing = "Hello";                // can get to facing position
-string gMsgNear = "Hello there";            // can't get to facing position
+string gMsgFacing = "";                     // can get to facing position
+string gMsgNear = "";                       // can't get to facing position
 string gMsgGroup = "Hello all";             // many avis present
 //
 //  Speed
@@ -373,7 +365,11 @@ bhvConfigDone(integer valid)
 {
     gBhvConfigNotecardLine = -1;                        // no more reading
     if (valid)
-    {   bhvInit();                                      // set up scheduler system
+    {   if (gMsgFacing == "" || gMsgNear == "")         // turned off in config
+        {   llOwnerSay("Greeting off - no greet message in notecard.");
+            return;
+        }
+        bhvInit();                                      // set up scheduler system
     }
     else
     {   llSay(DEBUG_CHANNEL,"=== GREET BEHAVIOR CONFIGURATION FAILED ==="); // stuck
