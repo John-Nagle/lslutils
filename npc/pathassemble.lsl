@@ -366,9 +366,10 @@ pathexemazedeliver(string jsn)
     float cellsize = (float)llJsonGetValue(jsn,["cellsize"]); // get maze coords to world coords info
     vector pos = (vector)llJsonGetValue(jsn,["pos"]);
     rotation rot = (rotation)llJsonGetValue(jsn,["rot"]);
-     list ptsmaze = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
+    list ptsmaze = llJson2List(llJsonGetValue(jsn, ["points"])); // points, one per word
     vector p0 = (vector)llJsonGetValue(jsn,["p0"]);            // for checking only
     vector p1 = (vector)llJsonGetValue(jsn,["p1"]);            // for checking only
+    jsn = "";                                               // release memory
     list ptsworld = [];
     integer i;
     integer length = llGetListLength(ptsmaze);              // number of points
@@ -380,6 +381,7 @@ pathexemazedeliver(string jsn)
         cellpos.z = mazepathz(val,pos.z);                   // get Z value from the maze solver.
         ptsworld += [cellpos];                              // accum list of waypoints
     }
+    ptsmaze = [];                                           // release memory
     pathMsg(PATH_MSG_INFO, "Maze solve pts: " + llDumpList2String(ptsworld,","));       // ***TEMP*** detailed debug
     assert(llGetListLength(ptsworld) >= 2);                             // must have at least two points    
     assert(llVecMag(llList2Vector(ptsworld,0) - p0) < 0.01);            // maze endpoints must match
@@ -417,10 +419,12 @@ pathexepathdeliver(string jsn)
     key hitobj = (key)llJsonGetValue(jsn, ["hitobj"]);      // what stopped us, if anything
     ////if (hitobj != NULL_KEY) { gPathLastObstacle = hitobj; } // save last obstacle
     list ptsstr = llJson2List(llJsonGetValue(jsn, ["points"])); // points, as strings
+    jsn = "";                                                   // release memory
     list pts = [];
     integer i;
     integer len = llGetListLength(ptsstr);
     for (i=0; i<len; i++) { pts += (vector)llList2String(ptsstr,i); } // convert JSON strings to LSL vectors  
+    ptsstr = [];                                                // release memory
     pathexedeliver(refpt, pts, pathid, segmentid, FALSE, status, hitobj);      // deliver path segment
 }
 
