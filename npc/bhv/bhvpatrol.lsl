@@ -61,6 +61,7 @@ float gDwell;                   // dwell time at next patrol point
 float gFaceDir;                 // direction to face next
 float gSpeed = CHARACTER_SPEED; // how fast
 integer gPatrolRetries;         // number of fail retries
+integer gSimIdle = FALSE;       // true if sim is idle and we should park
 
 //
 //  bhvDoRequestDone -- pathfinding is done. Analyze the result and start the next action.
@@ -159,9 +160,15 @@ bhvDoCollisionStart(key hitobj)
 //
 start_patrol()
 {   //  Start patrolling if nothing else to do
+    integer simIdle = llGetEnv("region_idle") == "1";   // true if sim is idle, no avatars near
+    if (simIdle != gSimIdle)                            // log when sim idle state changes
+    {   debugMsg(DEBUG_MSG_WARN,"Region idle: " + (string)simIdle);
+        gSimIdle = simIdle;
+    }
     if (gAction == ACTION_IDLE && gPatrolEnabled && 
-        llGetTime() > gDwell)      
-    {   llResetTime(); 
+        llGetTime() > gDwell &&
+        !simIdle)                               // don't start new patrols when sim idle.
+    {   llResetTime();
         //  Pick a random patrol point different from the last one.
         integer newpnt;
         integer bound = llGetListLength(gPatrolPoints); // want 0..bound-1
@@ -177,7 +184,7 @@ start_patrol()
             gFaceDir = llList2Float(gPatrolPointDir, gNextPatrolPoint);
         }
         restart_patrol();
-    }  
+    }
 }
 //
 //  restart_patrol -- start patrol to previously selected point.
