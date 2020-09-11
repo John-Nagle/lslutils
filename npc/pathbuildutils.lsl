@@ -537,9 +537,10 @@ float castbeam(vector p0, vector p1, float probespacing, integer wantnearest, li
             if (status > 0) 
             {   integer i;
                 for (i=0; i<2*status; i+= 2)                        // for all hits
-                {   gPathLastObstacle = llList2Key(castresult, i+0);       // get object hit
+                {   key hitobj = llList2Key(castresult, i+0);       // get object hit
                     if (gPathLastObstacle != gPathSelfObject)          // ignore hits with self
-                    {   vector hitpt = llList2Vector(castresult, i+1); // get point of hit
+                    {   gPathLastObstacle = hitobj;                    // save for debug
+                        vector hitpt = llList2Vector(castresult, i+1); // get point of hit
                         ////list details = llGetObjectDetails(hitobj, [OBJECT_PATHFINDING_TYPE]);
                         ////integer pathfindingtype = llList2Integer(details,0);    // get pathfinding type
                         ////if (pathfindingtype != OPT_WALKABLE)        // if it's not a walkable
