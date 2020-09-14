@@ -36,9 +36,6 @@ string BTNLOUD      = "☑ Loud";
 string BTNPAINT     = "Paint";
 
 integer nColorIndex = 0;                                    // color index selected
-integer nTank;
-integer nFenderFront;
-integer nFenderRear;
 
 integer FindPrim( string name)
 {
@@ -56,6 +53,14 @@ integer FindPrim( string name)
 integer PaintPrim(integer nIndex)
 {   ////llOwnerSay("Paint color: " + (string)nIndex);   // ***TEMP***
     if (nIndex < 0) { return FALSE; }
+    //  get link number of surfaces to be colored
+    //  if names changed in links, update below
+    //
+    integer nTank= FindPrim("Tank");
+    integer nFenderFront= FindPrim("Fender front");
+    integer nFenderRear= FindPrim("Rear fender");
+    //  end get link number
+
         
     vector color1= llList2Vector( colors, 2*nIndex);
     vector color2= llList2Vector( colors, 2*nIndex+1);
@@ -136,14 +141,6 @@ default
 {
     state_entry()
     {
-        //
-        //  get link number of surfaces to be colored
-        //  if names changed in links, update below
-        //
-        nTank= FindPrim("Tank");
-        nFenderFront= FindPrim("Fender front");
-        nFenderRear= FindPrim("Rear fender");
-        //  end get link number
         
         gDialogChannel = -1 - (integer)("0x" + llGetSubString( (string) llGetKey(), -7, -1) );
         
