@@ -205,6 +205,7 @@ default
             {   
                 pathMsg(PATH_MSG_ERROR,"Stuck at " + (string)pos + ". Recovering.");    // err for debug purposes, change to warn later
                 pathmoverecover(gPathprepPathid);                   // force return to a previous good point
+                return;                                             // done here, don't try to recover twice
             }
             //  Quick sanity check - are we in a legit place?            
             vector fullheight = <0,0,gPathHeight>;                  // add this for casts from middle of character
