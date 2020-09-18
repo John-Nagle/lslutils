@@ -37,7 +37,7 @@ float TESTSPACING = 0.33;                   // (fract) Multiply height and width
 #define CHARACTER_SPEED  2.5                // (m/sec) default speed
 #define CHARACTER_TURNSPEED_DEG  90.0       // (deg/sec) turn rate
 #define IDLE_POLL 10.0                      // (secs) timer, used only for bhv library
-#define MAX_PATROL_RETRIES 20               // ask owner for help after this many fails
+#define MAX_PATROL_RETRIES 40               // ask owner for help after this many fails
 
 //  Global variables
 integer gAction = ACTION_IDLE;              // state of patrol

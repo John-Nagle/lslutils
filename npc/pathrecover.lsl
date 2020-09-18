@@ -163,12 +163,7 @@ diagnoserecoverymove(vector recoverpos)
 //
 integer pathrecoverwalkable(vector refpt, list pts)
 {   vector pos = llGetPos();                        // we are here, halfheight level position
-#ifdef OBSOLETE // ready for points in different regions
-    if (refpt != llGetRegionCorner())               // if crossed a region boundary during recovery
-    {   pathMsg(PATH_MSG_ERROR,"Crossed region boundary during recovery, no move."); // ***TEMP** as error, checking for unusual event
-        return(PATHERRREGIONCROSS);                 // crossed a region during planning, start over
-    }
-#endif // OBSOLETE
+    vector regioncorner = llGetRegionCorner();      // region corner at start of recovery
     //  Trouble, there is no walkable here
     //  Attempt recovery. Try to find a previous good location that's currently open and move there.
     pathMsg(PATH_MSG_WARN,"No walkable below after move to " + (string)pos + ". Recovery points available: " + (string)llGetListLength(pts));
@@ -197,13 +192,9 @@ integer pathrecoverwalkable(vector refpt, list pts)
     llSleep(0.5);                                   // allow time for stop to take effect
     //  Potential race condition - a region cross might occur during the sleep above. Must recheck region.
     integer status = 0;                             // no fail yet
-    if (refpt != llGetRegionCorner())               // if crossed region during sleep
+    if (regioncorner != llGetRegionCorner())        // if crossed region during sleep
     {   status = PATHERRREGIONCROSS;                // must not try to do a move from wrong region - ends up in wrong place
     } else {                                        // did not cross region
-#ifdef OBSOLETE
-        integer success = llSetRegionPos(recoverpos + halfheight);              // forced move to previous good position
-        if (!success) { status = PATHERRWALKABLEFAIL; } // move failed, note that
-#endif // OBSOLETE
         //  Move using keyframe move.
         vector movevec = (recoverpos+halfheight) - llGetPos();   // recovery move as delta
         if (llVecMag(movevec) > 100.0)              // this has to be bogus
