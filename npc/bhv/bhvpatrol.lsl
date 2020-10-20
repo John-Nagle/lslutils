@@ -276,7 +276,7 @@ lookupregioncallback(vector corner, list params)
     gPatrolPointCorners += corner;                                  // region corners for patrol points
     gPatrolPoints += point;                                         // point to patrol 
     gPatrolPointDwell += (float)llList2String(params,4);            // dwell time at patrol point
-    gPatrolPointDir += (float)llList2String(params,5);              // direction to face on arriving   
+    gPatrolPointDir += ((float)llList2String(params,5))*DEG_TO_RAD; // direction to face on arriving (input in degrees)
     bhvGetNextConfigLine();                                         // all done, go on 
 }
 
