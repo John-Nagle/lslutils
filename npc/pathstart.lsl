@@ -171,6 +171,7 @@ integer pathretry(integer status, key hitobj)
     //  Must do a retry
     gPathcallRetries++;                                                 // retry count 
     pathMsg(PATH_MSG_WARN, "Retrying. Distance " + (string)dist + "m. Retry " + (string)gPathcallRetries);                              // retry
+    llSleep(0.5);                                                       // to prevent multiple retries during recovery
     pathstart(target, goalregioncorner, endpos, shortstop, speed);          // trying again
     return(TRUE);                                                       // doing retry, do not tell user we are done.
 }

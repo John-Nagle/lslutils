@@ -86,24 +86,47 @@ pathmoveinit()
 //  Zero status here means ordinary movement end, no problems.
 //
 pathmovedone(integer status, key hitobj)
-{   if (!gPathMoveActive) { return; }                           // we are not running, ignore
-    if (gPathMoveMoving && (status != 0))                       // if something bad happened
-    {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on. This is the only KFM_CMD_STOP.
-        pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);
-        integer newstatus = pathcheckforwalkable();             // recover position if necessary
-        if (newstatus != 0) { status = newstatus; }             // use walkable recovery status if walkable problem   
-    } else {                                                    // KFM finished normally
-        if (gPathStartRegionCorner != llGetRegionCorner())      // if changed region
-        {   status = PATHERRREGIONCROSS;                        // region cross status, force error and retry
-        } else {                                                // normal move completion
-            //  We should be at the KFM destination now.
-            vector pos = llGetPos() - <0,0,gPathHeight * 0.5>;  // pos is at midpoint, points are at ground level
-            if (gPathMoveLastdest != ZERO_VECTOR && llVecMag(pos-gPathMoveLastdest) > 0.10)         // if not at desired point, allow 10cm error
-            {   pathMsg(PATH_MSG_WARN, "KFM did not reach destination. At " + (string)pos + ", should be at " + (string)gPathMoveLastdest);
+{   if (gPathMoveRecovering)                                        // done during recovery?
+    {
+        //  There's a move system and a recovery system, and they're 
+        //  not supposed to be active at the same time. But it's quite
+        //  possible for a new move request to happen during recovery.
+        //  When that happens, we have to reject the new move request.
+        //  The new request gets all the way through the planner and
+        //  maze solver, which is asynchronous with actual recovery.
+        //  Then it gets caught in pathmoverequestrcvd, which calls pathmovedone
+        //  with a status of PATHERRREQOUTOFSYNC. This passes the error status
+        //  back up the pipeline, killing off the move request.
+        // 
+        //  That happens when recovery is in progress and a new move,
+        //  typically from a higher priority behavior, preempts what's
+        //  going on. The recovery has to complete, and the new move
+        //  has to be rejected. That's what this is for. 
+        // 
+        pathMsg(PATH_MSG_WARN,"Path done during recovery, status " + (string)status);
+        assert(status != 0);                                        // must have error status
+        assert(!gPathMoveMoving);                                   // must not be both recovering and moving
+        assert(!gPathMoveActive);
+    } else {                                                        // normal case
+        if (!gPathMoveActive) { return; }                           // we are not running, ignore
+        if (gPathMoveMoving && (status != 0))                       // if something bad happened
+        {   llSetKeyframedMotion([],[KFM_COMMAND, KFM_CMD_STOP]);   // stop whatever is going on. This is the only KFM_CMD_STOP.
+            pathMsg(PATH_MSG_WARN, "Stopped by obstacle " + llKey2Name(hitobj) + " status: " + (string)status);
+            integer newstatus = pathcheckforwalkable();             // recover position if necessary
+            if (newstatus != 0) { status = newstatus; }             // use walkable recovery status if walkable problem   
+        } else {                                                    // KFM finished normally
+            if (gPathStartRegionCorner != llGetRegionCorner())      // if changed region
+            {   status = PATHERRREGIONCROSS;                        // region cross status, force error and retry
+            } else {                                                // normal move completion
+                //  We should be at the KFM destination now.
+                vector pos = llGetPos() - <0,0,gPathHeight * 0.5>;  // pos is at midpoint, points are at ground level
+                if (gPathMoveLastdest != ZERO_VECTOR && llVecMag(pos-gPathMoveLastdest) > 0.10)         // if not at desired point, allow 10cm error
+                {   pathMsg(PATH_MSG_WARN, "KFM did not reach destination. At " + (string)pos + ", should be at " + (string)gPathMoveLastdest);
                 //  May need to take corrective action here. For now, just log.
+                }
+                //  Final check - are we some place we should't be. Fix it now, rather than getting stuck.
+                status = pathcheckforwalkable();                        // if at non-walkable destination and can't recover
             }
-            //  Final check - are we some place we should't be. Fix it now, rather than getting stuck.
-            status = pathcheckforwalkable();                        // if at non-walkable destination and can't recover
         }
     }
     //  Return "movedone" to exec module
