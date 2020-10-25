@@ -98,7 +98,7 @@ string elevstojson(float scale, float offset, float waterlev, string regionname,
             vector testpos = <xtest,ytest,0> - llGetPos();
             //  Prevent asking for off-sim position
             float z = llGround(testpos);
-            z = (z-offset)/scale;           // scale into 0..1
+            z = (z-offset)*scale;                                   // scale into 0..1
             integer zint  = llFloor(z*256);
             if (zint < 0) { zint = 0; }
             if (zint > 255) { zint = 255; }
