@@ -6,6 +6,12 @@
 //  Animats
 //  2020
 //
+//  License: GPLv3.
+//
+//
+//  TODO:
+//  1. Make two passes, find elevation range, scale data accordingly.
+//
 
 float INTERVAL = 4;                     // (m) measurement interval
 float SIMSIZE = 256;                    // (m) should be a sim property
@@ -45,7 +51,7 @@ float bound(float val, float lo, float hi)
 //
 //  Returns 65 values, not 64
 //
-string elevstojson(float scale, float offset, float waterlev, string regionname)
+string elevstojson(float scale, float offset, float waterlev, string regionname, vector regioncorner)
 {   string jsn;
     float x; float y;
     for (x = 0; x<=SIMSIZE; x += INTERVAL)
@@ -71,25 +77,20 @@ string elevstojson(float scale, float offset, float waterlev, string regionname)
     }
     //  Return elevation data as one JSON string
     //  Make lines of hex into separate output lines as JSON because SL mail sender breaks lines at arbitrary points.
-    
     return(llList2Json(JSON_OBJECT, 
         ["region",regionname, "scale",scale, "offset",offset, "waterlev", waterlev,
+            "regioncoords",llList2Json(JSON_ARRAY,[llFloor(regioncorner.x/SIMSIZE),llFloor(regioncorner.y/SIMSIZE)]),
             "elevs", ("["+  jsn + "]")]));
 }
 
 
 default
 {
-    state_entry()
-    {
-        llSay(0, "Hello, Avatar!");
-    }
-
     touch_start(integer total_number)
     {
         llSay(0, "Reading elevations.");
         float waterlev = llWater(llGetPos()); 
-        string s = elevstojson(256.0,0.0, waterlev, llGetRegionName());             // need to rescale for some high mountains
+        string s = elevstojson(256.0,0.0, waterlev, llGetRegionName(), llGetRegionCorner());             // need to rescale for some high mountains
         string subject = "Elevations for region (TEST) " + llGetRegionName();  // email message
         llOwnerSay("Sending email.");
         llTargetedEmail(TARGETED_EMAIL_OBJECT_OWNER, subject, s);
