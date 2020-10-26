@@ -28,7 +28,7 @@ float teststandpos(vector pos)
     vector hitpos = llList2Vector(castresult,1);            // where we hit
     vector disttohit = pos - hitpos;
     integer tooclose = disttohit.z < AVATARHEIGHT/2;        // too close
-    llOwnerSay("hit " + llKey2Name(hitkey) + " below" + (string)start + " at " + (string)hitpos + " too close: " + (string)tooclose);  // ***TEMP***
+    ////llOwnerSay("hit " + llKey2Name(hitkey) + " below" + (string)start + " at " + (string)hitpos + " too close: " + (string)tooclose);  // ***TEMP***
 
     if  (tooclose)                                          // if ground is too close
     {   return(-1.0); }
