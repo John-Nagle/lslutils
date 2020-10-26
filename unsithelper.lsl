@@ -2,7 +2,6 @@
 //  Unsit helper - more graceful unsits
 //
 //
-//  TODO: Get avatar bounding box info and scale space needed for avatar.
 //
 //  Globals
 //
@@ -63,10 +62,12 @@ vector findstandpos(vector pos)
         float angle = (i % 8)*PI/4;                         // angle
         vector tryoffset = <llSin(angle),llCos(angle),0>*radius;   // offset, starting from straight ahead
         vector trypos = pos + tryoffset/llGetRot();         // pos to test
-        if (testaroundstandpos(trypos))                     // success
-        {   llOwnerSay("Found open space at " + (string) trypos + " offset " + (string)tryoffset + " angle " + (string)(angle*RAD_TO_DEG));
-            return(trypos);
-        }  
+        if (tryoffset.x >= 0)                               // ***TEMP*** don't go behind chair
+        {   if (testaroundstandpos(trypos))                     // success
+            {   llOwnerSay("Found open space at " + (string) trypos + " offset " + (string)tryoffset + " angle " + (string)(angle*RAD_TO_DEG));
+                return(trypos);
+            }  
+        }
     }
     return(ZERO_VECTOR);
 }
@@ -80,7 +81,9 @@ stoodup(vector pos)
     vector avatardims = maxcorner - mincorner;              // dimensions of avatar
     llOwnerSay("Avatar dimensions: " + (string)avatardims); // ***TEMP***
     gAvatarHeight = avatardims.z;
-    gAvatarRadius = (avatardims.y * 0.5)*1.1;               // avatar radius, with safety margin
+    float avatardiam = avatardims.x;
+    if (avatardims.y > avatardims.x) { avatardiam = avatardims.y; } // this language needs built-in min
+    gAvatarRadius = (avatardiam * 0.5)*1.1;               // avatar radius, with safety margin
     vector target = findstandpos(pos);
     if (target == ZERO_VECTOR) { return; }
     llMoveToTarget(target, 1.0);
