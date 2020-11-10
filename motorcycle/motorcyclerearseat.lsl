@@ -37,7 +37,7 @@ default
             llStopAnimation("sit_generic");
             llStopAnimation("sit_female");            
             llStartAnimation(gAnim);
-            llWhisper(0,"Resetting anim for pssenger on seat: " + (string) llKey2Name(gSitter)); // ***TEMP***
+            ////llWhisper(0,"Resetting anim for pssenger on seat: " + (string) llKey2Name(gSitter)); // ***TEMP***
             llSetTimerEvent(0.0);                       // stop timer, don't need it again
         }
     }
@@ -54,7 +54,7 @@ default
             return;
         }
         //  Re-seating complete. Have perms. Restart anims.
-        llWhisper(0,"Resetting anim for pssenger on seat: " + (string) llKey2Name(gSitter)); // ***TEMP***
+        ////llWhisper(0,"Resetting anim for pssenger on seat: " + (string) llKey2Name(gSitter)); // ***TEMP***
         llStartAnimation(gAnim); 
         llSetTimerEvent(0.0);                 
     }
