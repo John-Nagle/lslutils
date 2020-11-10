@@ -33,11 +33,16 @@ default
     //  Initial animation setup
     run_time_permissions(integer perm) {
         if (gAnim != "" && gSitter != NULL_KEY) {
+            if (ifnotseated(gSitter, 5.0, FALSE))
+            {   llSetTimerEvent(1.0);                   // wait for seating
+                llWhisper(0,"Got perms, retrying.");    // ***TEMP***
+                return; 
+            }     // avatar has not arrived yet
             llStopAnimation("sit");
             llStopAnimation("sit_generic");
             llStopAnimation("sit_female");            
             llStartAnimation(gAnim);
-            ////llWhisper(0,"Resetting anim for pssenger on seat: " + (string) llKey2Name(gSitter)); // ***TEMP***
+            llWhisper(0,"Resetting anim for passenger on seat 1: " + (string) llKey2Name(gSitter)); // ***TEMP***
             llSetTimerEvent(0.0);                       // stop timer, don't need it again
         }
     }
@@ -45,16 +50,21 @@ default
     //  Fix up after each region crossing
     //  But make sure we have perms.  They're off temporarily during some region crossings.
     timer() {
+        llWhisper(0,"timer"); // ***TEMP***   
         if (gSitter == NULL_KEY || gAnim == "")  // if passenger got off or no animation
-        {   llSetTimerEvent(0.0); return; }
+        {   llWhisper(0,"No sitter, stopping timer.");  // ***TEMP***
+            llSetTimerEvent(0.0);
+            return;
+        }
         //  If everything is OK to restart the animation, do so.
-        if (ifnotseated(gSitter, 3.0, FALSE)) { return; }     // avatar has not arrived yet
+        if (ifnotseated(gSitter, 3.0, TRUE)) { return; }     // avatar has not arrived yet
         if ((llGetPermissions() & PERMISSION_TRIGGER_ANIMATION) == 0)           // don't have perms, must ask
         {   llRequestPermissions(llAvatarOnSitTarget(), PERMISSION_TRIGGER_ANIMATION);      // ask for perms
+            llWhisper(0,"Asking for perms");    // ***TEMP***
             return;
         }
         //  Re-seating complete. Have perms. Restart anims.
-        ////llWhisper(0,"Resetting anim for pssenger on seat: " + (string) llKey2Name(gSitter)); // ***TEMP***
+        llWhisper(0,"Resetting anim for passenger on seat 2: " + (string) llKey2Name(gSitter)); // ***TEMP***
         llStartAnimation(gAnim); 
         llSetTimerEvent(0.0);                 
     }

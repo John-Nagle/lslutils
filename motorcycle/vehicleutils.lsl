@@ -5,6 +5,8 @@
 //  March 2019
 //
 //  Utility functions
+#ifndef VEHICLEUTILSLSL
+#define VEHICLEUTILSLSL
 
 float min(float a, float b)
 {   if (a < b) { return(a); } else { return(b); }}
@@ -158,7 +160,9 @@ integer ifnotseated(key avatar, float normaldisttoseat, integer verbose)
         //  Check back link from avatar to root prim.
         list avatarinfo = llGetObjectDetails(avatar, 
                 [OBJECT_POS, OBJECT_ROOT]);
-        key avatarroot = llList2Key(avatarinfo,1);
+        key avatarroot = llList2Key(avatarinfo,1);          // root of avatar
+        list vehicleinfo = llGetObjectDetails(llGetKey(),[OBJECT_ROOT]);
+        key vehicleroot = llList2Key(vehicleinfo,0);        // root of vehicle
         if (avatarroot == NULL_KEY)
         {   trouble = TRUE;
             if(verbose) llOwnerSay("Avatar link to root is null.");
@@ -167,7 +171,7 @@ integer ifnotseated(key avatar, float normaldisttoseat, integer verbose)
         {   trouble = TRUE;
             if (verbose) llOwnerSay("Avatar link to root is to avatar itself.");
         }
-        else if (avatarroot != llGetKey())
+        else if (avatarroot != vehicleroot)
         {   trouble = TRUE;
             if (verbose)
             {   llOwnerSay("Avatar link to root is wrong."); 
@@ -194,3 +198,4 @@ integer ifnotperms(integer permissions)
     }
     return trouble;
 }
+#endif // VEHICLEUTILSLSL
