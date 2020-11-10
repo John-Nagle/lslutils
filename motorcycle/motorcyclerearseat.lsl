@@ -14,10 +14,18 @@ key gSitter = NULL_KEY;
 default
 {
     state_entry()
-    {
-        llSitTarget(<-0.25,0,0.54>, ZERO_ROTATION);
+    {   //  Clear any old sit targets beyond the root.
+        integer i;
+        for (i=2; i<llGetNumberOfPrims() + 1; i++)
+        {
+             llLinkSitTarget(i, ZERO_VECTOR, ZERO_ROTATION);
+        }
+        llSitTarget(<-0.25,0,0.54>, ZERO_ROTATION);     // set our sit target
         gAnim = llGetInventoryName(INVENTORY_ANIMATION, 0);
     }
+    
+    on_rez(integer num)
+    {   llResetScript(); }                              // reset on rez
     
     changed(integer change) {
         if (change & CHANGED_LINK)                      // only when sitters change
