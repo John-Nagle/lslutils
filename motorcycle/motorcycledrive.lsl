@@ -194,7 +194,7 @@ startup()
 shutdown(integer release)
 {
     llSetTimerEvent(0.0);
-    if (llGetPermissions() && PERMISSION_TRIGGER_ANIMATION)
+    if (llGetPermissions() & PERMISSION_TRIGGER_ANIMATION)
     {   llStopAnimation(DrivingAnim);   }   // don't stop anim if not seated
     llStopSound();
     Sound = "";                             // no current sound
