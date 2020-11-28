@@ -8,7 +8,7 @@
 //
 //  Configuration
 //
-float       TimerPeriod = 0.3;                      // smaller values better looking but higher overhead
+
 vector      STOPRED = <1.0,0,0>;
 vector      RUNRED = <0.5,0,0>;
 integer     face = ALL_SIDES;                       // which face
@@ -16,16 +16,17 @@ integer     face = ALL_SIDES;                       // which face
 integer     DIR_STOP = 100;
 integer     DIR_START = 101;
 //  Constants
-float STOPPEDSPEED = 0.05;                          // stopped if slower than this
+#define TIMERPERIOD (0.5)                           // smaller values better looking but higher overhead
+#define BRAKINGDECEL (1.0)                          // (m/sec^2) Red if slower than this
+#define BRAKINGTHRESH (BRAKINGDECEL*TIMERPERIOD)    // delta of velocity to turn on brake light
+#define STOPPEDSPEED (0.05)                         // (m/sec) Red if slower than this
+
 
 vector axis = <0,1,0>;              // axis of rotation
 //  Globals
 vector gLastColor = <0,0,0>;                        // off
 float  gLastGlow = 0.0;                             // not glowing
 float  gLastSpeed = 0.0;                            // last speed(signed)
-
-float abs(float a) { if (a >= 0) { return(a); } else { return(-a); }}
-
 //  Default state - stand by
 default
 {
@@ -53,7 +54,7 @@ default
 state Run {                                                 // bike is running
     
     state_entry() {
-        llSetTimerEvent(TimerPeriod); 
+        llSetTimerEvent(TIMERPERIOD); 
     }
     
     //  Message from master script to tell us to start and stop.
@@ -66,10 +67,11 @@ state Run {                                                 // bike is running
     {
         //  Compute speed in forward direction. Can be positive or negative.
         vector vehdir = <1.0,0.0,0.0>*llGetRootRotation();  // global direction of vehicle
-        float speed = abs(vehdir*llGetVel());                    // speed in fwd direction
+        float speed = llFabs(vehdir*llGetVel());            // speed in fwd direction
         float glow = 0.2;                                   // default running light
         vector color = RUNRED;
-        if (speed < STOPPEDSPEED || (speed - gLastSpeed) < -STOPPEDSPEED) // if stopped or slowing
+        ////llOwnerSay((string)(speed-gLastSpeed));             // ***TEMP***
+        if (speed < STOPPEDSPEED || (speed - gLastSpeed) < -BRAKINGTHRESH) // if stopped or slowing
         {   glow = 1.0; 
             color = STOPRED;
         } 
@@ -78,7 +80,7 @@ state Run {                                                 // bike is running
             llSetLinkPrimitiveParamsFast(LINK_THIS, [PRIM_GLOW, face, glow]);
             gLastColor = color;
             gLastGlow = glow;
-            gLastSpeed = speed;                             // previous speed
         }
+        gLastSpeed = speed;                             // previous speed
     }
 }
