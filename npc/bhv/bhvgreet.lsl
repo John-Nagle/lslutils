@@ -129,11 +129,11 @@ bhvDoRequestDone(integer status, key hitobj)
             return;
         }
         if (gAction == ACTION_GREET)
-        {   greet(gMsgFacing);
+        {   greet(gMsgFacing, TRUE);
             return;
         }
         if (gAction == ACTION_DISTANT_GREET)        // not face to face
-        {   greet(gMsgNear);
+        {   greet(gMsgNear, FALSE);
             return;
         }
         if (gAction == ACTION_TALKING)              // if someone near is talking
@@ -219,13 +219,17 @@ face(key target, integer nextstate)                 // turn to face avi
 //  
 //  greet -- say hello
 //
-greet(string msg)                                   // turn to face avi
+greet(string msg, integer whisper)                  // say or whisper
 {
     gAction = ACTION_TALKING;                       // on completion, fake being in conversation
     llResetTime();                                  // start attention span timer.
     gDwell = ATTENTION_SPAN;                        // wait this long
     bhvAnimate(gAnimTalk);                          // talking
-    bhvSay(msg);
+    if (whisper) {                                  // quietly, if possible
+        bhvWhisper(msg);
+    } else {
+        bhvSay(msg);
+    }
 }
 
 #define getroot(obj) (llList2Key(llGetObjectDetails((obj),[OBJECT_ROOT]),0))  // move to common code

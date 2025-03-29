@@ -114,6 +114,16 @@ bhvSay(string msg)
 }
 
 //
+//  bhvWhisper -- Display message to user
+//
+//  llWhisper has to be done from the root prim or it is prefaced with the wrong name.
+//
+bhvWhisper(string msg)
+{
+    llMessageLinked(gBhvSchedLinkNumber,BHVMSGTOSCH, llList2Json(JSON_OBJECT,["request","whisper","mnum",gBhvMnum,"token",gActiveToken, "msg",msg]),"");  // tell scheduler
+}
+
+//
 //  bhvStop -- stop current movement
 //
 //  This is not usually necessary.

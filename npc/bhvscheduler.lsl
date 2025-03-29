@@ -483,6 +483,11 @@ default
                 llSay(0,msg);
                 return;
             }
+            else if (reqtype == "whisper")              // whisper something, from root prim
+            {   string msg = llJsonGetValue(jsn,["msg"]);
+                llWhisper(0,msg);
+                return;
+            }
             debugMsg(DEBUG_MSG_ERROR,"Invalid message to behavior scheduler: " + jsn);    // behavior error
 
         } else if (num == PATHSTARTREPLY)               // the path system is done doing something for us
