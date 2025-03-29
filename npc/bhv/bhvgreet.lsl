@@ -22,6 +22,9 @@
 //
 //  Talking should have a short talk anim and a looped stand anim.
 //
+//  TODO: 
+//  - When others are talking, wait for N seconds of silence before talking.
+//
 //
 #include "npc/bhv/bhvcall.lsl"
 #include "npc/pathavatartrackcall.lsl"
@@ -79,7 +82,7 @@ float gSpeed = CHARACTER_SPEED;             // default speed
 integer gAction = ACTION_IDLE;
 string gAnim;                   // current animation                       
 key gTarget = NULL_KEY;         // current avatar to pursue
-integer gListenChannel;         // for detecting chat
+integer gListenChannel = 0;     // for detecting chat
 float gDwell;                   // dwell time to wait
 float gFaceDir;                 // direction to face next
 
@@ -278,7 +281,8 @@ start_pursue()
 //  greet_done -- done here, return to other tasks
 //
 greet_done(string action)
-{   if (action != "") { pathavatartrackreply(gTarget,action); }     // tell tracker to defer action on this avi
+{   
+    if (action != "") { pathavatartrackreply(gTarget,action); }     // tell tracker to defer action on this avi
     bhvfinished();                                          // done
 }
 
@@ -314,6 +318,11 @@ bhvDoStart()
         return;
     }
     llResetTime();                                                  // reset the clock
+    //  Begin listening
+    if (gListenChannel == 0) {
+        gListenChannel = llListen(0, "", NULL_KEY, "");             // start listening for local chat to cue the NPC to be quiet.
+        ////llOwnerSay("Listening on channel " + (string) gListenChannel); // ***TEMP***
+    }
     start_pursue();
 }
 //
@@ -324,6 +333,11 @@ bhvDoStop()
     gAction = ACTION_IDLE;                                          // we've been preempted. No pursue now.
     gTarget = NULL_KEY;                                             // need a new target later
     llSetTimerEvent(0);                                             // don't need a timer
+    if (gListenChannel != 0) { 
+        llListenRemove(gListenChannel);
+        ////llOwnerSay("Listen stopped on channel " + (string) gListenChannel); // ***TEMP***
+    }
+    gListenChannel = 0;
 }
 
 //
@@ -469,10 +483,11 @@ default
         {   debugMsgLevelSet(jsn); return; }
     }
     
+    //  Listen for avatars talking in local chat, so we shut up.
     listen(integer channel, string name, key id, string msg)
     {   ////llOwnerSay("Listen from id " + (string) id + ": " + msg); // ***TEMP***
         if (channel == 0)                                       // if local chat
-        {   if (gAction == ACTION_IDLE && llGetAgentSize(id) != ZERO_VECTOR)    // stay around if talked to by an avi
+        {   if (gAction == ACTION_TALKING && llGetAgentSize(id) != ZERO_VECTOR)    // stay around if talked to by an avi
             {   
                 vector dir = (vec_to_target(id));               // face who's talking
                 float heading = llAtan2(dir.x,dir.y);           // direction to face as heading (0=north)
