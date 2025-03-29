@@ -30,7 +30,7 @@
 //  States
 //
 integer ACTION_IDLE = 0;         
-integer ACTION_PURSUE = 1;
+integer ACTION_PURSUE = 1;                  // go to place near target
 integer ACTION_FACE = 2;                    // turn to face target, has callback
 integer ACTION_GREET = 4;                   // face finished, do greet
 integer ACTION_DISTANT_GREET = 5;           // face finished, do distant greet msg
