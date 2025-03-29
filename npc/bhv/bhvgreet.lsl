@@ -484,6 +484,7 @@ default
     }
     
     //  Listen for avatars talking in local chat, so we shut up.
+    //  Doesn't matter who says it.
     listen(integer channel, string name, key id, string msg)
     {   ////llOwnerSay("Listen from id " + (string) id + ": " + msg); // ***TEMP***
         if (channel == 0)                                       // if local chat
