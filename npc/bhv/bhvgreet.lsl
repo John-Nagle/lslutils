@@ -103,40 +103,45 @@ bhvDoRequestDone(integer status, key hitobj)
 {   debugMsg(DEBUG_MSG_INFO, "Path update: : " + (string) status + " obstacle: " + llKey2Name(hitobj));
     if (status == PATHERRMAZEOK)          // success
     {   ////llOwnerSay("Pathfinding task completed.");
+        vector targetpos = target_pos(gTarget);
+        if (targetpos == ZERO_VECTOR)                               // target is gone
+        {   debugMsg(DEBUG_MSG_INFO,"Avatar has left the area.");             
+            bhvfinished();                                          // done
+            return;               
+        }
+
         if (gAction == ACTION_PURSUE)            
         {
             gAction = ACTION_LISTEN;  
-            vector targetpos = target_pos(gTarget);
-            if (targetpos == ZERO_VECTOR)                               // target is gone
-            {   debugMsg(DEBUG_MSG_INFO,"Avatar has left the area.");             
-                bhvfinished();                                          // done
-                return;               
-            }
             vector offset = dir_from_target(gTarget) * GOAL_DIST; 
             vector finaltarget = targetpos + offset;
             if (is_clear_sightline(gTarget, finaltarget))               // if can get to face target
             {            
                 debugMsg(DEBUG_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
                 bhvNavigateTo(llGetRegionCorner(), finaltarget, 0, WALKSPEED);  // get to social talking position
-                ////llResetTime();
-            } else {                                                    // can't get to social talk position
-                debugMsg(DEBUG_MSG_WARN,"Can't get in front of avatar due to obstacle.");
-                bhvAnimate(gAnimIdle);
-                face(gTarget, ACTION_DISTANT_GREET);
-            }           
+            }      
             return;
         }
         
         if (gAction == ACTION_LISTEN)
         {
-            debugMsg(DEBUG_MSG_INFO, "Listening."); 
+            debugMsg(DEBUG_MSG_INFO, "Listening.");
+            bhvAnimate(gAnimIdle);                  // need a listening animation
             return;                                 // continue pretending to listen
         }
 
         if (gAction == ACTION_FACE)
         {   //  Turn to face avatar.
             bhvAnimate(gAnimIdle);
-            face(gTarget, ACTION_GREET);
+            vector offset = dir_from_target(gTarget) * GOAL_DIST; 
+            vector finaltarget = targetpos + offset;
+            if (is_clear_sightline(gTarget, finaltarget))               // if can get to face target
+            {   face(gTarget, ACTION_GREET);
+                debugMsg(DEBUG_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
+            } else {                                                    // can't get to social talk position
+                debugMsg(DEBUG_MSG_WARN,"Can't get in front of avatar due to obstacle.");
+                face(gTarget, ACTION_DISTANT_GREET);
+            }           
             return;
         }
         if (gAction == ACTION_GREET)
@@ -475,6 +480,7 @@ default
         } else if (gAction == ACTION_LISTEN)        // if waiting for a chance to talk
         {   if (llGetTime() < ATTENTION_SPAN)       // others are talking, can't talk now.
             {
+                bhvAnimate(gAnimIdle);              // an "I want to talk" anim would help.
                 return;
             }
             //  We have a chance to talk. Advance to facing state
