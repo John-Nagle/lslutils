@@ -129,7 +129,7 @@ bhvDoRequestDone(integer status, key hitobj)
         
         if (gAction == ACTION_LISTEN)
         {
-            llOwnerSay("Listening.");               // ***TEMP***
+            debugMsg(DEBUG_MSG_INFO, "Listening."); 
             return;                                 // continue pretending to listen
         }
 
@@ -473,14 +473,14 @@ default
                 bhvSetPriority(PRIORITY_OFF);               // stop greeting now, do something else
             }
         } else if (gAction == ACTION_LISTEN)        // if waiting for a chance to talk
-        {    if (llGetTime() < ATTENTION_SPAN)       // others are talking, can't talk now.
+        {   if (llGetTime() < ATTENTION_SPAN)       // others are talking, can't talk now.
             {
                 return;
             }
             //  We have a chance to talk. Advance to facing state
             bhvAnimate(gAnimIdle);
             face(gTarget, ACTION_FACE);
-            llOwnerSay("Our turn to talk.");
+            debugMsg(DEBUG_MSG_INFO, "Listening.");
         }
     }
     
