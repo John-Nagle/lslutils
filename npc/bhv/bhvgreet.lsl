@@ -34,7 +34,8 @@
 //
 integer ACTION_IDLE = 0;         
 integer ACTION_PURSUE = 1;                  // go to place near target
-integer ACTION_FACE = 2;                    // turn to face target, has callback
+integer ACTION_LISTEN = 2;                  // near target, listen for silence
+integer ACTION_FACE = 3;                    // turn to face target, has callback
 integer ACTION_GREET = 4;                   // face finished, do greet
 integer ACTION_DISTANT_GREET = 5;           // face finished, do distant greet msg
 integer ACTION_TALKING = 6;                 // facing an avi and talking
@@ -102,9 +103,9 @@ bhvDoRequestDone(integer status, key hitobj)
 {   debugMsg(DEBUG_MSG_INFO, "Path update: : " + (string) status + " obstacle: " + llKey2Name(hitobj));
     if (status == PATHERRMAZEOK)          // success
     {   ////llOwnerSay("Pathfinding task completed.");
-        if (gAction == ACTION_PURSUE)               
+        if (gAction == ACTION_PURSUE)            
         {
-            gAction = ACTION_FACE;  
+            gAction = ACTION_LISTEN;  
             vector targetpos = target_pos(gTarget);
             if (targetpos == ZERO_VECTOR)                               // target is gone
             {   debugMsg(DEBUG_MSG_INFO,"Avatar has left the area.");             
@@ -117,14 +118,21 @@ bhvDoRequestDone(integer status, key hitobj)
             {            
                 debugMsg(DEBUG_MSG_INFO,"Get in front of avatar. Move to: " + (string)finaltarget);
                 bhvNavigateTo(llGetRegionCorner(), finaltarget, 0, WALKSPEED);  // get to social talking position
-                llResetTime();
+                ////llResetTime();
             } else {                                                    // can't get to social talk position
                 debugMsg(DEBUG_MSG_WARN,"Can't get in front of avatar due to obstacle.");
                 bhvAnimate(gAnimIdle);
                 face(gTarget, ACTION_DISTANT_GREET);
-            }                             
+            }           
             return;
         }
+        
+        if (gAction == ACTION_LISTEN)
+        {
+            llOwnerSay("Listening.");               // ***TEMP***
+            return;                                 // continue pretending to listen
+        }
+
         if (gAction == ACTION_FACE)
         {   //  Turn to face avatar.
             bhvAnimate(gAnimIdle);
@@ -464,6 +472,15 @@ default
                 pathavatartrackreply(gTarget,"defer");      // tell tracker to wait on this one
                 bhvSetPriority(PRIORITY_OFF);               // stop greeting now, do something else
             }
+        } else if (gAction == ACTION_LISTEN)        // if waiting for a chance to talk
+        {    if (llGetTime() < ATTENTION_SPAN)       // others are talking, can't talk now.
+            {
+                return;
+            }
+            //  We have a chance to talk. Advance to facing state
+            bhvAnimate(gAnimIdle);
+            face(gTarget, ACTION_FACE);
+            llOwnerSay("Our turn to talk.");
         }
     }
     
@@ -488,12 +505,13 @@ default
     listen(integer channel, string name, key id, string msg)
     {   ////llOwnerSay("Listen from id " + (string) id + ": " + msg); // ***TEMP***
         if (channel == 0)                                       // if local chat
-        {   if (gAction == ACTION_TALKING && llGetAgentSize(id) != ZERO_VECTOR)    // stay around if talked to by an avi
+        {   llResetTime();                                      // reset attention span
+            //  Pretend to follow conversations
+            if ((gAction == ACTION_TALKING || gAction == ACTION_LISTEN) && llGetAgentSize(id) != ZERO_VECTOR)    // stay around if talked to by an avi
             {   
                 vector dir = (vec_to_target(id));               // face who's talking
                 float heading = llAtan2(dir.x,dir.y);           // direction to face as heading (0=north)
-                bhvTurn(heading);
-                llResetTime();                                  // reset attention span
+                bhvTurn(heading);              
             }
             return;
         }
