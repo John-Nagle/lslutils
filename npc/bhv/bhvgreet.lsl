@@ -57,6 +57,7 @@ float OBSTACLE_RETRY_PROB = 0.7;            // (fract) Retry if random < this.
 float IDLE_POLL = 10.0;
 float ATTENTION_SPAN = 20;                  // will stick around for this long
 float MIN_MOVE_FOR_RETRY = 0.25;            // must move at least this far before we recheck on approach
+integer MAX_LISTEN_WAIT_SECS = 60;          // if can't get a word in in this long, give up and do something else.
 
 //  Configuration
 
@@ -86,6 +87,7 @@ key gTarget = NULL_KEY;         // current avatar to pursue
 integer gListenChannel = 0;     // for detecting chat
 float gDwell;                   // dwell time to wait
 float gFaceDir;                 // direction to face next
+integer gListenWaitSecs = 0;    // seconds stuck waiting for a chance to talk
 
 //
 //  bhvfinished -- finished with this greet cycle
@@ -112,7 +114,8 @@ bhvDoRequestDone(integer status, key hitobj)
 
         if (gAction == ACTION_PURSUE)            
         {
-            gAction = ACTION_LISTEN;  
+            gAction = ACTION_LISTEN;                                // change to LISTEN state
+            gListenWaitSecs = 0;                                    // how long have we waited 
             vector offset = dir_from_target(gTarget) * GOAL_DIST; 
             vector finaltarget = targetpos + offset;
             if (is_clear_sightline(gTarget, finaltarget))               // if can get to face target
@@ -480,6 +483,14 @@ default
         } else if (gAction == ACTION_LISTEN)        // if waiting for a chance to talk
         {   if (llGetTime() < ATTENTION_SPAN)       // others are talking, can't talk now.
             {
+                if (gListenWaitSecs++ > MAX_LISTEN_WAIT_SECS) 
+                {
+                    debugMsg(DEBUG_MSG_WARN,"Listen timeout, no chance to talk");
+                    bhvStop();                                  // abort pursue now
+                    pathavatartrackreply(gTarget,"defer");      // tell tracker to wait on this one
+                    bhvSetPriority(PRIORITY_OFF);               // stop greeting now, do something else
+                    return;
+                }
                 bhvAnimate(gAnimIdle);              // an "I want to talk" anim would help.
                 return;
             }
