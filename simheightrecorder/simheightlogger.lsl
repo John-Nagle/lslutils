@@ -22,10 +22,6 @@ float TINY = 0.01;                      // (m) small distance to avoid going ove
 //  Globals
 //
 string gLogURL = "https://www.animats.info/actions/echo.fcgi";                        // API endpoint for logging
-//  Auth token - values must be known to server
-string gLogAuthTokenName = "TEST";          // name for auth token
-string gLogAuthTokenValue = "NONE";         // random value for auth token
-integer gLogFailCount = 0;                  // HTTP failure count
 //
 //  globals
 //
@@ -88,7 +84,6 @@ elevscale()
     else 
     {   gzscale = 0.0; }                                    // this sim is flat
     gzscale = 1.0 / (zmax-zmin);
-   
 }
 //
 //
@@ -96,7 +91,7 @@ elevscale()
 //
 //  Returns 65 values, not 64
 //
-string elevstojson(float scale, float offset, float waterlev, string regionname, vector regioncorner)
+string elevstojson(float scale, float offset, float waterlev, string grid, string regionname, vector regioncorner)
 {   string jsn;
     float x; float y;
     for (x = 0; x<=SIMSIZE; x += INTERVAL)
@@ -120,39 +115,17 @@ string elevstojson(float scale, float offset, float waterlev, string regionname,
     //  Return elevation data as one JSON string
     //  Make lines of hex into separate output lines as JSON because SL mail sender breaks lines at arbitrary points.
     return(llList2Json(JSON_OBJECT, 
-        ["region",regionname, "scale",scale, "offset",offset, "waterlev", waterlev,
-            "regioncoords",llList2Json(JSON_ARRAY,[llFloor(regioncorner.x/SIMSIZE),llFloor(regioncorner.y/SIMSIZE)]),
-            "elevs", ("["+  jsn + "]")]));
+        ["grid", grid, "name",regionname, "scale",scale, "offset",offset, "water_lev", waterlev,
+            "region_coords",llList2Json(JSON_ARRAY,[llFloor(regioncorner.x/SIMSIZE),llFloor(regioncorner.y/SIMSIZE)]),
+            "elevs", jsn]));
 }
 
-loginit(string url, string authtokenname, string authtokenvalue)       // set up logging
-{   gLogURL = url;
-    gLogAuthTokenName = llStringTrim(authtokenname, STRING_TRIM);
-    gLogAuthTokenValue = llStringTrim(authtokenvalue, STRING_TRIM);
-    gLogFailCount = 0;
-}
-
-key logstring(string s)                     // sends a POST to an API endpoint for logging
+key uploadelevs(string s)                     // sends a POST to an API endpoint for logging
 {   if (gLogURL == "") { return(NULL_KEY); }// logging not enabled
     s = llStringTrim(s,STRING_TRIM);        // trim string for consistency
     list params = [HTTP_METHOD, "POST"];    // send with auth token
-    params = params + [HTTP_CUSTOM_HEADER, "X-AUTHTOKEN-NAME"] + gLogAuthTokenName;
-    params = params + [HTTP_CUSTOM_HEADER, "X-AUTHTOKEN-HASH"] + llSHA1String(gLogAuthTokenValue + s); // key is SHA1 of of authtoken followed by message
     return(llHTTPRequest(gLogURL, params, s)); // make HTTP request
 }
-
-//  Call this for an HTTP response event 
-integer logresponse(key request_id, integer status, list metadata, string body)
-{   if (status >= 200 && status < 299)
-    {   gLogFailCount = 0;                  // reset fail count
-        return(TRUE);
-    }
-    if (gLogFailCount % 1 == 0)
-    {   llOwnerSay("Logging request to " + gLogURL + " failed. Status " + (string) status);} // mention every Nth fail
-    gLogFailCount++;
-    return(FALSE);
-}
-
 
 default
 {
@@ -162,10 +135,10 @@ default
         llOwnerSay("Reading elevations for region " + llGetRegionName());
         float waterlev = llWater(llGetPos());
         elevscale(); 
-        string s = elevstojson(gzscale,gzoffset, waterlev, llGetRegionName(), llGetRegionCorner());             // need to rescale for some high mountains
+        string s = elevstojson(gzscale,gzoffset, waterlev, llGetEnv("grid"), llGetRegionName(), llGetRegionCorner()); // need to rescale for some high mountains
         string subject = "Elevations for region " + llGetRegionName();  // email message
         llOwnerSay(subject);
-        logstring(s);
+        uploadelevs(s);
     }
 }
 
