@@ -21,7 +21,7 @@ float TINY = 0.01;                      // (m) small distance to avoid going ove
 //
 //  Globals
 //
-string gLogURL = "https://www.animats.info/actions/echo.fcgi";                        // API endpoint for logging
+string gLogURL = "https://www.animats.info/actions/uploadterrain.fcgi";                        // API endpoint for logging
 //
 //  globals
 //
@@ -92,7 +92,7 @@ elevscale()
 //  Returns 65 values, not 64
 //
 string elevstojson(float scale, float offset, float waterlev, string grid, string regionname, vector regioncorner)
-{   string jsn;
+{   string jsn = "[";
     float x; float y;
     for (x = 0; x<=SIMSIZE; x += INTERVAL)
     {   list elevs = [];
@@ -112,6 +112,7 @@ string elevstojson(float scale, float offset, float waterlev, string grid, strin
         if (x > 0) { s = ",\n" + s; }                               // add comma for non-first line
         jsn += s;                                                   // accumulate data for one X row
     }
+    jsn += "]";
     //  Return elevation data as one JSON string
     //  Make lines of hex into separate output lines as JSON because SL mail sender breaks lines at arbitrary points.
     return(llList2Json(JSON_OBJECT, 
