@@ -158,11 +158,11 @@ default
     http_response(key request_id, integer status, list metadata, string body) 
     {
         if (status >= 200 && status <= 299) 
-        {   llOwnerSay("Region elevations recorded OK, status " + (string) status + " " + body);
+        {   llOwnerSay("Region elevations recorded OK, status " + (string) status);
             return;
         }
         //  Error case
-        llOwnerSay("Region elevations recording error, status " + (string) status + " " + body + " Metadata: " + (string)metadata);
+        llOwnerSay("Region elevations recording error, status " + (string) status);
     }
     
     //  On region change, record new region
