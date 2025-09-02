@@ -117,7 +117,7 @@ string elevstojson(float scale, float offset, float waterlev, string grid, strin
     //  Make lines of hex into separate output lines as JSON because SL mail sender breaks lines at arbitrary points.
     return(llList2Json(JSON_OBJECT, 
         ["grid", grid, "name",regionname, "scale",scale, "offset",offset, "water_lev", waterlev,
-            "region_coords",llList2Json(JSON_ARRAY,[llFloor(regioncorner.x/SIMSIZE),llFloor(regioncorner.y/SIMSIZE)]),
+            "region_coords",llList2Json(JSON_ARRAY,[llFloor(regioncorner.x), llFloor(regioncorner.y)]),
             "elevs", jsn]));
 }
 
