@@ -128,18 +128,49 @@ key uploadelevs(string s)                     // sends a POST to an API endpoint
     return(llHTTPRequest(gLogURL, params, s)); // make HTTP request
 }
 
+//  Do an update. Make sure region does not change.
+integer do_update() {
+    string region_name = llGetRegionName();
+    llOwnerSay("Reading elevations for region " + region_name);
+    float waterlev = llWater(llGetPos());
+    elevscale(); 
+    string s = elevstojson(gzscale,gzoffset, waterlev, llGetEnv("grid"), llGetRegionName(), llGetRegionCorner()); // need to rescale for some high mountains
+    if (region_name != llGetRegionName())
+    {   llOwnerSay("Crossed region boundary while sampling land heights.");
+        return(FALSE);
+    }
+    string subject = "Elevations for region " + llGetRegionName();  // email message
+    llOwnerSay(subject);
+    uploadelevs(s);
+    return(TRUE);
+}
+
+
 default
 {
     //  On touch, log to server.
     touch_start(integer total_number)
     {
-        llOwnerSay("Reading elevations for region " + llGetRegionName());
-        float waterlev = llWater(llGetPos());
-        elevscale(); 
-        string s = elevstojson(gzscale,gzoffset, waterlev, llGetEnv("grid"), llGetRegionName(), llGetRegionCorner()); // need to rescale for some high mountains
-        string subject = "Elevations for region " + llGetRegionName();  // email message
-        llOwnerSay(subject);
-        uploadelevs(s);
+        do_update();
+    }
+    
+    //  Report problems
+    http_response(key request_id, integer status, list metadata, string body) 
+    {
+        if (status >= 200 && status <= 299) 
+        {   llOwnerSay("Region elevations recorded OK, status " + (string) status + " " + body);
+            return;
+        }
+        //  Error case
+        llOwnerSay("Region elevations recording error, status " + (string) status + " " + body + " Metadata: " + (string)metadata);
+    }
+    
+    //  On region change, record new region
+    changed(integer change) 
+    {
+        if (change & CHANGED_REGION) 
+        {   do_update();
+        }
     }
 }
 
