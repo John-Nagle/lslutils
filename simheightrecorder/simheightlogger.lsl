@@ -83,7 +83,6 @@ elevscale()
     {   gzscale = 1.0/zrange; }                             // scale factor for elevs
     else 
     {   gzscale = 0.0; }                                    // this sim is flat
-    gzscale = 1.0 / (zmax-zmin);
 }
 //
 //
