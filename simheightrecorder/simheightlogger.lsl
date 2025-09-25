@@ -78,11 +78,7 @@ elevscale()
     }
     llOwnerSay("Z range: " + (string)zmin + " .. " + (string)zmax);
     gzoffset = zmin;
-    float zrange = zmax - zmin;
-    if (zrange > 0.0)
-    {   gzscale = 1.0/zrange; }                             // scale factor for elevs
-    else 
-    {   gzscale = 0.0; }                                    // this sim is flat
+    gzscale = zmax - zmin;
 }
 //
 //
@@ -101,7 +97,11 @@ string elevstojson(float scale, float offset, float waterlev, string grid, strin
             vector testpos = <xtest,ytest,0> - llGetPos();
             //  Prevent asking for off-sim position
             float z = llGround(testpos);
-            z = (z-offset)*scale;                                   // scale into 0..1
+            //  Scale into 0 .. 1.0
+            if (scale > 0.001) 
+            {   z = (z-offset) / scale; }
+            else 
+            {   z = 0.0; }
             integer zint  = llFloor(z*256);
             if (zint < 0) { zint = 0; }
             if (zint > 255) { zint = 255; }
