@@ -13,7 +13,43 @@ key uploadimpostors(string s)
     list params = [HTTP_METHOD, "POST"];    // send with auth token
     string url = gImpostorURL + "?version=" + VERSION;
     return(llHTTPRequest(url, params, s)); // make HTTP request
-}          
+}
+
+//  Parse one impostor name
+//  DECODE PREFIX_x_y_sx_sy_sz_offset_waterheight_lod_vizgroup_hash
+string parse_impostor_data(list fields, key uuid) {
+    //  Extract 11 fields from asset name
+    string prefix = llList2String(fields,0);
+    integer x = (integer) llList2String(fields, 1);
+    integer y = (integer) llList2String(fields, 2);
+    integer sx = (integer) llList2String(fields, 3);
+    integer sy = (integer) llList2String(fields, 4);
+    float sz = (float) llList2String(fields, 5);
+    float elevation_offset = (float) llList2String(fields, 6);
+    integer lod = (integer)llList2String(fields, 7);
+    integer viz_group = (integer)llList2String(fields, 8);
+    float water_height = (float) llList2String(fields, 9);
+    string region_hash = llList2String(fields, 10);
+    //  Assemble data
+    string region_loc = llList2Json(JSON_ARRAY, [x, y]);
+    string scale = llList2Json(JSON_ARRAY, [sx, sy, sz]);
+    string region_size = llList2Json(JSON_ARRAY, [sx, sy]);
+    string impostor_data = llList2Json(JSON_OBJECT, 
+         ["comment", "Generated from sculpt texture UUIDS fetched from inventory",
+        "prefix", prefix,
+        "region_hash", region_hash,
+        "region_loc", region_loc,
+        "region_size", region_size,
+        "grid", llGetEnv("grid"), 
+        "elevation_offset", elevation_offset ,
+        "scale", scale,
+        "water_height", water_height,
+        "asset_uuid", uuid,
+        "impostor_lod", lod,
+        "viz_group", viz_group
+    ]);
+    return impostor_data;
+}   
 
 dump_all_texture_uuids()
 {
@@ -21,15 +57,20 @@ dump_all_texture_uuids()
     llOwnerSay((string) cnt + " textures.");
     integer n;
     string impostors = "";
+    //  ***NEED TO MAKE TWO PASSES. TEXTURES FIRST***
     for (n=0; n<cnt; n++)
     {
         string name = llGetInventoryName(INVENTORY_TEXTURE, n);
         key uuid = llGetInventoryKey(name);
+
         list fields = llParseStringKeepNulls(name, ["_"], []);
+        
         string prefix = llList2String(fields,0);
         if (prefix != "RS" && prefix != "RT0")
         {   llOwnerSay("Not a RS region sculpt: " + name); 
         } else {
+            string impostor_data = parse_impostor_data(fields, uuid);
+/*
             //  DECODE RS_x_y_sx_sy_sz_offset_waterheight_lod_vizgroup_hash
             integer x = (integer) llList2String(fields, 1);
             integer y = (integer) llList2String(fields, 2);
@@ -47,10 +88,9 @@ dump_all_texture_uuids()
             string face = llList2Json(JSON_OBJECT, 
                 ["base_texture_uuid", uuid,
                  "base_texture_hash", "???"]);
-            string faces = llList2Json(JSON_ARRAY, [face]);
             string impostor_data = llList2Json(JSON_OBJECT, 
                 ["comment", "Generated from sculpt texture UUIDS fetched from inventory",
-                "prefid", prefix,
+                "prefix", prefix,
                 "region_hash", region_hash,
                 "region_loc", region_loc,
                 "region_size", region_size,
@@ -60,9 +100,10 @@ dump_all_texture_uuids()
                 "water_height", water_height,
                 "sculpt_uuid", uuid,
                 "impostor_lod", lod,
-                "viz_group", viz_group,
-                "faces", faces]);
+                "viz_group", viz_group
+                ]);
             ////llOwnerSay(impostor_data);
+*/
             if (impostors == "")
             {   impostors = impostors + "\n" + impostor_data;
             } else {
