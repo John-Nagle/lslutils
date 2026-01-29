@@ -19,7 +19,7 @@ key uploadimpostors(string s)
 
 //  Parse one impostor name
 //  DECODE PREFIX_x_y_sx_sy_sz_offset_waterheight_lod_vizgroup_hash
-string parse_impostor_data(list fields, key uuid) {
+string parse_impostor_data(string name, list fields, key uuid) {
     //  Extract 11 fields from asset name
     string prefix = llList2String(fields,0);
     integer x = (integer) llList2String(fields, 1);
@@ -38,6 +38,7 @@ string parse_impostor_data(list fields, key uuid) {
     string region_size = llList2Json(JSON_ARRAY, [sx, sy]);
     string impostor_data = llList2Json(JSON_OBJECT, 
          ["comment", "Generated from sculpt texture UUIDS fetched from inventory",
+        "asset_name", name,
         "prefix", prefix,
         "region_hash", region_hash,
         "region_loc", region_loc,
@@ -79,7 +80,7 @@ dump_all_texture_uuids()
             if (prefix == desired_prefix) 
             {
                 asset_count++;
-                string impostor_data = parse_impostor_data(fields, uuid);
+                string impostor_data = parse_impostor_data(name, fields, uuid);
                 if (impostors == "")
                 {   impostors = impostors + "\n" + impostor_data;
                 } else {
