@@ -125,13 +125,15 @@ upload_next_texture_uuid_block()
     llOwnerSay("Upload next block, pass " + (string) gPass + " starting from #" + (string) gStart);
     if (gPassDone) {
         if (gPass != 0) {
-            llOwnerSay("Pass 2 complete. Total assets uploaded: " + (string) gAssetCount + ". Done.");
+            llOwnerSay("Pass 1 complete. Total assets uploaded: " + (string) gAssetCount + ". Done.");
             gUploading = FALSE;
             return;
         } else {
-            llOwnerSay("Pass 1 complete.");
+            //  Start pass 1
+            llOwnerSay("Pass 0 complete.");
             gPass = 1;
             gStart = 0;
+            gPassDone = FALSE;
         }
     }
     //  Do the upload.
@@ -152,6 +154,7 @@ upload_all_texture_uuids() {
     gUploading = TRUE;
     gPass = 0;
     gStart = 0;
+    gAssetCount = 0;
     gCnt = llGetInventoryNumber(INVENTORY_TEXTURE);
     gPassDone = FALSE;
     upload_next_texture_uuid_block();
