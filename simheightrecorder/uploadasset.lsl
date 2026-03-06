@@ -8,13 +8,29 @@ string VERSION = "1.0";
 integer MAX_BYTES_SENT = 10000;
 //  Service endpoint
 string gImpostorURL = "https://www.animats.info/actions/uploadimpostor.fcgi";
+//  State
+integer gPass = 0;  // We start in pass 0
+//  Start at this number next time
+integer gStart = 0;
+//  True if everything sent for this pass
+integer gPassDone = FALSE;
+//  Key from last HTTP request
+key gLastRequest = "";
+//  Total cnt to send, asked once
+integer gCnt = 0;
+//  Uploading if true
+integer gUploading = FALSE;
+//  Total asset count
+integer gAssetCount = 0;
 
 //  Sends a POST to an API endpoint to update impostor database.
 key uploadimpostors(string s)                    
 {   s = llStringTrim(s,STRING_TRIM);        // trim string for consistency
     list params = [HTTP_METHOD, "POST"];    // send with auth token
     string url = gImpostorURL + "?version=" + VERSION;
-    return(llHTTPRequest(url, params, s)); // make HTTP request
+    key status = llHTTPRequest(url, params, s); // make HTTP request
+    //////llOwnerSay("HTTP request: " + (string) params); // ***TEMP***
+    return status;
 }
 
 //  Parse one impostor name
@@ -40,7 +56,7 @@ string parse_impostor_data(string name, list fields, key uuid) {
          ["comment", "Generated from sculpt texture UUIDS fetched from inventory",
         "asset_name", name,
         "prefix", prefix,
-        "region_hash", region_hash,
+        "asset_hash", region_hash,
         "region_loc", region_loc,
         "region_size", region_size,
         "grid", llGetEnv("grid"), 
@@ -52,66 +68,112 @@ string parse_impostor_data(string name, list fields, key uuid) {
         "viz_group", viz_group
     ]);
     return impostor_data;
-}   
+}
 
-dump_all_texture_uuids()
+//  Dump all texture UUIDs starting from this value.
+//  Returns value to use for start next time.
+integer upload_texture_uuid_block(integer start, integer cnt, integer pass) 
 {
-    integer cnt = llGetInventoryNumber(INVENTORY_TEXTURE);
-    llOwnerSay((string) cnt + " textures.");
+    llOwnerSay("Starting UUID block at " + (string)start + ", pass " + (string)pass);
+
     integer n;
     string impostors = "";
-    integer asset_count = 0;
     //  Need to make two passes. Textures first.
     //  No mesh support yet.
-    integer pass;
-    for (pass=0; pass<2; pass++) 
+    string desired_prefix = "RT0";
+    if (pass == 1)
+    {   desired_prefix = "RS"; 
+    }
+    llOwnerSay("Uploading " + desired_prefix);
+    for (n=start; n<cnt; n++)
     {
-        string desired_prefix = "RT0";
-        if (pass == 1)
-        {   desired_prefix = "RS"; 
-        }
-        llOwnerSay("Uploading " + desired_prefix);
-        for (n=0; n<cnt; n++)
+        string name = llGetInventoryName(INVENTORY_TEXTURE, n);
+        key uuid = llGetInventoryKey(name);
+        list fields = llParseStringKeepNulls(name, ["_"], []);       
+        string prefix = llList2String(fields,0);
+        if (prefix == desired_prefix) 
         {
-            string name = llGetInventoryName(INVENTORY_TEXTURE, n);
-            key uuid = llGetInventoryKey(name);
-            list fields = llParseStringKeepNulls(name, ["_"], []);       
-            string prefix = llList2String(fields,0);
-            if (prefix == desired_prefix) 
+            gAssetCount++;
+            string impostor_data = parse_impostor_data(name, fields, uuid);
+            if (impostors == "")
+            {   impostors = impostors + "\n" + impostor_data;
+            } else {
+                impostors = impostors + ",\n" + impostor_data;
+            }
+            if (llStringLength(impostors) > MAX_BYTES_SENT)
             {
-                asset_count++;
-                string impostor_data = parse_impostor_data(name, fields, uuid);
-                if (impostors == "")
-                {   impostors = impostors + "\n" + impostor_data;
-                } else {
-                    impostors = impostors + ",\n" + impostor_data;
-                }
-                if (llStringLength(impostors) > MAX_BYTES_SENT)
-                {
-                    impostors = "[\n" + impostors + "\n]\n";
-                    llOwnerSay((string) (llStringLength(impostors)) + " bytes of impostors sent to server");
-                    uploadimpostors(impostors);
-                    impostors = "";
-                }
+                impostors = "[\n" + impostors + "\n]\n";
+                llOwnerSay((string) (llStringLength(impostors)) + " bytes of impostors being sent to server.");
+                uploadimpostors(impostors);
+                impostors = "";
+                return (n+1);
             }
         }
     }
-    if (impostors != "")
-    {   impostors = "[\n" + impostors + "\n]\n";
-        uploadimpostors(impostors);
+    //  Always send, even if empty, so we get a completion.
+    impostors = "[\n" + impostors + "\n]\n";
+    llOwnerSay((string) (llStringLength(impostors)) + " bytes of impostors being sent to server.");
+    uploadimpostors(impostors);
+    return (-1);    // EOF
+}
+
+//  upload_texture_uuid_block()
+//  Called once at start, then on each HTTP reply.
+//  Runs through all the UUIDs twice, once for each pass.
+upload_next_texture_uuid_block()
+{
+    llOwnerSay("Upload next block, pass " + (string) gPass + " starting from #" + (string) gStart);
+    if (gPassDone) {
+        if (gPass != 0) {
+            llOwnerSay("Pass 2 complete. Total assets uploaded: " + (string) gAssetCount + ". Done.");
+            gUploading = FALSE;
+            return;
+        } else {
+            llOwnerSay("Pass 1 complete.");
+            gPass = 1;
+            gStart = 0;
+        }
     }
-    llOwnerSay((string) asset_count + " assets sent to server.");
+    //  Do the upload.
+    integer nextStart = upload_texture_uuid_block(gStart, gCnt, gPass);
+    if (nextStart < 0) {
+        gPassDone = TRUE;
+    } else {
+        gStart = nextStart;
+    }
+}
+
+//  Start the upload process
+upload_all_texture_uuids() {
+    if (gUploading)
+    {   llOwnerSay("BUSY - uploading");
+        return;
+    }
+    gUploading = TRUE;
+    gPass = 0;
+    gStart = 0;
+    gCnt = llGetInventoryNumber(INVENTORY_TEXTURE);
+    gPassDone = FALSE;
+    upload_next_texture_uuid_block();
 }
 
 default
 {
-    state_entry()
-    {
-    }
-
     touch_start(integer total_number)
     {
-        dump_all_texture_uuids();
+        upload_all_texture_uuids();
+    }
+    
+    //  Response from upload.
+    http_response(key HTTPRequestID, integer status, list metadata, string body) 
+    {      
+        //////llOwnerSay("HTTP response: " + body);
+        if (status == 200) 
+        {    upload_next_texture_uuid_block();
+        } else {
+            llOwnerSay("ERROR " + (string) status + ": " + body);
+            gUploading = FALSE;
+        }
     }
 }
 
