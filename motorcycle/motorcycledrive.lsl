@@ -483,6 +483,7 @@ state Ground
             }
         }    
         //  Speed control - slows down for double region crossings, but only if really close
+/*  OBSOLETE - region corners now handled server side
         vector pos = llGetPos();
         pos.z = 0.0;                                // only care about XY
         vector vel = llGetVel();
@@ -508,6 +509,7 @@ state Ground
                 llApplyImpulse(<wlinear.x,wlinear.y,DOWNFORCE>, TRUE);
             }
         }
+*/
         if(Angular != <0.0, 0.0, 0.0>) { llSetVehicleVectorParam(VEHICLE_ANGULAR_MOTOR_DIRECTION, Angular); }
         //  Set next animation
         if (speed > TINY) 

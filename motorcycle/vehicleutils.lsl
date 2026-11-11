@@ -30,6 +30,7 @@ vector nearestcorner(vector pos)
 integer outsideregion(vector pos)                       // TRUE if outside region
 {   return(pos.x < 0.0 || pos.x > REGION_SIZE || pos.y < 0.0 || pos.y > REGION_SIZE); }
 
+/* OBSOLETE -- region corners fixed in server
 //
 //  regioncrossingseglength -- length of segment between next two region crossings in dir
 //
@@ -110,6 +111,7 @@ float maxspeedforregioncross(vector pos, vector vel)
     }
     return(maxspeed);
 }
+*/
 //  posasstring -- get current position as string
 string posasstring(string region, vector pos)
 {   
