@@ -482,13 +482,15 @@ state Ground
                 CurrentAnim = NextAnim;
             }
         }    
-        //  Speed control - slows down for double region crossings, but only if really close
-/*  OBSOLETE - region corners now handled server side
-        vector pos = llGetPos();
-        pos.z = 0.0;                                // only care about XY
-        vector vel = llGetVel();
+vector vel = llGetVel();
         vel.z = 0.0;
         float speed = llVecMag(vel);                        // speed
+/*  OBSOLETE - region corners now handled server side
+        //  Speed control - slows down for double region crossings, but only if really close
+
+        vector pos = llGetPos();
+        pos.z = 0.0;                                // only care about XY
+
         float maxspeed = maxspeedforregioncross(pos, vel);
         if (speed > maxspeed)
         {   if (maxspeed < lowestslowmsg * 0.8)             // prevent excessive msg rate to server
@@ -510,6 +512,12 @@ state Ground
             }
         }
 */
+        //  The engine moves the vehicle.
+        if (Linear != <0.0,  0.0, DOWNFORCE>)
+        {   vector wlinear = Linear;        // working linear power
+            llSetVehicleVectorParam(VEHICLE_LINEAR_MOTOR_DIRECTION, <wlinear.x,wlinear.y,0.0>);
+            llApplyImpulse(<wlinear.x,wlinear.y,DOWNFORCE>, TRUE);
+        }
         if(Angular != <0.0, 0.0, 0.0>) { llSetVehicleVectorParam(VEHICLE_ANGULAR_MOTOR_DIRECTION, Angular); }
         //  Set next animation
         if (speed > TINY) 
