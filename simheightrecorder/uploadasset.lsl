@@ -164,6 +164,12 @@ default
 {
     touch_start(integer total_number)
     {
+        key owner = llGetOwner();
+        key toucher = llDetectedKey(0);
+        if (owner != toucher) {
+            llOwnerSay("Not owner.");
+            return;
+        }
         upload_all_texture_uuids();
     }
     
